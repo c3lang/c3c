@@ -251,7 +251,7 @@ Expr *sema_enter_inline_member(Expr *parent, CanonicalType *type)
 			expr->type = type;
 			break;
 		}
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		{
 			Decl *decl = type->decl;
 			if (!decl->is_substruct) return NULL;
@@ -1007,8 +1007,8 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_UNION:
 			SEMA_ERROR(expr, "Expected union followed by {...} or '.'.");
 			return expr_poison(expr);
-		case DECL_CONSTDEF:
-			SEMA_ERROR(expr, "Expected constdef name followed by '.' and a constdef value.");
+		case DECL_CONSTSET:
+			SEMA_ERROR(expr, "Expected constset name followed by '.' and a constset value.");
 			return expr_poison(expr);
 		case DECL_ENUM:
 			SEMA_ERROR(expr, "Expected enum name followed by '.' and an enum value.");
@@ -1217,7 +1217,7 @@ static inline bool sema_expr_analyse_enum_constant(SemaContext *context, Expr *e
 		}
 		else
 		{
-			SEMA_ERROR(expr, "Unable to properly resolve constdef value, this can sometimes happen in recursive definitions.");
+			SEMA_ERROR(expr, "Unable to properly resolve constset value, this can sometimes happen in recursive definitions.");
 		}
 		return expr_poison(expr), true;
 	}
@@ -1246,7 +1246,7 @@ static inline bool sema_identifier_find_possible_inferred(SemaContext *context, 
 	to = to->canonical;
 	switch (to->type_kind)
 	{
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_ENUM:
 			if (!decl_ok(to->decl)) return expr_poison(expr), true;
 			return sema_expr_analyse_enum_constant(context, expr, expr->unresolved_ident_expr.ident, to->decl);
@@ -1290,7 +1290,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	if (!decl)
 	{
 		if (failed_ref) return *failed_ref = true, false;
-		if (!expr->unresolved_ident_expr.path && expr->unresolved_ident_expr.is_const && (!to || (to->canonical->type_kind != TYPE_ENUM && to->canonical->type_kind != TYPE_CONSTDEF)))
+		if (!expr->unresolved_ident_expr.path && expr->unresolved_ident_expr.is_const && (!to || (to->canonical->type_kind != TYPE_ENUM && to->canonical->type_kind != TYPE_CONSTSET)))
 		{
 			CompilationUnit **units = context->unit->module->units;
 			FOREACH (CompilationUnit *, unit, units)
@@ -1301,7 +1301,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 					{
 						if (enum_val->name == expr->unresolved_ident_expr.ident)
 						{
-							const char *type = d->decl_kind == DECL_CONSTDEF ? "constdef" : "enum";
+							const char *type = d->decl_kind == DECL_CONSTSET ? "constset" : "enum";
 							RETURN_SEMA_ERROR(expr, "No constant named '%s' was found in the current scope. Did you "
 							   "mean the value '%s' of the %s '%s'? The %s type cannot be inferred%s, so in that case you need to use "
 								"the qualified name: '%s.%s'.",
@@ -1494,22 +1494,22 @@ static inline bool sema_binary_analyse_with_inference(SemaContext *context, Expr
 	switch (left->type->canonical->type_kind)
 	{
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 			return sema_analyse_inferred_expr(context, left->type, right, NULL);
 		default:
 			return sema_analyse_expr_rvalue(context, right);
 	}
 
 EVAL_BOTH:
-	// Infer constdef in Foo f = FOO | BAR
-	if (to && to->canonical->type_kind == TYPE_CONSTDEF)
+	// Infer constset in Foo f = FOO | BAR
+	if (to && to->canonical->type_kind == TYPE_CONSTSET)
 	{
 		return sema_analyse_inferred_expr(context, to, left, NULL) && sema_analyse_inferred_expr(context, to, right, NULL);
 	}
 	if (!sema_analyse_expr_rvalue(context, left)) return false;
 
-	// Infer constdef in f & BAR
-	if (left->type->canonical->type_kind == TYPE_CONSTDEF)
+	// Infer constset in f & BAR
+	if (left->type->canonical->type_kind == TYPE_CONSTSET)
 	{
 		return sema_analyse_inferred_expr(context, left->type, right, NULL);
 	}
@@ -1525,7 +1525,7 @@ static inline bool sema_binary_analyse_subexpr(SemaContext *context, Expr *left,
 		switch (type_flatten(left->type)->type_kind)
 		{
 			case TYPE_ENUM:
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 				return sema_analyse_inferred_expr(context, left->type, right, NULL);
 			default:
 				break;
@@ -1538,7 +1538,7 @@ static inline bool sema_binary_analyse_subexpr(SemaContext *context, Expr *left,
 		switch (type_flatten(right->type)->type_kind)
 		{
 			case TYPE_ENUM:
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 				return sema_analyse_inferred_expr(context, right->type, left, NULL);
 			default:
 				break;
@@ -3688,7 +3688,7 @@ INLINE bool sema_expr_analyse_from_ordinal(SemaContext *context, Expr *expr, Exp
 	{
 		RETURN_SEMA_ERROR(key, "The ordinal should be an integer.");
 	}
-	bool is_const_enum = decl->decl_kind == DECL_CONSTDEF;
+	bool is_const_enum = decl->decl_kind == DECL_CONSTSET;
 	if (sema_cast_const(key))
 	{
 		Int to_convert = key->const_expr.ixx;
@@ -3718,7 +3718,7 @@ INLINE bool sema_expr_analyse_from_ordinal(SemaContext *context, Expr *expr, Exp
 	}
 	if (is_const_enum)
 	{
-		RETURN_SEMA_ERROR(key, ".from_ordinal on constdefs is only valid with compile time constant arguments, maybe you want to use enums instead?");
+		RETURN_SEMA_ERROR(key, ".from_ordinal on constsets is only valid with compile time constant arguments, maybe you want to use enums instead?");
 	}
 	expr->expr_kind = EXPR_ENUM_FROM_ORD;
 	expr->inner_expr = key;
@@ -5351,7 +5351,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 	switch (decl->decl_kind)
 	{
 		case DECL_ENUM:
-		case DECL_CONSTDEF:
+		case DECL_CONSTSET:
 			if (is_const)
 			{
 				if (!sema_expr_analyse_enum_constant(context, expr, name, decl))
@@ -5527,7 +5527,7 @@ static inline bool sema_expr_analyse_reflection_cname(SemaContext *context UNUSE
 		case DECL_BITSTRUCT:
 		case DECL_TYPEDEF:
 		case DECL_ENUM:
-		case DECL_CONSTDEF:
+		case DECL_CONSTSET:
 		case DECL_ENUM_CONSTANT:
 		case DECL_FNTYPE:
 		case DECL_FUNC:
@@ -5949,7 +5949,7 @@ static inline bool sema_create_const_len(Expr *expr, Type *type, Type *flat)
 	ASSERT_SPAN(expr, flat == type_flatten(flat) && "Should be flattened already.");
 
 	size_t len;
-	if (type->type_kind == TYPE_CONSTDEF)
+	if (type->type_kind == TYPE_CONSTSET)
 	{
 		len = vec_size(type->decl->enums.values);
 		expr_rewrite_const_int(expr, type_sz, len);
@@ -5989,7 +5989,7 @@ static inline bool sema_create_const_inner(SemaContext *context, Expr *expr, Typ
 		case TYPE_TYPEDEF:
 			inner = type->decl->distinct->type->canonical;
 			break;
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_ENUM:
 			inner = enum_inner_type(type)->canonical;
 			break;
@@ -6625,7 +6625,7 @@ static bool sema_type_property_is_valid_for_type(CanonicalType *original_type, T
 				case TYPE_OPTIONAL:
 				case TYPE_TYPEDEF:
 				case TYPE_ENUM:
-				case TYPE_CONSTDEF:
+				case TYPE_CONSTSET:
 				case TYPE_BITSTRUCT:
 				case TYPE_ARRAY:
 				case TYPE_FLEXIBLE_ARRAY:
@@ -6649,7 +6649,7 @@ static bool sema_type_property_is_valid_for_type(CanonicalType *original_type, T
 		case TYPE_PROPERTY_IS_SUBSTRUCT:
 			return type->type_kind == TYPE_STRUCT;
 		case TYPE_PROPERTY_LEN:
-			if (original_type->type_kind == TYPE_CONSTDEF) return true;
+			if (original_type->type_kind == TYPE_CONSTSET) return true;
 			switch (type->type_kind)
 			{
 				case TYPE_ARRAY:
@@ -6667,7 +6667,7 @@ static bool sema_type_property_is_valid_for_type(CanonicalType *original_type, T
 		case TYPE_PROPERTY_FROM_ORDINAL:
 		case TYPE_PROPERTY_NAMES:
 		case TYPE_PROPERTY_VALUES:
-			return type->type_kind == TYPE_ENUM || original_type->canonical->type_kind == TYPE_CONSTDEF;
+			return type->type_kind == TYPE_ENUM || original_type->canonical->type_kind == TYPE_CONSTSET;
 		case TYPE_PROPERTY_IS_ANONYMOUS:
 		case TYPE_PROPERTY_IS_NESTED:
 			switch (type->type_kind)
@@ -6766,14 +6766,14 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 		case TYPE_PROPERTY_MAX:
 			return sema_create_const_max(expr, type, flat);
 		case TYPE_PROPERTY_NAMES:
-			if (type->type_kind == TYPE_CONSTDEF)
+			if (type->type_kind == TYPE_CONSTSET)
 			{
 				return sema_expr_replace_with_enum_name_array(context, expr, type->decl);
 			}
 			ASSERT_SPAN(expr, flat->type_kind == TYPE_ENUM);
 			return sema_expr_replace_with_enum_name_array(context, expr, flat->decl);
 		case TYPE_PROPERTY_VALUES:
-			if (type->type_kind == TYPE_CONSTDEF)
+			if (type->type_kind == TYPE_CONSTSET)
 			{
 				return sema_expr_replace_with_const_enum_array(context, expr, type->decl);
 			}
@@ -7243,7 +7243,7 @@ CHECK_DEEPER:
 	}
 	if (kw == kw_description)
 	{
-		if (flat_type->type_kind == TYPE_CONSTDEF)
+		if (flat_type->type_kind == TYPE_CONSTSET)
 		{
 			if (sema_cast_const(current_parent))
 			{
@@ -7785,7 +7785,7 @@ bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type 
 		switch (left_type->type_kind)
 		{
 			case TYPE_TYPEDEF:
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 				is_declaration = false;
 				break;
 			default:
@@ -9308,7 +9308,7 @@ BoolErr sema_type_can_check_equality_with_overload(SemaContext *context, Type *t
 			type = type->array.base;
 			goto RETRY;
 		case TYPE_TYPEDEF:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 			if (sema_type_has_equality_overload(context, type)) return true;
 			type = type_inline(type);
 			goto RETRY;
@@ -9359,7 +9359,7 @@ BoolErr sema_type_can_order_with_overload(SemaContext *context, Type *type)
 			type = type->array.base;
 			goto RETRY;
 		case TYPE_TYPEDEF:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 			if (sema_type_has_compare_overload(context, type)) return true;
 			type = type_inline(type);
 			goto RETRY;
@@ -13067,7 +13067,7 @@ RETRY:
 						if (expr->unary_expr.operator != UNARYOP_TADDR) break;
 						if (!sema_analyse_inferred_expr(context, type_get_indexed_type(to), expr->unary_expr.expr, NULL)) return expr_poison(expr);
 						break;
-					case TYPE_CONSTDEF:
+					case TYPE_CONSTSET:
 						switch (expr->unary_expr.operator)
 						{
 							case UNARYOP_ERROR:

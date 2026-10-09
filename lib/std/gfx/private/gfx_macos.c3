@@ -357,6 +357,8 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 fn void window_destroy_platform(GfxWindow* win)
 {
 	_osx_stop_resize_timer(win);
+	// The layer can outlive the window for a moment, so it must not call back into it.
+	if (win.src.metal_layer) win.src.metal_layer.set_ivar("gfx_window", null);
 	win.src.window.send_void("close");
 	win.src.delegate.release();
 	win.src.view.release();
@@ -617,42 +619,41 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 	FixedList{int, 40} stack;
 	int color_bits = hints.rgba_size.sum();
 	stack.push_all({
-		NS_OPEN_GL_PFA_COLOR_SIZE, color_bits,
-		NS_OPEN_GL_PFA_ALPHA_SIZE, hints.rgba_size.a,
-		NS_OPEN_GL_PFA_DEPTH_SIZE, hints.depth,
-		NS_OPEN_GL_PFA_STENCIL_SIZE, hints.stencil,
-		NS_OPEN_GL_PFA_AUX_BUFFERS, hints.aux_buffers,
+		NSOpenGLPixelFormatAttribute.COLOR_SIZE, color_bits,
+		NSOpenGLPixelFormatAttribute.ALPHA_SIZE, hints.rgba_size.a,
+		NSOpenGLPixelFormatAttribute.DEPTH_SIZE, hints.depth,
+		NSOpenGLPixelFormatAttribute.STENCIL_SIZE, hints.stencil,
+		NSOpenGLPixelFormatAttribute.AUX_BUFFERS, hints.aux_buffers,
 
 	});
 	if (hints.samples)
 	{
-		stack.push_all({ NS_OPEN_GL_PFA_SAMPLE_BUFFERS, 1 , NS_OPEN_GL_PFA_SAMPLES, hints.samples });
+		stack.push_all({
+			NSOpenGLPixelFormatAttribute.SAMPLE_BUFFERS, 1 ,
+			NSOpenGLPixelFormatAttribute.SAMPLES, hints.samples
+		});
 	}
 	else
 	{
-		stack.push_all({ NS_OPEN_GL_PFA_SAMPLE_BUFFERS, 0 });
+		stack.push_all({ NSOpenGLPixelFormatAttribute.SAMPLE_BUFFERS, 0 });
 	}
-	if (hints.double_buffer) stack.push(NS_OPEN_GL_PFA_DOUBLE_BUFFER);
-	if (hints.stereo) stack.push(NS_OPEN_GL_PFA_STEREO);
+	if (hints.double_buffer) stack.push(NSOpenGLPixelFormatAttribute.DOUBLE_BUFFER);
+	if (hints.stereo) stack.push(NSOpenGLPixelFormatAttribute.STEREO);
 	bool legacy = hints.profile == COMPATIBILITY;
-	stack.push(NS_OPEN_GL_PFA_OPEN_GL_PROFILE);
+	stack.push(NSOpenGLPixelFormatAttribute.OPEN_GL_PROFILE);
 	switch
 	{
 		case legacy:
-			stack.push(NS_OPEN_GL_PROFILE_LEGACY);
-			stack.push_all({ NS_OPEN_GL_PFA_ACCUM_SIZE, hints.accum_size.sum() });
+			stack.push(NSOpenGLProfileVersion.LEGACY);
+			stack.push_all({ NSOpenGLPixelFormatAttribute.ACCUM_SIZE, hints.accum_size.sum() });
 		case hints.major >= 4:
-			stack.push(NS_OPEN_GL_PROFILE_4_1_CORE);
+			stack.push(NSOpenGLProfileVersion.CORE_4_1);
 		default:
-			stack.push(NS_OPEN_GL_PROFILE_3_2_CORE);
+			stack.push(NSOpenGLProfileVersion.CORE_3_2);
 	}
 	if (hints.renderer == SOFTWARE)
 	{
-		stack.push_all({ NS_OPEN_GL_PFA_RENDERER_ID, K_CGL_RENDERER_GENERIC_FLOAT_ID });
-	}
-	else
-	{
-		stack.push(NS_OPEN_GL_PFA_ACCELERATED);
+		stack.push_all({ NSOpenGLPixelFormatAttribute.RENDERER_ID, K_CGL_RENDERER_GENERIC_FLOAT_ID });
 	}
 	stack.push_all({0, 0});
 
@@ -671,7 +672,7 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 	if (win.internal.flags.transparent)
 	{
 		int opacity = 0;
-		_opengl_context_set_values((ObjId)ctx.ctx, &opacity, NS_OPEN_GL_CP_SURFACE_OPACITY);
+		_opengl_context_set_values((ObjId)ctx.ctx, &opacity, NSOpenGLContextParameter.SURFACE_OPACITY);
 	}
 	win.src.ctx.native = ctx;
 	win.src.backing = { .opengl };
@@ -709,7 +710,7 @@ fn void window_set_opengl_swap_interval(GfxWindow* win, int swap_interval)
 {
 	if (win.src.ctx.native && win.src.ctx.native.ctx)
 	{
-		_opengl_context_set_values((ObjId)win.src.ctx.native.ctx, &swap_interval, NS_OPEN_GL_CONTEXT_PARAMETER_SWAP_INTERVAL);
+		_opengl_context_set_values((ObjId)win.src.ctx.native.ctx, &swap_interval, NSOpenGLContextParameter.SWAP_INTERVAL);
 	}
 }
 
@@ -760,6 +761,34 @@ fn WGPUSurface? window_create_wgpu_surface(GfxWindow* window, WGPUInstance insta
 	WgpuSurfaceDescriptor surface_desc;
 	surface_desc.nextInChain = (WgpuChainedStruct*)&from_metal;
 	return gfx::wgpuInstanceCreateSurface(instance, &surface_desc) ?: gfx::SURFACE_CREATION_FAILED~;
+}
+
+// Metal
+fn void*? window_create_metal_layer(GfxWindow* win)
+{
+	ObjId device = darwin::mtlCreateSystemDefaultDevice();
+	if (!device || !win.src.view) return gfx::SURFACE_CREATION_FAILED~;
+	static ObjClass _macos_metal_layer_class;
+	if (!_macos_metal_layer_class)
+	{
+		ObjClass layer_class = darwin::cametal_layer().new_subclass("C3GFXMetalLayer");
+		layer_class.add_ivar("gfx_window", void*, "^v");
+		layer_class.add_method("display", &_osx_metal_layer_display, "v@:");
+		objc::register_new_subclass(layer_class);
+		_macos_metal_layer_class = layer_class;
+	}
+	ObjId layer = _macos_metal_layer_class.send(ObjId, "layer");
+	layer.set_ivar("gfx_window", win);
+	layer.send_void("setDevice:", device);
+	layer.send_void("setPixelFormat:", MTLPixelFormat.BGRA8_UNORM);
+	layer.send_void("setNeedsDisplayOnBoundsChange:", true);
+	win.src.metal_layer = layer;
+	// A view asks for its backing layer when it becomes layer backed, so make it ask again.
+	win.src.view.send_void("setWantsLayer:", false);
+	win.src.view.send_void("setWantsLayer:", true);
+	// Pinned top left: while the window is resized, AppKit must not stretch the layer.
+	win.src.view.send_void("setLayerContentsPlacement:", NSViewLayerContentsPlacement.TOP_LEFT);
+	return (void*)layer;
 }
 
 // --- Clipboard
@@ -1094,6 +1123,7 @@ fn void? _osx_register_classes() @local
 	_macos_view_class.add_method("mouseExited:",             &_osx_mouse_exited, "v@:@");
 	_macos_view_class.add_method("flagsChanged:",            &_osx_flags_changed, "v@:@");
 	_macos_view_class.add_method("viewDidChangeBackingProperties", &_osx_view_did_change_backing_properties, "v@:");
+	_macos_view_class.add_method("makeBackingLayer",         &_osx_view_make_backing_layer, "@@:");
 	_macos_view_class.add_method("wantsUpdateLayer",         &_osx_wants_update_layer, "c@:");
 	_macos_view_class.add_method("updateLayer",              &_osx_update_layer, "v@:");
 	_macos_view_class.add_method("drawRect:",                &_osx_draw_rect, "v@:{CGRect={CGPoint=dd}{CGSize=dd}}");
@@ -1174,6 +1204,8 @@ fn void _osx_window_will_start_live_resize(ObjId self, ObjSel sel, ObjId notific
 {
 	GfxWindow*? win = _fetch_win(self);
 	if (catch win) return;
+	// While the window is resized, frames are presented with the transaction that resizes the layer.
+	if (win.src.metal_layer) win.src.metal_layer.send_void("setPresentsWithTransaction:", true);
 	if (!win.src.view || !win.repaint_fn) return;
 	// Aim for 60 FPS while resizing, as SDL does.
 	double interval = 1.0 / 60.0;
@@ -1195,6 +1227,7 @@ fn void _osx_window_did_end_live_resize(ObjId self, ObjSel sel, ObjId notificati
 {
 	GfxWindow*? win = _fetch_win(self);
 	if (catch win) return;
+	if (win.src.metal_layer) win.src.metal_layer.send_void("setPresentsWithTransaction:", false);
 	_osx_stop_resize_timer(win);
 }
 
@@ -1345,6 +1378,7 @@ fn void _osx_view_did_change_backing_properties(ObjId self, ObjSel sel)
 	{
 		win.src.ctx.native.ctx.send_void("update");
 	}
+	if (win.src.metal_layer) win.src.metal_layer.send_void("setNeedsDisplay"); // the layer takes the new scale when it is displayed
 	(void)gfx::_scale_updated_callback(win, window_find_monitor(win).scale);
 }
 
@@ -1436,6 +1470,35 @@ fn void _osx_update_layer(ObjId self, ObjSel sel)
 	if (try win = _fetch_win(self)) gfx::_window_refresh_callback(win, { 0, 0, ...win.size });
 }
 
+// A window with a Metal layer has it as its backing layer. Any other window gets the layer NSView makes.
+fn ObjId _osx_view_make_backing_layer(ObjId self, ObjSel sel)
+{
+	GfxWindow*? win = _fetch_win(self);
+	if (try win && win.src.metal_layer) return win.src.metal_layer;
+	SendId default_layer = _macos_view_class.superclass().get_method_implementation(sel);
+	return default_layer(self, sel);
+}
+
+// The Metal layer is displayed inside the Core Animation transaction that resizes it, so what the repaint callback draws here is shown
+// together with the new size.
+fn void _osx_metal_layer_display(ObjId self, ObjSel sel)
+{
+	GfxWindow*? win = _fetch_win(self);
+	if (catch win) return;
+	CGRect bounds = win.src.view.send(CGRect, "bounds");
+	CGFloat scale = win.src.window.send(CGFloat, "backingScaleFactor");
+	CGSize size = { math::ceil(bounds.size.width * scale), math::ceil(bounds.size.height * scale) };
+	CGSize current = self.send(CGSize, "drawableSize");
+	self.send_void("setContentsScale:", scale);
+	if (current.width != size.width || current.height != size.height) self.send_void("setDrawableSize:", size);
+	win.size = { (int)bounds.size.width, (int)bounds.size.height };
+	// What is drawn here is part of the transaction that changes the layer, so it is presented with it.
+	bool transaction = self.send(bool, "presentsWithTransaction");
+	self.send_void("setPresentsWithTransaction:", true);
+	gfx::_window_refresh_callback(win, { 0, 0, ...win.size });
+	self.send_void("setPresentsWithTransaction:", transaction);
+}
+
 fn bool _osx_accepts_first_responder(ObjId self, ObjSel sel) => true;
 
 fn void _osx_draw_rect(ObjId self, ObjSel sel, CGRect rect)
@@ -1457,27 +1520,6 @@ fn void _opengl_context_set_values(ObjId context, int* vals, NSInteger param) @l
 	context.send_void("setValues:forParameter:", vals, param);
 }
 
-const int NS_OPEN_GL_PFA_DOUBLE_BUFFER = 5;
-const int NS_OPEN_GL_PFA_STEREO = 6;
-const int NS_OPEN_GL_PFA_AUX_BUFFERS = 7;
-const int NS_OPEN_GL_PFA_COLOR_SIZE = 8;
-const int NS_OPEN_GL_PFA_ALPHA_SIZE = 11;
-const int NS_OPEN_GL_PFA_DEPTH_SIZE = 12;
-const int NS_OPEN_GL_PFA_STENCIL_SIZE = 13;
-const int NS_OPEN_GL_PFA_ACCUM_SIZE = 14;
-const int NS_OPEN_GL_PFA_CLOSEST_POLICY = 74;
-const int NS_OPEN_GL_PFA_ACCELERATED = 73;
-const int NS_OPEN_GL_PFA_SAMPLE_BUFFERS = 55;
-const int NS_OPEN_GL_PFA_SAMPLES = 56;
-const int NS_OPEN_GL_PFA_RENDERER_ID = 70;
-const int NS_OPEN_GL_PFA_OPEN_GL_PROFILE = 99;
-const int NS_OPEN_GL_PROFILE_LEGACY = 0x1000;
-const int NS_OPEN_GL_PROFILE_3_2_CORE = 0x3200;
-const int NS_OPEN_GL_PROFILE_4_1_CORE = 0x4100;
-const int NS_OPEN_GL_CP_SURFACE_OPACITY = 236;
-const int NS_OPEN_GL_CONTEXT_PARAMETER_SWAP_INTERVAL = 222;
 const int K_CGL_RENDERER_GENERIC_FLOAT_ID = 0x00020400;
 
-module std::gfx @feat(MACOS) @private;
-import std::os::macos, std::math, std::time, std::os::darwin, std::collections, std::gfx::egl @public;
-import std::gfx::macos @public;
+

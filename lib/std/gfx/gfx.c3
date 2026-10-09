@@ -154,6 +154,7 @@ struct GfxWindowSrc @feat(MACOS)
 	ObjId             mouse;
 	ObjId             delegate;
 	ObjId             resize_timer;
+	ObjId             metal_layer;
 	GfxBackingContext ctx;
 	GfxBacking        backing;
 }
@@ -1097,6 +1098,23 @@ fn bool get_vulkan_physical_device_presentation_support(VkInstance instance, VkP
 fn WGPUSurface? GfxWindow.create_wgpu_surface(&self, WGPUInstance instance)
 {
 	return _window_create_wgpu_surface(self, instance);
+}
+
+<*
+ Create a Metal layer for the window, to render to with Metal.
+
+ The layer is a CAMetalLayer with the default Metal device (its `device`) and the BGRA8 pixel format. It is displayed, and the repaint
+ callback is run, inside the Core Animation transaction that resizes the window, so a frame drawn by the callback is shown together with
+ the new window size. The drawable size follows the size of the window in pixels. The layer presents with the transaction, so draw by:
+ commit the command buffer, waitUntilScheduled, then present the drawable.
+
+ It is only supported on MacOS.
+
+ @return "The CAMetalLayer"
+*>
+fn void*? GfxWindow.create_metal_layer(&self)
+{
+	return _window_create_metal_layer_native(self);
 }
 
 <*

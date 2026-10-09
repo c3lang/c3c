@@ -165,7 +165,7 @@ static void header_print_type(HeaderContext *c, Type *type)
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 			PRINTF("%s", decl_get_extname(type->decl));
 			return;
 		case TYPE_BITSTRUCT:
@@ -556,7 +556,7 @@ RETRY:
 		case TYPE_ENUM:
 			header_gen_enum(c, 0, type->decl);
 			return;
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 			// TODO;
 			type = type_flatten(type);
 			goto RETRY;

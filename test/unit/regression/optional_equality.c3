@@ -1,7 +1,7 @@
 module optional_equality;
 import std;
 
-faultdef BAD_THING;
+excuse BAD_THING;
 
 struct Foo { int bar; }
 

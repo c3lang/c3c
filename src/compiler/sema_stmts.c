@@ -2716,7 +2716,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 			is_type = true;
 			FALLTHROUGH;
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case ALL_INTS:
 		case ALL_FLOATS:
 		case TYPE_BOOL:

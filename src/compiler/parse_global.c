@@ -54,10 +54,8 @@ void recover_top_level(ParseContext *c)
 			case TOKEN_ENUM:
 			case TOKEN_ALIAS:
 			case TOKEN_TYPEDEF:
-			case TOKEN_DISTINCT:
 			case TOKEN_ATTRDEF:
 			case TOKEN_ATTRMACRO:
-			case TOKEN_FAULTSET:
 			case TOKEN_FAULTDEF:
 				return;
 			case TOKEN_CONST:
@@ -2784,9 +2782,10 @@ static inline Decl *parse_faultdef_declaration(ParseContext *c)
 }
 
 /**
- * faultdef_declaration ::= FAULTSET CONST_IDENT ';' | '{' CONST_IDENT (',' CONST_IDENT)* ','? '}'
+ * excuse_declaration ::= EXCUSE CONST_IDENT (',' CONST_IDENT)* ','? ';'
+ *                      | EXCUSE '{' CONST_IDENT (',' CONST_IDENT)* ','? '}'
  */
-static inline Decl *parse_faultset_declaration(ParseContext *c)
+static inline Decl *parse_excuse_declaration(ParseContext *c)
 {
 	advance(c);
 
@@ -2843,7 +2842,7 @@ static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref
 	return true;
 }
 
-static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility visibility, bool is_constdef)
+static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility visibility, bool is_constset)
 {
 	Decl **values = NULL;
 	SourceLoc start = c->prev_span;
@@ -2854,7 +2853,7 @@ static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility vi
 		if (!parse_element_contract(c, &contracts, "enum values")) return false;
 		Decl *enum_const = decl_new_loc(DECL_ENUM_CONSTANT, symstr(c), c->span);
 		enum_const->docs = decl_from_contract_description(&contracts);
-		if (is_constdef) enum_const->enum_constant.is_raw = is_constdef;
+		if (is_constset) enum_const->enum_constant.is_raw = is_constset;
 		enum_const->visibility = visibility;
 		const char *name = enum_const->name;
 		if (!consume_const_name(c, "enum constant")) return false;
@@ -2869,7 +2868,7 @@ static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility vi
 		}
 		if (!parse_attributes_for_global(c, enum_const)) return false;
 		attach_deprecation_from_contract(c, &contracts, enum_const);
-		if (is_constdef)
+		if (is_constset)
 		{
 			if (try_consume(c, TOKEN_EQ))
 			{
@@ -2912,7 +2911,7 @@ static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility vi
 			EXPECT_OR_RET(TOKEN_RBRACE, false);
 		}
 	}
-	if (!is_constdef && vec_size(values) == 0)
+	if (!is_constset && vec_size(values) == 0)
 	{
 		print_error_after(&start, "An enum must have at least one value.");
 		return false;
@@ -2930,12 +2929,12 @@ static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility vi
  */
 static inline Decl *parse_enum_declaration(ParseContext *c)
 {
-	bool is_constdef = false;
-	if (tok_is(c, TOKEN_CONSTDEF) || tok_is(c, TOKEN_CONSTSET) || tok_is(c, TOKEN_CENUM))
+	bool is_constset = false;
+	if (tok_is(c, TOKEN_CONSTDEF) || tok_is(c, TOKEN_CONSTSET))
 	{
 		advance(c);
-		//advance_and_verify(c, TOKEN_CONSTDEF);
-		is_constdef = true;
+		//advance_and_verify(c, TOKEN_CONSTSET);
+		is_constset = true;
 	}
 	else
 	{
@@ -2944,7 +2943,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 
 	const char *name = symstr(c);
 	SourceLoc loc = c->span;
-	if (!consume_type_name(c, is_constdef ? "constdef" : "enum" )) return poisoned_decl;
+	if (!consume_type_name(c, is_constset ? "constset" : "enum" )) return poisoned_decl;
 	TypeInfo **interfaces = NULL;
 	if (!parse_interface_impls(c, &interfaces)) return poisoned_decl;
 	TypeInfo *type = NULL;
@@ -2956,7 +2955,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 		if (!tok_is(c, TOKEN_LPAREN) && !tok_is(c, TOKEN_LBRACE))
 		{
 			val_is_inline = try_consume(c, TOKEN_INLINE);
-			if (val_is_inline && !is_constdef)
+			if (val_is_inline && !is_constset)
 			{
 				PRINT_ERROR_LAST("An enum cannot have 'inline' on its underlying type.");
 				return poisoned_decl;
@@ -2964,14 +2963,14 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 			ASSIGN_TYPE_OR_RET(type, parse_optional_type_no_generic(c), poisoned_decl);
 			if (type->optional)
 			{
-				RETURN_PRINT_ERROR_AT(poisoned_decl, type, "An enum or constdef can't have an optional type.");
+				RETURN_PRINT_ERROR_AT(poisoned_decl, type, "An enum or constset can't have an optional type.");
 			}
 		}
-		if (is_constdef)
+		if (is_constset)
 		{
 			if (tok_is(c, TOKEN_LPAREN))
 			{
-				PRINT_ERROR_HERE("Constdefs cannot have associated values.");
+				PRINT_ERROR_HERE("Constsets cannot have associated values.");
 				return poisoned_decl;
 			}
 		}
@@ -2981,7 +2980,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 		}
 	}
 
-	Decl *decl = decl_new_with_type(name, &loc, is_constdef ? DECL_CONSTDEF : DECL_ENUM);
+	Decl *decl = decl_new_with_type(name, &loc, is_constset ? DECL_CONSTSET : DECL_ENUM);
 	decl->docs = decl_from_contract_description(&c->contracts);
 	decl->interfaces = interfaces;
 	if (param_list) decl->enums.parameters = param_list;
@@ -2990,8 +2989,8 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
 	decl->enums.type_info = type ? type : type_info_new_base(type_int, decl->loc);
-	if (is_constdef && val_is_inline) decl->is_substruct = true;
-	if (!parse_enum_values(c, &decl->enums.values, visibility, is_constdef)) return poisoned_decl;
+	if (is_constset && val_is_inline) decl->is_substruct = true;
+	if (!parse_enum_values(c, &decl->enums.values, visibility, is_constset)) return poisoned_decl;
 	return decl;
 }
 
@@ -3712,7 +3711,6 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			decl = parse_interface_declaration(c);
 			attach_contracts = true;
 			break;
-		case TOKEN_DISTINCT:
 		case TOKEN_TYPEDEF:
 			decl = parse_typedef_declaration(c);
 			attach_contracts = true;
@@ -3732,12 +3730,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 		case TOKEN_ENUM:
 		case TOKEN_CONSTDEF:
 		case TOKEN_CONSTSET:
-		case TOKEN_CENUM:
 			decl = parse_enum_declaration(c);
-			attach_contracts = true;
-			break;
-		case TOKEN_FAULTSET:
-			decl = parse_faultset_declaration(c);
 			attach_contracts = true;
 			break;
 		case TOKEN_FAULTDEF:
@@ -3747,7 +3740,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 		case TOKEN_IDENT:
 			if (symstr(c) == kw_excuse)
 			{
-				decl = parse_faultset_declaration(c);
+				decl = parse_excuse_declaration(c);
 				attach_contracts = true;
 				break;
 			}

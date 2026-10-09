@@ -355,7 +355,7 @@ static inline Decl *c_type_get_decl(Type *t)
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_TYPEDEF:
 		case TYPE_INTERFACE:
 			return t->decl;

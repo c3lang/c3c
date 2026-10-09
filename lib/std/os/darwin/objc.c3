@@ -21,6 +21,7 @@ extern fn ObjClass getClass(ZString name) @cname("objc_getClass");
 extern fn int getClassList(ObjClass* buffer, int buffer_count) @cname("objc_getClassList");
 extern fn ObjClass lookUpClass(ZString name) @cname("objc_lookUpClass");
 
+extern fn void* class_getMethodImplementation(ObjClass cls, ObjSel name);
 extern fn ZString class_getName(ObjClass cls);
 extern fn ObjClass class_getSuperclass(ObjClass cls);
 extern fn ObjMethod class_getClassMethod(ObjClass cls, ObjSel name);
@@ -32,12 +33,12 @@ extern fn bool class_addMethod(ObjClass cls, ObjSel name, void* imp, ZString typ
 extern fn ObjIvar object_getInstanceVariable(ObjId id, ZString name, void* outValue);
 extern fn ObjIvar object_setInstanceVariable(ObjId id, ZString name, void* value);
 
-macro ZString ObjClass.name(ObjClass cls) => class_getName(cls);
-macro ObjClass ObjClass.superclass(ObjClass cls) => class_getSuperclass(cls);
-macro bool ObjClass.responds_to(ObjClass cls, ObjSel sel) => class_respondsToSelector(cls, sel);
-macro ObjMethod ObjClass.method(ObjClass cls, ObjSel name) => class_getClassMethod(cls, name);
+macro ZString ObjClass.name(self) => class_getName(self);
+macro ObjClass ObjClass.superclass(self) => class_getSuperclass(self);
+macro bool ObjClass.responds_to(self, ObjSel sel) => class_respondsToSelector(self, sel);
+macro ObjMethod ObjClass.method(self, ObjSel name) => class_getClassMethod(self, name);
 macro ObjClass ObjClass.new_subclass(self, ZString name, sz extra_bytes = 0) => allocateClassPair(self, name, extra_bytes);
-
+macro SendId ObjClass.get_method_implementation(self, ObjSel sel) => class_getMethodImplementation(self, sel);
 
 macro bool ObjSel.equals(ObjSel a, ObjSel b) => a == b;
 
@@ -113,7 +114,9 @@ macro send_void(id, ZString $selector, ...)
 	$expand($string);
 	if (id)
 	{
-		return (($FunctionType)&msgSend)((ObjId)id, sel_getUid($selector), ...$vaarg);
+		static ObjSel sel;
+		if (!sel) sel = sel_getUid($selector);
+		return (($FunctionType)&msgSend)((ObjId)id, sel, ...$vaarg);
 	}
 }
 
@@ -129,10 +132,12 @@ macro send(id, $RType, ZString $selector, ...)
 	$expand($string);
 	if (id)
 	{
+		static ObjSel sel;
+		if (!sel) sel = sel_getUid($selector);
 		$if !$feat(AARCH64) &&& $RType::size > 16:
-			return (($FunctionType)&msgSendStret)((ObjId)id, sel_getUid($selector), ...$vaarg);
+			return (($FunctionType)&msgSendStret)((ObjId)id, sel, ...$vaarg);
 		$else
-			return (($FunctionType)&msgSend)((ObjId)id, sel_getUid($selector), ...$vaarg);
+			return (($FunctionType)&msgSend)((ObjId)id, sel, ...$vaarg);
 		$endif
 	}
 	return ($RType){};

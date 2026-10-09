@@ -33,7 +33,7 @@ RETRY:
 			type = type->pointer;
 			goto RETRY;
 		case TYPE_TYPEDEF:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_ENUM:
 		case TYPE_FUNC_RAW:
 		case TYPE_STRUCT:
@@ -639,7 +639,7 @@ RETRY:
 		case DECL_TYPEDEF:
 			sema_trace_type_liveness(decl->distinct->type);
 			FALLTHROUGH;
-		case DECL_CONSTDEF:
+		case DECL_CONSTSET:
 		case DECL_BITSTRUCT:
 		case DECL_INTERFACE:
 		case DECL_UNION:

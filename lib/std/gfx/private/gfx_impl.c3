@@ -1134,6 +1134,17 @@ fn void _window_show_platform(GfxWindow* win)
 	$endswitch
 }
 
+// Window - metal
+
+fn void*? _window_create_metal_layer_native(GfxWindow* win)
+{
+	$if $feat(MACOS):
+		return macos::window_create_metal_layer(win);
+	$else
+		return NOT_IMPLEMENTED~;
+	$endif
+}
+
 // Window - opengl
 
 fn void _window_destroy_opengl_context(GfxWindow* win, GfxGlContext* ctx)

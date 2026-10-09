@@ -3016,7 +3016,7 @@ INLINE bool type_may_implement_interface(Type *type)
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_TYPEDEF:
 		case TYPE_BITSTRUCT:
 			return true;
@@ -3115,7 +3115,7 @@ INLINE bool type_is_atomic(Type *type_flat)
 		case ALL_SIGNED_INTS:
 		case ALL_FLOATS:
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_BOOL:
@@ -3163,7 +3163,7 @@ INLINE bool type_may_negate(Type *type)
 		case TYPE_TYPEDEF:
 			type = type->decl->distinct->type;
 			goto RETRY;
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 			type = type->decl->enums.type_info->type;
 			goto RETRY;
 		case TYPE_ALIAS:
@@ -3221,7 +3221,7 @@ INLINE const char *type_invalid_storage_type_name(Type *type)
 
 INLINE Type *enum_inner_type(Type *enum_type)
 {
-	assert(enum_type->type_kind == TYPE_ENUM || enum_type->type_kind == TYPE_CONSTDEF);
+	assert(enum_type->type_kind == TYPE_ENUM || enum_type->type_kind == TYPE_CONSTSET);
 	return enum_type->decl->enums.type_info->type;
 }
 
@@ -3288,7 +3288,7 @@ INLINE Type *type_flatten_for_bitstruct(Type *type)
 	{
 		type = type->decl->distinct->type;
 	}
-	if (type->type_kind == TYPE_ENUM || type->type_kind == TYPE_CONSTDEF)
+	if (type->type_kind == TYPE_ENUM || type->type_kind == TYPE_CONSTSET)
 	{
 		type = enum_inner_type(type)->canonical;
 		goto RETRY;
@@ -3347,7 +3347,7 @@ static inline Type *type_base(Type *type)
 				type = type->decl->distinct->type;
 				break;
 			case TYPE_ENUM:
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 				type = enum_inner_type(type);
 				break;
 			case TYPE_OPTIONAL:
@@ -3363,7 +3363,7 @@ static inline Type *type_base(Type *type)
 
 
 static const bool is_distinct_like[TYPE_LAST + 1] = {
-	[TYPE_CONSTDEF] = true,
+	[TYPE_CONSTSET] = true,
 	[TYPE_TYPEDEF] = true
 };
 
@@ -3417,7 +3417,7 @@ static inline Type *type_flatten_and_inline(Type *type)
 			case TYPE_TYPEDEF:
 				type = type->decl->distinct->type;
 				continue;
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 				type = type->decl->enums.type_info->type;
 				continue;
 			default:
@@ -3439,7 +3439,7 @@ static inline Type *type_flat_distinct_enum_inline(Type *type)
 				if (!decl->is_substruct) return type;;
 				type = decl->distinct->type;
 				continue;
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 				decl = type->decl;
 				if (!decl->is_substruct) return type;
 				type = decl->enums.type_info->type;
@@ -3454,7 +3454,7 @@ INLINE bool type_is_user_defined(Type *type)
 {
 	static const bool user_defined_types[TYPE_LAST + 1] = {
 		[TYPE_ENUM]       = true,
-		[TYPE_CONSTDEF]   = true,
+		[TYPE_CONSTSET]   = true,
 		[TYPE_STRUCT]     = true,
 		[TYPE_FUNC_RAW]   = true,
 		[TYPE_UNION]      = true,
@@ -3500,7 +3500,7 @@ static inline Type *type_flatten_to_int(Type *type)
 			case TYPE_BITSTRUCT:
 				type = type->decl->strukt.container_type->type;
 				break;
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 				type = type->decl->enums.type_info->type;
 				break;
 			case TYPE_ENUM:
@@ -3524,7 +3524,7 @@ static inline CanonicalType *type_distinct_inline(Type *type)
 		type = type->canonical;
 		switch (type->type_kind)
 		{
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 				type = enum_inner_type(type);
 				break;
 			case TYPE_TYPEDEF:
@@ -3547,7 +3547,7 @@ static inline FlatType *type_flatten(Type *type)
 		type = type->canonical;
 		switch (type->type_kind)
 		{
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 				type = enum_inner_type(type);
 				break;
 			case TYPE_TYPEDEF:
@@ -3578,7 +3578,7 @@ static inline Type *type_flatten_no_export(Type *type)
 				if (type->decl->is_export) return type;
 				type = type->decl->distinct->type;
 				break;
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 				if (type->decl->is_export) return type;
 				type = enum_inner_type(type);
 				break;
@@ -3688,7 +3688,7 @@ static inline Type *type_flat_for_arithmethics(Type *type)
 			case TYPE_OPTIONAL:
 				type = type->optional;
 				continue;
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 			case TYPE_TYPEDEF:
 				inner = type_inline(type);
 				if (type->decl->is_substruct)
@@ -3809,7 +3809,7 @@ INLINE bool decl_has_interface(Decl *decl)
 		[DECL_UNION] = true,
 		[DECL_STRUCT] = true,
 		[DECL_ENUM] = true,
-		[DECL_CONSTDEF] = true,
+		[DECL_CONSTSET] = true,
 		[DECL_TYPEDEF] = true,
 		[DECL_BITSTRUCT] = true
 	};

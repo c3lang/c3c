@@ -621,7 +621,7 @@ RETRY2:
 		case TYPE_UNION:
 		case TYPE_ENUM:
 		case TYPE_BITSTRUCT:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_FUNC_RAW:
 		case TYPE_ALIAS:
 		case TYPE_MEMBER:
@@ -728,7 +728,7 @@ static bool emit_doc_members_json(JsonEmitter *e, Module *module, Decl *decl)
 		emit_params_json(e, module, params);
 		return true;
 	}
-	if (decl->decl_kind == DECL_ENUM || decl->decl_kind == DECL_CONSTDEF)
+	if (decl->decl_kind == DECL_ENUM || decl->decl_kind == DECL_CONSTSET)
 	{
 		if (!vec_size(decl->enums.values)) return false;
 		json_start_array_prop(e, "members");
@@ -1124,7 +1124,7 @@ static void emit_decl_json(JsonEmitter *e, Module *module, Decl *decl, const cha
 			base = decl->type_alias_decl.type_expr->type_expr;
 			goto PRINT_BASE;
 		case DECL_ENUM:
-		case DECL_CONSTDEF:
+		case DECL_CONSTSET:
 			base = decl->enums.type_info;
 			goto PRINT_BASE;
 		case DECL_BITSTRUCT:
@@ -1223,7 +1223,7 @@ static DocCategory get_category_for_decl(Decl *decl)
 		case DECL_TYPE_ALIAS:
 		case DECL_FAULT:
 		case DECL_INTERFACE:
-		case DECL_CONSTDEF:
+		case DECL_CONSTSET:
 			return DOC_CAT_TYPES;
 		case DECL_VAR:
 			return DOC_CAT_VARIABLES;
