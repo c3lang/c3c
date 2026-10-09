@@ -327,7 +327,18 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			IndexDiff end_diff = (IndexDiff)((ArrayIndex)type->array.len - current_index);
 			if (end_diff > 0)
 			{
-				vec_add(parts, llvm_emit_const_array_padding(element_type_llvm, end_diff, &was_modified));
+				if (is_vec)
+				{
+					// Vectors must stay a flat LLVM vector, so pad with scalar zeroes rather than an array.
+					for (IndexDiff i = 0; i < end_diff; i++)
+					{
+						vec_add(parts, llvm_get_zero_raw(element_type_llvm));
+					}
+				}
+				else
+				{
+					vec_add(parts, llvm_emit_const_array_padding(element_type_llvm, end_diff, &was_modified));
+				}
 			}
 			if (was_modified)
 			{
