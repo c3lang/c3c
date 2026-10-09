@@ -122,9 +122,9 @@ Type *c_safe_type_lower(Type *type)
 			}
 			break;
 		}
-		if (type->type_kind == TYPE_CONSTDEF || type->type_kind == TYPE_ENUM)
+		if (type->type_kind == TYPE_CONSTSET || type->type_kind == TYPE_ENUM)
 		{
-			if (!type->decl || (type->decl->decl_kind != DECL_ENUM && type->decl->decl_kind != DECL_CONSTDEF) || !type->decl->enums.type_info)
+			if (!type->decl || (type->decl->decl_kind != DECL_ENUM && type->decl->decl_kind != DECL_CONSTSET) || !type->decl->enums.type_info)
 			{
 				return type_int;
 			}
@@ -409,7 +409,7 @@ bool c_type_is_resolved(Type *type)
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_TYPEDEF:
 		case TYPE_INTERFACE:
 			if (!type->decl || type->decl->is_template || type->decl->resolve_status != RESOLVE_DONE)
@@ -476,7 +476,7 @@ int c_get_type_introspection_kind(Type *type)
 		case TYPE_ANYFAULT: return INTROSPECT_TYPE_ANYFAULT;
 		case TYPE_ANY: return INTROSPECT_TYPE_ANY;
 		case TYPE_ENUM: return INTROSPECT_TYPE_ENUM;
-		case TYPE_CONSTDEF: return INTROSPECT_TYPE_CONSTDEF;
+		case TYPE_CONSTSET: return INTROSPECT_TYPE_CONSTSET;
 		case TYPE_STRUCT: return INTROSPECT_TYPE_STRUCT;
 		case TYPE_UNION: return INTROSPECT_TYPE_UNION;
 		case TYPE_BITSTRUCT: return INTROSPECT_TYPE_BITSTRUCT;
@@ -937,7 +937,7 @@ static const char *c_typeid_mangled(Type *type)
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_TYPEDEF:
 			if (type->decl)
 			{

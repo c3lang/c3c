@@ -1278,7 +1278,7 @@ RETRY:;
 		case DECL_STRUCT:
 			inner = decl->strukt.members[0]->type->canonical;
 			break;
-		case DECL_CONSTDEF:
+		case DECL_CONSTSET:
 			// Could be made to work.
 			return false;
 		default:
@@ -1690,7 +1690,7 @@ static bool rule_enum_to_value(CastContext *cc, bool is_explicit, bool is_silent
 {
 	Decl *enum_decl = cc->from->decl;
 
-	ASSERT(enum_decl->decl_kind != DECL_CONSTDEF);
+	ASSERT(enum_decl->decl_kind != DECL_CONSTSET);
 
 	Type *inner = enum_decl->enums.type_info->type;
 	if (!type_is_integer_or_bool_kind(type_flatten(cc->to)))
@@ -2707,7 +2707,7 @@ static ConvGroup group_from_type[TYPE_LAST + 1] = {
 	[TYPE_TYPEID]           = CONV_TYPEID,
 	[TYPE_POINTER]          = CONV_POINTER,
 	[TYPE_ENUM]             = CONV_ENUM,
-	[TYPE_CONSTDEF]       = CONV_RAW_ENUM,
+	[TYPE_CONSTSET]         = CONV_RAW_ENUM,
 	[TYPE_FUNC_PTR]         = CONV_FUNC,
 	[TYPE_STRUCT]           = CONV_STRUCT,
 	[TYPE_UNION]            = CONV_UNION,

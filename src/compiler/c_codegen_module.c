@@ -1870,7 +1870,7 @@ GenContext *c_emit_runtime_c(const char *dir)
 		{
 			parent_sym = str_printf("&%s", c_typeid_name(t->decl->distinct->type));
 		}
-		else if (t->type_kind == TYPE_CONSTDEF && t->decl && t->decl->is_substruct && t->decl->enums.type_info && is_valid_type_ptr(t->decl->enums.type_info->type))
+		else if (t->type_kind == TYPE_CONSTSET && t->decl && t->decl->is_substruct && t->decl->enums.type_info && is_valid_type_ptr(t->decl->enums.type_info->type))
 		{
 			parent_sym = str_printf("&%s", c_typeid_name(t->decl->enums.type_info->type));
 		}
@@ -1893,7 +1893,7 @@ GenContext *c_emit_runtime_c(const char *dir)
 		{
 			inner_sym = str_printf("&%s", c_typeid_name(t->array.base));
 		}
-		else if ((t->type_kind == TYPE_ENUM || t->type_kind == TYPE_CONSTDEF) && t->decl)
+		else if ((t->type_kind == TYPE_ENUM || t->type_kind == TYPE_CONSTSET) && t->decl)
 		{
 			Type *it = enum_inner_type(t);
 			if (it && is_valid_type_ptr(it))
@@ -1919,7 +1919,7 @@ GenContext *c_emit_runtime_c(const char *dir)
 		{
 			len = (size_t)t->array.len;
 		}
-		else if ((t->type_kind == TYPE_ENUM || t->type_kind == TYPE_CONSTDEF) && t->decl && t->decl->enums.values)
+		else if ((t->type_kind == TYPE_ENUM || t->type_kind == TYPE_CONSTSET) && t->decl && t->decl->enums.values)
 		{
 			len = (size_t)vec_size(t->decl->enums.values);
 		}
