@@ -830,7 +830,7 @@ fn void copy_image_data(char* dst_data, int w, int h, GfxFormat dst_format, char
  @require !_gfx.initialized : "Already initialized"
  @require [class_name] class_name.len < 254 : "Class name is too long"
 *>
-fn void? init(String class_name, GfxInitOption options)
+fn void? init(String class_name, GfxInitOption options = {})
 {
 	class_name = class_name ?: "C3GFX";
 	_gfx = { .initialized = true };
