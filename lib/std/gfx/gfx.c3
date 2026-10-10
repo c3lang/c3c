@@ -951,7 +951,7 @@ fn void? GfxSurface.init(&self, void* data, int w, int h, GfxFormat format, GfxW
  @require [w] w >= 0 : "Width may not be negative"
  @require [h] h >= 0 : "height may not be negative"
 *>
-fn GfxWindow*? create_window(String name, int x, int y, int w, int h, GfxWindowFlags flags)
+fn GfxWindow*? create_window(String name, int x, int y, int w, int h, GfxWindowFlags flags = {})
 {
 	return _create_window(name, x, y, w, h, flags);
 }
