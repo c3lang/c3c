@@ -24,6 +24,7 @@
 - Multi-dimensional array comparisons on types with `==` overloaded would not compare.
 - Lazy resolution of function pointer types could cause a segfault when unifying ternary types. #3552
 - `@swap` now works with non-pure arguments.
+- Incorrect lowering of vectors when created from designated initializers with zeroes at the end.
 
 ### Stdlib changes
 - Added `std::gfx` module.

@@ -231,13 +231,24 @@ EMIT_CTORS:
  * In this case we want this: { i32 0, i32 2, [8 x i32] zeroinitializer }
  * If it's just a single element we don't use [1 x i32] but just i32 0. If it's
  * an array then this is modifying the original type.
+ *
+ * @return true if we modified the original type
  */
-static LLVMValueRef llvm_emit_const_array_padding(LLVMTypeRef element_type, IndexDiff diff, bool *modified)
+static bool llvm_emit_const_array_padding(LLVMValueRef** components_ref, LLVMTypeRef element_type, bool is_vec, IndexDiff diff)
 {
-	if (diff == 1) return llvm_get_zero_raw(element_type);
-	*modified = true;
-	return llvm_get_zero_raw(LLVMArrayType(element_type, (unsigned)diff));
+	if (diff < 1) return false;
+	if (is_vec || diff == 1)
+	{
+		for (int i = 0; i < diff; i++)
+		{
+			vec_add(*components_ref, llvm_get_zero_raw(element_type));
+		}
+		return false;
+	}
+	vec_add(*components_ref, llvm_get_zero_raw(LLVMArrayType(element_type, (unsigned)diff)));
+	return true;
 }
+
 
 LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_init, bool in_aggregate)
 {
@@ -304,20 +315,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 				}
 				alignment = expected_align;
 				// Add zeroes
-				if (diff > 0)
-				{
-					if (is_vec)
-					{
-						for (int i = 0; i < diff; i++)
-						{
-							vec_add(parts, llvm_get_zero_raw(element_type_llvm));
-						}
-					}
-					else
-					{
-						vec_add(parts, llvm_emit_const_array_padding(element_type_llvm, diff, &was_modified));
-					}
-				}
+				was_modified |= llvm_emit_const_array_padding(&parts, element_type_llvm, is_vec, diff);
 				LLVMValueRef value = llvm_emit_const_initializer(c, element->init_array_value.element, true);
 				if (LLVMTypeOf(value) != element_type_llvm) was_modified = true;
 				vec_add(parts, value);
@@ -325,15 +323,13 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			}
 
 			IndexDiff end_diff = (IndexDiff)((ArrayIndex)type->array.len - current_index);
-			if (end_diff > 0)
-			{
-				vec_add(parts, llvm_emit_const_array_padding(element_type_llvm, end_diff, &was_modified));
-			}
+			was_modified |= llvm_emit_const_array_padding(&parts, element_type_llvm, is_vec, end_diff);
+
 			if (was_modified)
 			{
 				return llvm_get_unnamed_struct(c, parts, pack);
 			}
-			if (type_flat_is_vector(type))
+			if (is_vec)
 			{
 				return LLVMConstVector(parts, vec_size(parts));
 			}
