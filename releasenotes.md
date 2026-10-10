@@ -12,6 +12,7 @@
 - Add `--function-sections` and `--data-sections` (`function-sections` / `data-sections` in project.json) to place each function or global variable in its own section, so the linker can discard unused ones #3051.
 - Removed experimental support for `cenum`, `faultset` and `distinct` alternative names.
 - Docs now use the `constset`, `attrmacro` and `excuse`.
+- The static Linux binary now uses mimalloc for faster codegen and is aliased to `c3-linux.tar.gz`.
 
 ### Fixes
 - Regression for `vec.pow(x)`.
