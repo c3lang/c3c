@@ -4,7 +4,6 @@ on:
   push:
     branches: [ master, dev, ci_testing, experiments, '*.*.x' ]
     paths-ignore:
-      - '**.md'
       - 'LICENSE'
       - '.gitignore'
       - 'resources/docs.html'
