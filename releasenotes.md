@@ -20,7 +20,7 @@
 - Fix source locations for byte literal values continued on a new line.
 - Faulty selection of subscript operator overload when calling method #3499
 - Retain `@nostrip` on optimized code even if no use is found, static variables may now also have nostrip. #3500
-- `!=` overload would on structs would behave as `==` #3547.
+- `!=` overloads on structs behaved as `==` #3547.
 - Multi-dimensional array comparisons on types with `==` overloaded would not compare.
 - Lazy resolution of function pointer types could cause a segfault when unifying ternary types. #3552
 - `@swap` now works with non-pure arguments.
