@@ -109,7 +109,7 @@ set(C3_WITH_LLVM            ON                          CACHE BOOL   "Build with
 set(C3_PROFILING            OFF                         CACHE BOOL   "Build for profiling")
 set(C3_LLVM_VERSION         "auto"                      CACHE STRING "Use LLVM version [default: auto]")
 set(C3_USE_MIMALLOC         OFF                         CACHE BOOL   "Use built-in mimalloc")
-set(C3_MIMALLOC_TAG         "v1.7.3"                    CACHE STRING "Used version of mimalloc")
+set(C3_MIMALLOC_TAG         "v2.5.2"                    CACHE STRING "Used version of mimalloc")
 set(C3_USE_TB               OFF                         CACHE BOOL   "Use TB")
 set(C3_LLD_DIR              ""                          CACHE STRING "Use custom LLD directory")
 set(C3_LLD_INCLUDE_DIR      ""                          CACHE STRING "Use custom LLD include directory")
@@ -140,12 +140,12 @@ set(C3_OPTIONS
         C3_AVR_DISABLE
 )
 
-set(C3_USE_MIMALLOC OFF)
 if(C3_USE_MIMALLOC)
-    option(MI_BUILD_TESTS OFF)
-    option(MI_BUILD_SHARED OFF)
-    option(MI_PADDING OFF)
-    option(MI_DEBUG_FULL OFF)
+    set(MI_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(MI_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+    set(MI_PADDING OFF CACHE BOOL "" FORCE)
+    set(MI_DEBUG_FULL OFF CACHE BOOL "" FORCE)
+    set(MI_STATS "OFF" CACHE STRING "" FORCE)
     FetchContent_Declare(
             mimalloc
             GIT_REPOSITORY https://github.com/microsoft/mimalloc.git
