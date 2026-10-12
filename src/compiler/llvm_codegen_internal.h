@@ -45,6 +45,7 @@ typedef struct DebugScope_
 	LLVMMetadataRef lexical_block;
 	LLVMMetadataRef inline_loc;
 	struct DebugScope_ *outline_loc;
+	bool defined_in_debugscope; // True if this scope was defined with a $debugscope statement. Needed to avoid an edge case with defers.
 } DebugScope;
 
 typedef struct
@@ -598,6 +599,7 @@ LLVMMetadataRef llvm_get_debug_file(GenContext *c, FileId file_id);
 	c__->debug.block_stack = &new_scope; } } while (0)
 #define DEBUG_POP_LEXICAL_SCOPE(c__) do { c__->debug.block_stack = old_scope; } while (0)
 INLINE bool llvm_use_debug(GenContext *context);
+LLVMMetadataRef llvm_debug_create_debugscope(GenContext *c, Ast *debug_scope_stmt);
 DebugScope llvm_debug_create_lexical_scope(GenContext *context, SourceLocId location);
 LLVMMetadataRef llvm_debug_current_scope(GenContext *context);
 void llvm_emit_debug_function(GenContext *c, Decl *decl);

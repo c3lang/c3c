@@ -335,6 +335,8 @@ const char *token_type_to_string(TokenType type)
 			return "$assert";
 		case TOKEN_CT_CASE:
 			return "$case";
+		case TOKEN_CT_DEBUGSCOPE:
+			return "$debugscope";
 		case TOKEN_CT_DEFAULT:
 			return "$default";
 		case TOKEN_CT_DEFINED:
@@ -343,6 +345,8 @@ const char *token_type_to_string(TokenType type)
 			return "$else";
 		case TOKEN_CT_EMBED:
 			return "$embed";
+		case TOKEN_CT_ENDDEBUGSCOPE:
+			return "$enddebugscope";
 		case TOKEN_CT_ENDIF:
 			return "$endif";
 		case TOKEN_CT_ENDSWITCH:

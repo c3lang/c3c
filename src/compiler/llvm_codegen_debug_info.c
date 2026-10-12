@@ -273,6 +273,17 @@ LLVMMetadataRef llvm_debug_create_macro(GenContext *c, Decl *macro, Expr *call_e
 	                            file, location->row, macro_type, true, true, location->row, LLVMDIFlagPrototyped, false);
 }
 
+LLVMMetadataRef llvm_debug_create_debugscope(GenContext *c, Ast *debug_scope_stmt) {
+	SourceLoc *location = sourceloc_safe(debug_scope_stmt->loc);
+	LLVMMetadataRef file = llvm_get_debug_file(c, location->file_id);
+
+	LLVMMetadataRef macro_type = LLVMDIBuilderCreateSubroutineType(c->debug.builder, c->debug.file.debug_file, NULL, 0, 0);
+	const char *name = debug_scope_stmt->ct_debugscope_stmt.name;
+	size_t namelen = strlen(name);
+	return LLVMDIBuilderCreateFunction(c->debug.builder, file, name, namelen, name, namelen,
+	                            file, location->row, macro_type, true, true, location->row, LLVMDIFlagPrototyped, false);
+}
+
 DebugScope llvm_debug_create_lexical_scope(GenContext *context, SourceLocId location)
 {
 	LLVMMetadataRef scope;

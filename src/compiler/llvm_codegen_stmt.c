@@ -1099,6 +1099,24 @@ void llvm_emit_switch(GenContext *c, Ast *ast)
 	DEBUG_POP_LEXICAL_SCOPE(c);
 }
 
+void llvm_emit_ct_debugscope(GenContext *c, Ast *ast) {
+	bool debug = llvm_use_debug(c);
+	DebugScope debug_scope;
+	if(debug) {
+		SourceLocId span = ast->loc;
+		LLVMMetadataRef def = llvm_debug_create_debugscope(c, ast);
+		LLVMMetadataRef loc = llvm_create_debug_location(c, span);
+
+		debug_scope = (DebugScope){ .lexical_block = def, .inline_loc = loc, .outline_loc = c->debug.block_stack, .defined_in_debugscope = true};
+		c->debug.block_stack = &debug_scope;
+	}
+
+	llvm_emit_stmt(c, astptrzero(ast->ct_debugscope_stmt.body));
+
+	if(debug) {
+		c->debug.block_stack = debug_scope.outline_loc;
+	}
+}
 
 void llvm_emit_break(GenContext *c, Ast *ast)
 {
@@ -1703,6 +1721,9 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 			}
 			break;
 		}
+		case AST_CT_DEBUGSCOPE_STMT:
+			llvm_emit_ct_debugscope(c, ast);
+			break;
 		case AST_BREAK_STMT:
 			llvm_emit_break(c, ast);
 			break;
@@ -1731,7 +1752,15 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 			gencontext_emit_next_stmt(c, ast);
 			break;
 		case AST_DEFER_STMT:
-			if (llvm_use_debug(c)) ast->defer_stmt.scope = c->debug.block_stack;
+			if (!llvm_use_debug(c)) break;
+
+			ast->defer_stmt.scope = c->debug.block_stack;
+			DebugScope *check_scope = c->debug.block_stack;
+			while(check_scope)
+			{
+				if(check_scope->defined_in_debugscope) ast->defer_stmt.scope = check_scope->outline_loc;
+				check_scope = check_scope->outline_loc;
+			}
 			break;
 		case AST_NOP_STMT:
 			break;

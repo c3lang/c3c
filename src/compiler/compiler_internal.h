@@ -1531,6 +1531,12 @@ typedef struct
 	bool is_catch : 1;
 } AstDeferStmt;
 
+typedef struct AstCtDebugscopeStmt_
+{
+	const char *name;
+	AstId body;
+} AstCtDebugscopeStmt;
+
 typedef struct AstCtIfStmt_
 {
 	Expr *expr;
@@ -1655,6 +1661,7 @@ typedef struct Ast_
 		AstCompoundStmt compound_stmt;      // 12
 		AstId ct_compound_stmt;
 		AstContinueBreakStmt contbreak_stmt;// 24
+		AstCtDebugscopeStmt ct_debugscope_stmt;
 		AstId ct_else_stmt;                 // 4
 		AstCtTypeAssignStmt ct_type_assign_stmt;
 		AstCtForeachStmt ct_foreach_stmt;   // 40

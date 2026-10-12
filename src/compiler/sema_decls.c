@@ -4858,6 +4858,9 @@ static inline bool sema_check_body_const(SemaContext *context, Ast *body)
 			case AST_NOP_STMT:
 				body = astptrzero(body->next);
 				continue;
+			case AST_CT_DEBUGSCOPE_STMT:
+				body = astptrzero(body->ct_debugscope_stmt.body);
+				continue;
 			case AST_CT_COMPOUND_STMT:
 				if (!sema_check_body_const(context, body)) return false;
 				body = astptrzero(body->next);

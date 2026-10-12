@@ -1062,6 +1062,51 @@ static inline Ast *parse_var_stmt(ParseContext *c)
 	return ast;
 }
 
+/**
+ * ct_debugscope_stmt
+ * 	: CT_DEBUGSCOPE ':' ct_compound_stmt CT_ENDDEBUGSCOPE EOS
+ * 	| CT_DEBUGSCOPE identifier ':' ct_compound_stmt CT_ENDDEBUGSCOPE EOS
+ * 	;
+ */
+static inline Ast *parse_ct_debugscope_stmt(ParseContext *c)
+{
+	Ast *ast = ast_new_curr(c, AST_CT_DEBUGSCOPE_STMT);
+	advance_and_verify(c, TOKEN_CT_DEBUGSCOPE);
+
+	if (tok_is(c, TOKEN_IDENT))
+	{
+		ast->ct_debugscope_stmt.name = symstr(c);
+		advance_and_verify(c, TOKEN_IDENT);
+	}
+	else if (tok_is(c, TOKEN_CONST_IDENT) || tok_is(c, TOKEN_TYPE_IDENT)) {
+		PRINT_ERROR_HERE("Expected snake_case identifer after '$debugscope'");
+		return poisoned_ast;
+	}
+	else ast->ct_debugscope_stmt.name = "debug_scope";
+	
+	TRY_CONSUME_OR_RET(TOKEN_COLON, "Expected ':'.", poisoned_ast);
+
+	Ast *body = new_ast(AST_CT_COMPOUND_STMT, ast->loc);
+	ast->ct_debugscope_stmt.body = astid(body);
+	AstId *current = &body->ct_compound_stmt;
+	while (!try_consume(c, TOKEN_CT_ENDDEBUGSCOPE))
+	{
+		if(tok_is(c, TOKEN_RBRACE)) {
+			PRINT_ERROR_HERE("Expected '$enddebugscope' for '$debugscope'");
+			SEMA_NOTE(ast, "The unterminated '$debugscope' was here.");
+			return poisoned_ast;
+		}
+
+		ASSIGN_AST_OR_RET(Ast *stmt, parse_stmt(c), poisoned_ast);
+		*current = astid(stmt);
+		current = &stmt->next;
+	}
+
+	RANGE_EXTEND_PREV(ast);
+	return ast;
+}
+
+
 static inline bool parse_ct_compound_stmt(ParseContext *c, AstId *start, Ast *start_if)
 {
 	AstId *next = start;
@@ -1400,6 +1445,8 @@ Ast *parse_stmt(ParseContext *c)
 			return parse_ct_error_stmt(c);
 		case TOKEN_CT_EXPAND:
 			return parse_ct_expand_stmt(c);
+		case TOKEN_CT_DEBUGSCOPE:
+			return parse_ct_debugscope_stmt(c);
 		case TOKEN_CT_IF:
 			return parse_ct_if_stmt(c);
 		case TOKEN_CT_SWITCH:
@@ -1472,6 +1519,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_CASE:
 		case TOKEN_CT_DEFAULT:
 		case TOKEN_CT_ELSE:
+		case TOKEN_CT_ENDDEBUGSCOPE:
 		case TOKEN_CT_ENDFOR:
 		case TOKEN_CT_ENDFOREACH:
 		case TOKEN_CT_ENDIF:

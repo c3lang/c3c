@@ -603,6 +603,7 @@ typedef enum
 	AST_CONTINUE_STMT,
 	AST_CT_ASSERT,
 	AST_CT_COMPOUND_STMT,
+	AST_CT_DEBUGSCOPE_STMT,
 	AST_CT_ECHO_STMT,
 	AST_CT_ELSE_STMT,
 	AST_CT_EXPAND_STMT,
@@ -1687,11 +1688,13 @@ typedef enum
 
 	TOKEN_CT_ASSERT,            // $assert
 	TOKEN_CT_CASE,              // $case
+	TOKEN_CT_DEBUGSCOPE,       	// $debugscope
 	TOKEN_CT_DEFAULT,           // $default
 	TOKEN_CT_DEFINED,           // $defined
 	TOKEN_CT_ECHO,              // $echo
 	TOKEN_CT_ELSE,              // $else
 	TOKEN_CT_EMBED,             // $embed
+	TOKEN_CT_ENDDEBUGSCOPE,   	// $enddebugscope
 	TOKEN_CT_ENDFOR,            // $endfor
 	TOKEN_CT_ENDFOREACH,        // $endforeach
 	TOKEN_CT_ENDIF,             // $endif

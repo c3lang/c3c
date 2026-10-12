@@ -2346,6 +2346,18 @@ static inline bool sema_analyse_then_overwrite(SemaContext *context, Ast *statem
 	return true;
 }
 
+static inline bool sema_analyse_ct_debugscope_stmt(SemaContext *context, Ast *statement) {
+	int ct_context = sema_context_push_ct_stack(context);
+
+	Ast *body = astptrzero(statement->ct_debugscope_stmt.body);
+	if(!sema_analyse_statement(context, body)) {
+		sema_context_pop_ct_stack(context, ct_context);
+		return false;
+	}
+
+	sema_context_pop_ct_stack(context, ct_context);
+	return true;
+}
 
 static inline bool sema_analyse_ct_if_stmt(SemaContext *context, Ast *statement)
 {
@@ -3281,6 +3293,8 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 			return sema_analyse_continue_stmt(context, statement);
 		case AST_CT_ASSERT:
 			return sema_analyse_ct_assert_stmt(context, statement);
+		case AST_CT_DEBUGSCOPE_STMT:
+			return sema_analyse_ct_debugscope_stmt(context, statement);
 		case AST_CT_IF_STMT:
 			return sema_analyse_ct_if_stmt(context, statement);
 		case AST_CT_ECHO_STMT:

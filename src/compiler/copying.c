@@ -726,6 +726,9 @@ RETRY:
 			MACRO_COPY_ASTID(ast->compound_stmt.first_stmt);
 			fixup_astid(c, &ast->compound_stmt.parent_defer);
 			break;
+		case AST_CT_DEBUGSCOPE_STMT:
+			MACRO_COPY_ASTID(ast->ct_debugscope_stmt.body);
+			break;
 		case AST_CT_IF_STMT:
 			MACRO_COPY_EXPR(ast->ct_if_stmt.expr);
 			MACRO_COPY_ASTID(ast->ct_if_stmt.elif);

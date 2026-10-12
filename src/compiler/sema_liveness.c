@@ -150,6 +150,9 @@ static void sema_trace_stmt_liveness(Ast *ast)
 		case AST_NOP_STMT:
 		case AST_ASM_LABEL:
 			return;
+		case AST_CT_DEBUGSCOPE_STMT:
+			sema_trace_stmt_chain_liveness(ast->ct_debugscope_stmt.body);
+			return;
 		case AST_CT_COMPOUND_STMT:
 			sema_trace_stmt_chain_liveness(ast->ct_compound_stmt);
 			return;
