@@ -550,38 +550,17 @@ struct WgpuEmscriptenSurfaceSourceCanvasHTMLSelector
 }
 
 
-// --- exported
+// Path of the file being dropped. The JS drop listener writes it here before calling _emscripten_on_drop.
+char[512] _drop_path;
 
-fn void _emscripten_on_drop(char* file, sz size) @export("c3gfx_on_drop")
+// Called by the JS drop listener through the function table, once the dropped file has been written to MEMFS.
+fn void _emscripten_on_drop(int path_len)
 {
-	_data_drop_callback(_gfx.root, file[:size], FILE);
+	if (!_gfx.root) return;
+	_data_drop_callback(_gfx.root, _drop_path[:path_len], FILE);
 }
 
-fn void _emscripten_on_fullscreenchange(int screen_w, int screen_h, bool entering) @export("c3gfx_on_fullscreenchange")
-{
-	if (!(_gfx.root.internal.enabled_events.window_resized)) return;
-	static GfxPoint original;
-	if (entering)
-	{
-		original = _gfx.root.size;
-		_gfx.root.size = { screen_w, screen_h };
-	}
-	else
-	{
-		_gfx.root.size = original;
-	}
-	gfxJsFocusCanvas();
-	gfxJsSetCanvasSize(_gfx.root, ..._gfx.root.size);
-	_window_resized_callback(_gfx.root, _gfx.root.size);
-}
-
-fn void _emscripten_on_mousedown(int button) @export("c3gfx_on_mousedown")
-{
-	if (button > 2) button += 2;
-	_mouse_button_callback(_gfx.root, (GfxMouseButton)button, true);
-}
-
-fn void handle_key_event_callback(ZString code, uint codepoint, bool press) @export("c3gfx_handleKeyEvent")
+fn void handle_key_event_callback(ZString code, uint codepoint, bool press)
 {
 	ZString i_code = code;
 	uint hash = 0;
@@ -590,11 +569,6 @@ fn void handle_key_event_callback(ZString code, uint codepoint, bool press) @exp
 	GfxKey physical_key = _wasm_physical_to_gfx(hash);
 	_key_callback(_gfx.root, physical_key, _gfx.root.internal.mod, is_key_down(physical_key) && press, press);
 	if (press) _key_char_callback(_gfx.root, codepoint);
-}
-
-fn void handle_key_mods_callback(bool capital, bool numlock, bool control, bool alt, bool shift, bool super, bool scroll) @export("c3gfx_handleKeyMods")
-{
-	_key_update_key_mods_ex(_gfx.root, capital, numlock, control, alt, shift, super, scroll);
 }
 
 // ---
@@ -749,15 +723,30 @@ fn void gfxJsRemoveWindowListeners(GfxWindow* win = null)
 	emscripten_set_keyup_callback_on_thread(target_win, null, 1, null, thread_ctx);
 }
 
-// Direct port of RGFW's drop listener EM_ASM (RGFW.h)
+// Dropped files are written to MEMFS under /tmp, and the path is delivered as a FILE drop.
+// The path is handed to C3 through _drop_path and a call to _emscripten_on_drop via the function table.
 fn void gfxJsSetupDropListeners(GfxWindow* win = null)
 {
 	emscripten_run_script(string::tformat_zstr(
 		"var canvas = document.querySelector('%s') || Module.canvas;"
 		"if (canvas) {"
 		"  canvas.addEventListener('dragover', (e) => { e.preventDefault(); return false; }, true);"
+		"  canvas.addEventListener('drop', (e) => {"
+		"    e.preventDefault();"
+		"    if (typeof FS === 'undefined') return;"
+		"    for (const file of e.dataTransfer.files) {"
+		"      file.arrayBuffer().then((buf) => {"
+		"        const path = '/tmp/' + file.name;"
+		"        FS.writeFile(path, new Uint8Array(buf));"
+		"        const bytes = new TextEncoder().encode(path).subarray(0, %d);"
+		"        HEAPU8.set(bytes, %d);"
+		"        HEAPU8[%d + bytes.length] = 0;"
+		"        wasmTable.get(%d)(bytes.length);"
+		"      });"
+		"    }"
+		"  }, true);"
 		"}",
-		_wasm_target(win)
+		_wasm_target(win), (int)_drop_path.len - 1, (int)(uptr)&_drop_path, (int)(uptr)&_drop_path, (int)(uptr)&_emscripten_on_drop
 	));
 }
 
@@ -1011,59 +1000,6 @@ fn int c3_on_touchcancel(int event_type, EmscriptenTouchEvent* e, void* user_dat
 		_mouse_button_callback(_gfx.root, LEFT, false);
 	}
 	return 1;
-}
-
-fn void gfxEmscriptenOnResize(int w, int h) @export("c3gfx_on_resize")
-{
-	_window_resized_callback(_gfx.root, { w, h });
-}
-fn void gfxEmscriptenOnFocusIn() @export("c3gfx_on_focusin") { _window_focus_callback(_gfx.root, true); }
-
-fn void gfxEmscriptenOnFocusOut() @export("c3gfx_on_focusout") { _window_focus_callback(_gfx.root, false); }
-
-fn void gfxEmscriptenOnMouseMove(int x, int y, int movement_x, int movement_y) @export("c3gfx_on_mousemove")
-{
-	_mouse_motion_callback(_gfx.root, { x, y });
-	_raw_motion_callback(_gfx.root, { (float)movement_x, (float)movement_y });
-}
-
-fn void gfxEmscriptenOnMouseUp(int button) @export("c3gfx_on_mouseup")
-{
-	if (button > 2) button += 2;
-	_mouse_button_callback(_gfx.root, (GfxMouseButton)button, false);
-}
-
-fn void gfxEmscriptenOnWheel(float delta_x, float delta_y) @export("c3gfx_on_wheel") { _mouse_scroll_callback(_gfx.root, { delta_x, delta_y }); }
-
-fn void gfxEmscriptenOnTouch(int num_touches, int* xs, int* ys, char down) @export("c3gfx_on_touch")
-{
-	// down == 255 is the sentinel for touchmove (no button state change).
-	if (down == 255)
-	{
-		if (!_gfx.root.internal.enabled_events.mouse_motion) return;
-		for (int i = 0; i < num_touches; i++)
-		{
-			_mouse_motion_callback(_gfx.root, { xs[i], ys[i] });
-			_raw_motion_callback(_gfx.root, {});
-		}
-		return;
-	}
-
-	if (down)
-	{
-		if (!_gfx.root.internal.enabled_events.mouse_button_pressed) return;
-	}
-	else
-	{
-		if (!_gfx.root.internal.enabled_events.mouse_button_released) return;
-	}
-
-	for (int i = 0; i < num_touches; i++)
-	{
-		_mouse_motion_callback(_gfx.root, { xs[i], ys[i] });
-		_raw_motion_callback(_gfx.root, { });
-		_mouse_button_callback(_gfx.root, LEFT, (bool)down);
-	}
 }
 
 fn GfxKey _wasm_physical_to_gfx(uint hash)
