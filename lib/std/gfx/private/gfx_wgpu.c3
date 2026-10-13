@@ -1,4 +1,4 @@
-module std::gfx @feat(WASM, WIN32, BSD, LINUX, MACOS);
+module std::gfx @feat(EMSCRIPTEN, WIN32, BSD, LINUX, MACOS);
 
 const WGPUSType WGPU_STYPE_SURFACE_SOURCE_METAL_LAYER                     = 0x00000004;
 const WGPUSType WGPU_STYPE_SURFACE_SOURCE_WINDOWS_HWND                    = 0x00000005;

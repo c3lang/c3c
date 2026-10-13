@@ -1,4 +1,4 @@
-module std::gfx::gl @feat(MACOS, LINUX, BSD, WASM, WIN32) @feat(!(BSD | LINUX) | WAYLAND | !NO_X11) @private;
+module std::gfx::gl @feat(MACOS, LINUX, BSD, EMSCRIPTEN, WIN32) @feat(!(BSD | LINUX) | WAYLAND | !NO_X11) @private;
 import std::gfx @public;
 
 const uint GL_EXTENSIONS     = 0x1F03;

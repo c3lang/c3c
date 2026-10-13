@@ -1,4 +1,4 @@
-module std::gfx::wasm @feat(WASM) @private;
+module std::gfx::wasm @feat(EMSCRIPTEN) @private;
 import std::math, std::time;
 import std::gfx::egl @public;
 
@@ -511,7 +511,7 @@ constset DomKey : inline int
 	VK_QUOTE         = 222,
 }
 
-module std::gfx @feat(WASM) @private;
+module std::gfx @feat(EMSCRIPTEN) @private;
 import std::math, std::time;
 import std::gfx::egl @public;
 import std::gfx::wasm @public;

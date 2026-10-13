@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Christoffer Lernö. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module std::gfx @feat(MACOS, LINUX, BSD, WASM, WIN32) @feat(!(BSD | LINUX) | WAYLAND | !NO_X11);
+module std::gfx @feat(MACOS, LINUX, BSD, EMSCRIPTEN, WIN32) @feat(!(BSD | LINUX) | WAYLAND | !NO_X11);
 import std::math, std::os, std::os::darwin, libc, std::time, std::collections::enummap;
 import std::gfx::x11 @public, std::gfx::egl @public, std::gfx::gl @public;
 import std::gfx::wl @public;
@@ -134,7 +134,7 @@ struct GfxDataDropNode
 	GfxDataDropNode* next;
 }
 
-struct GfxWindowSrc @feat(WASM)
+struct GfxWindowSrc @feat(EMSCRIPTEN)
 {
 	inline GfxRect    bounds;
 	void*             window;
@@ -336,8 +336,8 @@ struct GfxGlContext
 	struct @feat(!MACOS)
 	{
 		void* ctx;
-		void* window @feat(!(WIN32 | WASM));
-		void* format @feat(WASM);
+		void* window @feat(!(WIN32 | EMSCRIPTEN));
+		void* format @feat(EMSCRIPTEN);
 	}
 	struct @feat(WAYLAND)
 	{
@@ -2497,7 +2497,7 @@ fn void GfxWindow.update_key_modifier(&self, GfxKeyModifier mod, bool enable)
 *>
 fn GfxFormat native_format()
 {
-	return $feat(WASM) ? RGBA8 : BGRA8;
+	return $feat(EMSCRIPTEN) ? RGBA8 : BGRA8;
 }
 
 <*

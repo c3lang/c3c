@@ -1,4 +1,4 @@
-module std::gfx @feat(LINUX, BSD, MACOS, WASM, WIN32) @feat(!(BSD | LINUX) | WAYLAND | !NO_X11) @private;
+module std::gfx @feat(LINUX, BSD, MACOS, EMSCRIPTEN, WIN32) @feat(!(BSD | LINUX) | WAYLAND | !NO_X11) @private;
 import libc, std::math, std::collections::list, std::os, std::gfx::x11 @public, std::gfx::egl @public, std::time;
 import std::gfx::wl @public, std::gfx::macos @public, std::gfx::wasm @public;
 import std::gfx::win32 @public;
@@ -14,7 +14,7 @@ fn void? _init_platform(String class_name, GfxInitOption options)
 	$switch:
 		$case $feat(MACOS):
 			return macos::init_platform(class_name, options);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::init_platform(class_name, options);
 		$case $feat(WIN32):
 			return win32::init_platform(class_name, options);
@@ -45,7 +45,7 @@ fn void _destroy_platform()
 	$switch:
 		$case $feat(MACOS):
 			return macos::destroy_platform();
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::destroy_platform();
 		$case $feat(WIN32):
 			return win32::destroy_platform();
@@ -66,7 +66,7 @@ fn void _poll_events_platform()
 	$switch:
 		$case $feat(MACOS):
 			return macos::poll_events_platform();
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::poll_events_platform();
 		$case $feat(WIN32):
 			return win32::poll_events_platform();
@@ -87,7 +87,7 @@ fn void _wake()
 	$switch:
 		$case $feat(MACOS):
 			return macos::wake();
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return;
 		$case $feat(WIN32):
 			return win32::wake();
@@ -110,7 +110,7 @@ fn GfxEvent? _wait(Duration duration)
 	$switch:
 		$case $feat(MACOS):
 			macos::_wait_platform(duration);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			wasm::_wait_platform(duration);
 		$case $feat(WIN32):
 			win32::_wait_platform(duration);
@@ -140,7 +140,7 @@ fn GfxGammaRamp? _monitor_get_gamma_ramp(GfxMonitor* monitor, Allocator a)
 	$switch:
 		$case $feat(MACOS):
 			return macos::monitor_get_gamma_ramp(monitor, a);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::monitor_get_gamma_ramp(monitor, a);
 		$case $feat(WIN32):
 			return win32::monitor_get_gamma_ramp(monitor, a);
@@ -161,7 +161,7 @@ fn GfxMonitorMode[] _monitor_get_modes(GfxMonitor* monitor)
 	$switch:
 		$case $feat(MACOS):
 			return macos::monitor_get_modes(monitor);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::monitor_get_modes(monitor);
 		$case $feat(WIN32):
 			return win32::monitor_get_modes(monitor);
@@ -182,7 +182,7 @@ fn GfxRect _monitor_get_workarea(GfxMonitor* monitor)
 	$switch:
 		$case $feat(MACOS):
 			return macos::monitor_get_workarea(monitor);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::monitor_get_workarea(monitor);
 		$case $feat(WIN32):
 			return win32::monitor_get_workarea(monitor);
@@ -203,7 +203,7 @@ fn void _monitor_node_free(GfxMonitorNode* node)
 	$switch:
 		$case $feat(MACOS):
 			return macos::monitor_node_free(node);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::monitor_node_free(node);
 		$case $feat(WIN32):
 			return win32::monitor_node_free(node);
@@ -224,7 +224,7 @@ fn void? _monitor_request_mode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitor
 	$switch:
 		$case $feat(MACOS):
 			return macos::monitor_request_mode(mon, mode, request);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::monitor_request_mode(mon, mode, request);
 		$case $feat(WIN32):
 			return win32::monitor_request_mode(mon, mode, request);
@@ -245,7 +245,7 @@ fn void? _monitor_set_gamma(GfxMonitor* monitor, float gamma)
 	$switch:
 		$case $feat(MACOS):
 			return macos::monitor_set_gamma(monitor, gamma);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::monitor_set_gamma(monitor, gamma);
 		$case $feat(WIN32):
 			return win32::monitor_set_gamma(monitor, gamma);
@@ -266,7 +266,7 @@ fn void? _monitor_set_gamma_ramp(GfxMonitor* monitor, GfxGammaRamp ramp)
 	$switch:
 		$case $feat(MACOS):
 			return macos::monitor_set_gamma_ramp(monitor, ramp);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::monitor_set_gamma_ramp(monitor, ramp);
 		$case $feat(WIN32):
 			return win32::monitor_set_gamma_ramp(monitor, ramp);
@@ -287,7 +287,7 @@ fn void? _monitor_set_mode(GfxMonitor* mon, GfxMonitorMode* mode)
 	$switch:
 		$case $feat(MACOS):
 			return macos::monitor_set_mode(mon, mode);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::monitor_set_mode(mon, mode);
 		$case $feat(WIN32):
 			return win32::monitor_set_mode(mon, mode);
@@ -308,7 +308,7 @@ fn void _poll_monitors()
 	$switch:
 		$case $feat(MACOS):
 			return macos::poll_monitors();
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::poll_monitors();
 		$case $feat(WIN32):
 			return win32::poll_monitors();
@@ -331,7 +331,7 @@ fn GfxMouse*? _create_mouse(void* data, GfxSize size, GfxFormat format)
 	$switch:
 		$case $feat(MACOS):
 			return macos::create_mouse(data, size, format);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::create_mouse(data, size, format);
 		$case $feat(WIN32):
 			return win32::create_mouse(data, size, format);
@@ -352,7 +352,7 @@ fn GfxMouse*? _create_standard_mouse(GfxMouseIcon mouse)
 	$switch:
 		$case $feat(MACOS):
 			return macos::create_standard_mouse(mouse);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::create_standard_mouse(mouse);
 		$case $feat(WIN32):
 			return win32::create_standard_mouse(mouse);
@@ -373,7 +373,7 @@ fn void _free_mouse(GfxMouse* mouse)
 	$switch:
 		$case $feat(MACOS):
 			return macos::free_mouse(mouse);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::free_mouse(mouse);
 		$case $feat(WIN32):
 			return win32::free_mouse(mouse);
@@ -394,7 +394,7 @@ fn GfxPoint _get_global_mouse()
 	$switch:
 		$case $feat(MACOS):
 			return macos::get_global_mouse();
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::get_global_mouse();
 		$case $feat(WIN32):
 			return win32::get_global_mouse();
@@ -420,7 +420,7 @@ fn void _window_blit_surface(GfxWindow* win, GfxSurface* surface)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_blit_surface(win, surface);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_blit_surface(win, surface);
 		$case $feat(WIN32):
 			return win32::window_blit_surface(win, surface);
@@ -444,7 +444,7 @@ fn void? _window_create_platform(GfxWindow* win, String name, GfxWindowFlags fla
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_create_platform(win, name, flags);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_create_platform(win, name, flags);
 		$case $feat(WIN32):
 			return win32::window_create_platform(win, name, flags);
@@ -468,7 +468,7 @@ fn void _window_destroy_platform(GfxWindow* win)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_destroy_platform(win);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_destroy_platform(win);
 		$case $feat(WIN32):
 			return win32::window_destroy_platform(win);
@@ -492,7 +492,7 @@ fn GfxPoint _window_fetch_size(GfxWindow* win)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_fetch_size(win);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_fetch_size(win);
 		$case $feat(WIN32):
 			return win32::window_fetch_size(win);
@@ -513,7 +513,7 @@ fn GfxMonitor*? _window_find_monitor(GfxWindow* win)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_find_monitor(win);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_find_monitor(win);
 		$case $feat(WIN32):
 			return win32::window_find_monitor(win);
@@ -534,7 +534,7 @@ fn void _window_flash(GfxWindow* win, GfxFlashRequest request)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_flash(win, request);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_flash(win, request);
 		$case $feat(WIN32):
 			return win32::window_flash(win, request);
@@ -555,7 +555,7 @@ fn void _window_focus(GfxWindow* win)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_focus(win);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_focus(win);
 		$case $feat(WIN32):
 			return win32::window_focus(win);
@@ -576,7 +576,7 @@ fn void _window_hide(GfxWindow* win) @private
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_hide(win);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_hide(win);
 		$case $feat(WIN32):
 			return win32::window_hide(win);
@@ -597,7 +597,7 @@ fn bool _window_is_floating(GfxWindow* win) @private
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_is_floating(win);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_is_floating(win);
 		$case $feat(WIN32):
 			return win32::window_is_floating(win);
@@ -621,7 +621,7 @@ fn bool _window_is_hidden(GfxWindow* win) @private
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_is_hidden(win);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_is_hidden(win);
 		$case $feat(WIN32):
 			return win32::window_is_hidden(win);
@@ -645,7 +645,7 @@ fn bool _window_is_maximized(GfxWindow* win)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_is_maximized(win);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_is_maximized(win);
 		$case $feat(WIN32):
 			return win32::window_is_maximized(win);
@@ -669,7 +669,7 @@ fn bool _window_is_minimized(GfxWindow* win)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_is_minimized(win);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_is_minimized(win);
 		$case $feat(WIN32):
 			return win32::window_is_minimized(win);
@@ -690,7 +690,7 @@ fn void _window_maximize_platform(GfxWindow* win)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_maximize_platform(win);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_maximize_platform(win);
 		$case $feat(WIN32):
 			return win32::window_maximize_platform(win);
@@ -711,7 +711,7 @@ fn void _window_minimize_platform(GfxWindow* win)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_minimize_platform(win);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_minimize_platform(win);
 		$case $feat(WIN32):
 			return win32::window_minimize_platform(win);
@@ -732,7 +732,7 @@ fn void _window_move_mouse(GfxWindow* win, GfxPoint where)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_move_mouse(win, where);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_move_mouse(win, where);
 		$case $feat(WIN32):
 			return win32::window_move_mouse(win, where);
@@ -753,7 +753,7 @@ fn void _window_move_platform(GfxWindow* win, GfxPoint where)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_move_platform(win, where);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_move_platform(win, where);
 		$case $feat(WIN32):
 			return win32::window_move_platform(win, where);
@@ -774,7 +774,7 @@ fn void _window_raise(GfxWindow* win)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_raise(win);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_raise(win);
 		$case $feat(WIN32):
 			return win32::window_raise(win);
@@ -795,7 +795,7 @@ fn void _window_resize_platform(GfxWindow* win, GfxSize size)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_resize_platform(win, size);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_resize_platform(win, size);
 		$case $feat(WIN32):
 			return win32::window_resize_platform(win, size);
@@ -816,7 +816,7 @@ fn void _window_restore_platform(GfxWindow* win)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_restore_platform(win);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_restore_platform(win);
 		$case $feat(WIN32):
 			return win32::window_restore_platform(win);
@@ -837,7 +837,7 @@ fn void _window_set_aspect_ratio(GfxWindow* win, int w, int h)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_set_aspect_ratio(win, w, h);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_set_aspect_ratio(win, w, h);
 		$case $feat(WIN32):
 			return win32::window_set_aspect_ratio(win, w, h);
@@ -858,7 +858,7 @@ fn void _window_set_border(GfxWindow* win, bool border)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_set_border(win, border);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_set_border(win, border);
 		$case $feat(WIN32):
 			return win32::window_set_border(win, border);
@@ -879,7 +879,7 @@ fn void _window_set_capture_mouse_platform(GfxWindow* win, bool state)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_set_capture_mouse_platform(win, state);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_set_capture_mouse_platform(win, state);
 		$case $feat(WIN32):
 			return win32::window_set_capture_mouse_platform(win, state);
@@ -908,7 +908,7 @@ fn void _window_set_floating(GfxWindow* win, bool floating)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_set_floating(win, floating);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_set_floating(win, floating);
 		$case $feat(WIN32):
 			return win32::window_set_floating(win, floating);
@@ -929,7 +929,7 @@ fn void _window_set_fullscreen(GfxWindow* win, bool fullscreen)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_set_fullscreen(win, fullscreen);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_set_fullscreen(win, fullscreen);
 		$case $feat(WIN32):
 			return win32::window_set_fullscreen(win, fullscreen);
@@ -950,7 +950,7 @@ fn bool _window_set_icon(GfxWindow* win, void* data_src, int w, int h, GfxFormat
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_set_icon(win, data_src, w, h, format, type);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_set_icon(win, data_src, w, h, format, type);
 		$case $feat(WIN32):
 			return win32::window_set_icon(win, data_src, w, h, format, type);
@@ -971,7 +971,7 @@ fn void _window_set_max_size(GfxWindow* win, GfxSize size)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_set_max_size(win, size);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_set_max_size(win, size);
 		$case $feat(WIN32):
 			return win32::window_set_max_size(win, size);
@@ -992,7 +992,7 @@ fn void _window_set_min_size(GfxWindow* win, GfxSize size)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_set_min_size(win, size);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_set_min_size(win, size);
 		$case $feat(WIN32):
 			return win32::window_set_min_size(win, size);
@@ -1013,7 +1013,7 @@ fn void _window_set_mouse_passthrough(GfxWindow* win, bool passthrough)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_set_mouse_passthrough(win, passthrough);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_set_mouse_passthrough(win, passthrough);
 		$case $feat(WIN32):
 			return win32::window_set_mouse_passthrough(win, passthrough);
@@ -1034,7 +1034,7 @@ fn void _window_set_mouse_platform(GfxWindow* win, GfxMouse* mouse)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_set_mouse_platform(win, mouse);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_set_mouse_platform(win, mouse);
 		$case $feat(WIN32):
 			return win32::window_set_mouse_platform(win, mouse);
@@ -1055,7 +1055,7 @@ fn void _window_set_name(GfxWindow* win, String name)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_set_name(win, name);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_set_name(win, name);
 		$case $feat(WIN32):
 			return win32::window_set_name(win, name);
@@ -1076,7 +1076,7 @@ fn void _window_set_opacity(GfxWindow* win, float opacity)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_set_opacity(win, opacity);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_set_opacity(win, opacity);
 		$case $feat(WIN32):
 			return win32::window_set_opacity(win, opacity);
@@ -1097,7 +1097,7 @@ fn void _window_set_raw_mouse_mode_platform(GfxWindow* win, bool state)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_set_raw_mouse_mode_platform(win, state);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_set_raw_mouse_mode_platform(win, state);
 		$case $feat(WIN32):
 			return win32::window_set_raw_mouse_mode_platform(win, state);
@@ -1118,7 +1118,7 @@ fn void _window_show_platform(GfxWindow* win)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_show_platform(win);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_show_platform(win);
 		$case $feat(WIN32):
 			return win32::window_show_platform(win);
@@ -1153,7 +1153,7 @@ fn void _window_destroy_opengl_context(GfxWindow* win, GfxGlContext* ctx)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_release_opengl_context_platform(win, ctx);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_release_opengl_context_platform(win, ctx);
 		$case $feat(WIN32):
 			return win32::window_release_opengl_context_platform(win, ctx);
@@ -1174,7 +1174,7 @@ fn void? _window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* cont
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_init_opengl_context_platform(win, context, hints);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_init_opengl_context_platform(win, context, hints);
 		$case $feat(WIN32):
 			return win32::window_init_opengl_context_platform(win, context, hints);
@@ -1195,7 +1195,7 @@ fn void _window_make_current_opengl_context(GfxWindow* win)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_make_current_opengl_context(win);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_make_current_opengl_context(win);
 		$case $feat(WIN32):
 			return win32::window_make_current_opengl_context(win);
@@ -1216,7 +1216,7 @@ fn void _window_opengl_swap_buffers(GfxWindow* win)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_opengl_swap_buffers(win);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_opengl_swap_buffers(win);
 		$case $feat(WIN32):
 			return win32::window_opengl_swap_buffers(win);
@@ -1237,7 +1237,7 @@ fn void _window_set_opengl_swap_interval(GfxWindow* win, int swap_interval)
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_set_opengl_swap_interval(win, swap_interval);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_set_opengl_swap_interval(win, swap_interval);
 		$case $feat(WIN32):
 			return win32::window_set_opengl_swap_interval(win, swap_interval);
@@ -1260,7 +1260,7 @@ fn VkSurfaceKHR? _window_create_vulkan_surface(GfxWindow* win, VkInstance instan
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_create_vulkan_surface(win, instance);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return NOT_IMPLEMENTED~;
 		$case $feat(WIN32):
 			return win32::window_create_vulkan_surface(win, instance);
@@ -1283,7 +1283,7 @@ fn WGPUSurface? _window_create_wgpu_surface(GfxWindow* window, WGPUInstance inst
 	$switch:
 		$case $feat(MACOS):
 			return macos::window_create_wgpu_surface(window, instance);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::window_create_wgpu_surface(window, instance);
 		$case $feat(WIN32):
 			return win32::window_create_wgpu_surface(window, instance);
@@ -1306,7 +1306,7 @@ fn GfxDataTransfer? _read_clipboard(Allocator allocator, GfxDataTransferType typ
 	$switch:
 		$case $feat(MACOS):
 			return macos::read_clipboard(allocator, type);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::read_clipboard(allocator, type);
 		$case $feat(WIN32):
 			return win32::read_clipboard(allocator, type);
@@ -1327,7 +1327,7 @@ fn void? _write_clipboard(GfxDataTransfer* data)
 	$switch:
 		$case $feat(MACOS):
 			return macos::write_clipboard(data);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::write_clipboard(data);
 		$case $feat(WIN32):
 			return win32::write_clipboard(data);
@@ -1350,7 +1350,7 @@ fn void? _surface_init(GfxSurface* surface, void* data, int w, int h, GfxFormat 
 	$switch:
 		$case $feat(MACOS):
 			return macos::surface_init(surface, data, w, h, format, window);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::surface_init(surface, data, w, h, format, window);
 		$case $feat(WIN32):
 			return win32::surface_init(surface, data, w, h, format, window);
@@ -1371,7 +1371,7 @@ fn void _surface_release(GfxSurface* surface)
 	$switch:
 		$case $feat(MACOS):
 			return macos::surface_release(surface);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::surface_release(surface);
 		$case $feat(WIN32):
 			return win32::surface_release(surface);
@@ -1394,7 +1394,7 @@ fn bool _get_vulkan_physical_device_presentation_support(VkInstance instance, Vk
 	$switch:
 		$case $feat(MACOS):
 			return macos::get_vulkan_physical_device_presentation_support(instance, physical_device, queue_family_index);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::get_vulkan_physical_device_presentation_support(instance, physical_device, queue_family_index);
 		$case $feat(WIN32):
 			return win32::get_vulkan_physical_device_presentation_support(instance, physical_device, queue_family_index);
@@ -1417,7 +1417,7 @@ fn void* _get_current_opengl_context()
 	$switch:
 		$case $feat(MACOS):
 			return macos::get_current_opengl_context();
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::get_current_opengl_context();
 		$case $feat(WIN32):
 			return win32::get_current_opengl_context();
@@ -1438,7 +1438,7 @@ fn void* _get_opengl_proc(ZString procname)
 	$switch:
 		$case $feat(MACOS):
 			return macos::get_opengl_proc(procname);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::get_opengl_proc(procname);
 		$case $feat(WIN32):
 			return win32::get_opengl_proc(procname);
@@ -1461,7 +1461,7 @@ fn void? _load_opengl()
 			return macos::load_opengl();
 		$case $feat(WIN32):
 			return win32::load_opengl();
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return;
 		$case WAYLAND_ONLY:
 			return wl::load_opengl();
@@ -1480,7 +1480,7 @@ fn bool _opengl_extension_is_supported_platform(String extension)
 	$switch:
 		$case $feat(MACOS):
 			return macos::opengl_extension_is_supported_platform(extension);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::opengl_extension_is_supported_platform(extension);
 		$case $feat(WIN32):
 			return win32::opengl_extension_is_supported_platform(extension);
@@ -1513,7 +1513,7 @@ fn void _init_keycodes_platform()
 	$switch:
 		$case $feat(MACOS):
 			return macos::init_keycodes_platform();
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::init_keycodes_platform();
 		$case $feat(WIN32):
 			return win32::init_keycodes_platform();
@@ -1534,7 +1534,7 @@ fn GfxKey _physical_to_mapped_key(GfxKey key)
 	$switch:
 		$case $feat(MACOS):
 			return macos::physical_to_mapped_key(key);
-		$case $feat(WASM):
+		$case $feat(EMSCRIPTEN):
 			return wasm::physical_to_mapped_key(key);
 		$case $feat(WIN32):
 			return win32::physical_to_mapped_key(key);

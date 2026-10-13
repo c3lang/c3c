@@ -1,4 +1,4 @@
-module std::gfx @feat(MACOS, LINUX, BSD, WASM, WIN32);
+module std::gfx @feat(MACOS, LINUX, BSD, EMSCRIPTEN, WIN32);
 import libc, std::os;
 
 
@@ -46,7 +46,7 @@ fn bool get_vulkan_physical_device_presentation_support_native(VkInstance instan
 	return _get_vulkan_physical_device_presentation_support(instance, physical_device, queue_family_index);
 }
 
-fn void* _get_instance_proc_vulkan(VkInstance instance, ZString procname) @feat(!WASM)
+fn void* _get_instance_proc_vulkan(VkInstance instance, ZString procname) @feat(!EMSCRIPTEN)
 {
 	if (!_gfx.vk_get_instance_proc_address) return null;
 	return _gfx.vk_get_instance_proc_address(instance, procname);

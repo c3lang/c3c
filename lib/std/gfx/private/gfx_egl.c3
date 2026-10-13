@@ -1,4 +1,4 @@
-module std::gfx::egl @feat(MACOS, BSD, LINUX, WASM, WIN32) @feat(!(BSD | LINUX) | WAYLAND | !NO_X11) @private;
+module std::gfx::egl @feat(MACOS, BSD, LINUX, EMSCRIPTEN, WIN32) @feat(!(BSD | LINUX) | WAYLAND | !NO_X11) @private;
 import libc, std::os, std::gfx @public;
 import std::gfx::wl @public;
 import std::collections::fixedlist;
@@ -18,7 +18,7 @@ fn void? load_lib()
 
 fn void unload_lib() @private
 {
-	$if !$feat(WASM):
+	$if !$feat(EMSCRIPTEN):
 		if (!gfx::_gfx.egl.handle) return;
 		if (gfx::_gfx.egl.display)
 		{
@@ -46,9 +46,9 @@ fn void* get_proc(ZString procname)
 	return find_proc(procname) ?? null;
 }
 
-fn bool is_extension_supported(String extension) @feat(WASM) => false;
+fn bool is_extension_supported(String extension) @feat(EMSCRIPTEN) => false;
 
-fn bool is_extension_supported(String extension) @feat(!WASM)
+fn bool is_extension_supported(String extension) @feat(!EMSCRIPTEN)
 {
 	if (gl::extension_supported_base(extension, &get_proc)) return true;
 	if (!query_string_fn || !gfx::_gfx.egl.display) return false;
@@ -58,7 +58,7 @@ fn bool is_extension_supported(String extension) @feat(!WASM)
 
 fn void* get_current_context()
 {
-	$if $feat(WASM):
+	$if $feat(EMSCRIPTEN):
 		return null;
 	$else
 		return get_current_context_fn ? get_current_context_fn() : null;
@@ -67,7 +67,7 @@ fn void* get_current_context()
 
 fn void destroy_context_in_window(GfxEglContext* ctx, GfxWindow* win)
 {
-	$if $feat(WASM) || gfx::X11_ONLY:
+	$if $feat(EMSCRIPTEN) || gfx::X11_ONLY:
 		return;
 	$else
 		$if gfx::X11_OR_WAYLAND:
@@ -100,7 +100,7 @@ fn void destroy_context_in_window(GfxEglContext* ctx, GfxWindow* win)
 
 fn GfxEglContext*? create_context(GfxWindow* win, GfxGlHints* hints)
 {
-	$if $feat(WASM) || gfx::X11_ONLY:
+	$if $feat(EMSCRIPTEN) || gfx::X11_ONLY:
 		return gfx::EGL_NOT_SUPPORTED~;
 	$else
 		$if gfx::WAYLAND || $feat(MACOS):
@@ -117,7 +117,7 @@ fn GfxEglContext*? create_context(GfxWindow* win, GfxGlHints* hints)
 
 fn void set_current_window(GfxWindow* win)
 {
-	$if $feat(WASM):
+	$if $feat(EMSCRIPTEN):
 		return;
 	$else
 		if (!gfx::_gfx.egl.display || !make_current_fn) return;
@@ -134,7 +134,7 @@ fn void set_current_window(GfxWindow* win)
 
 fn void swap_window_buffers(GfxWindow* win)
 {
-	$if $feat(WASM):
+	$if $feat(EMSCRIPTEN):
 		return;
 	$else
 		if (!win.src.ctx.egl || !swap_buffers_fn) return;
@@ -144,7 +144,7 @@ fn void swap_window_buffers(GfxWindow* win)
 
 fn void set_swap_interval(GfxWindow* win, int swap_interval)
 {
-	$if $feat(WASM):
+	$if $feat(EMSCRIPTEN):
 		return;
 	$else
 		if (!swap_interval_fn) return;

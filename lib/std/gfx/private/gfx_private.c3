@@ -1,4 +1,4 @@
-module std::gfx @feat(LINUX, BSD, MACOS, WASM, WIN32) @feat(!(BSD | LINUX) | WAYLAND | !NO_X11) @private;
+module std::gfx @feat(LINUX, BSD, MACOS, EMSCRIPTEN, WIN32) @feat(!(BSD | LINUX) | WAYLAND | !NO_X11) @private;
 import libc, std::math, std::collections::list, std::os, std::gfx::x11 @public, std::gfx::egl @public, std::time, std::net::url;
 import std::gfx::wl @public;
 
@@ -63,7 +63,7 @@ struct GfxContext
 		ushort[256]     wide_class_name;
 		Win32_HWND      helper_window;
 	}
-	struct @feat(WASM)
+	struct @feat(EMSCRIPTEN)
 	{
 		int using_asyncify;
 	}
@@ -889,7 +889,7 @@ fn void _window_show_mouse_flags(GfxWindow* win, bool show)
 	}
 }
 
-fn void _window_show_mouse_native(GfxWindow* win, bool show) @feat(!WASM)
+fn void _window_show_mouse_native(GfxWindow* win, bool show) @feat(!EMSCRIPTEN)
 {
 	_window_show_mouse_flags(win, show);
 	if (show)
