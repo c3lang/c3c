@@ -17,6 +17,25 @@
 #define MAX_OUTPUT_FILES 1000000
 #define MAX_MODULES 100000
 
+typedef struct LibraryOverview
+{
+	const char *name;
+	const char *description;
+	const char *latest;
+	const char *updated;
+	JSONObject **tags;
+	JSONObject **versions;
+} LibraryOverview;
+
+typedef struct LibraryInfo
+{
+	JSONObject *versions;
+	const char *latest;
+	const char *library;
+	const char *updated;
+	const char *description;
+	JSONObject **tags;
+} LibraryInfo;
 
 CompilerState compiler;
 
@@ -1046,8 +1065,7 @@ bool use_ansi(void)
 #endif
 }
 
-
-const char * vendor_fetch_single(const char* lib, const char* path, bool progress) 
+const char *vendor_fetch_single(const char* lib, const char* path, bool progress)
 {
 	const char *resource = str_printf("/c3lang/vendor/releases/download/latest/%s.c3l", lib);
 	const char *destination = file_append_path(path, str_printf("%s.c3l", lib));
@@ -1056,15 +1074,85 @@ const char * vendor_fetch_single(const char* lib, const char* path, bool progres
 }
 
 
-void vendor_fetch(BuildOptions *options)
+INLINE bool json_get_string_from_key(JSONObject *obj, const char *key, const char **result)
+{
+	JSONObject *val = json_map_get(obj, key);
+	if (!val || val->type != J_STRING) return false;
+	*result = val->str;
+	return true;
+}
+
+static const char *load_fetch_info(BuildOptions *options, const char *name, LibraryInfo *info)
+{
+	const char *base = options->fetch_url;
+	const char *tmp_dir = dir_make_temp_dir();
+	const char *tmp_file = file_append_path(tmp_dir, "info.json");
+	scratch_buffer_clear();
+	scratch_buffer_printf("/info/%s", name);
+	const char *error = download_file(base, scratch_buffer_to_string(), tmp_file, false);
+	JSONObject *json = NULL;
+	if (error)
+	{
+		file_delete_file(tmp_file);
+		file_delete_dir(tmp_dir);
+		return error;
+	}
+
+	size_t size;
+	char *json_str = file_read_all(tmp_file, &size);
+
+	// Cleanup
+	file_delete_file(tmp_file);
+	file_delete_dir(tmp_dir);
+
+	JsonParser parser;
+	json_init_string(&parser, json_str);
+	json = json_parse(&parser);
+	if (!json || json->type != J_OBJECT) return "corrupt library info";
+	JSONObject *versions = json_map_get(json, "versions");
+	if (!versions || versions->type != J_OBJECT) return "corrupt library info (no 'versions')";
+	*info = (LibraryInfo) { .versions = versions };
+	if (!json_get_string_from_key(json, "latest", &info->latest)) return "corrupt library info (no 'latest')";
+	if (!json_get_string_from_key(json, "library", &info->library)) return "corrupt library info (no 'library')";
+	if (!json_get_string_from_key(json, "description", &info->description)) return "corrupt library info (no 'description')";
+	if (!json_get_string_from_key(json, "updated", &info->updated)) return "corrupt library info (no 'updated')";
+
+	JSONObject *tags = json_map_get(json, "tags");
+	if (tags)
+	{
+		if (tags->type != J_ARRAY) return "corrupt library info (invalid 'tags')";
+		info->tags = tags->elements;
+	}
+
+	return NULL;
+}
+
+static const char *registry_fetch_single(BuildOptions *options, const char *lib_id,
+										 const char *requested_version, const char *provides, const char *path)
+{
+	LibraryInfo info;
+	const char *error = load_fetch_info(options, lib_id, &info);
+	if (error) return error;
+
+	// 2. Resolve the version: the requested one, or "latest" from the record.
+	const char *version = requested_version ? requested_version : info.latest;
+	JSONObject *entry = json_map_get(info.versions, version);
+	if (!entry || entry->type != J_OBJECT) return str_printf("no such version '%s'", version ? version : "latest");
+
+	// 3. Download exactly that version.
+	const char *destination = file_append_path(path, str_printf("%s.c3l", provides));
+	const char *base = options->fetch_url;
+	return download_file(base, str_printf("/download/%s@%s", lib_id, version), destination, false);
+}
+
+INLINE void fetch_lib(BuildOptions *options, bool is_vendor, const char **libraries_to_fetch)
 {
 	if (!download_available())
 	{
-		error_exit("The 'vendor-fetch' command requires libcurl to download libraries.\n"
-				   "Please ensure libcurl is installed on your system.");
+		error_exit("The '%s' command requires libcurl to download libraries.\n"
+				   "Please ensure libcurl is installed on your system.", is_vendor ? "vendor-fetch" : "fetch");
 	}
 	bool ansi = use_ansi();
-
 	if (str_eq(options->path, DEFAULT_PATH))
 	{
 		// check if there is a project JSON file
@@ -1075,12 +1163,78 @@ void vendor_fetch(BuildOptions *options)
 			if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
 		}
 	}
-
 	int count = 0;
 	const char** fetched_libraries = NULL;
-	int total_libraries = (int)vec_size(options->libraries_to_fetch);
-	
-	if (total_libraries == 0)
+	int total_libraries = (int)vec_size(libraries_to_fetch);
+
+	for (int i = 0; i < total_libraries; i++)
+	{
+		const char *lib = libraries_to_fetch[i];
+		const char *installed_name = lib; // name recorded in the project dependency list
+		const char *error;
+		if (is_vendor)
+		{
+			printf("Fetching library '%s'...\n", lib);
+			(void)fflush(stdout);
+			error = vendor_fetch_single(lib, options->vendor_download_path, ansi);
+		}
+		else
+		{
+			// Split "<ns>/<name>[@<ver>]" into the library id and optional version.
+			const char *at = strchr(lib, '@');
+			const char *requested_version = at ? at + 1 : NULL;
+			scratch_buffer_clear();
+			scratch_buffer_append(lib);
+			if (at) scratch_buffer.len = (size_t)(at - lib);
+			const char *lib_id = scratch_buffer_copy(); // durable "<ns>/<name>"
+			const char *slash = strrchr(lib_id, '/');
+			if (!slash || !slash[1])
+			{
+				printf("Skipping invalid library name '%s' (expected <namespace>/<name>).\n", lib);
+				continue;
+			}
+			// The installed name (and dependency entry) is the bare provides name,
+			// i.e. the last path component; it points into the durable `lib_id`.
+			installed_name = slash + 1;
+			printf("Fetching library '%s'...\n", lib);
+			(void)fflush(stdout);
+			error = registry_fetch_single(options, lib_id, requested_version, installed_name,
+										  options->vendor_download_path);
+		}
+		if (!error)
+		{
+			vec_add(fetched_libraries, installed_name);
+			count++;
+		}
+		else
+		{
+			if (ansi)
+			{
+				printf("\033[2K\033[31mFailed to fetch library '%s': %s\033[0m\n", lib, error);
+			}
+			else
+			{
+				printf("Failed: '%s'\n", error);
+			}
+			(void)fflush(stdout);
+		}
+	}
+
+	if (ansi && total_libraries > 1) printf("\033[2K");
+
+	// add fetched library to the dependency list
+	add_libraries_to_project_file(fetched_libraries, options->project_options.target_name);
+
+	if (!count)	error_exit("Error: Failed to download any libraries.");
+	if (count < vec_size(libraries_to_fetch)) error_exit("Error: Only some libraries were downloaded.");
+
+	if (ansi) printf("\033[32mFetching complete.\033[0m\t\t\n");
+
+}
+
+void vendor_fetch(BuildOptions *options)
+{
+	if (!vec_size(options->vendor_libraries_to_fetch))
 	{
 		const char *tmp_dir = dir_make_temp_dir();
 		const char *tmp_file = file_append_path(tmp_dir, "vendor_list.json");
@@ -1124,43 +1278,183 @@ void vendor_fetch(BuildOptions *options)
 		return;
 	}
 
-	for (int i = 0; i < total_libraries; i++)
-	{
-		const char *lib = options->libraries_to_fetch[i];
-		printf("Fetching library '%s'...\n", lib);
-		(void)fflush(stdout);
-		const char *error = vendor_fetch_single(lib, options->vendor_download_path, ansi);
+	fetch_lib(options, true, options->vendor_libraries_to_fetch);
+}
 
-		if (!error)
+
+
+static void scratch_buffer_append_json_array(JSONObject **elements)
+{
+	FOREACH(JSONObject *, e, elements)
+	{
+		if (e->type != J_STRING) continue;
+		if (scratch_buffer.len) scratch_buffer_append(", ");
+		scratch_buffer_append(e->str);
+	}
+}
+
+static const char *json_array_as_temp_string(JSONObject **elements)
+{
+	scratch_buffer_clear();
+	scratch_buffer_append_json_array(elements);
+	return scratch_buffer_to_string();
+}
+
+// Parse a summary entry from /index.json.
+static bool parse_library(JSONObject *obj, LibraryOverview *info)
+{
+	if (!obj || obj->type != J_OBJECT) return false;
+	if (!json_get_string_from_key(obj, "library", &info->name)) return false;
+	if (!json_get_string_from_key(obj, "description", &info->description)) return false;
+	if (!json_get_string_from_key(obj, "latest", &info->latest)) return false;
+	if (!json_get_string_from_key(obj, "updated", &info->updated)) return false;
+	JSONObject *tags = json_map_get(obj, "tags");
+	if (tags && tags->type != J_ARRAY) return false;
+	info->tags = tags ? tags->elements : NULL;
+	JSONObject *versions = json_map_get(obj, "versions");
+	if (versions && versions->type != J_ARRAY) return false;
+	info->versions = versions ? versions->elements : NULL;
+	return true;
+}
+
+static bool library_has_tag(LibraryOverview *info, const char *tag)
+{
+	if (!info->tags) return false;
+	FOREACH(JSONObject *, t, info->tags)
+	{
+		if (t->type == J_STRING && str_eq(t->str, tag)) return true;
+	}
+	return false;
+}
+
+
+void fetch(BuildOptions *options)
+{
+	fetch_lib(options, false, options->libraries_to_fetch);
+}
+
+void fetch_info(BuildOptions *options)
+{
+	if (!download_available())
+	{
+		error_exit("The 'fetch-info' command requires libcurl to download libraries.\n"
+				   "Please ensure libcurl is installed on your system.");
+	}
+
+	const char *name = options->search_name;
+	LibraryInfo info;
+	const char *error = load_fetch_info(options, name, &info);
+	if (error) error_exit("Error loading info for '%s' (%s).", name, error);
+
+	printf("Library:     %s\n", info.library);
+	printf("Description: %s\n", info.description);
+	if (vec_size(info.tags))
+	{
+		printf("Tags:        %s\n", json_array_as_temp_string(info.tags));
+	}
+	printf("Latest:      %s\n", info.latest);
+	printf("Updated:     %s\n", info.updated);
+
+	if (vec_size(info.versions->members))
+	{
+		puts("\nVersions:");
+		FOREACH_IDX(vi, JSONObject *, v, info.versions->members)
 		{
-			vec_add(fetched_libraries, lib);
-			count++;
+			if (!v || v->type != J_OBJECT) continue;
+			printf("  %s\n", info.versions->keys[vi]);
+			const char *s;
+			if (json_get_string_from_key(v, "description", &s)) printf("    Description: %s\n", s);
+			if (json_get_string_from_key(v, "maintainer", &s)) printf("    Maintainer:  %s\n", s);
+			if (json_get_string_from_key(v, "repository", &s)) printf("    Repository:  %s\n", s);
+			if (json_get_string_from_key(v, "license", &s)) printf("    License:     %s\n", s);
+			JSONObject *os_targets = json_map_get(v, "targets");
+			if (os_targets && os_targets->type == J_ARRAY && vec_size(os_targets->elements))
+			{
+				printf("    Targets:     %s\n", json_array_as_temp_string(os_targets->elements));
+			}
+			JSONObject *sz = json_map_get(v, "size");
+			if (sz && sz->type == J_NUMBER) printf("    Size:        %lld bytes\n", (long long)sz->f);
+			if (json_get_string_from_key(v, "checksum", &s)) printf("    Checksum:    %s\n", s);
+			if (json_get_string_from_key(v, "published", &s)) printf("    Published:   %s\n", s);
+		}
+	}
+}
+
+void fetch_list(BuildOptions *options)
+{
+	if (!download_available())
+	{
+		error_exit("The 'fetch-list' command requires libcurl to download libraries.\n"
+				   "Please ensure libcurl is installed on your system.");
+	}
+	const char *base = options->fetch_url;
+	const char *name_filter = options->search_name;
+	const char *tag_filter = options->search_tag;
+	const char *tmp_dir = dir_make_temp_dir();
+	const char *tmp_file = file_append_path(tmp_dir, "index.json");
+	const char *error = download_file(base, "/index.json", tmp_file, false);
+	if (error) error_exit("Failed to fetch the library list from '%s': %s", base, error);
+
+	size_t size;
+	char *json_str = file_read_all(tmp_file, &size);
+	JsonParser parser;
+	json_init_string(&parser, json_str);
+	JSONObject *obj = json_parse(&parser);
+	if (!obj || obj->type != J_OBJECT) error_exit("Failed to parse the library index.");
+	JSONObject *libs = json_map_get(obj, "libraries");
+	if (!libs || libs->type != J_ARRAY) error_exit("Invalid library index (missing 'libraries').");
+
+	// Unfiltered: just the ns/name of every library.
+	if (!name_filter && !tag_filter)
+	{
+		if (!vec_size(libs->elements))
+		{
+			puts("No libraries available.");
 		}
 		else
 		{
-			if (ansi)
+			puts("Available libraries:");
+			FOREACH(JSONObject *, entry, libs->elements)
 			{
-				printf("\033[2K\033[31mFailed to fetch library '%s': %s\033[0m\n", lib, error);
+				LibraryOverview info;
+				if (!parse_library(entry, &info)) error_exit("Corrupt library index - unreadable entry.");
+				printf("  %s\n", info.name);
 			}
-			else
-			{
-				printf("Failed: '%s'\n", error);
-			}
-			(void)fflush(stdout);
 		}
+		file_delete_file(tmp_file);
+		file_delete_dir(tmp_dir);
+		return;
 	}
 
-	if (ansi && total_libraries > 1) printf("\033[2K");
-
-	// add fetched library to the dependency list
-	add_libraries_to_project_file(fetched_libraries, options->project_options.target_name);
-
-	if (count == 0)	error_exit("Error: Failed to download any libraries.");
-	if (count < vec_size(options->libraries_to_fetch)) error_exit("Error: Only some libraries were downloaded.");
-
-	if (ansi) printf("\033[32mFetching complete.\033[0m\t\t\n");
+	// Filtered: name search shows versions too; tag search is name + description.
+	const char *heading = tag_filter
+		? str_printf("Libraries tagged '%s':", tag_filter)
+		: str_printf("Libraries matching '%s':", name_filter);
+	const char *empty = tag_filter
+		? str_printf("No libraries tagged '%s'.", tag_filter)
+		: str_printf("No libraries matching '%s'.", name_filter);
+	int found = 0;
+	FOREACH(JSONObject *, entry, libs->elements)
+	{
+		LibraryOverview info;
+		if (!parse_library(entry, &info)) error_exit("Malformed library index entry.");
+		if (tag_filter && !library_has_tag(&info, tag_filter)) continue;
+		if (name_filter && !str_contains(info.name, name_filter)) continue;
+		if (found++ == 0) printf("%s\n\n", heading);
+		printf("%s\n", info.name);
+		printf("  Description: %s\n", info.description);
+		if (name_filter)
+		{
+			printf("  Latest:      %s\n", info.latest);
+			if (info.versions) printf("  Versions:    %s\n", json_array_as_temp_string(info.versions));
+			printf("  Updated:     %s\n", info.updated);
+		}
+		puts("");
+	}
+	if (!found) puts(empty);
+	file_delete_file(tmp_file);
+	file_delete_dir(tmp_dir);
 }
-
 
 void print_syntax(BuildOptions *options)
 {

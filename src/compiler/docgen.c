@@ -1251,8 +1251,8 @@ static bool emit_category_decls(JsonEmitter *e, Module *module, DocCategory cat)
 				if (decl->is_templated || decl->decl_kind == DECL_GENERIC_INSTANCE) continue;
 				if (get_category_for_decl(decl) != cat) continue;
 				found = true;
-				if (e) emit_decl_json(e, module, decl, NULL);
-				else return true;
+				if (!e) return true;
+				emit_decl_json(e, module, decl, NULL);
 			}
 		}
 
@@ -1269,8 +1269,8 @@ static bool emit_category_decls(JsonEmitter *e, Module *module, DocCategory cat)
 					if (decl->is_templated || decl->decl_kind == DECL_GENERIC_INSTANCE) continue;
 					if (get_category_for_decl(decl) != cat) continue;
 					found = true;
-					if (e) emit_decl_json(e, module, decl, (const char **)gdecl->generic_decl.parameters);
-					else return true;
+					if (!e) return true;
+					emit_decl_json(e, module, decl, (const char **)gdecl->generic_decl.parameters);
 				}
 			}
 		}

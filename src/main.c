@@ -123,6 +123,15 @@ int main_real(int argc, const char *argv[])
 		case COMMAND_VENDOR_FETCH:
 			vendor_fetch(&build_options);
 			break;
+		case COMMAND_FETCH:
+			fetch(&build_options);
+			break;
+		case COMMAND_FETCH_INFO:
+			fetch_info(&build_options);
+			break;
+		case COMMAND_FETCH_LIST:
+			fetch_list(&build_options);
+			break;
 		case COMMAND_CLEAN_RUN:
 		case COMMAND_BUILD:
 		case COMMAND_RUN:
