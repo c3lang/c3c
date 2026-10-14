@@ -152,6 +152,9 @@ bool c_can_emit_static_initializer(Expr *expr)
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_FLOAT_TO_INT:
 		case EXPR_EXT_TRUNC:
+		case EXPR_SCALAR_TO_VECTOR:
+		case EXPR_VECTOR_FROM_ARRAY:
+		case EXPR_VECTOR_TO_ARRAY:
 			return c_can_emit_static_initializer(expr->inner_expr);
 		case EXPR_TWO:
 			return c_can_emit_static_initializer(expr->two_expr.last);
@@ -698,6 +701,25 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 	if (expr->expr_kind == EXPR_TWO)
 	{
 		c_emit_const_init_expr(c, expr->two_expr.last, type);
+		return;
+	}
+	if (expr->expr_kind == EXPR_VECTOR_FROM_ARRAY || expr->expr_kind == EXPR_VECTOR_TO_ARRAY)
+	{
+		c_emit_const_init_expr(c, expr->inner_expr, type);
+		return;
+	}
+	if (expr->expr_kind == EXPR_SCALAR_TO_VECTOR)
+	{
+		Type *target_type = (type && type->type_kind != TYPE_VOID) ? type : expr->type;
+		ArrayIndex len = target_type->array.len;
+		Type *elem_t = target_type->array.base;
+		PRINT("{ { ");
+		for (int i = 0; i < len; i++)
+		{
+			if (i > 0) PRINT(", ");
+			c_emit_const_init_expr(c, expr->inner_expr, elem_t);
+		}
+		PRINT(" } }");
 		return;
 	}
 	if (expr->expr_kind == EXPR_INITIALIZER_LIST)
