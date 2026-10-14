@@ -173,6 +173,8 @@ jobs:
           key: ${{ runner.os }}-aarch64-llvm-${{ env.LLVM_RELEASE_VERSION }}-Release-Debug-${{ steps.date.outputs.date }}-${{ hashFiles('meson.build', '.github/workflows/main.yml') }}
 
       - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: false
 
       - name: Install Meson and Ninja
         run: uv tool install meson && uv tool install ninja
@@ -336,7 +338,7 @@ jobs:
       - run: |
           mkdir -p apt-cache/partial
           for i in 1 2 3; do sudo apt-get update && break || sleep 2; done
-          for i in 1 2 3; do sudo apt-get install -y -o dir::cache::archives="$(pwd)/apt-cache" --fix-missing meson ninja-build zlib1g zlib1g-dev python3 curl libcurl4-openssl-dev opensbi qemu-system-misc u-boot-qemu gcc-riscv64-unknown-elf libx11-dev libxrandr-dev libxinerama-dev libxi-dev libxxf86vm-dev libxcursor-dev && break || sleep 2; done
+          for i in 1 2 3; do sudo apt-get install -y -o dir::cache::archives="$(pwd)/apt-cache" --fix-missing meson ninja-build zlib1g zlib1g-dev python3 curl libcurl4-openssl-dev libx11-dev libxrandr-dev libxinerama-dev libxi-dev libxxf86vm-dev libxcursor-dev && break || sleep 2; done
           sudo chown -R $USER:$USER apt-cache
 
       - name: Meson Build (Release)
@@ -344,40 +346,10 @@ jobs:
           meson setup build-release --buildtype=release -Dfetch_llvm=true
           meson compile -C build-release
 
-      - name: Bundle (Linux Release)
-        run: python3 ./scripts/meson/package.py --bin ./build-release/c3c --out c3-linux-Release --format tar
-
-      - uses: actions/upload-artifact@v7
-        with:
-          name: c3-linux-Release
-          path: c3-linux-Release.tar.gz
-
       - name: Meson Build (Debug)
         run: |
           meson setup build-debug --buildtype=debug -Dfetch_llvm=true
           meson compile -C build-debug
-
-      - name: Cache FreeBSD Sysroot
-        uses: actions/cache@v6
-        with:
-          path: .cache
-          key: ${{ runner.os }}-freebsd-sysroot-15.0
-
-      - name: Run Unified Tests
-        run: ./scripts/tools/ci_tests.sh "./build-debug/c3c"
-
-      - name: Embedded/QEMU Tests
-        run: |
-          cd resources/examples/embedded/riscv-qemu
-          make C3C_PATH=../../../../build-debug/ run
-
-      - name: Bundle (Linux Debug)
-        run: python3 ./scripts/meson/package.py --bin ./build-debug/c3c --out c3-linux-Debug --format tar
-
-      - uses: actions/upload-artifact@v7
-        with:
-          name: c3-linux-Debug
-          path: c3-linux-Debug.tar.gz
 
   test-emscripten-32bit:
     name: Emscripten & QEMU
@@ -397,7 +369,7 @@ jobs:
 
       - name: Extract C3
         run: |
-          tar -xzf bin/c3-linux-${{matrix.build_type}}.tar.gz -C bin
+          tar -xzf bin/c3-linux-static-${{matrix.build_type}}.tar.gz -C bin
           # The package.py creates a 'c3' directory inside the tar
           chmod +x bin/c3/c3c
 
@@ -549,14 +521,6 @@ jobs:
             -Dlink_dynamic=true
           meson compile -C build-release
 
-      - name: Bundle (Alpine Release)
-        run: python3 ./scripts/meson/package.py --bin ./build-release/c3c --out c3-linux-musl-Release --format tar
-
-      - uses: actions/upload-artifact@v7
-        with:
-          name: c3-linux-musl-Release
-          path: c3-linux-musl-Release.tar.gz
-
       - name: Meson Build (Debug)
         run: |
           meson setup build-debug \
@@ -564,17 +528,6 @@ jobs:
             -Dfetch_llvm=false \
             -Dlink_dynamic=true
           meson compile -C build-debug
-
-      - name: Run Unified Tests
-        run: ./scripts/tools/ci_tests.sh "./build-debug/c3c"
-
-      - name: Bundle (Alpine Debug)
-        run: python3 ./scripts/meson/package.py --bin ./build-debug/c3c --out c3-linux-musl-Debug --format tar
-
-      - uses: actions/upload-artifact@v7
-        with:
-          name: c3-linux-musl-Debug
-          path: c3-linux-musl-Debug.tar.gz
 
   build-mac:
     name: macOS (aarch64)
