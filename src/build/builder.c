@@ -888,6 +888,17 @@ BUILD:
 	{
 		target->emit_object_files = false;
 	}
+	if (target->backend == BACKEND_C)
+	{
+		if (target->emit_llvm)
+		{
+			error_exit("'--emit-llvm' is not supported with the C backend.");
+		}
+		if (target->emit_asm)
+		{
+			error_exit("'--emit-asm' is not supported with the C backend.");
+		}
+	}
 	if (options->output_name && target->emit_object_files
 		&& target->single_module != SINGLE_MODULE_ON && target->type == TARGET_TYPE_OBJECT_FILES)
 	{
