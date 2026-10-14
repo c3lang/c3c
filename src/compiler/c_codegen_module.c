@@ -1367,6 +1367,7 @@ static const char c_runtime_header_boilerplate[] =
     "#define __c3_fmod     fmod\n"
     "#define __attribute__(x)\n"
     "#define __asm__(x)\n"
+    "#define _setjmp(b, f) _setjmp(b)\n"
     "#else\n"
     "#define __c3_memcpy   __builtin_memcpy\n"
     "#define __c3_memset   __builtin_memset\n"
