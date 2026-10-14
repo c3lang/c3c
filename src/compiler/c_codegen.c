@@ -1214,6 +1214,43 @@ static const char *c_backend_build_cflags(const char *cc)
 		c_buf_append(buf, sizeof(buf), "\" ");
 	}
 
+	if (is_cl)
+	{
+		if (compiler.build.win.vs_dirs)
+		{
+			const char *semi = strchr(compiler.build.win.vs_dirs, ';');
+			if (semi)
+			{
+				int sdk_len = (int)(semi - compiler.build.win.vs_dirs);
+				const char *vs_dir = semi + 1;
+				c_buf_append(buf, sizeof(buf), str_printf("/I \"%.*s\\include\\ucrt\" ", sdk_len, compiler.build.win.vs_dirs));
+				c_buf_append(buf, sizeof(buf), str_printf("/I \"%.*s\\include\\um\" ", sdk_len, compiler.build.win.vs_dirs));
+				c_buf_append(buf, sizeof(buf), str_printf("/I \"%.*s\\include\\shared\" ", sdk_len, compiler.build.win.vs_dirs));
+				c_buf_append(buf, sizeof(buf), str_printf("/I \"%s\\include\" ", vs_dir));
+			}
+		}
+		else
+		{
+			WindowsSDK *sdk = windows_get_sdk();
+			if (sdk && sdk->cl_include_env && !getenv("INCLUDE"))
+			{
+				char *env_copy = strdup(sdk->cl_include_env);
+				char *token = strtok(env_copy, ";");
+				while (token)
+				{
+					if (strlen(token) > 0)
+					{
+						c_buf_append(buf, sizeof(buf), "/I \"");
+						c_buf_append(buf, sizeof(buf), token);
+						c_buf_append(buf, sizeof(buf), "\" ");
+					}
+					token = strtok(NULL, ";");
+				}
+				free(env_copy);
+			}
+		}
+	}
+
 	if (compiler.build.cflags)
 	{
 		c_buf_append(buf, sizeof(buf), compiler.build.cflags);
@@ -1235,27 +1272,12 @@ const char *c_codegen(void *context)
 	{
 		const char *cc     = c_backend_cc ? c_backend_cc : (compiler.build.cc ? compiler.build.cc : find_c_compiler());
 		const char *cflags = c_backend_cflags ? c_backend_cflags : "";
-		bool is_cl         = str_ends_with(cc, "cl.exe");
-		char cmd[4096];
-		if (is_cl)
+		const char *out    = cc_compiler(cc, c->c_filename, c->object_filename, cflags, NULL, NULL);
+		if (!out)
 		{
-			snprintf(cmd, sizeof(cmd), "\"%s\" %s/c \"%s\" /Fo:\"%s\"", cc, cflags, c->c_filename, c->object_filename);
-		}
-		else
-		{
-			snprintf(cmd, sizeof(cmd), "\"%s\" %s-c \"%s\" -o \"%s\"", cc, cflags, c->c_filename, c->object_filename);
-		}
-		if (compiler.build.print_linking)
-		{
-			puts(cmd);
-		}
-		DEBUG_LOG("Compiling c sources using '%s'", cmd);
-		if (system(cmd) != 0)
-		{
-			fprintf(stderr, "Failed to compile '%s' using command '%s'.\n", c->c_filename, cmd);
 			exit(EXIT_FAILURE);
 		}
-		return c->object_filename;
+		return out;
 	}
 	return NULL;
 }

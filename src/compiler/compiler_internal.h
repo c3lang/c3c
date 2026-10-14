@@ -4253,7 +4253,7 @@ bool static_lib_linker(const char *output_file, const char **files, int file_cou
 bool dynamic_lib_linker(const char *output_file, const char **files, int file_count);
 bool linker(const char *output_file, const char **files, int file_count);
 void platform_linker(const char *output_file, const char **files, int file_count);
-const char *cc_compiler(const char *cc, const char *file, const char *flags, const char **include_dirs, const char *output_subdir);
+const char *cc_compiler(const char *cc, const char *file, const char *out_name, const char *flags, const char **include_dirs, const char *output_subdir);
 const char *arch_to_linker_arch(ArchType arch);
 extern char swizzle[256];
 #define SWIZZLE_INDEX(c) ((swizzle[(int)(c)] - 1) & 0xF)
