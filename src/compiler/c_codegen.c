@@ -1119,6 +1119,16 @@ static inline void c_buf_append(char *buf, size_t cap, const char *str)
 	}
 }
 
+static inline void c_buf_append_slice(char *buf, size_t cap, StringSlice slice)
+{
+	size_t len = strlen(buf);
+	if (len + slice.len < cap)
+	{
+		memcpy(buf + len, slice.ptr, slice.len);
+		buf[len + slice.len] = '\0';
+	}
+}
+
 static const char *c_backend_build_cflags(const char *cc)
 {
 	bool is_cl    = str_ends_with(cc, "cl.exe");
@@ -1282,19 +1292,17 @@ static const char *c_backend_build_cflags(const char *cc)
 			WindowsSDK *sdk = windows_get_sdk();
 			if (sdk && sdk->cl_include_env && !getenv("INCLUDE"))
 			{
-				char *env_copy = strdup(sdk->cl_include_env);
-				char *token = strtok(env_copy, ";");
-				while (token)
+				StringSlice env = slice_from_string(sdk->cl_include_env);
+				while (env.len)
 				{
-					if (strlen(token) > 0)
+					StringSlice slice = slice_next_token(&env, ';');
+					if (slice.len > 0)
 					{
 						c_buf_append(buf, sizeof(buf), "/I \"");
-						c_buf_append(buf, sizeof(buf), token);
+						c_buf_append_slice(buf, sizeof(buf), slice);
 						c_buf_append(buf, sizeof(buf), "\" ");
 					}
-					token = strtok(NULL, ";");
 				}
-				free(env_copy);
 			}
 		}
 	}
