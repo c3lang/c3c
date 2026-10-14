@@ -74,12 +74,12 @@ fn int native_cpu()
 }
 
 module std::thread::cpu @feat(WIN32);
-import libc;
+import std::os::win32;
 
 fn int native_cpu()
 {
-	SystemInfo info;
-	libc::get_system_info(&info);
+	Win32_SYSTEM_INFO info;
+	win32::getSystemInfo(&info);
 	return (int)info.dwNumberOfProcessors;
 }
 
