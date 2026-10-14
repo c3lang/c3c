@@ -1087,6 +1087,10 @@ static const char *c_backend_build_cflags(const char *cc)
 	if (is_cl)
 	{
 		c_buf_append(buf, sizeof(buf), has_warn_flags ? "/nologo " : "/nologo /w ");
+		if (!compiler.build.cflags || !strstr(compiler.build.cflags, "/std:"))
+		{
+			c_buf_append(buf, sizeof(buf), "/std:c11 ");
+		}
 	}
 	else if (is_tcc)
 	{
