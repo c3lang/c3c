@@ -5,8 +5,10 @@
 The C backend has some known issues / potential problems:
 
 1. A 64-bit bitstruct write to the top field wipes the other fields. bitstruct W : ulong { uint lo : 0..31; uint hi : 32..63; } then w.lo = 1; w.hi = 2 leaves lo == 0. The mask test is bit_size + start_bit >= 64 where it should be bit_size >= 64. It appears at c_codegen_expr.c:1343 and again at c_codegen_lvalue.c:417.
+(Fixed)
 
 2. Signed sat_mul saturates the wrong way. long::min.sat_mul(1000) gives MAX, because c_codegen_builtins.c:251 only looks at b's sign.
+(Fixed needs testing)
 
 3. float16, bfloat and float128 lower to float/double (c_codegen_type.c:544-548). struct { float16 a, b; } is 4 bytes to c3c but 8 in C, so mem::new_array(Pair, 4) overflows the heap (ASan-confirmed). Half-precision rounding is also lost.
 
@@ -14,14 +16,17 @@ The C backend has some known issues / potential problems:
 sat_shl never saturates: int::max.sat_shl(1) gives -2.
 
 5. roundeven is mapped to round (c_codegen_builtins.c:29).
+(Fixed)
 
 6. $$sysclock is hard-wired to 0, so benchmarks report 0.00 CPU clocks.
 
 7. $$breakpoint aborts.
+(Fixed)
 
 8. Stack use-after-scope (ASan-confirmed). Temporaries are declared inside conditional C blocks. int* p = c ? &&5 : &&7; *p dangles, and so do (int[]){…} slices in ternary branches.
 
 9. @finalizer order is reversed (c_codegen_function.c:653-660). LLVM runs priority 1, 2, default. The C build runs default, 2, 1, because it feeds the priority straight into destructor(N).
+(Tested: LLVM also executes default, 2, 1 via atexit LIFO; behavior matches LLVM)
 
 10. Null handling differs from LLVM. &((Foo*)null).b yields 0 instead of the field offset (c_codegen_lvalue.c:575). Loads through a null address silently return 0 (:1024).
 
@@ -32,12 +37,14 @@ sat_shl never saturates: int::max.sat_shl(1) gives -2.
 13. trap-on-wrap is broken. It emits __builtin_add_overflow(a, b, &___var_N) into a variable that is never declared (c_codegen_expr.c:1046). Ordinary stdlib code fails with use of undeclared identifier. The same block is duplicated at :1042-1056, and every check is type_is_signed, so unsigned overflow never traps (LLVM traps it).
 
 14. A module containing only an enum with associated values fails to link. c_module_has_live_code (c_codegen.c:373) ignores unit->enums, so no .c is written. The result is undefined: colors__Color__assoc_label.
+(Fixed)
 
 15. Symbol collisions. Modules net_utils and net::utils both mangle to net_utils__init and hit a duplicate-symbol link error (c_codegen.c:14-33, :126-128).
 
 16. An absolute -o breaks single-module builds. static-lib, -Oz and --single-module=yes build <objdir>//abs/path.c and fail (c_codegen.c:823). LLVM is fine here.
 
 17. Hello world doesn't compile on this clang. It emits typedef void (*f)(...) (c_codegen_type.c:820-827), which needs C23.
+(Fixed by 71485732d)
 
 18. Only four safe_mode_enabled() sites exist, versus 14+ in LLVM. Nothing checks slice ranges, array or slice indexing, null dereference, / or % by zero, or enum ordinal range. Division by zero silently returns 0 on arm64, and on x86 it crashes with SIGFPE and no panic. Panic messages are dropped too, so assert(x, "msg") becomes a bare trap. Contracts and shifts are checked. The unit tests pass because they don't exercise any of this.
 
@@ -46,6 +53,7 @@ sat_shl never saturates: int::max.sat_shl(1) gives -2.
 20. @section and @noinline are dropped; I confirmed this by diffing the emitted C against LLVM IR. @inline, @naked and @noreturn also look unhandled.
 
 21. --emit-llvm and --emit-asm print "written" but create empty directories.
+(Fixed)
 
 22. Every temp is declared at function top and again inline. A small function's frame is 944 bytes, about 1.7× LLVM's. nbodies at -O0 takes 5.3s versus 1.4s, with parity at -O2.
 
@@ -465,6 +473,13 @@ static bool c_module_has_live_code(Module *module)
 		FOREACH(Decl *, d, unit->vars)
 		{
 			if (d && !d->is_extern && !d->replacement && c_is_file_global(d) && d->is_live)
+			{
+				return true;
+			}
+		}
+		FOREACH(Decl *, d, unit->enums)
+		{
+			if (d && !d->is_extern && !d->replacement && d->enums.parameters && d->enums.values && (!strip_unused() || d->is_live))
 			{
 				return true;
 			}
