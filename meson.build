@@ -278,6 +278,13 @@ docs_template_h = custom_target(
   command: [python, files('scripts/meson/embed.py'), '@INPUT@', '@OUTPUT@', 'docs_html'],
 )
 
+c_runtime_header_h = custom_target(
+  'c_runtime_header.h',
+  input: 'src/compiler/c_runtime.h',
+  output: 'c_runtime_header.h',
+  command: [python, files('scripts/meson/embed.py'), '@INPUT@', '@OUTPUT@', 'c_runtime_header_boilerplate'],
+)
+
 meson.add_postconf_script(
   python, files('scripts/meson/copy_stdlib.py'),
   meson.project_source_root() / 'lib',
@@ -407,6 +414,13 @@ c3c_sources = files(
   'src/utils/unzipper.c',
   'src/utils/msi.c',
   'src/compiler/c_codegen.c',
+  'src/compiler/c_codegen_builtins.c',
+  'src/compiler/c_codegen_expr.c',
+  'src/compiler/c_codegen_function.c',
+  'src/compiler/c_codegen_lvalue.c',
+  'src/compiler/c_codegen_module.c',
+  'src/compiler/c_codegen_stmt.c',
+  'src/compiler/c_codegen_type.c',
   'src/compiler/decltable.c',
   'src/compiler/methodtable.c',
   'src/utils/fetch_sdk/fetch_sdk.c',
@@ -457,6 +471,7 @@ c3c_exe = executable(
   c3c_sources,
   git_hash_h,
   docs_template_h,
+  c_runtime_header_h,
   include_directories: include_directories('src', '.'),
   dependencies: [
     threads_dep,
