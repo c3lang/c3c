@@ -110,6 +110,8 @@ set(C3_PROFILING            OFF                         CACHE BOOL   "Build for 
 set(C3_LLVM_VERSION         "auto"                      CACHE STRING "Use LLVM version [default: auto]")
 set(C3_USE_MIMALLOC         OFF                         CACHE BOOL   "Use built-in mimalloc")
 set(C3_MIMALLOC_TAG         "v2.5.2"                    CACHE STRING "Used version of mimalloc")
+set(C3_USE_RPMALLOC         OFF                         CACHE BOOL   "Use built-in rpmalloc")
+set(C3_RPMALLOC_TAG         "main"                      CACHE STRING "Used branch/tag of rpmalloc")
 set(C3_USE_TB               OFF                         CACHE BOOL   "Use TB")
 set(C3_LLD_DIR              ""                          CACHE STRING "Use custom LLD directory")
 set(C3_LLD_INCLUDE_DIR      ""                          CACHE STRING "Use custom LLD include directory")
@@ -133,6 +135,8 @@ set(C3_OPTIONS
         C3_LLVM_VERSION
         C3_USE_MIMALLOC
         C3_MIMALLOC_TAG
+        C3_USE_RPMALLOC
+        C3_RPMALLOC_TAG
         C3_USE_TB
         C3_LLD_DIR
         C3_ENABLE_CLANGD_LSP
@@ -152,6 +156,19 @@ if(C3_USE_MIMALLOC)
             GIT_TAG ${C3_MIMALLOC_TAG}
     )
     FetchContent_MakeAvailable(mimalloc)
+endif()
+
+if(C3_USE_RPMALLOC)
+    if(C3_USE_MIMALLOC)
+        message(FATAL_ERROR "Cannot enable both C3_USE_MIMALLOC and C3_USE_RPMALLOC")
+    endif()
+
+    FetchContent_Declare(
+            rpmalloc_repo
+            GIT_REPOSITORY https://github.com/mjansson/rpmalloc.git
+            GIT_TAG ${C3_RPMALLOC_TAG}
+    )
+    FetchContent_MakeAvailable(rpmalloc_repo)
 endif()
 
 find_package(Git QUIET)
@@ -594,6 +611,7 @@ add_executable(c3c
         src/compiler/sema_const.c
         ${CMAKE_BINARY_DIR}/git_hash.h
         ${CMAKE_BINARY_DIR}/docs_template.h
+        ${CMAKE_BINARY_DIR}/c_runtime_header.h
         src/utils/xar.c
         src/utils/pbzx.c
         src/utils/xz_stream.c
@@ -637,6 +655,18 @@ add_custom_command(
         DEPENDS ${CMAKE_SOURCE_DIR}/resources/docs.html
                 ${CMAKE_SOURCE_DIR}/scripts/embed.cmake
         COMMENT "Embedding resources/docs.html into docs_template.h")
+
+# Embed src/compiler/c_runtime.h into a C header
+add_custom_command(
+        OUTPUT ${CMAKE_BINARY_DIR}/c_runtime_header.h
+        COMMAND ${CMAKE_COMMAND}
+            -DINPUT=${CMAKE_SOURCE_DIR}/src/compiler/c_runtime.h
+            -DOUTPUT=${CMAKE_BINARY_DIR}/c_runtime_header.h
+            -DVAR_NAME=c_runtime_header_boilerplate
+            -P ${CMAKE_SOURCE_DIR}/scripts/embed.cmake
+        DEPENDS ${CMAKE_SOURCE_DIR}/src/compiler/c_runtime.h
+                ${CMAKE_SOURCE_DIR}/scripts/embed.cmake
+        COMMENT "Embedding src/compiler/c_runtime.h into c_runtime_header.h")
 
 if(C3_WITH_LLVM)
     target_sources(c3c PRIVATE
@@ -775,6 +805,12 @@ endif()
 
 if(C3_USE_MIMALLOC)
     target_link_libraries(c3c PRIVATE mimalloc-static)
+endif()
+
+if(C3_USE_RPMALLOC)
+    target_sources(c3c PRIVATE "${rpmalloc_repo_SOURCE_DIR}/rpmalloc/rpmalloc.c")
+    target_include_directories(c3c PRIVATE "${rpmalloc_repo_SOURCE_DIR}/rpmalloc")
+    target_compile_definitions(c3c PRIVATE ENABLE_OVERRIDE=1 C3_USE_RPMALLOC=1)
 endif()
 
 if (WIN32)
