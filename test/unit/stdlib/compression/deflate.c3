@@ -67,7 +67,7 @@ fn void test_deflate_large_repetitive() @feat(SLOW_TESTS)
 	defer free(decompressed.ptr);
 
 	assert(decompressed.len == len, "Length mismatch");
-	assert(decompressed[0] == 'A' && decompressed[len-1] == 'A', "Data mismatch");
+	assert(decompressed[0] == 'A' && decompressed[len - 1] == 'A', "Data mismatch");
 }
 
 fn void test_deflate_random_ish()

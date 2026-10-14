@@ -33,7 +33,7 @@ fn double __tan(double x, double y, int odd) @cname("__tan") @weak @nostrip
 	const double PIO4LO = 3.06161699786838301793e-17; /* 3C81A626, 33145C07 */
 
 	uint hx = x.high_word();
-	bool big = (hx &0x7fffffff) >= 0x3FE59428; // |x| >= 0.6744
+	bool big = (hx & 0x7fffffff) >= 0x3FE59428; // |x| >= 0.6744
 	int sign @noinit;
 	if (big)
 	{
@@ -61,7 +61,7 @@ fn double __tan(double x, double y, int odd) @cname("__tan") @weak @nostrip
 	if (big)
 	{
 		s = (double)(1 - 2 * odd);
-		v = s - 2.0 * (x + (r - w*w/(w + s)));
+		v = s - 2.0 * (x + (r - w * w / (w + s)));
 		return sign ? -v : v;
 	}
 	if (!odd) return w;

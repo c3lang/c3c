@@ -18,6 +18,7 @@ const char *concat_file_arg = "/";
 #define add_concat_arg(arg_, arg2_) do { vec_add(*args_ref, concat_arg); vec_add(*args_ref, (arg_)); vec_add(*args_ref, (arg2_)); } while(0)
 #define add_concat_quote_arg(arg_, arg2_) do { vec_add(*args_ref, concat_quote_arg); vec_add(*args_ref, (arg_)); vec_add(*args_ref, (arg2_)); } while(0)
 
+
 static char *assemble_linker_command(const char **args, bool extra_quote);
 static int assemble_link_arguments(const char **arguments, int len);
 
@@ -1254,7 +1255,7 @@ static char *assemble_linker_command(const char **args, bool extra_quote)
 	{
 		if (i != 0) scratch_buffer_append_char(' ');
 		const char *arg = args[i];
-		ASSERT(arg != scratch_buffer.str && "Incorrectly passed a scratch buffer string as an argument.");
+		ASSERT(arg != scratch_buffer_ptr() && "Incorrectly passed a scratch buffer string as an argument.");
 		if (arg == quote_arg)
 		{
 			scratch_buffer_append_cmd_argument(args[++i]);
@@ -1351,31 +1352,37 @@ void platform_linker(const char *output_file, const char **files, int file_count
 	OUTF("Program linked to executable '%s'.\n", output_file);
 }
 
-const char *cc_compiler(const char *cc, const char *file, const char *flags, const char **include_dirs, const char *output_subdir)
+const char *cc_compiler(const char *cc, const char *file, const char *out_name, const char *flags, const char **include_dirs, const char *output_subdir)
 {
-	const char *dir = compiler.build.object_file_dir;
-	if (!dir) dir = compiler.build.build_dir;
-	if (output_subdir) dir = dir ? file_append_path(dir, output_subdir) : output_subdir;
-	if (dir) dir_make(dir);
+	if (!out_name)
+	{
+		const char *dir = compiler.build.object_file_dir;
+		if (!dir) dir = compiler.build.build_dir;
+		if (output_subdir) dir = dir ? file_append_path(dir, output_subdir) : output_subdir;
+		if (dir) dir_make(dir);
+		char *filename = NULL;
+		bool split_worked = file_namesplit(file, &filename, NULL);
+		if (!split_worked) error_exit("Cannot compile '%s'", file);
+		size_t len = strlen(filename);
+		// Remove .cpp or .c
+		if (len > 5 && memcmp(filename + len - 4, ".cpp", 4) == 0)
+		{
+			len -= 4;
+			filename[len] = 0;
+		}
+		else if (len > 2 && memcmp(filename + len - 2, ".c", 2) == 0)
+		{
+			len -= 2;
+			filename[len] = 0;
+		}
+		out_name = dir
+		           ? str_printf("%s/%s%s", dir, filename, get_object_extension())
+		           : str_printf("%s%s", filename, get_object_extension());
+	}
 	bool is_cl_exe = str_ends_with(cc, "cl.exe");
-	char *filename = NULL;
-	bool split_worked = file_namesplit(file, &filename, NULL);
-	if (!split_worked) error_exit("Cannot compile '%s'", file);
-	size_t len = strlen(filename);
-	// Remove .cpp or .c
-	if (len > 5 && memcmp(filename + len - 4, ".cpp", 4) == 0)
-	{
-		len -= 4;
-		filename[len] = 0;
-	}
-	else if (len > 2 && memcmp(filename + len - 2, ".c", 2) == 0)
-	{
-		len -= 2;
-		filename[len] = 0;
-	}
-	const char *out_name = dir
-	                      ? str_printf("%s/%s%s", dir, filename, get_object_extension())
-	                      : str_printf("%s%s", filename, get_object_extension());
+
+	lock_acquire();
+
 	const char **parts = NULL;
 	const char ***args_ref = &parts;
 	add_quote_arg(cc);
@@ -1423,7 +1430,7 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 	if (is_cl_exe)
 	{
 		WindowsSDK *sdk = windows_get_sdk();
-		if (sdk && sdk->cl_include_env)
+		if (sdk && sdk->cl_include_env && !getenv("INCLUDE"))
 		{
 			_putenv_s("INCLUDE", sdk->cl_include_env);
 		}
@@ -1431,10 +1438,20 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 #endif
 
 	const char *output = assemble_linker_command(parts, PLATFORM_WINDOWS);
-	DEBUG_LOG("Compiling c sources using '%s'", output);
-	if (system(output) != 0)
+	char cmd[8192];
+	snprintf(cmd, sizeof(cmd), "%s", output);
+
+	lock_release();
+
+	if (compiler.build.print_linking)
 	{
-		error_exit("Failed to compile c sources using command '%s'.\n", output);
+		puts(cmd);
+	}
+	DEBUG_LOG("Compiling c sources using '%s'", cmd);
+	if (system(cmd) != 0)
+	{
+		fprintf(stderr, "Failed to compile c sources using command '%s'.\n", cmd);
+		return NULL;
 	}
 	return out_name;
 }

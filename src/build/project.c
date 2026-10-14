@@ -19,12 +19,14 @@ const char *project_default_keys[][2] = {
 		{"cflags", "C compiler flags."},
 		{"cpu", "CPU name, used for optimizations in the compiler backend."},
 		{"cpu-flags", "Set the cpu flags to add or remove with the format '+avx,-sse'."},
+		{"data-sections", "Place each global variable in its own section, so the linker can discard unused ones (no effect on Mach-O)."},
 		{"debug-info", "Debug level: none, line-tables, full."},
 		{"dependencies", "C3 library dependencies for all targets."},
 		{"dependency-search-paths", "The C3 library search paths."},
 		{"exec", "Scripts run for all targets."},
 		{"features", "Features enabled for all targets."},
 		{"fp-math", "Set math behaviour: `strict`, `relaxed` or `fast`."},
+		{"function-sections", "Place each function in its own section, so the linker can discard unused ones (no effect on Mach-O)."},
 		{"implicit-float", "Allow implicit use of floating point instructions. (default: true)"},
 		{"ios-min-version", "Set the minimum iOS version to compile for."},
 		{"ios-sdk", "Set the directory for the iOS SDK for cross compilation."},
@@ -109,6 +111,7 @@ const char* project_target_keys[][2] = {
 		{"cpu", "CPU name, used for optimizations in the compiler backend."},
 		{"cpu-flags", "Additional cpu flags to add or remove with the format '+avx,-sse'."},
 		{"cpu-flags-override", "Additional cpu flags to add or remove with the format '+avx,-sse', overriding global settings."},
+		{"data-sections", "Place each global variable in its own section, so the linker can discard unused ones (no effect on Mach-O)."},
 		{"debug-info", "Debug level: none, line-tables, full."},
 		{"dependencies", "Additional C3 library dependencies for the target."},
 		{"dependencies-override", "C3 library dependencies for this target, overriding global settings."},
@@ -119,6 +122,7 @@ const char* project_target_keys[][2] = {
 		{"extension", "Override the default file extension for the build output."},
 		{"features", "Features enabled for all targets."},
 		{"fp-math", "Set math behaviour: `strict`, `relaxed` or `fast`."},
+		{"function-sections", "Place each function in its own section, so the linker can discard unused ones (no effect on Mach-O)."},
 		{"implicit-float", "Allow implicit use of floating point instructions. (default: true)"},
 		{"ios-min-version", "Set the minimum iOS version to compile for."},
 		{"ios-sdk", "Set the directory for the iOS SDK for cross compilation."},
@@ -347,6 +351,8 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	target->slp_vectorization = (AutoVectorization)get_valid_bool(context, json, "slp-vectorize", target->slp_vectorization);
 	target->unroll_loops = (UnrollLoops)get_valid_bool(context, json, "unroll-loops", target->unroll_loops);
 	target->merge_functions = (MergeFunctions)get_valid_bool(context, json, "merge-functions", target->merge_functions);
+	target->data_sections = (SectionsSetting)get_valid_bool(context, json, "data-sections", target->data_sections);
+	target->function_sections = (SectionsSetting)get_valid_bool(context, json, "function-sections", target->function_sections);
 
 	static const char *opt_settings[8] = {
 			[OPT_SETTING_O0] = "O0",

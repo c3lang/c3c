@@ -86,7 +86,7 @@ fn void test_acos() @test
 	}
 	for (int i = 2; i < 5; i++)
 	{
-		int ii = i-2;
+		int ii = i - 2;
 		double x = math::acos(in[i]);
 		assert(math::is_approx_rel(x, out[ii], 1e-12), "acos(%d)=%f is not equal to %f", in[i], x, out[ii]);
 		float f = math::acos((float)in[i]);
@@ -119,7 +119,7 @@ fn void test_acosh() @test
 	}
 	for (int i = 2; i < 5; i++)
 	{
-		int ii = i-2;
+		int ii = i - 2;
 		double x = math::acosh(in[i]);
 		assert(math::is_approx_rel(x, out[ii], 1e-12), "acosh(%d)=%f is not equal to %f", in[i], x, out[ii]);
 		float f = math::acosh((float)in[i]);
@@ -146,7 +146,7 @@ fn void test_asin() @test
 	}
 	for (int i = 2; i < 5; i++)
 	{
-		int ii = i-2;
+		int ii = i - 2;
 		double x = math::asin(in[i]);
 		assert(math::is_approx_rel(x, out[ii], 1e-12), "asin(%d)=%f is not equal to %f", in[i], x, out[ii]);
 		float f = math::asin((float)in[i]);
@@ -767,7 +767,7 @@ fn void test_lcm() @test
 	assert(math::lcm(-8,20) == 40);
 	assert(math::lcm(8,-20) == 40);
 	assert(math::lcm(-8,-20) == 40);
-	assert(math::lcm(11,17) == 11*17);
-	assert(math::lcm(11,17,227,263) == 11*17*227*263);
+	assert(math::lcm(11,17) == 11 * 17);
+	assert(math::lcm(11,17,227,263) == 11 * 17 * 227 * 263);
 }
 

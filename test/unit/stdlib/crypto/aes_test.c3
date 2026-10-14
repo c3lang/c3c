@@ -58,7 +58,7 @@ fn void test_ecb_encrypt() @test
 		ctx.init(t.aes, t.key, {}, ECB);
 		ctx.encrypt_buffer(t.plaintext, &out);
 		assert(out[:16] == t.cipher[:16],
-			"Test %d failed; invalid cipher; got: %s, want: %s", i+1, out, t.cipher);
+			"Test %d failed; invalid cipher; got: %s, want: %s", i + 1, out, t.cipher);
 
 	}
 
@@ -69,7 +69,7 @@ fn void test_ecb_encrypt() @test
 			ctx.init(t.aes, t.key, {}, ECB);
 			char[] tmp_out = ctx.tencrypt(t.plaintext);
 			assert(tmp_out[:16] == t.cipher[:16],
-				"Test %d failed; invalid cipher; got: %s, want: %s", i+1, tmp_out, t.cipher);
+				"Test %d failed; invalid cipher; got: %s, want: %s", i + 1, tmp_out, t.cipher);
 		};
 	}
 }
@@ -104,7 +104,7 @@ fn void test_ecb_decrypt() @test
 		ctx.init(t.aes, t.key, {}, ECB);
 		ctx.decrypt_buffer(t.cipher, &out);
 		assert(out[:16] == t.plaintext[:16],
-			"Test %d failed; invalid plaintext; got: %s, want: %s", i+1, out, t.plaintext);
+			"Test %d failed; invalid plaintext; got: %s, want: %s", i + 1, out, t.plaintext);
 	}
 
 	foreach (i, t : tests)
@@ -114,7 +114,7 @@ fn void test_ecb_decrypt() @test
 			ctx.init(t.aes, t.key, {}, ECB);
 			char[] tmp_out = ctx.tdecrypt(t.cipher);
 			assert(tmp_out[:16] == t.plaintext[:16],
-				"Test %d failed; invalid plaintext; got: %s, want: %s", i+1, tmp_out, t.plaintext);
+				"Test %d failed; invalid plaintext; got: %s, want: %s", i + 1, tmp_out, t.plaintext);
 		};
 	}
 }
@@ -150,7 +150,7 @@ fn void test_cbc_encrypt() @test
 		ctx.init(t.aes, t.key, iv, CBC);
 		ctx.encrypt_buffer(t.plaintext, &out);
 		assert(out[:64] == t.cipher[:64],
-			"Test %d failed; invalid cipher; got: %s, want: %s", i+1, out, t.cipher);
+			"Test %d failed; invalid cipher; got: %s, want: %s", i + 1, out, t.cipher);
 	}
 
 	foreach (i, t : tests)
@@ -160,7 +160,7 @@ fn void test_cbc_encrypt() @test
 			ctx.init(t.aes, t.key, iv, CBC);
 			char[] tmp_out = ctx.tencrypt(t.plaintext);
 			assert(tmp_out[:64] == t.cipher[:64],
-				"Test %d failed; invalid cipher; got: %s, want: %s", i+1, tmp_out, t.cipher);
+				"Test %d failed; invalid cipher; got: %s, want: %s", i + 1, tmp_out, t.cipher);
 		};
 	}
 }
@@ -196,7 +196,7 @@ fn void test_cbc_decrypt() @test
 		ctx.init(t.aes, t.key, iv, CBC);
 		ctx.decrypt_buffer(t.cipher, &out);
 		assert(out[:64] == t.plaintext[:64],
-			"Test %d failed; invalid plaintext; got: %s, want: %s", i+1, out, t.plaintext);
+			"Test %d failed; invalid plaintext; got: %s, want: %s", i + 1, out, t.plaintext);
 	}
 
 	foreach (i, t : tests)
@@ -206,7 +206,7 @@ fn void test_cbc_decrypt() @test
 			ctx.init(t.aes, t.key, iv, CBC);
 			char[] tmp_out = ctx.tdecrypt(t.cipher);
 			assert(tmp_out[:64] == t.plaintext[:64],
-				"Test %d failed; invalid plaintext; got: %s, want: %s", i+1, tmp_out, t.plaintext);
+				"Test %d failed; invalid plaintext; got: %s, want: %s", i + 1, tmp_out, t.plaintext);
 		};
 	}
 }
@@ -243,13 +243,13 @@ fn void test_ctr_xcrypt() @test
 		ctx.init(t.aes, t.key, iv, CTR);
 		ctx.encrypt_buffer(t.plaintext, &out);
 		assert(out[:64] == t.cipher[:64],
-			"Test %d failed; invalid cipher; got: %s, want: %s", i+1, out, t.cipher);
+			"Test %d failed; invalid cipher; got: %s, want: %s", i + 1, out, t.cipher);
 
 		// decrypt
 		ctx.init(t.aes, t.key, iv, CTR);
 		ctx.decrypt_buffer(t.cipher, &out);
 		assert(out[:64] == t.plaintext[:64],
-			"Test %d failed; invalid plaintext; got: %s, want: %s", i+1, out, t.plaintext);
+			"Test %d failed; invalid plaintext; got: %s, want: %s", i + 1, out, t.plaintext);
 	}
 	foreach (i, t : tests)
 	{
@@ -259,13 +259,13 @@ fn void test_ctr_xcrypt() @test
 			ctx.init(t.aes, t.key, iv, CTR);
 			char[] cipher = ctx.tencrypt(t.plaintext);
 			assert(cipher[:64] == t.cipher[:64],
-				"Test %d failed; invalid cipher; got: %s, want: %s", i+1, cipher, t.cipher);
+				"Test %d failed; invalid cipher; got: %s, want: %s", i + 1, cipher, t.cipher);
 
 			// decrypt
 			ctx.init(t.aes, t.key, iv, CTR);
 			char[] text = ctx.tdecrypt(t.cipher);
 			assert(text[:64] == t.plaintext[:64],
-				"Test %d failed; invalid plaintext; got: %s, want: %s", i+1, text, t.plaintext);
+				"Test %d failed; invalid plaintext; got: %s, want: %s", i + 1, text, t.plaintext);
 		};
 	}
 }

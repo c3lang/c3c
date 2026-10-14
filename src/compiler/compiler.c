@@ -17,6 +17,25 @@
 #define MAX_OUTPUT_FILES 1000000
 #define MAX_MODULES 100000
 
+typedef struct LibraryOverview
+{
+	const char *name;
+	const char *description;
+	const char *latest;
+	const char *updated;
+	JSONObject **tags;
+	JSONObject **versions;
+} LibraryOverview;
+
+typedef struct LibraryInfo
+{
+	JSONObject *versions;
+	const char *latest;
+	const char *library;
+	const char *updated;
+	const char *description;
+	JSONObject **tags;
+} LibraryInfo;
 
 CompilerState compiler;
 
@@ -162,6 +181,12 @@ void thread_compile_task_llvm(void *compile_data)
 	error_exit("LLVM backend not available.");
 }
 #endif 
+
+void thread_compile_task_c(void *compile_data)
+{
+	CompileData *data = compile_data;
+	data->object_name = c_codegen(data->context);
+}
 
 void thread_compile_task_tb(void *compile_data)
 {
@@ -314,7 +339,9 @@ static int compile_cfiles(const char *cc, const char **files, const char *flags,
 	int total = 0;
 	FOREACH(const char *, file, files)
 	{
-		out_files[total++] = cc_compiler(cc, file, flags, include_dirs, output_subdir);
+		const char *out = cc_compiler(cc, file, NULL, flags, include_dirs, output_subdir);
+		if (!out) error_exit("Failed to compile '%s'.\n", file);
+		out_files[total++] = out;
 	}
 	return total;
 }
@@ -472,6 +499,142 @@ static void create_output_dir(const char *dir)
 	}
 }
 
+static void compiler_run_after_compile(const char *output_exe)
+{
+	DEBUG_LOG("Run %s", output_exe);
+	const char *name = output_exe;
+	while (name[0] == '.' && name[1] == '/') name += 2;
+	scratch_buffer_clear();
+#if PLATFORM_WINDOWS
+	int len = (int)strlen(name);
+	for (int i = 0; i < len; i++)
+	{
+		if (name[i] == '/')
+		{
+			if (name[i + 1] == '.' && name[i + 2] == '/')
+			{
+				i++;
+				continue;
+			}
+			scratch_buffer_append_char('\\');
+			continue;
+		}
+		scratch_buffer_append_char(name[i]);
+	}
+#else
+	if (name[0] != '/') scratch_buffer_append("./");
+	scratch_buffer_append(name);
+#endif
+	name = scratch_buffer_to_string();
+	const char *full_path = realpath(scratch_buffer_to_string(), NULL);
+	if (!full_path)
+	{
+		error_exit("The binary '%s' was unexpectedly not found.", scratch_buffer_to_string());
+	}
+	if (compiler.platform.os == OS_TYPE_EMSCRIPTEN)
+	{
+		if (str_has_suffix(name, ".js"))
+		{
+			OUTF("Emscripten target detected. To run, use 'node %s'.\n", name);
+		}
+		else if (str_has_suffix(name, ".html"))
+		{
+			OUTF("Emscripten target detected. To run, use 'emrun %s'.\n", name);
+		}
+		else
+		{
+			OUTF("Emscripten target detected. Not auto-running.\n");
+		}
+		return;
+	}
+	if (arch_is_wasm(compiler.platform.arch))
+	{
+		OUTF("WASM target detected. Not auto-running (use wasmtime, wasmer, or similar).\n");
+		return;
+	}
+	OUTF("Launching %s", name);
+	FOREACH(const char *, arg, compiler.build.args)
+	{
+		OUTF(" %s", arg);
+	}
+	if (compiler.build.run_dir)
+	{
+		OUTF(" from directory %s", compiler.build.run_dir);
+		dir_change(compiler.build.run_dir);
+	}
+	OUTN("");
+	int ret = run_subprocess(full_path, compiler.build.args);
+	if (compiler.build.delete_after_run)
+	{
+		file_delete_file(full_path);
+	}
+	if (ret < 0) exit_compiler(EXIT_FAILURE);
+	OUTF("Program completed with exit code %d.\n", ret);
+	if (ret != 0) exit_compiler(ret);
+}
+
+static const char *expand_and_create_build_output_path(const char *output_file)
+{
+	if (file_path_is_relative(output_file))
+	{
+		output_file = file_append_path(compiler.build.output_dir, output_file);
+	}
+	file_create_folders(output_file);
+	return output_file;
+}
+static bool compiler_link_exe(const char *output_exe, const char **obj_files, int output_file_count)
+{
+	bool system_linker_available = link_libc() && compiler.platform.os != OS_TYPE_WIN32;
+	bool is_emscripten = compiler.platform.os == OS_TYPE_EMSCRIPTEN;
+	const char *cc = NULL;
+	if (system_linker_available)
+	{
+		cc = find_c_compiler();
+		if (!file_executable_in_path(cc)) system_linker_available = false;
+		if (is_emscripten && compiler.build.linker_type != LINKER_TYPE_BUILTIN && (!file_executable_in_path(cc) || !str_contains(cc, "emcc")))
+		{
+			error_exit("\"emscripten\" target requires Emscripten to be installed on your system; \"%s\" was not found.", cc);
+		}
+	}
+	bool use_system_linker = system_linker_available && (compiler.build.arch_os_target == default_target || is_emscripten);
+	switch (compiler.build.linker_type)
+	{
+		case LINKER_TYPE_CC:
+			if (!system_linker_available)
+			{
+				cc = cc ? cc : find_c_compiler();
+				OUTF("C compiler '%s' not found or system linker is unsupported; using built-in linker instead.\n", cc);
+				compiler.build.linker_type = LINKER_TYPE_BUILTIN;
+				use_system_linker = false;
+				break;
+			}
+			use_system_linker = true;
+			break;
+		case LINKER_TYPE_BUILTIN:
+			use_system_linker = false;
+			break;
+		default:
+			if (!use_system_linker && compiler.build.linker_type == LINKER_TYPE_NOT_SET)
+			{
+				compiler.build.linker_type = LINKER_TYPE_BUILTIN;
+			}
+			break;
+		}
+	if (use_system_linker || compiler.build.linker_type == LINKER_TYPE_CC)
+	{
+		platform_linker(output_exe, obj_files, output_file_count);
+		compiler_link_time = bench_mark();
+		return true;
+	}
+	if (!obj_format_linking_supported(compiler.platform.object_format) || !linker(output_exe, obj_files, output_file_count))
+	{
+		eprintf("No linking is performed due to missing linker support.\n");
+		compiler.build.run_after_compile = false;
+		return false;
+	}
+	compiler_link_time = bench_mark();
+	return true;
+}
 
 void compiler_compile(void)
 {
@@ -559,8 +722,8 @@ void compiler_compile(void)
 	{
 		case BACKEND_C:
 			gen_contexts = c_gen(modules, module_count);
-			(void)gen_contexts;
-			error_exit("Unfinished C backend!");
+			task = &thread_compile_task_c;
+			break;
 		case BACKEND_LLVM:
 #if LLVM_AVAILABLE
 			llvm_setup();
@@ -653,11 +816,8 @@ void compiler_compile(void)
 			error_exit("No output files were generated. This may happen if the program is not "
 					   "linked with anything and all the code is optimized away.");
 		}
-		else
-		{
-			error_exit("No output files were generated. This may happen if there were no exported functions "
-					   "and all the other code was optimized away.");
-		}
+		error_exit("No output files were generated. This may happen if there were no exported functions "
+				   "and all the other code was optimized away.");
 	}
 
 	CompileData *compile_data = ccalloc(sizeof(CompileData), output_file_count);
@@ -696,7 +856,8 @@ void compiler_compile(void)
 	int task_count = (int)vec_size(tasks);
 	if (task_count > 0)
 	{
-		taskqueue_run((int)(compiler.build.build_threads > task_count ? task_count : compiler.build.build_threads), tasks);
+		int threads = (int)(compiler.build.build_threads > task_count ? task_count : compiler.build.build_threads);
+		taskqueue_run(threads, tasks);
 	}
 	if (compiler.build.print_output)
 	{
@@ -731,185 +892,62 @@ void compiler_compile(void)
 		}
 		error_exit("Compilation produced no object files, maybe there was no code?");
 	}
-	if (vec_size(compiler.build.emit_only)) goto SKIP;
+
+	bool should_delete_object_files = true;
+
+	// No output if we have some "emitted only"
+	if (vec_size(compiler.build.emit_only)) output_exe = output_static = output_dynamic = NULL;
+
 	if (output_exe)
 	{
-		if (file_path_is_relative(output_exe))
+		output_exe = expand_and_create_build_output_path(output_exe);
+		should_delete_object_files = false;
+		if (compiler_link_exe(output_exe, obj_files, output_file_count))
 		{
-			output_exe = file_append_path(compiler.build.output_dir, output_exe);
-		}
-		;
-		file_create_folders(output_exe);
-		bool system_linker_available = link_libc() && compiler.platform.os != OS_TYPE_WIN32;
-		if (system_linker_available)
-		{
-			const char *cc = find_c_compiler();
-			if (!file_executable_in_path(cc)) system_linker_available = false;
-			if (compiler.platform.os == OS_TYPE_EMSCRIPTEN && compiler.build.linker_type != LINKER_TYPE_BUILTIN && (!file_executable_in_path(cc) || !strstr(cc, "emcc")))
-			{
-				error_exit("\"emscripten\" target requires Emscripten to be installed on your system; \"%s\" was not found.", cc);
-			}
-		}
-		bool use_system_linker = system_linker_available && (compiler.build.arch_os_target == default_target || compiler.platform.os == OS_TYPE_EMSCRIPTEN);
-		switch (compiler.build.linker_type)
-		{
-			case LINKER_TYPE_CC:
-				if (!system_linker_available)
-				{
-					const char *cc = find_c_compiler();
-					OUTF("C compiler '%s' not found or system linker is unsupported; using built-in linker instead.\n", cc);
-					compiler.build.linker_type = LINKER_TYPE_BUILTIN;
-					use_system_linker = false;
-					break;
-				}
-				use_system_linker = true;
-				break;
-			case LINKER_TYPE_BUILTIN:
-				use_system_linker = false;
-				break;
-			default:
-				if (!use_system_linker && compiler.build.linker_type == LINKER_TYPE_NOT_SET)
-				{
-					compiler.build.linker_type = LINKER_TYPE_BUILTIN;
-				}
-				break;
-		}
-		if (use_system_linker || compiler.build.linker_type == LINKER_TYPE_CC)
-		{
-			platform_linker(output_exe, obj_files, output_file_count);
-			compiler_link_time = bench_mark();
 			compiler_print_bench();
 			delete_object_files(obj_files, objfile_delete_count);
+			if (compiler.build.run_after_compile)
+			{
+				DEBUG_LOG("Will run");
+				compiler_run_after_compile(output_exe);
+			}
 		}
 		else
 		{
 			compiler_print_bench();
-			if (!obj_format_linking_supported(compiler.platform.object_format) || !linker(output_exe, obj_files,
-																						output_file_count))
-			{
-				eprintf("No linking is performed due to missing linker support.\n");
-				compiler.build.run_after_compile = false;
-			}
-			else
-			{
-				delete_object_files(obj_files, objfile_delete_count);
-			}
 		}
-
-		if (compiler.build.run_after_compile)
-		{
-			DEBUG_LOG("Will run");
-			const char *name = output_exe;
-			while (name[0] == '.' && name[1] == '/') name += 2;
-			scratch_buffer_clear();
-			if (compiler.platform.os == OS_TYPE_WIN32)
-			{
-				int len = (int)strlen(name);
-				for (int i = 0; i < len; i++)
-				{
-					if (name[i] == '/')
-					{
-						if (name[i + 1] == '.' && name[i + 2] == '/')
-						{
-							i++;
-							continue;
-						}
-						scratch_buffer_append_char('\\');
-						continue;
-					}
-					scratch_buffer_append_char(name[i]);
-				}
-			}
-			else
-			{
-				if (name[0] != '/') scratch_buffer_append("./");
-				scratch_buffer_append(name);
-			}
-			name = scratch_buffer_to_string();
-			const char *full_path = realpath(scratch_buffer_to_string(), NULL);
-			if (!full_path)
-			{
-				error_exit("The binary '%s' was unexpectedly not found.", scratch_buffer_to_string());
-			}
-			if (compiler.platform.os == OS_TYPE_EMSCRIPTEN)
-			{
-				if (str_has_suffix(name, ".js"))
-				{
-					OUTF("Emscripten target detected. To run, use 'node %s'.\n", name);
-				}
-				else if (str_has_suffix(name, ".html"))
-				{
-					OUTF("Emscripten target detected. To run, use 'emrun %s'.\n", name);
-				}
-				else
-				{
-					OUTF("Emscripten target detected. Not auto-running.\n");
-				}
-				return;
-			}
-			if (arch_is_wasm(compiler.platform.arch))
-			{
-				OUTF("WASM target detected. Not auto-running (use wasmtime, wasmer, or similar).\n");
-				return;
-			}
-			OUTF("Launching %s", name);
-			FOREACH(const char *, arg, compiler.build.args)
-			{
-				OUTF(" %s", arg);
-			}
-			if (compiler.build.run_dir)
-			{
-				OUTF(" from directory %s", compiler.build.run_dir);
-				dir_change(compiler.build.run_dir);
-			}
-			OUTN("");
-			int ret = run_subprocess(full_path, compiler.build.args);
-			if (compiler.build.delete_after_run)
-			{
-				file_delete_file(full_path);
-			}
-			if (ret < 0) exit_compiler(EXIT_FAILURE);
-			OUTF("Program completed with exit code %d.\n", ret);
-			if (ret != 0) exit_compiler(ret);
-		}
+		// Note that cleanup doesn't happen on failure to link.
 	}
 	else if (output_static)
 	{
-		if (file_path_is_relative(output_static))
-		{
-			output_static = file_append_path(compiler.build.output_dir, output_static);
-		}
-		file_create_folders(output_static);
+		output_static = expand_and_create_build_output_path(output_static);
 		if (!static_lib_linker(output_static, obj_files, output_file_count))
 		{
+			delete_object_files(obj_files, objfile_delete_count);
 			error_exit("Failed to produce static library '%s'.", output_static);
 		}
-		delete_object_files(obj_files, objfile_delete_count);
 		compiler_link_time = bench_mark();
 		compiler_print_bench();
 		OUTF("Static library '%s' created.\n", output_static);
 	}
 	else if (output_dynamic)
 	{
-		if (file_path_is_relative(output_dynamic))
-		{
-			output_dynamic = file_append_path(compiler.build.output_dir, output_dynamic);
-		}
-		file_create_folders(output_dynamic);
+		output_dynamic = expand_and_create_build_output_path(output_dynamic);
 		if (!dynamic_lib_linker(output_dynamic, obj_files, output_file_count))
 		{
+			delete_object_files(obj_files, objfile_delete_count);
 			error_exit("Failed to produce dynamic library '%s'.", output_dynamic);
 		}
-		delete_object_files(obj_files, objfile_delete_count);
 		OUTF("Dynamic library '%s' created.\n", output_dynamic);
 		compiler_link_time = bench_mark();
 		compiler_print_bench();
 	}
 	else
 	{
-		SKIP:
+		should_delete_object_files = false;
 		compiler_print_bench();
 	}
+	if (should_delete_object_files) delete_object_files(obj_files, objfile_delete_count);
 	free(obj_files);
 }
 INLINE void expand_csources(const char *base_dir, const char **source_dirs, const char ***sources_ref)
@@ -1027,8 +1065,7 @@ bool use_ansi(void)
 #endif
 }
 
-
-const char * vendor_fetch_single(const char* lib, const char* path, bool progress) 
+const char *vendor_fetch_single(const char* lib, const char* path, bool progress)
 {
 	const char *resource = str_printf("/c3lang/vendor/releases/download/latest/%s.c3l", lib);
 	const char *destination = file_append_path(path, str_printf("%s.c3l", lib));
@@ -1037,15 +1074,85 @@ const char * vendor_fetch_single(const char* lib, const char* path, bool progres
 }
 
 
-void vendor_fetch(BuildOptions *options)
+INLINE bool json_get_string_from_key(JSONObject *obj, const char *key, const char **result)
+{
+	JSONObject *val = json_map_get(obj, key);
+	if (!val || val->type != J_STRING) return false;
+	*result = val->str;
+	return true;
+}
+
+static const char *load_fetch_info(BuildOptions *options, const char *name, LibraryInfo *info)
+{
+	const char *base = options->fetch_url;
+	const char *tmp_dir = dir_make_temp_dir();
+	const char *tmp_file = file_append_path(tmp_dir, "info.json");
+	scratch_buffer_clear();
+	scratch_buffer_printf("/info/%s", name);
+	const char *error = download_file(base, scratch_buffer_to_string(), tmp_file, false);
+	JSONObject *json = NULL;
+	if (error)
+	{
+		file_delete_file(tmp_file);
+		file_delete_dir(tmp_dir);
+		return error;
+	}
+
+	size_t size;
+	char *json_str = file_read_all(tmp_file, &size);
+
+	// Cleanup
+	file_delete_file(tmp_file);
+	file_delete_dir(tmp_dir);
+
+	JsonParser parser;
+	json_init_string(&parser, json_str);
+	json = json_parse(&parser);
+	if (!json || json->type != J_OBJECT) return "corrupt library info";
+	JSONObject *versions = json_map_get(json, "versions");
+	if (!versions || versions->type != J_OBJECT) return "corrupt library info (no 'versions')";
+	*info = (LibraryInfo) { .versions = versions };
+	if (!json_get_string_from_key(json, "latest", &info->latest)) return "corrupt library info (no 'latest')";
+	if (!json_get_string_from_key(json, "library", &info->library)) return "corrupt library info (no 'library')";
+	if (!json_get_string_from_key(json, "description", &info->description)) return "corrupt library info (no 'description')";
+	if (!json_get_string_from_key(json, "updated", &info->updated)) return "corrupt library info (no 'updated')";
+
+	JSONObject *tags = json_map_get(json, "tags");
+	if (tags)
+	{
+		if (tags->type != J_ARRAY) return "corrupt library info (invalid 'tags')";
+		info->tags = tags->elements;
+	}
+
+	return NULL;
+}
+
+static const char *registry_fetch_single(BuildOptions *options, const char *lib_id,
+										 const char *requested_version, const char *provides, const char *path)
+{
+	LibraryInfo info;
+	const char *error = load_fetch_info(options, lib_id, &info);
+	if (error) return error;
+
+	// 2. Resolve the version: the requested one, or "latest" from the record.
+	const char *version = requested_version ? requested_version : info.latest;
+	JSONObject *entry = json_map_get(info.versions, version);
+	if (!entry || entry->type != J_OBJECT) return str_printf("no such version '%s'", version ? version : "latest");
+
+	// 3. Download exactly that version.
+	const char *destination = file_append_path(path, str_printf("%s.c3l", provides));
+	const char *base = options->fetch_url;
+	return download_file(base, str_printf("/download/%s@%s", lib_id, version), destination, false);
+}
+
+INLINE void fetch_lib(BuildOptions *options, bool is_vendor, const char **libraries_to_fetch)
 {
 	if (!download_available())
 	{
-		error_exit("The 'vendor-fetch' command requires libcurl to download libraries.\n"
-				   "Please ensure libcurl is installed on your system.");
+		error_exit("The '%s' command requires libcurl to download libraries.\n"
+				   "Please ensure libcurl is installed on your system.", is_vendor ? "vendor-fetch" : "fetch");
 	}
 	bool ansi = use_ansi();
-
 	if (str_eq(options->path, DEFAULT_PATH))
 	{
 		// check if there is a project JSON file
@@ -1056,12 +1163,78 @@ void vendor_fetch(BuildOptions *options)
 			if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
 		}
 	}
-
 	int count = 0;
 	const char** fetched_libraries = NULL;
-	int total_libraries = (int)vec_size(options->libraries_to_fetch);
-	
-	if (total_libraries == 0)
+	int total_libraries = (int)vec_size(libraries_to_fetch);
+
+	for (int i = 0; i < total_libraries; i++)
+	{
+		const char *lib = libraries_to_fetch[i];
+		const char *installed_name = lib; // name recorded in the project dependency list
+		const char *error;
+		if (is_vendor)
+		{
+			printf("Fetching library '%s'...\n", lib);
+			(void)fflush(stdout);
+			error = vendor_fetch_single(lib, options->vendor_download_path, ansi);
+		}
+		else
+		{
+			// Split "<ns>/<name>[@<ver>]" into the library id and optional version.
+			const char *at = strchr(lib, '@');
+			const char *requested_version = at ? at + 1 : NULL;
+			scratch_buffer_clear();
+			scratch_buffer_append(lib);
+			if (at) scratch_buffer_set_len((int)(at - lib));
+			const char *lib_id = scratch_buffer_copy(); // durable "<ns>/<name>"
+			const char *slash = strrchr(lib_id, '/');
+			if (!slash || !slash[1])
+			{
+				printf("Skipping invalid library name '%s' (expected <namespace>/<name>).\n", lib);
+				continue;
+			}
+			// The installed name (and dependency entry) is the bare provides name,
+			// i.e. the last path component; it points into the durable `lib_id`.
+			installed_name = slash + 1;
+			printf("Fetching library '%s'...\n", lib);
+			(void)fflush(stdout);
+			error = registry_fetch_single(options, lib_id, requested_version, installed_name,
+										  options->vendor_download_path);
+		}
+		if (!error)
+		{
+			vec_add(fetched_libraries, installed_name);
+			count++;
+		}
+		else
+		{
+			if (ansi)
+			{
+				printf("\033[2K\033[31mFailed to fetch library '%s': %s\033[0m\n", lib, error);
+			}
+			else
+			{
+				printf("Failed: '%s'\n", error);
+			}
+			(void)fflush(stdout);
+		}
+	}
+
+	if (ansi && total_libraries > 1) printf("\033[2K");
+
+	// add fetched library to the dependency list
+	add_libraries_to_project_file(fetched_libraries, options->project_options.target_name);
+
+	if (!count)	error_exit("Error: Failed to download any libraries.");
+	if (count < vec_size(libraries_to_fetch)) error_exit("Error: Only some libraries were downloaded.");
+
+	if (ansi) printf("\033[32mFetching complete.\033[0m\t\t\n");
+
+}
+
+void vendor_fetch(BuildOptions *options)
+{
+	if (!vec_size(options->vendor_libraries_to_fetch))
 	{
 		const char *tmp_dir = dir_make_temp_dir();
 		const char *tmp_file = file_append_path(tmp_dir, "vendor_list.json");
@@ -1105,43 +1278,183 @@ void vendor_fetch(BuildOptions *options)
 		return;
 	}
 
-	for(int i = 0; i < total_libraries; i++)
-	{
-		const char *lib = options->libraries_to_fetch[i];
-		printf("Fetching library '%s'...\n", lib);
-		(void)fflush(stdout);
-		const char *error = vendor_fetch_single(lib, options->vendor_download_path, ansi);
+	fetch_lib(options, true, options->vendor_libraries_to_fetch);
+}
 
-		if (!error)
+
+
+static void scratch_buffer_append_json_array(JSONObject **elements)
+{
+	FOREACH(JSONObject *, e, elements)
+	{
+		if (e->type != J_STRING) continue;
+		if (scratch_buffer_len()) scratch_buffer_append(", ");
+		scratch_buffer_append(e->str);
+	}
+}
+
+static const char *json_array_as_temp_string(JSONObject **elements)
+{
+	scratch_buffer_clear();
+	scratch_buffer_append_json_array(elements);
+	return scratch_buffer_to_string();
+}
+
+// Parse a summary entry from /index.json.
+static bool parse_library(JSONObject *obj, LibraryOverview *info)
+{
+	if (!obj || obj->type != J_OBJECT) return false;
+	if (!json_get_string_from_key(obj, "library", &info->name)) return false;
+	if (!json_get_string_from_key(obj, "description", &info->description)) return false;
+	if (!json_get_string_from_key(obj, "latest", &info->latest)) return false;
+	if (!json_get_string_from_key(obj, "updated", &info->updated)) return false;
+	JSONObject *tags = json_map_get(obj, "tags");
+	if (tags && tags->type != J_ARRAY) return false;
+	info->tags = tags ? tags->elements : NULL;
+	JSONObject *versions = json_map_get(obj, "versions");
+	if (versions && versions->type != J_ARRAY) return false;
+	info->versions = versions ? versions->elements : NULL;
+	return true;
+}
+
+static bool library_has_tag(LibraryOverview *info, const char *tag)
+{
+	if (!info->tags) return false;
+	FOREACH(JSONObject *, t, info->tags)
+	{
+		if (t->type == J_STRING && str_eq(t->str, tag)) return true;
+	}
+	return false;
+}
+
+
+void fetch(BuildOptions *options)
+{
+	fetch_lib(options, false, options->libraries_to_fetch);
+}
+
+void fetch_info(BuildOptions *options)
+{
+	if (!download_available())
+	{
+		error_exit("The 'fetch-info' command requires libcurl to download libraries.\n"
+				   "Please ensure libcurl is installed on your system.");
+	}
+
+	const char *name = options->search_name;
+	LibraryInfo info;
+	const char *error = load_fetch_info(options, name, &info);
+	if (error) error_exit("Error loading info for '%s' (%s).", name, error);
+
+	printf("Library:     %s\n", info.library);
+	printf("Description: %s\n", info.description);
+	if (vec_size(info.tags))
+	{
+		printf("Tags:        %s\n", json_array_as_temp_string(info.tags));
+	}
+	printf("Latest:      %s\n", info.latest);
+	printf("Updated:     %s\n", info.updated);
+
+	if (vec_size(info.versions->members))
+	{
+		puts("\nVersions:");
+		FOREACH_IDX(vi, JSONObject *, v, info.versions->members)
 		{
-			vec_add(fetched_libraries, lib);
-			count++;
+			if (!v || v->type != J_OBJECT) continue;
+			printf("  %s\n", info.versions->keys[vi]);
+			const char *s;
+			if (json_get_string_from_key(v, "description", &s)) printf("    Description: %s\n", s);
+			if (json_get_string_from_key(v, "maintainer", &s)) printf("    Maintainer:  %s\n", s);
+			if (json_get_string_from_key(v, "repository", &s)) printf("    Repository:  %s\n", s);
+			if (json_get_string_from_key(v, "license", &s)) printf("    License:     %s\n", s);
+			JSONObject *os_targets = json_map_get(v, "targets");
+			if (os_targets && os_targets->type == J_ARRAY && vec_size(os_targets->elements))
+			{
+				printf("    Targets:     %s\n", json_array_as_temp_string(os_targets->elements));
+			}
+			JSONObject *sz = json_map_get(v, "size");
+			if (sz && sz->type == J_NUMBER) printf("    Size:        %lld bytes\n", (long long)sz->f);
+			if (json_get_string_from_key(v, "checksum", &s)) printf("    Checksum:    %s\n", s);
+			if (json_get_string_from_key(v, "published", &s)) printf("    Published:   %s\n", s);
+		}
+	}
+}
+
+void fetch_list(BuildOptions *options)
+{
+	if (!download_available())
+	{
+		error_exit("The 'fetch-list' command requires libcurl to download libraries.\n"
+				   "Please ensure libcurl is installed on your system.");
+	}
+	const char *base = options->fetch_url;
+	const char *name_filter = options->search_name;
+	const char *tag_filter = options->search_tag;
+	const char *tmp_dir = dir_make_temp_dir();
+	const char *tmp_file = file_append_path(tmp_dir, "index.json");
+	const char *error = download_file(base, "/index.json", tmp_file, false);
+	if (error) error_exit("Failed to fetch the library list from '%s': %s", base, error);
+
+	size_t size;
+	char *json_str = file_read_all(tmp_file, &size);
+	JsonParser parser;
+	json_init_string(&parser, json_str);
+	JSONObject *obj = json_parse(&parser);
+	if (!obj || obj->type != J_OBJECT) error_exit("Failed to parse the library index.");
+	JSONObject *libs = json_map_get(obj, "libraries");
+	if (!libs || libs->type != J_ARRAY) error_exit("Invalid library index (missing 'libraries').");
+
+	// Unfiltered: just the ns/name of every library.
+	if (!name_filter && !tag_filter)
+	{
+		if (!vec_size(libs->elements))
+		{
+			puts("No libraries available.");
 		}
 		else
 		{
-			if (ansi)
+			puts("Available libraries:");
+			FOREACH(JSONObject *, entry, libs->elements)
 			{
-				printf("\033[2K\033[31mFailed to fetch library '%s': %s\033[0m\n", lib, error);
+				LibraryOverview info;
+				if (!parse_library(entry, &info)) error_exit("Corrupt library index - unreadable entry.");
+				printf("  %s\n", info.name);
 			}
-			else
-			{
-				printf("Failed: '%s'\n", error);
-			}
-			(void)fflush(stdout);
 		}
+		file_delete_file(tmp_file);
+		file_delete_dir(tmp_dir);
+		return;
 	}
 
-	if (ansi && total_libraries > 1) printf("\033[2K");
-
-	// add fetched library to the dependency list
-	add_libraries_to_project_file(fetched_libraries, options->project_options.target_name);
-
-	if (count == 0)	error_exit("Error: Failed to download any libraries.");
-	if (count < vec_size(options->libraries_to_fetch)) error_exit("Error: Only some libraries were downloaded.");
-
-	if (ansi) printf("\033[32mFetching complete.\033[0m\t\t\n");
+	// Filtered: name search shows versions too; tag search is name + description.
+	const char *heading = tag_filter
+		? str_printf("Libraries tagged '%s':", tag_filter)
+		: str_printf("Libraries matching '%s':", name_filter);
+	const char *empty = tag_filter
+		? str_printf("No libraries tagged '%s'.", tag_filter)
+		: str_printf("No libraries matching '%s'.", name_filter);
+	int found = 0;
+	FOREACH(JSONObject *, entry, libs->elements)
+	{
+		LibraryOverview info;
+		if (!parse_library(entry, &info)) error_exit("Malformed library index entry.");
+		if (tag_filter && !library_has_tag(&info, tag_filter)) continue;
+		if (name_filter && !str_contains(info.name, name_filter)) continue;
+		if (found++ == 0) printf("%s\n\n", heading);
+		printf("%s\n", info.name);
+		printf("  Description: %s\n", info.description);
+		if (name_filter)
+		{
+			printf("  Latest:      %s\n", info.latest);
+			if (info.versions) printf("  Versions:    %s\n", json_array_as_temp_string(info.versions));
+			printf("  Updated:     %s\n", info.updated);
+		}
+		puts("");
+	}
+	if (!found) puts(empty);
+	file_delete_file(tmp_file);
+	file_delete_dir(tmp_dir);
 }
-
 
 void print_syntax(BuildOptions *options)
 {
@@ -1925,8 +2238,8 @@ const char *scratch_buffer_interned(void)
 
 const char *scratch_buffer_interned_as(TokenType* type)
 {
-	return symtab_add(scratch_buffer.str, scratch_buffer.len,
-					  fnv1a(scratch_buffer.str, scratch_buffer.len), type);
+	return symtab_add(sb_current->str, sb_current->len,
+					  fnv1a(sb_current->str, sb_current->len), type);
 }
 
 void scratch_buffer_append_native_safe_path(const char *data, int len)

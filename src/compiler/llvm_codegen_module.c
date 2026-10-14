@@ -55,6 +55,12 @@ static void llvm_set_module_flag(GenContext *c, LLVMModuleFlagBehavior flag_beha
 	LLVMAddModuleFlag(c->module, flag_behavior, flag, strlen(flag), val);
 }
 
+static void llvm_set_module_string_attribute(GenContext *c, LLVMModuleFlagBehavior flag_behavior, const char *attribute, const char *value)
+{
+	LLVMMetadataRef val = LLVMValueAsMetadata(LLVMMDStringInContext(c->context, value, strlen(value)));
+	LLVMAddModuleFlag(c->module, flag_behavior, attribute, strlen(attribute), val);
+}
+
 void gencontext_begin_module(GenContext *c)
 {
 	ASSERT(!c->module && "Expected no module");
@@ -138,6 +144,7 @@ void gencontext_begin_module(GenContext *c)
 	}
 	llvm_set_module_flag(c, LLVMModuleFlagBehaviorWarning, "Debug Info Version", 3, type_uint);
 	llvm_set_module_flag(c, LLVMModuleFlagBehaviorWarning, "wchar_size", is_win ? 2 : 4, type_uint);
+	if (compiler.build.arch_os_target == OPENBSD_X64) llvm_set_module_flag(c, LLVMModuleFlagBehaviorWarning, "cf-protection-branch", 1, type_uint);
 	static const char *pic_level = "PIC Level";
 	static const char *pie_level = "PIE Level";
 	switch (compiler.platform.reloc_model)
@@ -171,20 +178,23 @@ void gencontext_begin_module(GenContext *c)
 			const char *abi_str = NULL;
 			if (compiler.platform.arch == ARCH_TYPE_RISCV64)
 			{
-				int flen = compiler.platform.riscv.flen;
-				if (flen == 8) abi_str = "lp64d";
-				else if (flen == 4) abi_str = "lp64f";
-				else abi_str = "lp64";
+				switch (compiler.platform.riscv.flen)
+				{
+					case 8: abi_str = "lp64d"; break;
+					case 4: abi_str = "lp64f"; break;
+					default: abi_str = "lp64"; break;
+				}
 			}
 			else
 			{
-				int flen = compiler.platform.riscv.flen;
-				if (flen == 8) abi_str = "ilp32d";
-				else if (flen == 4) abi_str = "ilp32f";
-				else abi_str = "ilp32";
+				switch (compiler.platform.riscv.flen)
+				{
+					case 8: abi_str = "ilp32d"; break;
+					case 4: abi_str = "ilp32f"; break;
+					default: abi_str = "ilp32"; break;
+				}
 			}
-			LLVMMetadataRef val = LLVMValueAsMetadata(LLVMMDStringInContext(c->context, abi_str, strlen(abi_str)));
-			LLVMAddModuleFlag(c->module, LLVMModuleFlagBehaviorError, "target-abi", 10, val);
+			llvm_set_module_string_attribute(c, LLVMModuleFlagBehaviorError, "target-abi", abi_str);
 		}
 	}
 

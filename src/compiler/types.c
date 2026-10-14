@@ -141,7 +141,7 @@ void type_append_name_to_scratch(Type *type)
 		case TYPE_ALIAS:
 			UNREACHABLE_VOID;
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_TYPEDEF:
@@ -276,7 +276,7 @@ const char *type_to_error_string(Type *type)
 		case TYPE_WILDCARD:
 			return type->name;
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_ALIAS:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -344,7 +344,7 @@ static const char *type_to_error_string_with_path(Type *type)
 		case TYPE_WILDCARD:
 			return type->name;
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_ALIAS:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -436,7 +436,7 @@ TypeSize type_size(Type *type)
 		case TYPE_ALIAS:
 			return type->size = type_size(type->canonical);
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 			ASSERT(type->decl->enums.type_info->resolve_status == RESOLVE_DONE);
 			return type->size = type_size(enum_inner_type(type)->canonical);
 		case TYPE_STRUCT:
@@ -588,7 +588,7 @@ bool type_is_aggregate(Type *type)
 		case TYPE_TYPEID:
 		case TYPE_POINTER:
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_FUNC_PTR:
 		case TYPE_FUNC_RAW:
 		case VECTORS:
@@ -633,7 +633,7 @@ bool type_is_ordered(Type *type)
 		case TYPE_POINTER:
 		case TYPE_BOOL:
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 			return true;
 		case TYPE_ALIAS:
 			type = type->canonical;
@@ -675,7 +675,7 @@ bool type_is_comparable(Type *type)
 			type = type->array.base;
 			goto RETRY;
 		case TYPE_TYPEDEF:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 			type = type_inline(type);
 			goto RETRY;
 		case TYPE_BOOL:
@@ -781,7 +781,7 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 			}
 			return;
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
@@ -866,7 +866,7 @@ INLINE AlignSize type_alignment_(Type *type, bool alloca)
 			type = type->canonical;
 			goto RETRY;
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 			type = enum_inner_type(type)->canonical;
 			goto RETRY;
 		case TYPE_STRUCT:
@@ -1249,7 +1249,7 @@ Type *type_get_indexed_type(Type *type)
 		case TYPE_FLEXIBLE_ARRAY:
 		case VECTORS:
 			return type->array.base;
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 			type = enum_inner_type(type);
 			goto RETRY;
 		case TYPE_TYPEDEF:
@@ -1372,7 +1372,7 @@ bool type_is_valid_for_array(Type *type)
 		case TYPE_TYPEID:
 		case TYPE_POINTER:
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_FUNC_PTR:
 		case TYPE_FUNC_RAW:
 		case TYPE_STRUCT:
@@ -1658,7 +1658,7 @@ bool type_is_scalar(Type *type)
 		case TYPE_POINTER:
 		case TYPE_FUNC_PTR:
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_ANYFAULT:
 			return true;
 		case TYPE_BITSTRUCT:
@@ -1684,7 +1684,7 @@ Type *type_find_parent_type(Type *type)
 	Decl *decl;
 	switch (type->type_kind)
 	{
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 			decl = type->decl;
 			return decl->is_substruct ? decl->enums.type_info->type : NULL;
 		case TYPE_TYPEDEF:
@@ -1925,7 +1925,7 @@ bool type_may_have_method(Type *type)
 		case TYPE_UNION:
 		case TYPE_STRUCT:
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_BITSTRUCT:
 		case ALL_FLOATS:
 		case ALL_INTS:
@@ -1967,7 +1967,7 @@ bool type_may_have_sub_elements(Type *type)
 		case TYPE_STRUCT:
 		case TYPE_ENUM:
 		case TYPE_BITSTRUCT:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_INTERFACE:
 			return true;
 		default:
@@ -2038,15 +2038,15 @@ Type *type_find_max_num_type(Type *num_type, Type *other_num)
  *
  * @param type
  * @param other
- * @return the max pointer type or NULL if none can be found.
+ * @return the max pointer type, poison if on-demand resolution fails, or NULL if none can be found.
  */
-static inline Type *type_find_max_ptr_type(Type *type, Type *other)
+static inline Type *type_find_max_ptr_type(SemaContext *context, Type *type, Type *other)
 {
 	// Slice and vararray can implicitly convert to a pointer.
 	if (other->type_kind == TYPE_SLICE)
 	{
-		Type *max_type = type_find_max_type(type->pointer, other->pointer, false, false);
-		if (!max_type) return NULL;
+		Type *max_type = type_find_max_type(context, type->pointer, other->pointer, false, false);
+		if (!max_type || max_type == poisoned_type) return max_type;
 		return type_get_ptr(max_type);
 	}
 
@@ -2079,8 +2079,8 @@ static inline Type *type_find_max_ptr_type(Type *type, Type *other)
 	{
 		return other;
 	}
-	Type *max_type = type_find_max_type(pointer_type, other_pointer_type, false, false);
-	if (!max_type) return NULL;
+	Type *max_type = type_find_max_type(context, pointer_type, other_pointer_type, false, false);
+	if (!max_type || max_type == poisoned_type) return max_type;
 	return type_get_ptr(max_type);
 }
 
@@ -2131,7 +2131,7 @@ static inline Type *type_find_max_distinct_type(Type *left, Type *right)
 }
 
 
-Type *type_find_max_type(Type *type, Type *other, Expr *first, Expr *second)
+Type *type_find_max_type(SemaContext *context, Type *type, Type *other, Expr *first, Expr *second)
 {
 	type = type->canonical;
 	other = other->canonical;
@@ -2173,7 +2173,7 @@ RETRY_DISTINCT:
 			return NULL;
 		case ALL_INTS:
 		{
-			// If Foo + 1, then we allow this if Foo is a distinct type or constdef that has
+			// If Foo + 1, then we allow this if Foo is a distinct type or constset that has
 			// integer or float as the base type.
 			if (first && type_is_distinct_like(other) && type_underlying_is_numeric(other) && expr_is_const(first)) return other;
 			// See if we can flatten it.
@@ -2187,7 +2187,7 @@ RETRY_DISTINCT:
 		}
 		case ALL_FLOATS:
 		{
-			// If Foo + 1.0, then we allow this if Foo is a distinct type or constdef that has
+			// If Foo + 1.0, then we allow this if Foo is a distinct type or constset that has
 			// float as the base type.
 			if (first && type_is_distinct_like(other) && type_underlying_is_numeric(other) && expr_is_const(first)) return other;
 			// See if we can flatten it.
@@ -2251,7 +2251,7 @@ RETRY_DISTINCT:
 			type = type_decay_array_pointer(type);
 			// And possibly the other pointer as well
 			if (other->type_kind == TYPE_POINTER) other = type_decay_array_pointer(other);
-			return type_find_max_ptr_type(type, other);
+			return type_find_max_ptr_type(context, type, other);
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 			if (type_has_inline(other))
@@ -2268,10 +2268,12 @@ RETRY_DISTINCT:
 				goto RETRY_DISTINCT;
 			}
 			if (other->type_kind != TYPE_FUNC_PTR) return NULL;
+			if (!type->pointer->function.prototype && !sema_resolve_type_decl(context, type->pointer)) return poisoned_type;
+			if (!other->pointer->function.prototype && !sema_resolve_type_decl(context, other->pointer)) return poisoned_type;
 			if (other->pointer->function.prototype->raw_type != type->pointer->function.prototype->raw_type) return NULL;
 			return type;
 		case TYPE_TYPEDEF:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 			if (type_is_distinct_like(other))
 			{
 				return type_find_max_distinct_type(type, other);
@@ -2389,8 +2391,8 @@ int type_get_introspection_kind(TypeKind kind)
 			return INTROSPECT_TYPE_POINTER;
 		case TYPE_ENUM:
 			return INTROSPECT_TYPE_ENUM;
-		case TYPE_CONSTDEF:
-			return INTROSPECT_TYPE_CONSTDEF;
+		case TYPE_CONSTSET:
+			return INTROSPECT_TYPE_CONSTSET;
 		case TYPE_FUNC_PTR:
 			return INTROSPECT_TYPE_FUNC;
 		case TYPE_STRUCT:
@@ -2449,7 +2451,7 @@ Module *type_base_module(Type *type)
 		case TYPE_FUNC_RAW:
 			return type->function.decl ? type->function.decl->unit->module : NULL;
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:

@@ -6,7 +6,7 @@ import std::collections::list;
 
 fn void? load_corpus2(String code, String path) @local
 {
-    for(;;)	io::printfn("hi");
+    for (;;)	io::printfn("hi");
     path::Path p = path::tnew(path)!; // #warning: This code will never execute
 
     if (!path::exists(p))

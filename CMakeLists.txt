@@ -109,7 +109,8 @@ set(C3_WITH_LLVM            ON                          CACHE BOOL   "Build with
 set(C3_PROFILING            OFF                         CACHE BOOL   "Build for profiling")
 set(C3_LLVM_VERSION         "auto"                      CACHE STRING "Use LLVM version [default: auto]")
 set(C3_USE_MIMALLOC         OFF                         CACHE BOOL   "Use built-in mimalloc")
-set(C3_MIMALLOC_TAG         "v1.7.3"                    CACHE STRING "Used version of mimalloc")
+set(C3_MIMALLOC_TAG         "v2.5.2"                    CACHE STRING "Used version of mimalloc")
+set(C3_USE_TB               OFF                         CACHE BOOL   "Use TB")
 set(C3_LLD_DIR              ""                          CACHE STRING "Use custom LLD directory")
 set(C3_LLD_INCLUDE_DIR      ""                          CACHE STRING "Use custom LLD include directory")
 set(C3_ENABLE_CLANGD_LSP    OFF                         CACHE BOOL   "Enable/Disable output of compile commands during generation")
@@ -139,12 +140,12 @@ set(C3_OPTIONS
         C3_AVR_DISABLE
 )
 
-set(C3_USE_MIMALLOC OFF)
 if(C3_USE_MIMALLOC)
-    option(MI_BUILD_TESTS OFF)
-    option(MI_BUILD_SHARED OFF)
-    option(MI_PADDING OFF)
-    option(MI_DEBUG_FULL OFF)
+    set(MI_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(MI_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+    set(MI_PADDING OFF CACHE BOOL "" FORCE)
+    set(MI_DEBUG_FULL OFF CACHE BOOL "" FORCE)
+    set(MI_STATS "OFF" CACHE STRING "" FORCE)
     FetchContent_Declare(
             mimalloc
             GIT_REPOSITORY https://github.com/microsoft/mimalloc.git
@@ -553,6 +554,13 @@ add_executable(c3c
         src/utils/unzipper.c
         src/utils/msi.c
         src/compiler/c_codegen.c
+        src/compiler/c_codegen_builtins.c
+        src/compiler/c_codegen_expr.c
+        src/compiler/c_codegen_stmt.c
+        src/compiler/c_codegen_type.c
+        src/compiler/c_codegen_lvalue.c
+        src/compiler/c_codegen_function.c
+        src/compiler/c_codegen_module.c
         src/compiler/decltable.c
         src/compiler/methodtable.c
         src/utils/fetch_sdk/fetch_sdk.c
@@ -571,6 +579,7 @@ add_executable(c3c
         src/compiler/sema_const.c
         ${CMAKE_BINARY_DIR}/git_hash.h
         ${CMAKE_BINARY_DIR}/docs_template.h
+        ${CMAKE_BINARY_DIR}/c_runtime_header.h
         src/utils/xar.c
         src/utils/pbzx.c
         src/utils/xz_stream.c
@@ -614,6 +623,18 @@ add_custom_command(
         DEPENDS ${CMAKE_SOURCE_DIR}/resources/docs.html
                 ${CMAKE_SOURCE_DIR}/scripts/embed.cmake
         COMMENT "Embedding resources/docs.html into docs_template.h")
+
+# Embed src/compiler/c_runtime.h into a C header
+add_custom_command(
+        OUTPUT ${CMAKE_BINARY_DIR}/c_runtime_header.h
+        COMMAND ${CMAKE_COMMAND}
+            -DINPUT=${CMAKE_SOURCE_DIR}/src/compiler/c_runtime.h
+            -DOUTPUT=${CMAKE_BINARY_DIR}/c_runtime_header.h
+            -DVAR_NAME=c_runtime_header_boilerplate
+            -P ${CMAKE_SOURCE_DIR}/scripts/embed.cmake
+        DEPENDS ${CMAKE_SOURCE_DIR}/src/compiler/c_runtime.h
+                ${CMAKE_SOURCE_DIR}/scripts/embed.cmake
+        COMMENT "Embedding src/compiler/c_runtime.h into c_runtime_header.h")
 
 if(C3_WITH_LLVM)
     target_sources(c3c PRIVATE

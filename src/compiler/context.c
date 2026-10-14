@@ -66,8 +66,8 @@ static bool filename_to_module_in_buffer(const char *path)
 		}
 		scratch_buffer_append_char(c);
 	}
-	if (last_was_underscore && scratch_buffer.len) scratch_buffer_delete(1);
-	if (!scratch_buffer.len) return false;
+	if (last_was_underscore && scratch_buffer_len()) scratch_buffer_delete(1);
+	if (!scratch_buffer_len()) return false;
 	return true;
 }
 
@@ -88,7 +88,7 @@ bool context_set_module_from_filename(ParseContext *context)
 	Path *path = CALLOCS(Path);
 	path->loc = make_loc(context->span);
 	path->module = module_name;
-	path->len = scratch_buffer.len;
+	path->len = scratch_buffer_len();
 	return create_module_or_check_name(context->unit, path);
 }
 
@@ -268,7 +268,7 @@ WEAK_MODULE:
 			case DECL_BITSTRUCT:
 			case DECL_TYPEDEF:
 			case DECL_ENUM:
-			case DECL_CONSTDEF:
+			case DECL_CONSTSET:
 			case DECL_STRUCT:
 			case DECL_TYPE_ALIAS:
 			case DECL_UNION:
@@ -297,15 +297,15 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 	ASSERT_SPAN(decl, !decl->unit || decl->is_templated);
 	if (decl->is_feat_cond)
 	{
-		switch (sema_remove_due_to_conditionals(decl->attributes))
+		switch (sema_retain_conditional_feat(decl->attributes))
 		{
-			case BOOL_TRUE:
+			case BOOL_FALSE:
 				decl->decl_kind = DECL_ERASED;
 				return;
 			case BOOL_ERR:
 				decl->decl_kind = DECL_POISONED;
 				return;
-			case BOOL_FALSE:
+			case BOOL_TRUE:
 				break;
 		}
 	}
@@ -362,7 +362,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			vec_add(unit->aliases, decl);
 			decl_register(unit, decl);
 			return;
-		case DECL_CONSTDEF:
+		case DECL_CONSTSET:
 		case DECL_ENUM:
 			ASSERT(decl->name);
 			vec_add(unit->enums, decl);

@@ -288,7 +288,7 @@ fn int __rem_pio2_large(double* x, double* y, int e0, int nx, int prec)
 	/* compute PIO2[0,...,jp]*q[jz,...,0] */
 	for (int i = jz; i >= 0; i--)
 	{
-		for (fw = 0.0, int k = 0; k <= jp && k <= jz-i; k++) fw += PIO2[k] * q[i + k];
+		for (fw = 0.0, int k = 0; k <= jp && k <= jz - i; k++) fw += PIO2[k] * q[i + k];
 		fq[jz - i] = fw;
 	}
 
@@ -306,7 +306,7 @@ fn int __rem_pio2_large(double* x, double* y, int e0, int nx, int prec)
 			// TODO: drop excess precision here once double_t is used
 			fw = (double)fw;
 			y[0] = ih == 0 ? fw : -fw;
-			fw = fq[0]-fw;
+			fw = fq[0] - fw;
 			for (int i = 1; i <= jz; i++) fw += fq[i];
 			y[1] = ih == 0 ? fw : -fw;
 		case 3:  /* painful */
@@ -318,7 +318,7 @@ fn int __rem_pio2_large(double* x, double* y, int e0, int nx, int prec)
 			}
 			for (int i = jz; i > 1; i--)
 			{
-				fw = fq[i-1] + fq[i];
+				fw = fq[i - 1] + fq[i];
 				fq[i] += fq[i - 1] - fw;
 				fq[i - 1] = fw;
 			}
@@ -442,7 +442,7 @@ fn int __rem_pio2(double x, double *y)
 				y[1] = (z - y[0]) - 4 * PIO2_1T;
 				return 4;
 			}
-			double z = x + 4*PIO2_1;
+			double z = x + 4 * PIO2_1;
 			y[0] = z + 4 * PIO2_1T;
 			y[1] = (z - y[0]) + 4 * PIO2_1T;
 			return -4;

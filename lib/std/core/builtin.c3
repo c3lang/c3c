@@ -52,9 +52,17 @@ macro void @scope(#variable; @body) @builtin
 *>
 macro void @swap(#a, #b) @builtin
 {
-	var temp = #a;
-	#a = #b;
-	#b = temp;
+	$if $defined(&#a, &#b):
+		var aptr = &#a;
+		var bptr = &#b;
+		var temp = *aptr;
+		*aptr = *bptr;
+		*bptr = temp;
+	$else
+		var temp = #a;
+		#a = #b;
+		#b = temp;
+	$endif
 }
 
 <*

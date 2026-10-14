@@ -260,7 +260,7 @@ fn void test_angle() @test
 	double[<3>] a = {1, 0, 0};
 	double[<3>] b = {0, 1, 0};
 	double angle = a.angle(b);
-	assert(math::is_approx(angle, math::PI/2, 1e-6)); // 90° = π/2
+	assert(math::is_approx(angle, math::PI / 2, 1e-6)); // 90° = π/2
 
 	a = {1, 0, 0};
 	b = {2, 0, 0};
@@ -291,7 +291,7 @@ fn void test_angle() @test
 	a = {1, 0, 0};
 	b = {0, 1 - 1e-8, 0};  // slightly less than 90°
 	angle = a.angle(b);
-    assert(math::is_approx(angle, math::PI/2, 1e-8));
+    assert(math::is_approx(angle, math::PI / 2, 1e-8));
 
 	a = {1, 0, 0};
 	b = {1, 1e-9, 1e-9};  // almost parallel in 3D

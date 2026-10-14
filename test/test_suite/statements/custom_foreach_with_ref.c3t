@@ -62,16 +62,16 @@ fn void main()
         i++;
     }
 
-    foreach(i, y : (int[5]) { 1, 2, 10, 111, 123 } )
+    foreach (i, y : (int[5]) { 1, 2, 10, 111, 123 } )
     {
         printf("Adding %d: %d\n", i, y);
         i++;
     }
-    foreach(i, y : getFields() )
+    foreach (i, y : getFields() )
     {
         printf("Pull value %d: %d\n", i, y);
     }
-    foreach(i, y : &&getFields())
+    foreach (i, y : &&getFields())
     {
         printf("Pull value tempptr %d: %d\n", i, y);
     }

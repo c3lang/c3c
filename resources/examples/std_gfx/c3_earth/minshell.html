@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+
+<head>
+	<meta charset="utf-8">
+	<title>C3 Earth Visualization</title>
+	<style>
+		body {
+			margin: 0;
+			background: #050505;
+			overflow: hidden;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			height: 100vh
+		}
+	</style>
+</head>
+
+<body>
+	<canvas id="canvas" style="width: 100vw; height: 100vh; display: block; outline: none;" oncontextmenu="event.preventDefault()" tabindex=-1></canvas>
+	<script>
+		var Module = {
+			canvas: document.getElementById('canvas'),
+			print: console.log,
+			printErr: console.error
+		};
+	</script>
+	{{{ SCRIPT }}}
+</body>
+
+</html>

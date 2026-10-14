@@ -1,5 +1,5 @@
 module std::gfx @feat(LINUX, BSD, MACOS, WASM, WIN32) @feat(!(BSD | LINUX) | WAYLAND | !NO_X11) @private;
-import libc, std::math, std::collections::list, std::os, std::gfx::x11 @public, std::gfx::egl @public, std::time;
+import libc, std::math, std::collections::list, std::os, std::gfx::x11 @public, std::gfx::egl @public, std::time, std::net::url;
 import std::gfx::wl @public;
 
 const MAX_EVENTS = 32;
@@ -29,7 +29,6 @@ struct GfxContext
 	bool polled_events;
 	uint[GFX_KEYS] api_keycodes;
 	GfxKey[$feat(WIN32) ? 512 : 256] keycodes;
-	int[3] event_wait_force_stop @feat(LINUX, BSD);
 	GfxDataTransfer* clipboard;
 	bool dnd_build;
 	GfxDataDropNode* dnd_root;
@@ -60,13 +59,13 @@ struct GfxContext
 	struct @feat(WIN32)
 	{
 		Win32_HINSTANCE instance;
-		Win32_WNDCLASSW wndClass;
-		ushort[256]     wideClassName;
+		Win32_WNDCLASSW wnd_class;
+		ushort[256]     wide_class_name;
 		Win32_HWND      helper_window;
 	}
 	struct @feat(WASM)
 	{
-		int usingAsyncify;
+		int using_asyncify;
 	}
 
 	GfxDataTransfer* unix_clipboard @feat(LINUX, BSD);
@@ -77,14 +76,14 @@ struct GfxContext
 	{
 		GfxPoint drop;
 		bool mouse_enter;
-		bool dataDragging;
-		bool dataDrop;
+		bool data_dragging;
+		bool data_drop;
 		bool mouse_leave;
 		GfxWindow* win;
 		GfxWindow* win_leave;
-		sz dataLength;
+		sz data_length;
 	}
-	GfxKeyState[8] mouseButtons;
+	GfxKeyState[8] mouse_buttons;
 	GfxKeyState[GFX_KEYS] keyboard;
 	Vec2 scroll;
 	Vec2 vector;
@@ -128,11 +127,12 @@ struct GfxWindowInternal
 	bool capture_mouse;
 	bool in_focus;
 	bool mouse_inside;
+	bool maximized_state;
 	GfxKeyModifier mod;
 	GfxEventMask enabled_events;
 	GfxWindowFlags flags;
 	GfxRect old_bounds;
-	GfxMonitorMode oldMode;
+	GfxMonitorMode old_mode;
 	GfxMouse* mouse;
 }
 
@@ -301,7 +301,7 @@ fn void _reset_prev_state()
 	foreach (&entry : _gfx.keyboard) entry.prev = entry.current;
 	foreach (mouse : GfxMouseButton::values)
 	{
-		_gfx.mouseButtons[mouse.ordinal].prev = _gfx.mouseButtons[mouse.ordinal].current;
+		_gfx.mouse_buttons[mouse.ordinal].prev = _gfx.mouse_buttons[mouse.ordinal].current;
 	}
 	_gfx.scroll = {};
 	_gfx.vector = {};
@@ -310,6 +310,7 @@ fn void _reset_prev_state()
 	while (node != null)
 	{
 		GfxDataDropNode* next = node.next;
+		free(node.data);
 		free(node);
 		node = next;
 	}
@@ -342,7 +343,7 @@ fn void _window_release(GfxWindow* win)
 	log::debug("A window was freed", category: log::CATEGORY_VIDEO);
 }
 
-fn GfxWindow*? _create_window(String name, int x, int y, int w, int h, GfxWindowFlags flags)
+fn GfxWindow*? _create_window(String name, int x, int y, int w, int h, GfxWindowFlags flags, void* platform_data = null)
 {
 	if (!_gfx.initialized) return GFX_CONTEXT_NOT_INITIALIZED~;
 
@@ -367,15 +368,20 @@ fn GfxWindow*? _create_window(String name, int x, int y, int w, int h, GfxWindow
 	}
 
 	assert (win, "A window should always be found");
-	defer catch win.internal.is_collected = true;
+	defer catch
+	{
+		win.internal.is_collected = true;
+		_gfx.active_windows--;
+	}
 
 	_gfx.active_windows++;
 	if (!_gfx.root) set_root_window(win);
+
 	win.bounds = { x, y, w, h };
 	win.internal.mouse = _gfx.standard_mice[GfxMouseIcon.NORMAL.ordinal];
 	win.internal.flags = flags;
 	win.internal.enabled_events = ALL_EVENTS;
-	_window_create_platform(win, name, flags)!;
+	_window_create_platform(win, name, flags, platform_data)!;
 	if (!flags.hide_mouse) win.set_mouse_default();
 
 	win.set_name(name);
@@ -391,35 +397,35 @@ fn GfxWindow*? _create_window(String name, int x, int y, int w, int h, GfxWindow
 }
 
 
-fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags cmpFlags) @private
+fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags cmp_flags) @private
 {
 	switch
 	{
 		case flags.no_border: win.set_border(false);
-		case cmpFlags.no_border: win.set_border(true);
+		case cmp_flags.no_border: win.set_border(true);
 	}
+	if (flags.center) win.center_on_screen();
 	switch
 	{
 		case flags.maximize: win.maximize();
-		case cmpFlags.maximize: win.restore();
+		case cmp_flags.maximize: win.restore();
 	}
 	switch
 	{
 		case flags.minimize: win.minimize();
-		case cmpFlags.minimize: win.restore();
+		case cmp_flags.minimize: win.restore();
 	}
-	if (flags.center) win.center_on_screen();
 	if (flags.center_cursor) _window_move_mouse(win, win.origin + win.size / 2);
 	switch
 	{
 		case flags.fullscreen: _window_set_fullscreen(win, true);
-		case cmpFlags.fullscreen: _window_set_fullscreen(win, false);
+		case cmp_flags.fullscreen: _window_set_fullscreen(win, false);
 	}
 	if (flags.hide_mouse)
 	{
 		win.show_mouse(false);
 	}
-	else if (cmpFlags.hide_mouse)
+	else if (cmp_flags.hide_mouse)
 	{
 		win.show_mouse(true);
 	}
@@ -427,7 +433,7 @@ fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags c
 	{
 		win.hide();
 	}
-	else if (cmpFlags.hide)
+	else if (cmp_flags.hide)
 	{
 		win.show();
 	}
@@ -435,7 +441,7 @@ fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags c
 	{
 		_window_set_floating(win, true);
 	}
-	else if (cmpFlags.floating)
+	else if (cmp_flags.floating)
 	{
 		_window_set_floating(win, false);
 	}
@@ -443,7 +449,7 @@ fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags c
 	{
 		win.set_raw_mouse_mode(true);
 	}
-	else if (cmpFlags.raw_mouse)
+	else if (cmp_flags.raw_mouse)
 	{
 		win.set_raw_mouse_mode(false);
 	}
@@ -451,7 +457,7 @@ fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags c
 	{
 		win.set_capture_raw_mouse(true);
 	}
-	else if (cmpFlags.capture_mouse)
+	else if (cmp_flags.capture_mouse)
 	{
 		win.set_capture_mouse(false);
 	}
@@ -462,7 +468,7 @@ fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags c
 		case flags.no_resize:
 			_window_set_max_size(win, win.size);
 			_window_set_min_size(win, win.size);
-		case cmpFlags.no_resize:
+		case cmp_flags.no_resize:
 			_window_set_max_size(win, {});
 			_window_set_min_size(win, {});
 	}
@@ -482,8 +488,8 @@ fn void _mouse_button_callback(GfxWindow* win, GfxMouseButton button, bool press
 		if (!win.internal.enabled_events.mouse_button_released) return;
 		event.type = MOUSE_BUTTON_RELEASED;
 	}
-	_gfx.mouseButtons[(sz)button].prev = _gfx.mouseButtons[(sz)button].current;
-	_gfx.mouseButtons[(sz)button].current = press;
+	_gfx.mouse_buttons[(sz)button].prev = _gfx.mouse_buttons[(sz)button].current;
+	_gfx.mouse_buttons[(sz)button].current = press;
 	event.button.value = button;
 	event.button.state = press;
 	event.common.win = win;
@@ -492,8 +498,11 @@ fn void _mouse_button_callback(GfxWindow* win, GfxMouseButton button, bool press
 
 fn void _window_maximized_callback(GfxWindow* win, GfxRect bounds)
 {
+	bool maximized = win.internal.maximized_state;
+	win.internal.maximized_state = true;
 	win.internal.flags.maximize = true;
 	win.bounds = bounds;
+	if (maximized) return;
 	if (!win.internal.enabled_events.window_maximized) return;
 	GfxEvent event;
 	event.type = WINDOW_MAXIMIZED;
@@ -543,23 +552,24 @@ fn void _release_all_keys(GfxWindow* win)
 	reset_key();
 }
 
-fn void _data_drag_callback(GfxWindow* win, GfxDataTransferType dataType, GfxDndActionType action, GfxPoint pos)
+fn void _data_drag_callback(GfxWindow* win, GfxDataTransferType data_type, GfxDndActionType action, GfxPoint pos)
 {
 	if (!win.internal.enabled_events.data_drag || !win.internal.flags.allow_dnd) return;
 	_gfx.window_state.win = win;
-	_gfx.window_state.dataDragging = true;
+	_gfx.window_state.data_dragging = true;
 	_gfx.window_state.drop = pos;
 	GfxEvent event;
 	event.type = DATA_DRAG;
 	event.drag.pos = pos;
 	event.drag.action = action;
-	event.drag.dataType = dataType;
+	event.drag.data_type = data_type;
 	event.common.win = win;
 	_event_queue_call_push(&event);
 }
 
 fn void _window_minimized_callback(GfxWindow* win)
 {
+	if (win.internal.flags.minimize) return;
 	win.internal.flags.minimize = true;
 	if (!win.internal.enabled_events.window_minimized) return;
 	GfxEvent event;
@@ -636,6 +646,7 @@ fn void _window_resized_callback(GfxWindow* win, GfxSize size)
 
 fn void _window_moved_callback(GfxWindow* win, GfxPoint where)
 {
+	if (win.origin == where) return;
 	win.origin = where;
 	if (!win.internal.enabled_events.window_moved) return;
 	GfxEvent event;
@@ -645,49 +656,66 @@ fn void _window_moved_callback(GfxWindow* win, GfxPoint where)
 	_event_queue_call_push(&event);
 }
 
-fn void _window_check_mode(GfxWindow* win)
+fn void _window_check_mode(GfxWindow* win) => _window_check_mode_with_bounds(win, win.bounds);
+
+fn void _window_check_mode_with_bounds(GfxWindow* win, GfxRect bounds)
 {
+	bool minimized = _window_is_minimized(win);
+	bool maximized = _window_is_maximized(win);
 	switch
 	{
-		case _window_is_minimized(win) && win.internal.enabled_events.window_minimized:
+		case minimized && !win.internal.flags.minimize:
 			_window_minimized_callback(win);
-		case _window_is_maximized(win) && win.internal.enabled_events.window_maximized:
-			_window_maximized_callback(win, win.bounds);
-		case (win.internal.flags.minimize && !_window_is_maximized(win)) ||
-		(win.internal.flags.maximize && !_window_is_maximized(win)):
-			if (win.internal.enabled_events.window_restored) _window_restored_callback(win, win.bounds);
+		case maximized && !win.internal.maximized_state:
+			_window_maximized_callback(win, bounds);
+		case !minimized && !maximized && (win.internal.flags.minimize || win.internal.maximized_state):
+			_window_restored_callback(win, bounds);
 	}
 }
 
-fn void _data_drop_callback(GfxWindow* win, char* data, sz length, GfxDataTransferType dataType)
+fn void _drop_url_data(GfxWindow* win, char[] data) => @pool()
+{
+	if (!data.len) return;
+	Splitter splitter = ((String)data).tokenize("\r\n");
+	while (try line = splitter.next())
+	{
+		line = line.trim();
+		if (!line) continue;
+		if (line[0] == '#') continue;
+		Url? url = url::parse(tmem, line);
+		if (catch url) continue;
+		if (url.scheme != "file") continue;
+		_data_drop_callback(win, url.path, FILE);
+	}
+}
+
+fn void _data_drop_callback(GfxWindow* win, char[] data, GfxDataTransferType data_type)
 {
 	if (!win.internal.enabled_events.data_drop || !win.internal.flags.allow_dnd) return;
 	_gfx.window_state.win = win;
-	_gfx.window_state.dataDrop = true;
-	_gfx.window_state.dataLength = length;
-	GfxDataDropNode node = { .data = data, .length = length, .type = dataType };
+	_gfx.window_state.data_drop = true;
+	_gfx.window_state.data_length = data.len;
+	GfxDataDropNode node = { .data = data, .type = data_type };
 	GfxEvent event;
 	event.type = DATA_DROP;
 	event.drop.value = &node;
 	event.common.win = win;
 	if (_gfx.callbacks[event.type] != null) _gfx.callbacks[event.type](&event);
 	if (!_gfx.queue_events && !_gfx.dnd_build) return;
-	char* dataCopy = malloc(length);
-	mem::copy(dataCopy, data, length);
-	node.data = dataCopy;
-	GfxDataDropNode* heapNode = mem::new(GfxDataDropNode);
-	*heapNode = node;
+	node.data = mem::@clone_slice(data);
+	GfxDataDropNode* heap_node = mem::new(GfxDataDropNode);
+	*heap_node = node;
 	if (_gfx.dnd_root == null)
 	{
-		_gfx.dnd_root = heapNode;
-		_gfx.dnd_cur = heapNode;
+		_gfx.dnd_root = heap_node;
+		_gfx.dnd_cur = heap_node;
 	}
 	else
 	{
-		_gfx.dnd_cur.next = heapNode;
-		_gfx.dnd_cur = heapNode;
+		_gfx.dnd_cur.next = heap_node;
+		_gfx.dnd_cur = heap_node;
 	}
-	event.drop.value = heapNode;
+	event.drop.value = _gfx.dnd_root;
 	event_queue_push(&event);
 }
 
@@ -753,16 +781,21 @@ fn void _key_char_callback(GfxWindow* win, uint codepoint)
 	if (!win.internal.enabled_events.key_char) return;
 	GfxEvent event;
 	event.type = KEY_CHAR;
-	event.keyChar.value = codepoint;
+	event.key_char.value = codepoint;
 	event.common.win = win;
 	_event_queue_call_push(&event);
 }
 
 fn void _window_restored_callback(GfxWindow* win, GfxRect bounds)
 {
+	if (!win.internal.flags.minimize && !win.internal.maximized_state) return;
 	win.internal.flags.minimize = false;
 	win.bounds = bounds;
-	if (!_window_is_maximized(win)) win.internal.flags.maximize = false;
+	if (!_window_is_maximized(win))
+	{
+		win.internal.flags.maximize = false;
+		win.internal.maximized_state = false;
+	}
 	if (!win.internal.enabled_events.window_restored) return;
 	GfxEvent event;
 	event.type = WINDOW_RESTORED;
@@ -872,4 +905,3 @@ fn void _window_show_mouse_native(GfxWindow* win, bool show) @feat(!WASM)
 
 
 // --- vulkan
-

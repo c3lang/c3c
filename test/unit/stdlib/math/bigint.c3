@@ -141,8 +141,8 @@ fn void test_lcm()
 {
 	BigInt a = bigint::from_int(11);
 	BigInt b = bigint::from_int(17);
-	assert(a.lcm(b).equals(bigint::from_int(11*17)));
-	assert(math::lcm(a,b).equals(bigint::from_int(11*17)));
+	assert(a.lcm(b).equals(bigint::from_int(11 * 17)));
+	assert(math::lcm(a,b).equals(bigint::from_int(11 * 17)));
 }
 
 fn void test_shl_across_limb_boundaries()

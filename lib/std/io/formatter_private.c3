@@ -424,7 +424,7 @@ fn sz? formatter_floatformat(Formatter* self, FloatFormatting formatting, double
 		}
 		if (z > d + 1) z = d + 1;
 	}
-	for (; z>a && !z[-1]; z--);
+	for (; z > a && !z[-1]; z--);
 
 	if (formatting == ADAPTIVE)
 	{

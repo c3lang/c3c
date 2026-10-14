@@ -56,7 +56,7 @@ fn int main()
 		circle.radius = (float)rl::get_random_value(10, 40);
 		circle.position.x = (float)rl::get_random_value((int)circle.radius, (int)(SCREEN_WIDTH - circle.radius));
 		circle.position.y = (float)rl::get_random_value((int)circle.radius, (int)(SCREEN_HEIGHT - circle.radius));
-		circle.speed = (float)rl::get_random_value(1, 100)/2000.0f;
+		circle.speed = (float)rl::get_random_value(1, 100) / 2000.0f;
 		circle.color = colors[rl::get_random_value(0, 13)];
 	}
 

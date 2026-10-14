@@ -19,8 +19,8 @@ struct Posix_dirent
 	ushort d_namelen @feat(FREEBSD);
 	ushort d_pad1 @feat(FREEBSD);
 
-	char[255+1] name @feat(FREEBSD, OPENBSD);
-	char[511+1] name @feat(NETBSD);
+	char[255 + 1] name @feat(FREEBSD, OPENBSD);
+	char[511 + 1] name @feat(NETBSD);
 	char[1024] name @feat(DARWIN);
 	char[*] name @feat(!DARWIN) @feat(!BSD);
 }

@@ -273,7 +273,7 @@ fn double _atan2(double y, double x) @weak @cname("atan2") @nostrip
 	if (ix + (64 << 20) < iy || iy == 0x7ff00000) return m & 1 ? -math::HALF_PI : math::HALF_PI;
 
 	/* z = atan(|y/x|) without spurious underflow */
-	double z = ((m & 2) && iy + (64 << 20) < ix) ? 0 : _atan(math::abs(y/x));
+	double z = ((m & 2) && iy + (64 << 20) < ix) ? 0 : _atan(math::abs(y / x));
 	switch (m)
 	{
 		case 0: return z;              /* atan(+,+) */

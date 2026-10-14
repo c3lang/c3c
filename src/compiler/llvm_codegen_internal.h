@@ -8,7 +8,6 @@
 #include <llvm-c/Core.h>
 #include <llvm-c/Analysis.h>
 #include <llvm-c/Target.h>
-#include <llvm-c/Analysis.h>
 #include <llvm-c/DebugInfo.h>
 #include "dwarf.h"
 #include "c3_llvm.h"
@@ -91,6 +90,7 @@ typedef struct GenContext_
 	LLVMContextRef context;
 	LLVMValueRef *constructors;
 	LLVMValueRef *destructors;
+	LLVMValueRef *no_strip;
 	ReusableConstant *reusable_constants;
 	const char *ir_filename;
 	const char *object_filename;
@@ -391,7 +391,7 @@ void llvm_set_selector_linkage(GenContext *c, LLVMValueRef selector);
 void llvm_set_linkonce(GenContext *c, LLVMValueRef global);
 void llvm_set_comdat(GenContext *c, LLVMValueRef global);
 void llvm_set_private_declaration(LLVMValueRef alloc);
-void llvm_set_decl_linkage(GenContext *c, Decl *decl);
+void llvm_set_decl_linkage(GenContext *c, Decl *decl, bool store_nostrip);
 void llvm_set_weak(GenContext *c, LLVMValueRef global);
 
 void llvm_set_internal_linkage(LLVMValueRef alloc);

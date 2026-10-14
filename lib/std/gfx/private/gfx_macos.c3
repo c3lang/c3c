@@ -41,19 +41,19 @@ fn void wake() => objc::@autoreleasepool()
 	if (ev) ctx.app.send_void("postEvent:atStart:", ev, true);
 }
 
-fn void poll_events_platform()
+fn void poll_events_platform(bool reset_state = true)
 {
 	objc::@autoreleasepool()
 	{
-		gfx::_reset_prev_state();
+		if (reset_state) gfx::_reset_prev_state();
 		if (!ctx.app) return;
-		ObjId distantPast = darwin::nsdate().send(ObjId, "distantPast");
+		ObjId distant_past = darwin::nsdate().send(ObjId, "distantPast");
 
 		while (true)
 		{
 			objc::@autoreleasepool()
 			{
-				ObjId ev = ctx.app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, distantPast, cf::KCF_RUNLOOP_DEFAULT_MODE, true);
+				ObjId ev = ctx.app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, distant_past, cf::KCF_RUNLOOP_DEFAULT_MODE, true);
 				if (!ev) break;
 				ctx.app.send_void("sendEvent:", ev);
 			};
@@ -62,15 +62,20 @@ fn void poll_events_platform()
 
 }
 
+<* @require duration > time::DURATION_ZERO *>
 fn void _wait_platform(Duration duration) => objc::@autoreleasepool()
 {
 	if (!ctx.app) return;
+	gfx::_reset_prev_state();
 	CFTimeInterval time = duration.to_sec();
 	if (duration == gfx::WAIT_FOREVER) time = CFTimeInterval::max;
-	if (time < 0) time = 0;
 	ObjId date = darwin::nsdate().send(ObjId, "dateWithTimeIntervalSinceNow:", time);
 	ObjId ev = ctx.app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, date, cf::KCF_RUNLOOP_DEFAULT_MODE, true);
-	if (ev) ctx.app.send_void("sendEvent:", ev);
+	if (ev)
+	{
+		ctx.app.send_void("sendEvent:", ev);
+		poll_events_platform(reset_state: false);
+	}
 }
 
 
@@ -335,18 +340,14 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 	win.src.window = nswin.retain();
 	win.src.view = view.retain();
 	win.src.delegate = delegate;
+	if (flags.allow_dnd) _macos_register_dnd(view);
 	win.src.bounds = win.bounds;
 	nswin.send_void("setContentView:", view);
 	nswin.send_void("makeFirstResponder:", view);
 	nswin.send_void("setAcceptsMouseMovedEvents:", true);
 	win.set_name(name);
-	window_set_floating(win, flags.floating);
-	if (!(flags.hide)) window_show_platform(win);
-	if (flags.maximize) window_maximize_platform(win);
-	if (flags.minimize) window_minimize_platform(win);
-	if (flags.fullscreen) window_set_fullscreen(win, true);
-
 	gfx::_window_set_flags(win, flags, {});
+	win.internal.maximized_state = nswin.send(bool, "isZoomed");
 	win.src.backing = {};
 	if (flags.open_gl) win.create_opengl_context(gfx::get_global_opengl_hints())!;
 	if (flags.egl) egl::create_context(win, gfx::get_global_opengl_hints())!;
@@ -356,6 +357,8 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 fn void window_destroy_platform(GfxWindow* win)
 {
 	_osx_stop_resize_timer(win);
+	// The layer can outlive the window for a moment, so it must not call back into it.
+	if (win.src.metal_layer) win.src.metal_layer.set_ivar("gfx_window", null);
 	win.src.window.send_void("close");
 	win.src.delegate.release();
 	win.src.view.release();
@@ -375,7 +378,18 @@ fn GfxPoint window_fetch_size(GfxWindow* win)
 	return win.size;
 }
 
-fn GfxMonitor*? window_find_monitor(GfxWindow* win) => gfx::get_primary_monitor();
+fn GfxMonitor*? window_find_monitor(GfxWindow* win)
+{
+	if (win.src.window)
+	{
+		ObjId screen = win.src.window.send(ObjId, "screen");
+		for (GfxMonitorNode* node = gfx::_gfx.monitors.list.head; node; node = node.next)
+		{
+			if (!node.disconnected && (ObjId)node.screen == screen) return &node.mon;
+		}
+	}
+	return gfx::get_primary_monitor();
+}
 
 fn void window_flash(GfxWindow* win, GfxFlashRequest request)
 {
@@ -421,11 +435,12 @@ fn bool window_is_minimized(GfxWindow* win)
 
 fn void window_maximize_platform(GfxWindow* win)
 {
-	win.src.window.send_void("zoom:", null);
+	if (!win.src.window.send(bool, "isZoomed")) win.src.window.send_void("zoom:", null);
 }
 
 fn void window_minimize_platform(GfxWindow* win)
 {
+	if (!win.internal.flags.maximize) win.internal.old_bounds = win.bounds;
 	win.src.window.send_void("miniaturize:", null);
 }
 
@@ -438,11 +453,10 @@ fn void window_move_mouse(GfxWindow* win, GfxPoint where)
 fn void window_move_platform(GfxWindow* win, GfxPoint where)
 {
 	if (!win.src.window) return;
-	CGRect content = win.src.view.send(CGRect, "frame");
-	win.x = where.x;
-	win.y = (int)flip_y((float)where.y + (float)content.size.height - 1.0f);
-	CGPoint origin = { ...where };
-	win.src.window.send_void("setFrameOrigin:", origin);
+	CGRect content_rect = win.src.view.send(CGRect, "frame");
+	CGRect dummy_rect = { { where.x, flip_y((float)where.y + (float)content_rect.size.height - 1.0f) }, {} };
+	CGRect frame_rect = win.src.window.send(CGRect, "frameRectForContentRect:", dummy_rect);
+	win.src.window.send_void("setFrameOrigin:", frame_rect.origin);
 }
 
 fn void window_raise(GfxWindow* win)
@@ -453,18 +467,24 @@ fn void window_raise(GfxWindow* win)
 fn void window_resize_platform(GfxWindow* win, GfxSize size)
 {
 	if (!win.src.window) return;
-	CGRect frame = win.src.window.send(CGRect, "frame");
-	CGRect content = win.src.window.send(CGRect, "contentRectForFrameRect:", frame);
-	double offset = frame.size.height - content.size.height;
-	win.src.window.send_void("setFrame:display:", (CGRect){{ ...win.origin }, { size.x, (double)size.y + offset}}, true);
+	CGRect content_rect = win.src.window.send(CGRect, "contentRectForFrameRect:", win.src.window.send(CGRect, "frame"));
+	content_rect.origin.y += content_rect.size.height - (double)size.y;
+	content_rect.size = { ...size };
+	CGRect frame_rect = win.src.window.send(CGRect, "frameRectForContentRect:", content_rect);
+	win.src.window.send_void("setFrame:display:", frame_rect, true);
 }
 
 fn void window_restore_platform(GfxWindow* win)
 {
 	if (!win.src.window) return;
-	win.src.window.send_void("deminiaturize:", null);
-	win.internal.flags.minimize = false;
-	win.internal.flags.maximize = false;
+	if (win.src.window.send(bool, "isMiniaturized"))
+	{
+		win.src.window.send_void("deminiaturize:", null);
+	}
+	else if (win.src.window.send(bool, "isZoomed"))
+	{
+		win.src.window.send_void("zoom:", null);
+	}
 }
 
 fn void window_set_aspect_ratio(GfxWindow* win, int w, int h) @private
@@ -487,17 +507,17 @@ fn void window_set_border(GfxWindow* win, bool border)
 	double offset = 0;
 
 	win.internal.flags.no_border = !border;
-	NSWindowStyleMask styleMask = BORDERLESS | FULL_SIZE_CONTENT_VIEW;
-	if (border) styleMask = TITLED | CLOSABLE | MINIATURIZABLE;
-	if (!win.internal.flags.no_resize) styleMask |= RESIZABLE;
+	NSWindowStyleMask style_mask = BORDERLESS | FULL_SIZE_CONTENT_VIEW;
+	if (border) style_mask = TITLED | CLOSABLE | MINIATURIZABLE;
+	if (!win.internal.flags.no_resize) style_mask |= RESIZABLE;
 
-	win.src.window.send_void("setStyleMask:", styleMask);
+	win.src.window.send_void("setStyleMask:", style_mask);
 
 	if (!border)
 	{
-		ObjId miniaturizeButton = win.src.window.send(ObjId, "standardWindowButton:", NSWindowButton.MINIATURIZE);
-		ObjId titleBarView = miniaturizeButton.send(ObjId, "superview");
-		titleBarView.send_void("setHidden:", true);
+		ObjId miniaturize_button = win.src.window.send(ObjId, "standardWindowButton:", NSWindowButton.MINIATURIZE);
+		ObjId title_bar_view = miniaturize_button.send(ObjId, "superview");
+		title_bar_view.send_void("setHidden:", true);
 		offset = (double)(frame.size.height - content.size.height);
 	}
 
@@ -596,41 +616,44 @@ fn void window_show_platform(GfxWindow* win)
 
 fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
 {
-	win.src.ctx.native = ctx;
-	win.src.backing = { .opengl };
-
 	FixedList{int, 40} stack;
-	int color_bits = (hints.rgba_size.sum()) / 4;
+	int color_bits = hints.rgba_size.sum();
 	stack.push_all({
-		NS_OPEN_GL_PFA_COLOR_SIZE, color_bits,
-		NS_OPEN_GL_PFA_ALPHA_SIZE, hints.rgba_size.a,
-		NS_OPEN_GL_PFA_DEPTH_SIZE, hints.depth,
-		NS_OPEN_GL_PFA_STENCIL_SIZE, hints.stencil,
-		NS_OPEN_GL_PFA_AUX_BUFFERS, hints.aux_buffers,
-		NS_OPEN_GL_PFA_CLOSEST_POLICY});
+		NSOpenGLPixelFormatAttribute.COLOR_SIZE, color_bits,
+		NSOpenGLPixelFormatAttribute.ALPHA_SIZE, hints.rgba_size.a,
+		NSOpenGLPixelFormatAttribute.DEPTH_SIZE, hints.depth,
+		NSOpenGLPixelFormatAttribute.STENCIL_SIZE, hints.stencil,
+		NSOpenGLPixelFormatAttribute.AUX_BUFFERS, hints.aux_buffers,
+
+	});
 	if (hints.samples)
 	{
-		stack.push_all({ NS_OPEN_GL_PFA_SAMPLE_BUFFERS, 1 , NS_OPEN_GL_PFA_SAMPLES, hints.samples });
+		stack.push_all({
+			NSOpenGLPixelFormatAttribute.SAMPLE_BUFFERS, 1 ,
+			NSOpenGLPixelFormatAttribute.SAMPLES, hints.samples
+		});
 	}
 	else
 	{
-		stack.push_all({ NS_OPEN_GL_PFA_SAMPLE_BUFFERS, 0 });
+		stack.push_all({ NSOpenGLPixelFormatAttribute.SAMPLE_BUFFERS, 0 });
 	}
-	if (hints.double_buffer) stack.push(NS_OPEN_GL_PFA_DOUBLE_BUFFER);
-	stack.push(NS_OPEN_GL_PFA_OPEN_GL_PROFILE);
-	stack.push(hints.major >= 4 ? NS_OPEN_GL_PROFILE_4_1_CORE : (hints.major >= 3 ? NS_OPEN_GL_PROFILE_3_2_CORE : NS_OPEN_GL_PROFILE_LEGACY));
-	if (hints.major <= 2)
+	if (hints.double_buffer) stack.push(NSOpenGLPixelFormatAttribute.DOUBLE_BUFFER);
+	if (hints.stereo) stack.push(NSOpenGLPixelFormatAttribute.STEREO);
+	bool legacy = hints.profile == COMPATIBILITY;
+	stack.push(NSOpenGLPixelFormatAttribute.OPEN_GL_PROFILE);
+	switch
 	{
-		int accum_size = hints.accum_size.sum() / 4;
-		stack.push_all({ NS_OPEN_GL_PFA_ACCUM_SIZE, accum_size });
+		case legacy:
+			stack.push(NSOpenGLProfileVersion.LEGACY);
+			stack.push_all({ NSOpenGLPixelFormatAttribute.ACCUM_SIZE, hints.accum_size.sum() });
+		case hints.major >= 4:
+			stack.push(NSOpenGLProfileVersion.CORE_4_1);
+		default:
+			stack.push(NSOpenGLProfileVersion.CORE_3_2);
 	}
 	if (hints.renderer == SOFTWARE)
 	{
-		stack.push_all({ NS_OPEN_GL_PFA_RENDERER_ID, K_CGL_RENDERER_GENERIC_FLOAT_ID });
-	}
-	else
-	{
-		stack.push(NS_OPEN_GL_PFA_ACCELERATED);
+		stack.push_all({ NSOpenGLPixelFormatAttribute.RENDERER_ID, K_CGL_RENDERER_GENERIC_FLOAT_ID });
 	}
 	stack.push_all({0, 0});
 
@@ -641,14 +664,18 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 	ObjId share = hints.share ? hints.share.ctx : null;
 	ctx.ctx = macos::nsopengl_context().alloc().send(ObjId, "initWithFormat:shareContext:", format, share);
 	if (!ctx.ctx) return gfx::OPENGL_CTX_CREATION_FAILED~;
-	ctx.format = format;
 
+	ctx.format = format;
+	win.src.view.send_void("setWantsBestResolutionOpenGLSurface:", true);
 	ctx.ctx.send_void("setView:", win.src.view);
+
 	if (win.internal.flags.transparent)
 	{
 		int opacity = 0;
-		_opengl_context_set_values((ObjId)ctx.ctx, &opacity, NS_OPEN_GL_CP_SURFACE_OPACITY);
+		_opengl_context_set_values((ObjId)ctx.ctx, &opacity, NSOpenGLContextParameter.SURFACE_OPACITY);
 	}
+	win.src.ctx.native = ctx;
+	win.src.backing = { .opengl };
 	window_make_current_opengl_context(win);
 	window_set_opengl_swap_interval(win, 0);
 }
@@ -683,7 +710,7 @@ fn void window_set_opengl_swap_interval(GfxWindow* win, int swap_interval)
 {
 	if (win.src.ctx.native && win.src.ctx.native.ctx)
 	{
-		_opengl_context_set_values((ObjId)win.src.ctx.native.ctx, &swap_interval, NS_OPEN_GL_CONTEXT_PARAMETER_SWAP_INTERVAL);
+		_opengl_context_set_values((ObjId)win.src.ctx.native.ctx, &swap_interval, NSOpenGLContextParameter.SWAP_INTERVAL);
 	}
 }
 
@@ -727,13 +754,41 @@ fn WGPUSurface? window_create_wgpu_surface(GfxWindow* window, WGPUInstance insta
 	window.src.view.send_void("setWantsLayer:", true);
 	_window_set_layer_macos(window, layer);
 
-	WgpuSurfaceSourceMetalLayer fromMetal;
-	fromMetal.chain.next = null;
-	fromMetal.chain.sType = gfx::WGPU_STYPE_SURFACE_SOURCE_METAL_LAYER;
-	fromMetal.layer = layer;
-	WgpuSurfaceDescriptor surfaceDesc;
-	surfaceDesc.nextInChain = (WgpuChainedStruct*)&fromMetal;
-	return gfx::wgpuInstanceCreateSurface(instance, &surfaceDesc) ?: gfx::SURFACE_CREATION_FAILED~;
+	WgpuSurfaceSourceMetalLayer from_metal;
+	from_metal.chain.next = null;
+	from_metal.chain.sType = gfx::WGPU_STYPE_SURFACE_SOURCE_METAL_LAYER;
+	from_metal.layer = layer;
+	WgpuSurfaceDescriptor surface_desc;
+	surface_desc.nextInChain = (WgpuChainedStruct*)&from_metal;
+	return gfx::wgpuInstanceCreateSurface(instance, &surface_desc) ?: gfx::SURFACE_CREATION_FAILED~;
+}
+
+// Metal
+fn void*? window_create_metal_layer(GfxWindow* win)
+{
+	ObjId device = darwin::mtlCreateSystemDefaultDevice();
+	if (!device || !win.src.view) return gfx::SURFACE_CREATION_FAILED~;
+	static ObjClass _macos_metal_layer_class;
+	if (!_macos_metal_layer_class)
+	{
+		ObjClass layer_class = darwin::cametal_layer().new_subclass("C3GFXMetalLayer");
+		layer_class.add_ivar("gfx_window", void*, "^v");
+		layer_class.add_method("display", &_osx_metal_layer_display, "v@:");
+		objc::register_new_subclass(layer_class);
+		_macos_metal_layer_class = layer_class;
+	}
+	ObjId layer = _macos_metal_layer_class.send(ObjId, "layer");
+	layer.set_ivar("gfx_window", win);
+	layer.send_void("setDevice:", device);
+	layer.send_void("setPixelFormat:", MTLPixelFormat.BGRA8_UNORM);
+	layer.send_void("setNeedsDisplayOnBoundsChange:", true);
+	win.src.metal_layer = layer;
+	// A view asks for its backing layer when it becomes layer backed, so make it ask again.
+	win.src.view.send_void("setWantsLayer:", false);
+	win.src.view.send_void("setWantsLayer:", true);
+	// Pinned top left: while the window is resized, AppKit must not stretch the layer.
+	win.src.view.send_void("setLayerContentsPlacement:", NSViewLayerContentsPlacement.TOP_LEFT);
+	return (void*)layer;
 }
 
 // --- Clipboard
@@ -745,7 +800,7 @@ fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType type
 	ObjId pb = objc::send(macos::nspasteboard(), ObjId, "generalPasteboard");
 	if (!pb) return gfx::CLIPBOARD_COULD_NOT_BE_OPENED~;
 
-	ObjId str = pb.send(ObjId, "stringForType:", "public.utf8-plain-text".to_nsstring());
+	ObjId str = pb.send(ObjId, "stringForType:", macos::NS_PASTEBOARD_TYPE_STRING);
 	if (!str) return gfx::CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
 
 	ZString raw = darwin::string_to_zstr(str);
@@ -761,7 +816,7 @@ fn void? write_clipboard(GfxDataTransfer* data)
 	if (!pb) return gfx::CLIPBOARD_COULD_NOT_BE_OPENED~;
 	pb.send_void("clearContents");
 
-	if (!pb.send(bool, "setString:forType:", data.text.to_nsstring(), "public.utf8-plain-text".to_nsstring()))
+	if (!pb.send(bool, "setString:forType:", data.text.to_nsstring(), macos::NS_PASTEBOARD_TYPE_STRING))
 	{
 		return gfx::CLIPBOARD_WRITE_FAILED~;
 	}
@@ -872,17 +927,17 @@ fn GfxKey physical_to_mapped_key(GfxKey key)
 	TISInputSourceRef source = macos::tisCopyCurrentKeyboardLayoutInputSource();
 	if (!source) return key;
 
-	CFDataRef layoutData = source.getProperty(macos::kTISPropertyUnicodeKeyLayoutData);
+	CFDataRef layout_data = source.getProperty(macos::kTISPropertyUnicodeKeyLayoutData);
 	defer source.release();
-	if (!layoutData) return key;
+	if (!layout_data) return key;
 
-	UCKeyboardLayout* layout = (UCKeyboardLayout*)layoutData.getBytePtr();
+	UCKeyboardLayout* layout = (UCKeyboardLayout*)layout_data.getBytePtr();
 
-	uint deadKeyState = 0;
+	uint dead_key_state = 0;
 	ushort[4] chars;
 	uint len = 0;
 	uint type = macos::lmGetKbdType();
-	int status = macos::ucKeyTranslate(layout, keycode, macos::UC_KEY_ACTION_DOWN, 0, type, macos::UC_KEY_TRANSLATE_NO_DEAD_KEYS_BIT, &deadKeyState, 4, &len, &chars[0]);
+	int status = macos::ucKeyTranslate(layout, keycode, macos::UC_KEY_ACTION_DOWN, 0, type, macos::UC_KEY_TRANSLATE_NO_DEAD_KEYS_BIT, &dead_key_state, 4, &len, &chars[0]);
 
 	if (status == 0 && len == 1 && chars[0] < 256) return (GfxKey)chars[0];
 
@@ -928,8 +983,8 @@ fn void _monitor_from_display(CGDirectDisplayID display, ObjId screen, GfxMonito
 	mon.mode.rgb = { 8, 8, 8 };
 	mon.mode.src = mode;
 	mon.phys_size = (float[<2>])(double[<2>]){ ...display.screenSize() } / 25.4f;
-	mon.pixelRatio = screen ? (float)screen.send(CGFloat, "backingScaleFactor") : 1.0f;
-	mon.scale = (Vec2)mon.pixelRatio;
+	mon.pixel_ratio = screen ? (float)screen.send(CGFloat, "backingScaleFactor") : 1.0f;
+	mon.scale = (Vec2)mon.pixel_ratio;
 }
 
 fn float _refresh_rate(CGDisplayModeRef mode) @local
@@ -1006,7 +1061,24 @@ fn GfxWindow*? _fetch_win(ObjId self) @local
 }
 // MacOS callbacks
 
-fn void? _osx_register_classes()
+fn void _macos_register_dnd(ObjId view) @local
+{
+	ObjId types = darwin::nsmutable_array().send(ObjId, "array");
+	types.send_void("addObject:", macos::NS_PASTEBOARD_TYPE_FILE_URL);
+	types.send_void("addObject:", macos::NS_PASTEBOARD_TYPE_URL);
+	types.send_void("addObject:", macos::NS_PASTEBOARD_TYPE_STRING);
+	view.send_void("registerForDraggedTypes:", types);
+}
+
+// Files win over text: a file dragged from Finder can carry its name as text as well.
+fn GfxDataTransferType _drag_data_type(ObjId sender) @local
+{
+	ObjId types = sender.send(ObjId, "draggingPasteboard").send(ObjId, "types");
+	if (types.send(bool, "containsObject:", macos::NS_PASTEBOARD_TYPE_FILE_URL)) return FILE;
+	return TEXT;
+}
+
+fn void? _osx_register_classes() @local
 {
 	if (_macos_window_delegate_class) return;
 
@@ -1051,6 +1123,7 @@ fn void? _osx_register_classes()
 	_macos_view_class.add_method("mouseExited:",             &_osx_mouse_exited, "v@:@");
 	_macos_view_class.add_method("flagsChanged:",            &_osx_flags_changed, "v@:@");
 	_macos_view_class.add_method("viewDidChangeBackingProperties", &_osx_view_did_change_backing_properties, "v@:");
+	_macos_view_class.add_method("makeBackingLayer",         &_osx_view_make_backing_layer, "@@:");
 	_macos_view_class.add_method("wantsUpdateLayer",         &_osx_wants_update_layer, "c@:");
 	_macos_view_class.add_method("updateLayer",              &_osx_update_layer, "v@:");
 	_macos_view_class.add_method("drawRect:",                &_osx_draw_rect, "v@:{CGRect={CGPoint=dd}{CGSize=dd}}");
@@ -1066,9 +1139,9 @@ fn void _osx_key_updown(ObjId self, ObjId event, bool down)
 {
 	GfxWindow*? win = _fetch_win(self);
 	if (catch win) return;
-	ushort keyCode = event.send(ushort, "keyCode");
-	if (keyCode >= 256) return;
-	GfxKey key = gfx::_gfx.keycodes[(sz)keyCode];
+	ushort key_code = event.send(ushort, "keyCode");
+	if (key_code >= 256) return;
+	GfxKey key = gfx::_gfx.keycodes[(sz)key_code];
 	// Unmapped key
 	if (!key) return;
 	bool repeat = down ? event.send(bool, "isARepeat") : false;
@@ -1131,6 +1204,8 @@ fn void _osx_window_will_start_live_resize(ObjId self, ObjSel sel, ObjId notific
 {
 	GfxWindow*? win = _fetch_win(self);
 	if (catch win) return;
+	// While the window is resized, frames are presented with the transaction that resizes the layer.
+	if (win.src.metal_layer) win.src.metal_layer.send_void("setPresentsWithTransaction:", true);
 	if (!win.src.view || !win.repaint_fn) return;
 	// Aim for 60 FPS while resizing, as SDL does.
 	double interval = 1.0 / 60.0;
@@ -1152,6 +1227,7 @@ fn void _osx_window_did_end_live_resize(ObjId self, ObjSel sel, ObjId notificati
 {
 	GfxWindow*? win = _fetch_win(self);
 	if (catch win) return;
+	if (win.src.metal_layer) win.src.metal_layer.send_void("setPresentsWithTransaction:", false);
 	_osx_stop_resize_timer(win);
 }
 
@@ -1173,16 +1249,24 @@ fn void _osx_window_did_resize(ObjId self, ObjSel sel, ObjId notification)
 	GfxSize size = { (int)frame.size.width, (int)frame.size.height };
 	if (!size.x || !size.y) return;
 	win.size = size;
+	CGRect window_frame = win.src.window.send(CGRect, "frame");
+	CGRect content_rect = win.src.window.send(CGRect, "contentRectForFrameRect:", window_frame);
+	GfxPoint origin = { (int)content_rect.origin.x, (int)flip_y((float)(content_rect.origin.y + content_rect.size.height - 1.0)) };
+	gfx::_window_moved_callback(win, origin);
 
-	GfxMonitor*? mon = window_find_monitor(win);
-	if (catch mon) return;
-
-	switch
+	if (win.src.backing.opengl && win.src.ctx.native)
 	{
-		case mon.mode.size.x == size.x && mon.mode.size.y - 102 <= size.y:
-			gfx::_window_maximized_callback(win, { 0, 0, ...size });
-		case win.internal.flags.maximize:
-			gfx::_window_restored_callback(win, { ...win.origin, ...size });
+		win.src.ctx.native.ctx.send_void("update");
+	}
+	bool maximized = win.src.window.send(bool, "isZoomed");
+	GfxRect bounds = { ...origin, ...size };
+	if (maximized)
+	{
+		gfx::_window_maximized_callback(win, bounds);
+	}
+	else
+	{
+		gfx::_window_restored_callback(win, bounds);
 	}
 	gfx::_window_resized_callback(win, size);
 }
@@ -1256,8 +1340,8 @@ fn void _osx_flags_changed(ObjId self, ObjSel sel, ObjId event)
 
 	for (int i = 0; i < 9; i++)
 	{
-		GfxKey modKey = CAPS_LOCK + (GfxKey)i;
-		gfx::_gfx.keyboard[modKey].prev = gfx::_gfx.keyboard[modKey].current;
+		GfxKey mod_key = CAPS_LOCK + (GfxKey)i;
+		gfx::_gfx.keyboard[mod_key].prev = gfx::_gfx.keyboard[mod_key].current;
 	}
 
 	for (int i = 0; i < 5; i++)
@@ -1290,6 +1374,11 @@ fn void _osx_view_did_change_backing_properties(ObjId self, ObjSel sel)
 {
 	GfxWindow*? win = _fetch_win(self);
 	if (catch win) return;
+	if (win.src.backing.opengl && win.src.ctx.native)
+	{
+		win.src.ctx.native.ctx.send_void("update");
+	}
+	if (win.src.metal_layer) win.src.metal_layer.send_void("setNeedsDisplay"); // the layer takes the new scale when it is displayed
 	(void)gfx::_scale_updated_callback(win, window_find_monitor(win).scale);
 }
 
@@ -1298,7 +1387,7 @@ fn NSUInteger _osx_dragging_entered(ObjId self, ObjSel sel, ObjId sender)
 	GfxWindow*? win = _fetch_win(self);
 	if (catch win) return 0;
 	CGPoint p = sender.send(CGPoint, "draggingLocation");
-	gfx::_data_drag_callback(win, FILE, ENTER, { (int)p.x, win.height - (int)p.y });
+	gfx::_data_drag_callback(win, _drag_data_type(sender), ENTER, { (int)p.x, win.height - (int)p.y });
 	return 1;
 }
 
@@ -1308,7 +1397,7 @@ fn NSUInteger _osx_dragging_updated(ObjId self, ObjSel sel, ObjId sender)
 	if (catch win) return 0;
 	if (!win.internal.enabled_events.data_drag) return 1;
 	CGPoint p = sender.send(CGPoint, "draggingLocation");
-	gfx::_data_drag_callback(win, FILE, MOVE, { (int)p.x, win.height - (int)p.y });
+	gfx::_data_drag_callback(win, _drag_data_type(sender), MOVE, { (int)p.x, win.height - (int)p.y });
 	return 1;
 }
 
@@ -1318,7 +1407,7 @@ fn void _osx_dragging_ended(ObjId self, ObjSel sel, ObjId sender)
 	if (catch win) return;
 	if (!win.internal.enabled_events.data_drag) return;
 	CGPoint p = sender.send(CGPoint, "draggingLocation");
-	gfx::_data_drag_callback(win,FILE, EXIT, { (int)p.x, win.height - (int)p.y });
+	gfx::_data_drag_callback(win, _drag_data_type(sender), EXIT, { (int)p.x, win.height - (int)p.y });
 }
 
 fn bool _osx_prepare_for_drag_operation(ObjId self, ObjSel sel, ObjId sender)
@@ -1329,43 +1418,49 @@ fn bool _osx_prepare_for_drag_operation(ObjId self, ObjSel sel, ObjId sender)
 	return win.internal.flags.allow_dnd;
 }
 
+fn bool _drop_text(GfxWindow* win, ObjId pasteboard, ObjId types) @local
+{
+	// A dragged web link has no plain text form, so it is delivered as its URL.
+	ObjId type = macos::NS_PASTEBOARD_TYPE_STRING;
+	if (!types.send(bool, "containsObject:", type)) type = macos::NS_PASTEBOARD_TYPE_URL;
+	if (!types.send(bool, "containsObject:", type))
+	{
+		log::warn("No files or text found on the pasteboard", category: log::CATEGORY_VIDEO);
+		return false;
+	}
+	ObjId text = pasteboard.send(ObjId, "stringForType:", type);
+	if (!text) return false;
+	String utf8 = darwin::string_to_zstr(text).str_view();
+	if (!utf8.len) return false;
+	gfx::_data_drop_callback(win, utf8, TEXT);
+	return true;
+}
+
 fn bool _osx_perform_drag_operation(ObjId self, ObjSel sel, ObjId sender)
 {
 	GfxWindow*? win = _fetch_win(self);
 	if (catch win) return false;
 	if (!win.internal.enabled_events.data_drop) return false;
 
-	ObjId pasteBoard = sender.send(ObjId, "draggingPasteboard");
-	ObjId types = pasteBoard.send(ObjId, "types");
-	ObjId file_urls_type = "NSFilenamesPboardType".to_nsstring();
+	ObjId pasteboard = sender.send(ObjId, "draggingPasteboard");
+	ObjId types = pasteboard.send(ObjId, "types");
+	if (!types.send(bool, "containsObject:", macos::NS_PASTEBOARD_TYPE_FILE_URL)) return _drop_text(win, pasteboard, types);
 
-	if (!types.send(bool, "containsObject:", file_urls_type))
-	{
-		log::warn("No files found on the pasteboard", category: log::CATEGORY_VIDEO);
-		return false;
-	}
-
-	ObjId propertyList = pasteBoard.send(ObjId, "propertyListForType:", file_urls_type);
-
-	if (propertyList.send(bool, "isKindOfClass:", darwin::nsstring()))
-	{
-		NSUInteger stringCount = propertyList.send(NSUInteger, "length");
-		ZString filePath = darwin::string_to_zstr(propertyList);
-		gfx::_data_drop_callback(win, filePath, (sz)stringCount + 1, FILE);
-	}
-	if (!propertyList.send(bool, "isKindOfClass:", darwin::nsarray())) return false;
-
-	NSUInteger count = propertyList.send(NSUInteger, "count");
+	// Only file URLs: the pasteboard can carry web links as well. Older apps that offer just
+	// NSFilenamesPboardType are converted to file URLs by AppKit.
+	ObjId classes = darwin::nsarray().send(ObjId, "arrayWithObject:", (ObjId)objc::@class("NSURL"));
+	ObjId file_only = objc::@class("NSNumber").send(ObjId, "numberWithBool:", true);
+	ObjId options = objc::@class("NSDictionary").send(ObjId, "dictionaryWithObject:forKey:", file_only, macos::NS_PASTEBOARD_URL_READING_FILE_URLS_ONLY_KEY);
+	ObjId urls = pasteboard.send(ObjId, "readObjectsForClasses:options:", classes, options);
+	NSUInteger count = urls ? urls.send(NSUInteger, "count") : 0;
 	if (!count) return false;
 
 	for (NSUInteger i = 0; i < count; i++)
 	{
-		ObjId file_url = propertyList.send(ObjId, "objectAtIndex:", i);
-		ZString filePath = darwin::string_to_zstr(file_url);
-		NSUInteger string_count = file_url.send(NSUInteger, "length");
-		gfx::_data_drop_callback(win, filePath, (sz)string_count + 1, FILE);
+		ZString file_path = urls.send(ObjId, "objectAtIndex:", i).send(ZString, "fileSystemRepresentation");
+		if (file_path) gfx::_data_drop_callback(win, file_path.str_view(), FILE);
 	}
-	return false;
+	return true;
 }
 
 fn bool _osx_wants_update_layer(ObjId self, ObjSel sel) => true;
@@ -1373,6 +1468,35 @@ fn bool _osx_wants_update_layer(ObjId self, ObjSel sel) => true;
 fn void _osx_update_layer(ObjId self, ObjSel sel)
 {
 	if (try win = _fetch_win(self)) gfx::_window_refresh_callback(win, { 0, 0, ...win.size });
+}
+
+// A window with a Metal layer has it as its backing layer. Any other window gets the layer NSView makes.
+fn ObjId _osx_view_make_backing_layer(ObjId self, ObjSel sel)
+{
+	GfxWindow*? win = _fetch_win(self);
+	if (try win && win.src.metal_layer) return win.src.metal_layer;
+	SendId default_layer = _macos_view_class.superclass().get_method_implementation(sel);
+	return default_layer(self, sel);
+}
+
+// The Metal layer is displayed inside the Core Animation transaction that resizes it, so what the repaint callback draws here is shown
+// together with the new size.
+fn void _osx_metal_layer_display(ObjId self, ObjSel sel)
+{
+	GfxWindow*? win = _fetch_win(self);
+	if (catch win) return;
+	CGRect bounds = win.src.view.send(CGRect, "bounds");
+	CGFloat scale = win.src.window.send(CGFloat, "backingScaleFactor");
+	CGSize size = { math::ceil(bounds.size.width * scale), math::ceil(bounds.size.height * scale) };
+	CGSize current = self.send(CGSize, "drawableSize");
+	self.send_void("setContentsScale:", scale);
+	if (current.width != size.width || current.height != size.height) self.send_void("setDrawableSize:", size);
+	win.size = { (int)bounds.size.width, (int)bounds.size.height };
+	// What is drawn here is part of the transaction that changes the layer, so it is presented with it.
+	bool transaction = self.send(bool, "presentsWithTransaction");
+	self.send_void("setPresentsWithTransaction:", true);
+	gfx::_window_refresh_callback(win, { 0, 0, ...win.size });
+	self.send_void("setPresentsWithTransaction:", transaction);
 }
 
 fn bool _osx_accepts_first_responder(ObjId self, ObjSel sel) => true;
@@ -1396,29 +1520,6 @@ fn void _opengl_context_set_values(ObjId context, int* vals, NSInteger param) @l
 	context.send_void("setValues:forParameter:", vals, param);
 }
 
-const int NS_OPEN_GL_PFA_DOUBLE_BUFFER = 5;
-const int NS_OPEN_GL_PFA_AUX_BUFFERS = 7;
-const int NS_OPEN_GL_PFA_COLOR_SIZE = 8;
-const int NS_OPEN_GL_PFA_ALPHA_SIZE = 11;
-const int NS_OPEN_GL_PFA_DEPTH_SIZE = 12;
-const int NS_OPEN_GL_PFA_STENCIL_SIZE = 13;
-const int NS_OPEN_GL_PFA_ACCUM_SIZE = 14;
-const int NS_OPEN_GL_PFA_CLOSEST_POLICY = 74;
-const int NS_OPEN_GL_PFA_ACCELERATED = 73;
-const int NS_OPEN_GL_PFA_SAMPLE_BUFFERS = 55;
-const int NS_OPEN_GL_PFA_SAMPLES = 56;
-const int NS_OPEN_GL_PFA_RENDERER_ID = 70;
-const int NS_OPEN_GL_PFA_OPEN_GL_PROFILE = 99;
-const int NS_OPEN_GL_PROFILE_LEGACY = 0x1000;
-const int NS_OPEN_GL_PROFILE_3_2_CORE = 0x3200;
-const int NS_OPEN_GL_PROFILE_4_1_CORE = 0x4100;
-const int NS_OPEN_GL_CP_SURFACE_OPACITY = 236;
-const int NS_OPEN_GL_CONTEXT_PARAMETER_SWAP_INTERVAL = 222;
 const int K_CGL_RENDERER_GENERIC_FLOAT_ID = 0x00020400;
-
-module std::gfx @feat(MACOS) @private;
-import std::os::macos, std::math, std::time, std::os::darwin, std::collections, std::gfx::egl @public;
-import std::gfx::macos @public;
-
 
 

@@ -54,18 +54,18 @@ fn void walk_lengths_streamed()
 	{
 		Streebog s @noinit;
 		s.init(StreebogLength.SIZE_256);
-		s.update(p.first[                    : p.first.len/4 ]);
-        s.update(p.first[ 1*(p.first.len/4)  : p.first.len/4 ]);
-        s.update(p.first[ 2*(p.first.len/4)  : p.first.len/4 ]);
-        s.update(p.first[ 3*(p.first.len/4)  ..              ]);
+		s.update(p.first[                    : p.first.len / 4 ]);
+        s.update(p.first[ 1 * (p.first.len / 4)  : p.first.len / 4 ]);
+        s.update(p.first[ 2 * (p.first.len / 4)  : p.first.len / 4 ]);
+        s.update(p.first[ 3 * (p.first.len / 4)  ..              ]);
 		test::@check(s.final(StreebogLength.SIZE_256)[..] == p.second, "Mismatched streamed streebog256, index %d (input-len %d)", i, p.first.len);
 
 		Streebog t @noinit;
 		t.init(StreebogLength.SIZE_512);
-		t.update(p.first[                    : p.first.len/4 ]);
-        t.update(p.first[ 1*(p.first.len/4)  : p.first.len/4 ]);
-        t.update(p.first[ 2*(p.first.len/4)  : p.first.len/4 ]);
-        t.update(p.first[ 3*(p.first.len/4)  ..              ]);
+		t.update(p.first[                    : p.first.len / 4 ]);
+        t.update(p.first[ 1 * (p.first.len / 4)  : p.first.len / 4 ]);
+        t.update(p.first[ 2 * (p.first.len / 4)  : p.first.len / 4 ]);
+        t.update(p.first[ 3 * (p.first.len / 4)  ..              ]);
 		test::@check(t.final(StreebogLength.SIZE_512)[..] == p.third, "Mismatched streamed streebog512, index %d (input-len %d)", i, p.first.len);
 	}
 }

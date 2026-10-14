@@ -588,7 +588,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 			expr->const_expr.fault = NULL;
 			expr->resolve_status = RESOLVE_DONE;
 			break;
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 			expr_rewrite_to_const_zero(expr, type_flatten(type));
 			cast_no_check(expr, type, false);
 			return;

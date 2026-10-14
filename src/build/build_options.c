@@ -70,6 +70,9 @@ static void usage(bool full)
 	print_cmd("static-lib <file1> [<file2> ...]", "Compile files without a project into a static library.");
 	print_cmd("dynamic-lib <file1> [<file2> ...]", "Compile files without a project into a dynamic library.");
 	print_cmd("vendor-fetch <library> ...", "Fetches one or more libraries from the vendor collection.");
+	print_cmd("fetch <library> ...", "Fetches one or more libraries.");
+	print_cmd("fetch-list", "Prints all available libraries");
+	print_cmd("fetch-info <library>", "Prints info about a given library.");
 	print_cmd("project <subcommand> ...", "Manipulate or view project files.");
 	print_cmd("fetch-sdk <windows|macos|android> ...", "Fetches the SDK required for cross-compiling.");
 	print_cmd("docgen [<path1> <path2> ...]", "Generate documentation for the project, or specific files and directories.");
@@ -106,6 +109,7 @@ static void usage(bool full)
 		print_opt("--validation=<option>", "Strictness of code validation: lenient (default), strict, obnoxious (very strict)");
 		print_opt("--stdlib <dir>", "Use this directory as the C3 standard library path.");
 		print_opt("--no-entry", "Do not generate (or require) a main function.");
+		print_opt("--cflags <flag>", "Add flags passed to the compiler when using the C backend.");
 		print_opt("--path <dir>", "Use this as the base directory for the current command.");
 		print_opt("--template <template>", "Select template for 'init': \"exe\", \"static-lib\", \"dynamic-lib\" or a path.");
 		print_opt("--symtab <value>", "Sets the preferred symtab size.");
@@ -137,6 +141,8 @@ static void usage(bool full)
 		print_opt("--loop-vectorize=<yes|no>", "Enable loop auto-vectorization.");
 		print_opt("--slp-vectorize=<yes|no>", "Enable SLP (superword-level parallelism) auto-vectorization.");
 		print_opt("--merge-functions=<yes|no>", "Enable function merging.");
+		print_opt("--function-sections=<yes|no>", "Place each function in its own section, so the linker can discard unused ones (no effect on Mach-O).");
+		print_opt("--data-sections=<yes|no>", "Place each global variable in its own section, so the linker can discard unused ones (no effect on Mach-O).");
 		print_opt("--single-module=<yes|no>", "Compile all modules together, enables more inlining.");
 		print_opt("--show-backtrace=<yes|no>", "Show detailed backtrace on segfaults.");
 		print_opt("--lsp", "Emit data about errors suitable for a LSP.");
@@ -149,6 +155,8 @@ static void usage(bool full)
 		print_opt("--warn-builtin=<yes|no|error>", "Print warning when using builtin functions outside of the stdlib: yes, no, error.");
 		print_opt("--warn-unusedparam=<yes|no|error>", "Print warning when a parameter is not used after compile-time folding: yes, no, error.");
 		print_opt("--warn-unusedlocal=<yes|no|error>", "Print warning when a local is not used after compile-time folding: yes, no, error.");
+		PRINTF("");
+		print_opt("--fetch-url <url>", "Use this URL for fetching libraries.");
 	}
 	PRINTF("");
 	print_opt("-g", "Emit debug info.");
@@ -540,8 +548,39 @@ static void parse_command(BuildOptions *options)
 		while (!at_end() && !next_is_opt())
 		{
 			const char *lib = next_arg();
+			vec_add(options->vendor_libraries_to_fetch, lib);
+		}
+		return;
+	}
+	if (arg_match("fetch"))
+	{
+		options->command = COMMAND_FETCH;
+		if (at_end() || next_is_opt()) error_exit("Expected a library name after 'fetch'.");
+		while (!at_end() && !next_is_opt())
+		{
+			const char *lib = next_arg();
 			vec_add(options->libraries_to_fetch, lib);
 		}
+		return;
+	}
+	if (arg_match("fetch-info"))
+	{
+		if (at_end() || next_is_opt()) error_exit("Expected a library name after 'fetch-info'.");
+		options->search_name = next_arg();
+		options->command = COMMAND_FETCH_INFO;
+		return;
+	}
+	if (arg_match("fetch-list"))
+	{
+		options->command = COMMAND_FETCH_LIST;
+		if (at_end() || next_is_opt()) return;
+		const char *lib = next_arg();
+		if (str_start_with(lib, "tag:"))
+		{
+			options->search_tag = lib + 4;
+			return;
+		}
+		options->search_name = lib;
 		return;
 	}
 	if (arg_match("dynamic-lib"))
@@ -1037,6 +1076,12 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->ansi = parse_opt_select(Ansi, argopt, on_off);
 				return;
 			}
+			if (match_longopt("fetch-url"))
+			{
+				if (at_end() || next_is_opt()) FAIL_WITH_ERR_LONG("'--fetch-url' expected a URL.");
+				options->fetch_url = next_arg();
+				return;
+			}
 			if (match_longopt("max-mem"))
 			{
 				if (at_end() || next_is_opt())
@@ -1060,7 +1105,7 @@ static void parse_option(BuildOptions *options) // NOLINT
 					next_arg();
 					append_file(options);
 
-				} while(!(at_end() || next_is_opt()));
+				} while (!(at_end() || next_is_opt()));
 				return;
 			}
 			if (match_longopt("test-filter"))
@@ -1233,6 +1278,16 @@ static void parse_option(BuildOptions *options) // NOLINT
 			if ((argopt = match_argopt("merge-functions"))) // NOLINT
 			{
 				options->merge_functions = parse_opt_select(MergeFunctions, argopt, on_off);
+				return;
+			}
+			if ((argopt = match_argopt("data-sections"))) // NOLINT
+			{
+				options->data_sections = parse_opt_select(SectionsSetting, argopt, on_off);
+				return;
+			}
+			if ((argopt = match_argopt("function-sections"))) // NOLINT
+			{
+				options->function_sections = parse_opt_select(SectionsSetting, argopt, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("loop-vectorize"))) // NOLINT
@@ -1578,6 +1633,12 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->cc = next_arg();
 				return;
 			}
+			if (match_longopt("cflags"))
+			{
+				if (at_end()) error_exit("error: --cflags needs an argument string.");
+				options->cflags = next_arg();
+				return;
+			}
 			if (match_longopt("stdlib"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --stdlib needs a directory.");
@@ -1889,6 +1950,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 	BuildOptions build_options = {
 		.path = DEFAULT_PATH,
 		.vendor_download_path = DEFAULT_PATH,
+		.fetch_url = DEFAULT_FETCH_URL,
 		.emit_llvm = false,
 		.optsetting = OPT_SETTING_NOT_SET,
 		.debug_info_override = DEBUG_INFO_NOT_SET,
@@ -1926,6 +1988,8 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.sanitize_mode = SANITIZE_NOT_SET,
 		.unroll_loops = UNROLL_LOOPS_NOT_SET,
 		.merge_functions = MERGE_FUNCTIONS_NOT_SET,
+		.data_sections = SECTIONS_SETTING_NOT_SET,
+		.function_sections = SECTIONS_SETTING_NOT_SET,
 		.slp_vectorization = VECTORIZATION_NOT_SET,
 		.loop_vectorization = VECTORIZATION_NOT_SET,
 		.linux_libc = LINUX_LIBC_NOT_SET,
@@ -2004,6 +2068,9 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		case COMMAND_STATIC_LIB:
 		case COMMAND_DYNAMIC_LIB:
 		case COMMAND_VENDOR_FETCH:
+		case COMMAND_FETCH:
+		case COMMAND_FETCH_INFO:
+		case COMMAND_FETCH_LIST:
 		case COMMAND_UNIT_TEST:
 		case COMMAND_PRINT_SYNTAX:
 		case COMMAND_PROJECT:

@@ -117,7 +117,7 @@ fn void sincos(double x, double *sin, double *cos) @cname("__sincos") @weak @nos
 			if (ix < 0x3e46a09e)
 			{
 				// raise inexact if x!=0 and underflow if subnormal
-				force_eval_add(ix < 0x00100000 ? x/0x1p120f : x+0x1p120f, 0);
+				force_eval_add(ix < 0x00100000 ? x / 0x1p120f : x + 0x1p120f, 0);
 				*sin = x;
 				*cos = 1.0;
 				return;

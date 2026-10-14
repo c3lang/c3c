@@ -17,6 +17,7 @@ excuse
 	SURFACE_CREATION_FAILED,
 	WAYLAND_DISPLAY_NOT_LOADED,
 	WAYLAND_COMPOSITOR_NOT_FOUND,
+	WAYLAND_LAYER_SHELL_NOT_SUPPORTED,
 	X11_DISPLAY_NOT_LOADED,
 	X11_WINDOW_CREATION_FAILED,
 	X11_CTX_CREATION_FAILED,
@@ -104,7 +105,7 @@ struct GfxMonitor
 	GfxPoint origin;
 	char[128] name;
 	Vec2 scale;
-	float pixelRatio;
+	float pixel_ratio;
 	Vec2 phys_size;
 	GfxMonitorMode mode;
 	void* user_ptr;
@@ -128,8 +129,7 @@ struct GfxDataTransfer
 
 struct GfxDataDropNode
 {
-	char* data;
-	sz length;
+	char[] data;
 	GfxDataTransferType type;
 	GfxDataDropNode* next;
 }
@@ -154,6 +154,7 @@ struct GfxWindowSrc @feat(MACOS)
 	ObjId             mouse;
 	ObjId             delegate;
 	ObjId             resize_timer;
+	ObjId             metal_layer;
 	GfxBackingContext ctx;
 	GfxBacking        backing;
 }
@@ -167,10 +168,10 @@ struct GfxWindowSrc @feat(WIN32)
 	Win32_HICON         hIconBig;
 	GfxPoint            min_size;
 	GfxPoint            max_size;
-	int                 aspectRatioW, aspectRatioH;
-	bool                actionFrame;
+	int                 aspect_ratio_w, aspect_ratio_h;
+	bool                action_frame;
 	int                 modal_loop_depth;
-	ushort              highSurrogate;
+	ushort              high_surrogate;
 	GfxBackingContext   ctx;
 	GfxBacking          backing;
 }
@@ -186,7 +187,7 @@ struct GfxWindowSrc @feat(BSD, LINUX)
 		XWindow parent;
 		GContext gc;
 		XlibIC ic;
-		Clock flashEnd;
+		Clock flash_end;
 		XSyncCounter counter;
 		XSyncValue resize_id;
 		bool resize_in_progress;
@@ -194,23 +195,23 @@ struct GfxWindowSrc @feat(BSD, LINUX)
 	struct @feat(WAYLAND)
 	{
 		WlProxy* surface;
-		WlProxy* xdgSurface;
-		WlProxy* xdgToplevel;
+		WlProxy* layer_surface;
+		WlProxy* xdg_surface;
+		WlProxy* xdg_toplevel;
 		WlProxy* decoration;
 		WlProxy* locked_pointer;
-		WlProxy* icon;
-		WlProxy* dataSource;
-		WlProxy* customCursorSurface;
-		GfxMonitorNode* activeMonitor;
-		uint decorationMode;
-		bool pendingActivated;
+		WlProxy* data_source;
+		WlProxy* custom_cursor_surface;
+		GfxMonitorNode* active_monitor;
+		uint decoration_mode;
+		bool pending_activated;
 		bool activated;
 		bool resizing;
-		bool pendingMaximized;
+		bool pending_maximized;
 		bool maximized;
 		bool minimized;
 		bool configured;
-		bool usingCustomCursor;
+		bool using_custom_cursor;
 	}
 }
 
@@ -286,7 +287,7 @@ struct GfxDataDragEvent
 	inline GfxCommonEvent common;
 	GfxPoint pos;
 	GfxDndActionType action;
-	GfxDataTransferType dataType;
+	GfxDataTransferType data_type;
 }
 struct GfxScaleUpdatedEvent
 {
@@ -316,7 +317,7 @@ union GfxEvent
 	GfxMouseDeltaEvent delta;
 	GfxMouseMotionEvent mouse;
 	GfxKeyEvent key;
-	GfxKeyCharEvent keyChar;
+	GfxKeyCharEvent key_char;
 	GfxDataDropEvent drop;
 	GfxDataDragEvent drag;
 	GfxScaleUpdatedEvent scale;
@@ -829,7 +830,7 @@ fn void copy_image_data(char* dst_data, int w, int h, GfxFormat dst_format, char
  @require !_gfx.initialized : "Already initialized"
  @require [class_name] class_name.len < 254 : "Class name is too long"
 *>
-fn void? init(String class_name, GfxInitOption options)
+fn void? init(String class_name, GfxInitOption options = {})
 {
 	class_name = class_name ?: "C3GFX";
 	_gfx = { .initialized = true };
@@ -867,7 +868,7 @@ fn void finalize()
 	}
 	assert (_gfx.active_windows == 0);
 	_gfx.windows.free();
-
+	_reset_prev_state(); // Will cleanup the drag and drop.
 	foreach (icon : GfxMouseIcon::values)
 	{
 		if (_gfx.standard_mice[icon.ordinal]) _free_mouse(_gfx.standard_mice[icon.ordinal]);
@@ -950,7 +951,7 @@ fn void? GfxSurface.init(&self, void* data, int w, int h, GfxFormat format, GfxW
  @require [w] w >= 0 : "Width may not be negative"
  @require [h] h >= 0 : "height may not be negative"
 *>
-fn GfxWindow*? create_window(String name, int x, int y, int w, int h, GfxWindowFlags flags)
+fn GfxWindow*? create_window(String name, int x, int y, int w, int h, GfxWindowFlags flags = {})
 {
 	return _create_window(name, x, y, w, h, flags);
 }
@@ -963,7 +964,7 @@ fn GfxWindow*? create_window(String name, int x, int y, int w, int h, GfxWindowF
  @param button : "The button to test"
  @return "True if the button is down now and was up on the previous poll"
 *>
-fn bool is_mouse_pressed(GfxMouseButton button) => _gfx.mouseButtons[(sz)button].current && !_gfx.mouseButtons[(sz)button].prev;
+fn bool is_mouse_pressed(GfxMouseButton button) => _gfx.mouse_buttons[(sz)button].current && !_gfx.mouse_buttons[(sz)button].prev;
 
 <*
  Request attention for the window, typically by flashing its taskbar entry.
@@ -1097,6 +1098,23 @@ fn bool get_vulkan_physical_device_presentation_support(VkInstance instance, VkP
 fn WGPUSurface? GfxWindow.create_wgpu_surface(&self, WGPUInstance instance)
 {
 	return _window_create_wgpu_surface(self, instance);
+}
+
+<*
+ Create a Metal layer for the window, to render to with Metal.
+
+ The layer is a CAMetalLayer with the default Metal device (its `device`) and the BGRA8 pixel format. It is displayed, and the repaint
+ callback is run, inside the Core Animation transaction that resizes the window, so a frame drawn by the callback is shown together with
+ the new window size. The drawable size follows the size of the window in pixels. The layer presents with the transaction, so draw by:
+ commit the command buffer, waitUntilScheduled, then present the drawable.
+
+ It is only supported on MacOS.
+
+ @return "The CAMetalLayer"
+*>
+fn void*? GfxWindow.create_metal_layer(&self)
+{
+	return _window_create_metal_layer_native(self);
 }
 
 <*
@@ -1388,7 +1406,7 @@ fn void GfxWindow.set_user_ptr(&self, void* ptr)
 *>
 fn GfxPoint GfxWindow.get_size_in_pixels(&self)
 {
-	return (GfxPoint)((Vec2)self.size * _window_find_monitor(self).pixelRatio) ?? { -1, -1 };
+	return (GfxPoint)((Vec2)self.size * _window_find_monitor(self).pixel_ratio) ?? { -1, -1 };
 }
 
 <*
@@ -1448,7 +1466,7 @@ fn void GfxWindow.set_mouse_passthrough(&self, bool passthrough)
 *>
 fn bool GfxWindow.is_data_dragging(&self)
 {
-	return _gfx.window_state.win == self && _gfx.window_state.dataDragging;
+	return _gfx.window_state.win == self && _gfx.window_state.data_dragging;
 }
 
 <*
@@ -1555,7 +1573,7 @@ fn bool is_key_released(GfxKey key, GfxWindow* window = null)
 *>
 fn bool is_mouse_down(GfxMouseButton button, GfxWindow* window = null)
 {
-	return _gfx.mouseButtons[(sz)button].current && (!window || window.has_focus());
+	return _gfx.mouse_buttons[(sz)button].current && (!window || window.has_focus());
 }
 
 <*
@@ -1567,7 +1585,7 @@ fn bool is_mouse_down(GfxMouseButton button, GfxWindow* window = null)
 *>
 fn bool is_mouse_released(GfxMouseButton button, GfxWindow* window = null)
 {
-	return !_gfx.mouseButtons[button].current && _gfx.mouseButtons[button].prev && (!window || window.has_focus());
+	return !_gfx.mouse_buttons[button].current && _gfx.mouse_buttons[button].prev && (!window || window.has_focus());
 }
 
 <*
@@ -1698,8 +1716,9 @@ fn void event_queue_flush()
 <*
  Append an event to the queue.
 
- Does nothing when queueing is disabled. If the queue is full it is flushed and the
- event dropped, with an error logged.
+ Does nothing when queueing is disabled. Superseded move, resize, drag and drop events
+ for the same window are removed before appending the newest one. If the queue is full
+ the new event is dropped, with an error logged.
 
  @param [in] event : "The event to copy into the queue"
  @require event != null
@@ -1707,6 +1726,24 @@ fn void event_queue_flush()
 fn void event_queue_push(GfxEvent* event)
 {
 	if (!_gfx.queue_events) return;
+	// Like SDL, discard an older superseded geometry event before appending the
+	// replacement. Appending keeps its ordering relative to unrelated events.
+	if ((event.type == WINDOW_RESIZED || event.type == WINDOW_MOVED || event.type == DATA_DRAG || event.type == DATA_DROP) && _gfx.event_len)
+	{
+		for (int i = 0; i < _gfx.event_len; i++)
+		{
+			int idx = (_gfx.event_bottom + i) % MAX_EVENTS;
+			if (_gfx.events[idx].type != event.type || _gfx.events[idx].common.win != event.common.win) continue;
+			for (int j = i; j < _gfx.event_len - 1; j++)
+			{
+				int to = (_gfx.event_bottom + j) % MAX_EVENTS;
+				int from = (_gfx.event_bottom + j + 1) % MAX_EVENTS;
+				_gfx.events[to] = _gfx.events[from];
+			}
+			_gfx.event_len--;
+			break;
+		}
+	}
 	if (_gfx.event_len >= MAX_EVENTS)
 	{
 		if (!_gfx.event_error_reported)
@@ -1714,18 +1751,7 @@ fn void event_queue_push(GfxEvent* event)
 			log::error("Event queue limit 'MAX_EVENTS' has been reached, dropping events.", category: log::CATEGORY_VIDEO);
 			_gfx.event_error_reported = true;
 		}
-		(void)event_queue_pop();
 		return;
-	}
-	// Coalesce window resized.
-	if (event.type == WINDOW_RESIZED && _gfx.event_len)
-	{
-		int event_prev = (_gfx.event_bottom + _gfx.event_len + MAX_EVENTS - 1) % MAX_EVENTS;
-		if (_gfx.events[event_prev].type == WINDOW_RESIZED)
-		{
-			_gfx.events[event_prev] = *event;
-			return;
-		}
 	}
 	int event_top = (_gfx.event_bottom + _gfx.event_len) % MAX_EVENTS;
 	_gfx.event_len += 1;
@@ -1888,7 +1914,7 @@ fn void set_queue_events(bool queue)
 *>
 fn GfxDataDropNode* GfxWindow.get_data_drop(&self)
 {
-	if (_gfx.window_state.win != self || !_gfx.window_state.dataDrop) return null;
+	if (_gfx.window_state.win != self || !_gfx.window_state.data_drop) return null;
 	return _gfx.dnd_root;
 }
 
@@ -1930,7 +1956,9 @@ fn GfxMonitor*? GfxWindow.find_monitor(&self)
 fn void GfxWindow.center_on_screen(&self)
 {
 	GfxMonitor*? mon = _window_find_monitor(self);
-	(void)self.move(mon.origin + (mon.mode.size - self.size) / 2);
+	if (catch mon) return;
+	GfxRect workarea = mon.get_workarea();
+	(void)self.move(workarea.origin + (workarea.size - self.size) / 2);
 }
 
 <*
@@ -1943,10 +1971,12 @@ fn void GfxWindow.center_on_screen(&self)
 *>
 fn void? GfxMonitor.scale_to_window(&self, GfxWindow* win)
 {
-	GfxMonitorMode mode;
+	GfxMonitorMode mode = self.mode;
 	mode.size = win.size;
 	defer win.move(self.origin);
-	return _monitor_request_mode(self, &mode, SCALE);
+	if (try _monitor_request_mode(self, &mode, SCALE)) return;
+	GfxMonitorMode closest = self.get_best_matching_mode(mode)!;
+	return self.set_mode_native(&closest);
 }
 
 <*
@@ -2118,10 +2148,23 @@ fn GfxRect GfxMonitor.get_workarea(&monitor)
 	return _monitor_get_workarea(monitor);
 }
 
+fn int _cmp_modes(GfxMonitorMode* a, GfxMonitorMode* b) @local
+{
+	if (a.size.x != b.size.x) return b.size.x - a.size.x;
+	if (a.size.y != b.size.y) return b.size.y - a.size.y;
+	int bpp_a = (int)a.rgb.sum();
+	int bpp_b = (int)b.rgb.sum();
+	if (bpp_a != bpp_b) return bpp_b - bpp_a;
+	int rate_a = (int)(a.refresh_rate * 100.0f);
+	int rate_b = (int)(b.refresh_rate * 100.0f);
+	if (rate_a != rate_b) return rate_b - rate_a;
+	return 0;
+}
+
 <*
  Find the supported mode closest to a desired one.
 
- Modes are scored on size, colour depth and refresh rate, in that order of importance.
+ Enclosing modes are scored by aspect ratio match, resolution, refresh rate, and color depth.
 
  @param mode : "The desired mode"
  @return "The best available match"
@@ -2129,20 +2172,59 @@ fn GfxRect GfxMonitor.get_workarea(&monitor)
 *>
 fn GfxMonitorMode? GfxMonitor.get_best_matching_mode(&monitor, GfxMonitorMode mode) => @pool()
 {
-	GfxMonitorMode* chosen;
-	int top_score = 1;
-	foreach (&mode2 : _monitor_get_modes(monitor))
+	GfxMonitorMode[] modes = alloc::clone_slice(tmem, _monitor_get_modes(monitor));
+	if (!modes.len) return NOT_FOUND~;
+
+	// Sort modes descending, matching SDL's cmpmodes
+	for (sz i = 1; i < modes.len; i++)
 	{
-		int score = 0;
-		if (mode.size == mode2.size) score += 1000;
-		if (mode.rgb == mode2.rgb) score += 100;
-		if (mode.refresh_rate == mode2.refresh_rate) score += 10;
-		if (score > top_score)
+		GfxMonitorMode key = modes[i];
+		sz j = i;
+		while (j > 0 && _cmp_modes(&modes[j - 1], &key) > 0)
 		{
-			top_score = score;
-			chosen = mode2;
+			modes[j] = modes[j - 1];
+			j--;
 		}
+		modes[j] = key;
 	}
+
+	int w = mode.size.x;
+	int h = mode.size.y;
+	float aspect_ratio = h > 0 ? (float)w / (float)h : 1.0f;
+	float target_rate = mode.refresh_rate != 0.0f ? mode.refresh_rate : monitor.mode.refresh_rate;
+
+	GfxMonitorMode* chosen = null;
+
+	foreach (&m : modes)
+	{
+		if (w > m.size.x) break;
+		if (h > m.size.y) continue;
+
+		if (chosen)
+		{
+			float cur_aspect = (float)m.size.x / (float)m.size.y;
+			float chosen_aspect = (float)chosen.size.x / (float)chosen.size.y;
+			if (math::abs(aspect_ratio - chosen_aspect) < math::abs(aspect_ratio - cur_aspect))
+			{
+				continue;
+			}
+
+			if (m.size == chosen.size)
+			{
+				if (math::abs(chosen.refresh_rate - target_rate) < math::abs(m.refresh_rate - target_rate))
+				{
+					continue;
+				}
+				if (chosen.rgb.sum() > m.rgb.sum())
+				{
+					continue;
+				}
+			}
+		}
+
+		chosen = m;
+	}
+
 	return chosen ? *chosen : NOT_FOUND~;
 }
 
@@ -2531,7 +2613,7 @@ fn void GfxWindow.show(&self)
 	if (self.internal.flags.focus_on_show) _window_focus(self);
 	self.internal.flags.hide = false;
 	_window_show_platform(self);
-	if (self.internal.flags.maximize) self.maximize();
+	if (self.internal.flags.maximize && !_window_is_maximized(self)) self.maximize();
 }
 
 <*
@@ -2542,8 +2624,10 @@ fn void GfxWindow.restore(&self)
 	_window_restore_platform(self);
 	self.internal.flags.maximize = false;
 	self.show();
-	self.move(self.internal.old_bounds.origin);
-	self.resize(self.internal.old_bounds.size);
+	$if !$feat(MACOS):
+		self.move(self.internal.old_bounds.origin);
+		self.resize(self.internal.old_bounds.size);
+	$endif
 }
 
 <*

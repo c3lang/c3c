@@ -25,7 +25,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 			UNREACHABLE_VOID
 		case DECL_TYPE_ALIAS:
 			return llvm_get_type(c, decl->type);
-		case DECL_CONSTDEF:
+		case DECL_CONSTSET:
 			return llvm_get_type(c, decl->enums.type_info->type);
 		case DECL_TYPEDEF:
 			return llvm_get_type(c, decl->distinct->type);
@@ -640,8 +640,8 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_DISTINCT, type_inline(type)->canonical, 0, NULL, false);
 		case TYPE_ENUM:
 			return llvm_get_introspection_for_enum(c, type);
-		case TYPE_CONSTDEF:
-			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_CONSTDEF, type_inline(type)->canonical, vec_size(type->decl->enums.values), NULL, false);
+		case TYPE_CONSTSET:
+			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_CONSTSET, type_inline(type)->canonical, vec_size(type->decl->enums.values), NULL, false);
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			return llvm_get_introspection_for_struct_union(c, type);

@@ -9,6 +9,7 @@
 #include <stdio.h>
 
 struct ScratchBuf scratch_buffer;
+struct ScratchBuf *sb_current = &scratch_buffer;
 
 int str_findlist(const char *value, int count, const char** elements)
 {
@@ -226,6 +227,11 @@ const char *str_remove_suffix(const char *name, const char *suffix)
 	return name_copy;
 }
 
+bool str_contains(const char *haystack, const char *needle)
+{
+	return strstr(haystack, needle) != NULL;
+}
+
 bool str_has_suffix(const char *name, const char *suffix)
 {
 	size_t name_len = strlen(name);
@@ -362,20 +368,21 @@ char *str_copy(const char *start, size_t str_len)
 	return dst;
 }
 
+
 void scratch_buffer_delete(size_t len)
 {
-	ASSERT(scratch_buffer.len >= len);
-	scratch_buffer.len -= len;
+	ASSERT((size_t)sb_current->len >= len);
+	sb_current->len -= (int)len;
 }
 
 void scratch_buffer_clear(void)
 {
-	scratch_buffer.len = 0;
+	sb_current->len = 0;
 }
 
 bool scratch_buffer_may_append(size_t len)
 {
-	return len + scratch_buffer.len < MAX_STRING_BUFFER - 1;
+	return len + sb_current->len < MAX_STRING_BUFFER - 1;
 }
 
 void scratch_buffer_append_len(const char *string, size_t len)
@@ -384,8 +391,8 @@ void scratch_buffer_append_len(const char *string, size_t len)
 	{
 		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
 	}
-	memcpy(scratch_buffer.str + scratch_buffer.len, string, len);
-	scratch_buffer.len += (uint32_t)len;
+	memcpy(sb_current->str + sb_current->len, string, len);
+	sb_current->len += (uint32_t)len;
 }
 
 static void scratch_buffer_append_double_quoted(const char *string)
@@ -414,6 +421,8 @@ static void scratch_buffer_append_double_quoted(const char *string)
 				}
 				continue;
 			}
+			default:
+				break;
 		}
 		scratch_buffer_append_char(c);
 	}
@@ -498,13 +507,13 @@ void scratch_buffer_append_double(double d)
 	scratch_buffer_printf("%f", d);
 
 	//removing unused zeroes and dot
-	while (scratch_buffer.len > 0)
+	while (sb_current->len > 0)
 	{
-		if (scratch_buffer.str[scratch_buffer.len - 1] != '0' && scratch_buffer.str[scratch_buffer.len - 1] != '.')
+		if (sb_current->str[sb_current->len - 1] != '0' && sb_current->str[sb_current->len - 1] != '.')
 		{
 			return;
 		}
-		scratch_buffer.len--;
+		sb_current->len--;
 	}
 }
 
@@ -517,14 +526,14 @@ void scratch_buffer_printf(const char *format, ...)
 {
 	va_list args;
 	va_start(args, format);
-	size_t available = MAX_STRING_BUFFER - scratch_buffer.len;
-	uint32_t len_needed = (uint32_t)vsnprintf(&scratch_buffer.str[scratch_buffer.len], available, format, args);
+	size_t available = MAX_STRING_BUFFER - sb_current->len;
+	uint32_t len_needed = (uint32_t)vsnprintf(&sb_current->str[sb_current->len], available, format, args);
 	if (len_needed > available - 1)
 	{
 		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
 	}
 	va_end(args);
-	scratch_buffer.len += len_needed;
+	sb_current->len += len_needed;
 }
 
 void scratch_buffer_append_in_quote(const char *string)
@@ -564,12 +573,12 @@ void scratch_buffer_append_remove_space(const char *start, int len)
 
 void scratch_buffer_append_char(char c)
 {
-	if (scratch_buffer.len + 1 > MAX_STRING_BUFFER - 1)
+	if (sb_current->len + 1 > MAX_STRING_BUFFER - 1)
 	{
 		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
 	}
 
-	scratch_buffer.str[scratch_buffer.len++] = c;
+	sb_current->str[sb_current->len++] = c;
 }
 
 void scratch_buffer_append_char_repeat(char c, size_t count)
@@ -582,13 +591,31 @@ void scratch_buffer_append_char_repeat(char c, size_t count)
 
 char *scratch_buffer_to_string(void)
 {
-	scratch_buffer.str[scratch_buffer.len] = '\0';
-	return scratch_buffer.str;
+	sb_current->str[sb_current->len] = '\0';
+	return sb_current->str;
+}
+
+char *scratch_buffer_end_ptr(void)
+{
+	return sb_current->str + sb_current->len;
 }
 
 char *scratch_buffer_copy(void)
 {
-	return str_copy(scratch_buffer.str, scratch_buffer.len);
+	return str_copy(sb_current->str, sb_current->len);
 }
 
+void scratch_buffer_set_len(int len)
+{
+	sb_current->len = len;
+}
 
+int scratch_buffer_len(void)
+{
+	return sb_current->len;
+}
+
+const char *scratch_buffer_ptr(void)
+{
+	return sb_current->str;
+}

@@ -5,7 +5,7 @@
  Marshaling: convert a C3 struct or array to a JSON string via `marshal` and `marshal_to`.
  Unmarshaling: convert a JSON `String` back to a native C3 struct via `unmarshal`.
 
- _Supports: structs, arrays, slices, String, ints, floats, bools, enums, constdefs, typedefs, and nested combinations of those._
+ _Supports: structs, arrays, slices, String, ints, floats, bools, enums, constsets, typedefs, and nested combinations of those._
 *>
 module std::encoding::json;
 import std::io, std::collections::object, std::math;

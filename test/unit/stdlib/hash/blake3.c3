@@ -134,10 +134,10 @@ fn void blake_team_vectors_streamed()
 		{
 			Blake3 b @noinit;
 			b.init();
-			b.update(content[                   : content.len/4 ]);
-			b.update(content[ 1*(content.len/4) : content.len/4 ]);
-			b.update(content[ 2*(content.len/4) : content.len/4 ]);
-			b.update(content[ 3*(content.len/4) ..              ]);
+			b.update(content[                   : content.len / 4 ]);
+			b.update(content[ 1 * (content.len / 4) : content.len / 4 ]);
+			b.update(content[ 2 * (content.len / 4) : content.len / 4 ]);
+			b.update(content[ 3 * (content.len / 4) ..              ]);
 			b.final(small_result[..], 32);
 			b.final(large_result[..], BLAKE_TEAM_HASH_LEN);   // look at that output extension (XOF) ^_^
 			test::@check(small_result[..] == vector.hash[:32], "Mismatched normative size hash on vector %d", i);
@@ -146,10 +146,10 @@ fn void blake_team_vectors_streamed()
 		{
 			Blake3 b @noinit;
 			b.init(BLAKE_TEAM_KEY);
-			b.update(content[                   : content.len/4 ]);
-			b.update(content[ 1*(content.len/4) : content.len/4 ]);
-			b.update(content[ 2*(content.len/4) : content.len/4 ]);
-			b.update(content[ 3*(content.len/4) ..              ]);
+			b.update(content[                   : content.len / 4 ]);
+			b.update(content[ 1 * (content.len / 4) : content.len / 4 ]);
+			b.update(content[ 2 * (content.len / 4) : content.len / 4 ]);
+			b.update(content[ 3 * (content.len / 4) ..              ]);
 			b.final(small_result[..], 32);
 			b.final(large_result[..], BLAKE_TEAM_HASH_LEN);
 			test::@check(small_result[..] == vector.keyed_hash[:32], "Mismatched normative keyed hash on vector %d", i);
@@ -157,10 +157,10 @@ fn void blake_team_vectors_streamed()
 		}
 		{
 			Blake3 b = blake3::new_from_context(BLAKE_TEAM_CONTEXT_STRING);
-			b.update(content[                   : content.len/4 ]);
-			b.update(content[ 1*(content.len/4) : content.len/4 ]);
-			b.update(content[ 2*(content.len/4) : content.len/4 ]);
-			b.update(content[ 3*(content.len/4) ..              ]);
+			b.update(content[                   : content.len / 4 ]);
+			b.update(content[ 1 * (content.len / 4) : content.len / 4 ]);
+			b.update(content[ 2 * (content.len / 4) : content.len / 4 ]);
+			b.update(content[ 3 * (content.len / 4) ..              ]);
 			b.final(small_result[..], 32);
 			b.final(large_result[..], BLAKE_TEAM_HASH_LEN);
 			test::@check(small_result[..] == vector.derive_key[:32], "Mismatched normative derived key on vector %d", i);

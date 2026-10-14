@@ -329,7 +329,7 @@
 
 		.kind-variable,
 		.kind-const,
-		.kind-constdef {
+		.kind-constset {
 			background: var(--hl-const);
 			color: var(--hl-text);
 		}
@@ -341,7 +341,7 @@
 		.c3-typedef,
 		.c3-type_alias,
 		.c3-interface,
-		.c3-faultdef,
+		.c3-fault,
 		.c3-type {
 			color: var(--hl-type);
 		}
@@ -363,7 +363,7 @@
 
 		.c3-variable,
 		.c3-const,
-		.c3-constdef,
+		.c3-constset,
 		.c3-number {
 			color: var(--hl-const);
 		}
@@ -426,7 +426,7 @@
 
 		.item-kind-variable,
 		.item-kind-const,
-		.item-kind-constdef,
+		.item-kind-constset,
 		.item-kind-module {
 			background: var(--var-bg);
 		}
@@ -1043,13 +1043,13 @@
 			color: #ffa657;
 		}
 
-		.group-faultdef .module-group-title {
+		.group-fault .module-group-title {
 			color: #f48771;
 		}
 
 		.group-variable .module-group-title,
 		.group-const .module-group-title,
-		.group-constdef .module-group-title {
+		.group-constset .module-group-title {
 			color: var(--hl-const);
 		}
 
@@ -1361,7 +1361,7 @@
 			'interface': 10,
 			'typedef': 11,
 			'variable': 12,
-			'constdef': 13
+			'constset': 13
 		};
 
 		function showTooltip(uid, event) {
@@ -1728,15 +1728,10 @@
 			return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 		}
 
-		// Temporary experimental keyword aliases (remove when deprecated from language)
-		const TEMP_EXPERIMENTAL_KEYWORDS = [
-			'attrgroup', 'attrmacro', 'cenum', 'constset', 'distinct', 'excuse', 'faultconst', 'faultset'
-		];
-
 		const C3_KEYWORDS = new Set([
-			'alias', 'asm', 'assert', 'attrdef', 'bitstruct', 'break', 'case',
-			'cast', 'catch', 'const', 'constdef', 'continue', 'default', 'defer',
-			'do', 'else', 'enum', 'extern', 'false', 'fault', 'faultdef', 'fn',
+			'alias', 'asm', 'assert', 'attrmacro', 'bitstruct', 'break', 'case',
+			'cast', 'catch', 'const', 'constset', 'continue', 'default', 'defer',
+			'do', 'else', 'enum', 'extern', 'false', 'fault', 'excuse', 'fn',
 			'for', 'foreach', 'foreach_r', 'if', 'import', 'inline', 'interface',
 			'lengthof', 'local', 'macro', 'module', 'next', 'nextcase', 'null', 'operator',
 			'private', 'public', 'return', 'static', 'struct', 'switch', 'tlocal', 'true',
@@ -1744,8 +1739,7 @@
 			'$assert', '$case', '$default', '$defined', '$echo', '$else', '$embed', '$endfor',
 			'$endforeach', '$endif', '$endswitch', '$eval', '$error', '$exec', '$expand', '$feat',
 			'$feature', '$for', '$foreach', '$if', '$include', '$reflect', '$stringify', '$switch',
-			'$Typefrom', '$Typeof', '$vaarg',
-			...TEMP_EXPERIMENTAL_KEYWORDS
+			'$Typefrom', '$Typeof', '$vaarg'
 		]);
 
 		const C3_TOKEN_TYPES = [
@@ -2065,14 +2059,14 @@
 					'func':     ['function', 'method'],
 					'function': ['function', 'method'],
 					'macro':    ['macro', 'macro_method'],
-					'attrdef':  ['attribute'],
+					'attrmacro':['attribute'],
 					'attribute':['attribute'],
 					'attr':     ['attribute'],
 					'struct':   ['struct'],
 					'enum':     ['enum'],
 					'union':    ['union'],
-					'var':      ['variable', 'const', 'constdef'],
-					'const':    ['variable', 'const', 'constdef']
+					'var':      ['variable', 'const', 'constset'],
+					'const':    ['variable', 'const', 'constset']
 				};
 
 				const filtered = allDecls
@@ -2267,7 +2261,7 @@
 				return res;
 			}
 
-			if (d.kind === 'enum' || d.kind === 'struct' || d.kind === 'union' || d.kind === 'bitstruct' || d.kind === 'fault' || d.kind === 'constdef' || d.kind === 'interface') {
+			if (d.kind === 'enum' || d.kind === 'struct' || d.kind === 'union' || d.kind === 'bitstruct' || d.kind === 'fault' || d.kind === 'constset' || d.kind === 'interface') {
 				let res = `<span class="c3-keyword">${d.kind}</span> <span class="c3-type">${localName}</span>`;
 				if (d.base_type && d.base_type.name) {
 					res += ` : ${renderTypeName(d.base_type)}`;
@@ -2285,7 +2279,7 @@
 			if (d.kind === 'attribute') {
 				const params = (d.members && d.members.length > 0) ? `(${renderParams(d.members)})` : '';
 				const target = d.target ? ` = <span class="c3-attribute">${escapeHtml(d.target)}</span>` : '';
-				return `<span class="c3-keyword">attrdef</span> <span class="c3-macro">${localName}</span>${params}${target}`;
+				return `<span class="c3-keyword">attrmacro</span> <span class="c3-macro">${localName}</span>${params}${target}`;
 			}
 
 			return null;
@@ -2311,7 +2305,7 @@
 				html += `<span class="visibility-badge ${visClass}">${vis}</span>`;
 			}
 
-			if (d.is_generic && d.kind !== 'variable' && d.kind !== 'constdef') {
+			if (d.is_generic && d.kind !== 'variable' && d.kind !== 'constset') {
 				html += `<span class="generic-badge">generic</span>`;
 			}
 
@@ -2535,7 +2529,7 @@
 					});
 					html += `</tbody></table>`;
 				}
-			} else if (vd.kind === 'constdef') {
+			} else if (vd.kind === 'constset') {
 				html += `<h3>Values</h3>`;
 				html += `<table class="contract-table">
 					<thead><tr>

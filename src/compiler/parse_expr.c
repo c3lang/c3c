@@ -744,21 +744,23 @@ static Expr *parse_type_expr(ParseContext *c, Expr *left, SourceLoc *lhs_start U
 static Expr *parse_ct_stringify(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
-	SourceLocId start_span = make_loc(c->span);
-	const char *start = c->lexer.current;
+	SourceLoc start_span = c->span;
 	advance(c);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
+	SourceLoc start_loc = c->prev_span;
+	uint32_t start_offset = start_loc.offset + start_loc.length;
 	ASSIGN_EXPR_OR_RET(Expr *inner, parse_expr(c), poisoned_expr);
-	const char *end = c->span.offset + c->lexer.file_begin;
+	uint32_t end_loc = c->span.offset;
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	if (inner->expr_kind == EXPR_HASH_IDENT || (inner->expr_kind == EXPR_VAARG))
 	{
-		Expr *expr = expr_new(EXPR_STRINGIFY, start_span);
+		Expr *expr = expr_new(EXPR_STRINGIFY, make_loc(start_span));
 		expr->inner_expr = inner;
 		RANGE_EXTEND_PREV(expr);
 		return expr;
 	}
-	return expr_new_const_string(start_span, str_copy(start, end - start));
+	File *file = source_file_by_id(start_span.file_id);
+	return expr_new_const_string(make_loc(start_span), str_copy(file->contents + start_offset, end_loc - start_offset));
 }
 
 /**
@@ -1354,7 +1356,7 @@ static Expr *parse_ct_feat(ParseContext *c, Expr *left, SourceLoc *lhs_start UNU
 	Expr *expr = expr_new_loc(EXPR_CT_FEATURE, &c->span);
 	advance(c);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	ASSIGN_EXPR_OR_RET(expr->inner_expr, parse_expr(c), poisoned_expr);
+	ASSIGN_EXPR_OR_RET(expr->inner_expr, parse_expression_list(c, false), poisoned_expr);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(expr);
 	return expr;
@@ -1765,6 +1767,7 @@ static Expr *parse_bytes_expr(ParseContext *c, Expr *left, SourceLoc *lhs_start 
 	ASSERT(!left && "Had left hand side");
 	ArrayIndex len = 0;
 	char *data = NULL;
+	SourceLoc loc = c->span;
 	while (c->tok == TOKEN_BYTES)
 	{
 		ArrayIndex next_len = c->data.bytes_len;
@@ -1801,7 +1804,8 @@ static Expr *parse_bytes_expr(ParseContext *c, Expr *left, SourceLoc *lhs_start 
 		PRINT_ERROR_LAST("A byte array must be at least 1 byte long. While an array cannot be zero length, you can initialize a zero length slice using '{}'.");
 		return poisoned_expr;
 	}
-	Expr *expr_bytes = EXPR_NEW_TOKEN(EXPR_CONST);
+	loc = extend_loc_with_token(&loc, &c->prev_span);
+	Expr *expr_bytes = expr_new_loc(EXPR_CONST, &loc);
 	expr_bytes->const_expr.bytes.ptr = data;
 	expr_bytes->const_expr.bytes.len = len;
 	expr_bytes->const_expr.const_kind = CONST_BYTES;
@@ -1944,7 +1948,7 @@ bool parse_joined_strings(ParseContext *c, const char **str_ref, size_t *len_ref
 			}
 			else
 			{
-				*str_ref = str_cat_len(*str_ref, len - scratch_buffer.len - next_len, scratch_buffer.str, scratch_buffer.len);
+				*str_ref = str_cat_len(*str_ref, len - scratch_buffer_len() - next_len, scratch_buffer_ptr(), scratch_buffer_len());
 			}
 			scratch_buffer_clear();
 			// It might still overrun if it's too big:
@@ -1969,7 +1973,7 @@ ADVANCE:;
 
 	if (*str_ref)
 	{
-		*str_ref = str_cat_len(*str_ref, len - scratch_buffer.len, scratch_buffer.str, scratch_buffer.len);
+		*str_ref = str_cat_len(*str_ref, len - scratch_buffer_len(), scratch_buffer_ptr(), scratch_buffer_len());
 	}
 	else
 	{

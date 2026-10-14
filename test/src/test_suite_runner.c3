@@ -16,6 +16,7 @@ struct TestRunnerContext
 	bool no_terminal;
 	bool only_skipped;
 	String stdlib;
+	String backend;
 	Mutex print_mutex;
 	Path[] files_to_test;
 	sz total_test_files;
@@ -38,6 +39,7 @@ fn void usage(String appname) @noreturn
 	io::printn(" -s, --skipped       only run skipped tests");
 	io::printn(" --no-terminal       disable color and dynamic status line");
 	io::printn(" --stdlib <path>     override the path to stdlib");
+	io::printn(" --backend <name>    override compiler backend (e.g. c, llvm)");
 	io::printfn(" --threads [N]       run tests in N threads (default: %s)", os::num_cpu());
 	os::exit(0);
 }
@@ -539,6 +541,11 @@ fn bool test_file(Path file_path, Path test_dir, OutStream output_stream, sz ind
 		"--threads", "1"
 	});
 
+	if (context.backend)
+	{
+		cmdline.push(string::tformat("--backend=%s", context.backend));
+	}
+
 	if (settings.output_files.is_empty())
 	{
 		cmdline.push("--strip-unused=yes");
@@ -549,7 +556,14 @@ fn bool test_file(Path file_path, Path test_dir, OutStream output_stream, sz ind
 		cmdline.push_all({"--stdlib", context.stdlib});
 	}
 
-	cmdline.push_all({"--llvm-out", test_dir});
+	if (context.backend == "c")
+	{
+		cmdline.push_all({"--obj-out", test_dir});
+	}
+	else
+	{
+		cmdline.push_all({"--llvm-out", test_dir});
+	}
 	cmdline.push_all({"--build-dir", test_dir.tappend("build")!!});
 
 	foreach (file : settings.input_files)
@@ -557,7 +571,7 @@ fn bool test_file(Path file_path, Path test_dir, OutStream output_stream, sz ind
 		cmdline.push(test_dir.tappend(file.name)!!);
 	}
 
-	if (!single)
+	if (!single && context.backend != "c")
 	{
 		cmdline.push("--emit-llvm");
 	}
@@ -617,41 +631,44 @@ fn bool test_file(Path file_path, Path test_dir, OutStream output_stream, sz ind
 
 	if (!parse_result(out, settings, &cmdline, output_stream, result)) return false;
 
-	foreach (file : settings.output_files)
+	if (context.backend != "c")
 	{
-		Path expected_file = test_dir.tappend(file.name)!!;
-		if (!file::exists(expected_file))
+		foreach (file : settings.output_files)
 		{
-			io::fprintfn(output_stream, "FAILED - Did not compile file %s.", file.name)!!;
-			return false;
-		}
-
-		File file_ll = file::open(expected_file, "rb")!!;
-		defer (void)file_ll.close();
-
-		String? next = file.expected_lines.pop_first();
-		while (try line = io::treadline(&file_ll) && try next_value = next)
-		{
-			line = line.trim();
-			if (line == "") continue;
-			if (line.contains(next_value))
+			Path expected_file = test_dir.tappend(file.name)!!;
+			if (!file::exists(expected_file))
 			{
-				next = file.expected_lines.pop_first();
+				io::fprintfn(output_stream, "FAILED - Did not compile file %s.", file.name)!!;
+				return false;
 			}
-		}
 
-		if (try next)
-		{
-			io::fprintfn(output_stream,
-				"FAILED - %s did not contain: %s", file.name, next)!!;
-			io::fprintfn(output_stream,
-				"\n\n------------------------------------------------>>>> %s\n", file.name)!!;
-			(void)file_ll.seek(0);
-			io::fprintn(output_stream,
-				(String)io::read_fully(tmem, &file_ll))!!;
-			io::fprintfn(output_stream,
-				"<<<<------------------------------------------------- %s\n", file_path)!!;
-			return false;
+			File file_ll = file::open(expected_file, "rb")!!;
+			defer (void)file_ll.close();
+
+			String? next = file.expected_lines.pop_first();
+			while (try line = io::treadline(&file_ll) && try next_value = next)
+			{
+				line = line.trim();
+				if (line == "") continue;
+				if (line.contains(next_value))
+				{
+					next = file.expected_lines.pop_first();
+				}
+			}
+
+			if (try next)
+			{
+				io::fprintfn(output_stream,
+					"FAILED - %s did not contain: %s", file.name, next)!!;
+				io::fprintfn(output_stream,
+					"\n\n------------------------------------------------>>>> %s\n", file.name)!!;
+				(void)file_ll.seek(0);
+				io::fprintn(output_stream,
+					(String)io::read_fully(tmem, &file_ll))!!;
+				io::fprintfn(output_stream,
+					"<<<<------------------------------------------------- %s\n", file_path)!!;
+				return false;
+			}
 		}
 	}
 
@@ -783,6 +800,14 @@ fn int main(String[] args)
 						context.stdlib);
 				}
 				context.stdlib = context.start_cwd.tappend(context.stdlib).absolute(mem)!!;
+			case "--backend":
+				if (i == args.len - 1 || args[i + 1].starts_with("-"))
+				{
+					arg_error_exit(appname,
+						"Expected --backend to be followed by the backend name.");
+				}
+				context.backend = args[i + 1];
+				i++;
 			case "--threads":
 				if (i == args.len - 1 || args[i + 1].starts_with("-"))
 				{
@@ -792,6 +817,11 @@ fn int main(String[] args)
 				num_threads = args[i + 1].to_int()!!;
 				i++;
 			default:
+				if (arg.starts_with("--backend="))
+				{
+					context.backend = arg["--backend=".len..];
+					break;
+				}
 				arg_error_exit(appname, "Unknown option '%s'.", args[i]);
 		}
 	}

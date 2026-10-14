@@ -34,7 +34,7 @@ static inline LoweredType *type_lowering(Type *type)
 			case TYPE_TYPEDEF:
 				type = type->decl->distinct->type;
 				continue;
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 			case TYPE_ENUM:
 				type = enum_inner_type(type);
 				continue;
@@ -109,7 +109,7 @@ static inline LoweredType *type_lowering_abi(Type *type)
 			case TYPE_TYPEDEF:
 				type = type->decl->distinct->type;
 				continue;
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 			case TYPE_ENUM:
 				type = enum_inner_type(type);
 				continue;

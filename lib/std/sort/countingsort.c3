@@ -35,9 +35,9 @@ macro void quicksort_indexed(list, start, end, cmp = ..., context = ...) @builti
 	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
 	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
 	$if @kindof(list) == SLICE:
-		qsort{$Typeof((list)), $Typeof(used_cmp), $Typeof(used_ctx)}(list, (sz)start, (sz)(end-1), used_cmp, used_ctx);
+		qsort{$Typeof((list)), $Typeof(used_cmp), $Typeof(used_ctx)}(list, (sz)start, (sz)(end - 1), used_cmp, used_ctx);
 	$else
-		qsort{$Typeof((*list)), $Typeof(used_cmp), $Typeof(used_ctx)}(list, (sz)start, (sz)(end-1), used_cmp, used_ctx);
+		qsort{$Typeof((*list)), $Typeof(used_cmp), $Typeof(used_ctx)}(list, (sz)start, (sz)(end - 1), used_cmp, used_ctx);
 	$endif
 }
 

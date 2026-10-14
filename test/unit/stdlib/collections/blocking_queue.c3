@@ -120,12 +120,12 @@ fn void test_producer_consumer() @test
 	// Wait for all threads
 	foreach (i, &thread: producers)
 	{
-		assert((thread.join()??1) == 0);
+		assert((thread.join() ?? 1) == 0);
 	}
 
 	foreach (i, &thread: consumers)
 	{
-		assert((thread.join()??1) == 0);
+		assert((thread.join() ?? 1) == 0);
 	}
 
 	assert(q.is_empty());
@@ -168,12 +168,12 @@ fn void test_bounded_queue() @test
 	// Wait for all threads
 	foreach (i, &thread: producers)
 	{
-		assert((thread.join()??1) == 0);
+		assert((thread.join() ?? 1) == 0);
 	}
 
 	foreach (i, &thread: consumers)
 	{
-		assert((thread.join()??1) == 0);
+		assert((thread.join() ?? 1) == 0);
 	}
 
 	// Queue should be empty

@@ -110,7 +110,7 @@ typedef struct {
 "any"           { return(ANY); }
 "asm"           { return(ASM); }
 "assert"        { return(ASSERT); }
-"attrdef"       { return(ATTRDEF); }
+"attrmacro"     { return(ATTRMACRO); }
 "bitstruct"     { return(BITSTRUCT); }
 "bool"          { return(BOOL); }
 "break"			{ return(BREAK); }
@@ -128,7 +128,7 @@ typedef struct {
 "extern"        { return(EXTERN); }
 "false"         { return(FALSE); }
 "fault"		    { return(FAULT); }
-"faultdef"      { return(FAULTDEF); }
+"excuse"        { return(EXCUSE); }
 "float"			{ return(FLOAT); }
 "bfloat16"      { return(BFLOAT16); }
 "float16"       { return(FLOAT16); }

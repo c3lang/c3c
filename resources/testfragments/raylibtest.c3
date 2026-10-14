@@ -158,7 +158,7 @@ fn void init_game()
     // Initialize incoming piece matrices
     for (int i = 0; i < 4; i++)
     {
-        for (int j = 0; j< 4; j++)
+        for (int j = 0; j < 4; j++)
         {
             incoming_piece[i][j] = EMPTY;
         }
@@ -356,7 +356,7 @@ fn void draw_game()
 
     if (pause)
     {
-        raylib::draw_text("GAME PAUSED", SCREEN_WIDTH / 2 - raylib::measure_text("GAME PAUSED", 40)/2, SCREEN_HEIGHT/2 - 40, 40, raylib::GRAY);
+        raylib::draw_text("GAME PAUSED", SCREEN_WIDTH / 2 - raylib::measure_text("GAME PAUSED", 40) / 2, SCREEN_HEIGHT / 2 - 40, 40, raylib::GRAY);
     }
 	raylib::end_drawing();
 }
@@ -379,7 +379,7 @@ fn void update_draw_frame()
 //--------------------------------------------------------------------------------------
 fn bool create_piece()
 {
-    piece_position_x = (int)((GRID_HORIZONTAL_SIZE - 4)/2);
+    piece_position_x = (int)((GRID_HORIZONTAL_SIZE - 4) / 2);
     piece_position_y = 0;
 
     // If the game is starting and you are going to create the first piece, we create an extra one
@@ -392,7 +392,7 @@ fn bool create_piece()
     // We assign the incoming piece to the actual piece
     for (int i = 0; i < 4; i++)
     {
-        for (int j = 0; j< 4; j++)
+        for (int j = 0; j < 4; j++)
         {
             piece[i][j] = incoming_piece[i][j];
         }
@@ -493,7 +493,7 @@ fn void resolve_falling_movement(bool* detection_ref, bool* piece_active_ref)
             {
                 if (grid[i][j] == GridSquare.MOVING)
                 {
-                    grid[i][j+1] = MOVING;
+                    grid[i][j + 1] = MOVING;
                     grid[i][j] = EMPTY;
                 }
             }
@@ -518,7 +518,7 @@ fn bool resolve_lateral_movement()
                 if (grid[i][j] == GridSquare.MOVING)
                 {
                     // Check if we are touching the left wall or we have a full square at the left
-                    if ((i-1 == 0) || (grid[i-1][j] == GridSquare.FULL)) collision = true;
+                    if ((i - 1 == 0) || (grid[i - 1][j] == GridSquare.FULL)) collision = true;
                 }
             }
         }
@@ -533,7 +533,7 @@ fn bool resolve_lateral_movement()
                     // Move everything to the left
                     if (grid[i][j] == GridSquare.MOVING)
                     {
-                        grid[i-1][j] = MOVING;
+                        grid[i - 1][j] = MOVING;
                         grid[i][j] = EMPTY;
                     }
                 }
@@ -552,7 +552,7 @@ fn bool resolve_lateral_movement()
                 if (grid[i][j] == GridSquare.MOVING)
                 {
                     // Check if we are touching the right wall or we have a full square at the right
-                    if ((i+1 == GRID_HORIZONTAL_SIZE - 1) || (grid[i+1][j] == GridSquare.FULL))
+                    if ((i + 1 == GRID_HORIZONTAL_SIZE - 1) || (grid[i + 1][j] == GridSquare.FULL))
                     {
                         collision = true;
 
@@ -571,7 +571,7 @@ fn bool resolve_lateral_movement()
                     // Move everything to the right
                     if (grid[i][j] == GridSquare.MOVING)
                     {
-                        grid[i+1][j] = MOVING;
+                        grid[i + 1][j] = MOVING;
                         grid[i][j] = EMPTY;
                     }
                 }
@@ -718,7 +718,7 @@ fn void check_detection(bool *detection_ref)
     {
         for (int i = 1; i < GRID_HORIZONTAL_SIZE - 1; i++)
         {
-            if ((grid[i][j] == GridSquare.MOVING) && ((grid[i][j+1] == GridSquare.FULL) || (grid[i][j+1] == GridSquare.BLOCK))) *detection_ref = true;
+            if ((grid[i][j] == GridSquare.MOVING) && ((grid[i][j + 1] == GridSquare.FULL) || (grid[i][j + 1] == GridSquare.BLOCK))) *detection_ref = true;
         }
     }
 }
@@ -769,17 +769,17 @@ fn int delete_complete_lines()
                 grid[i][j] = GridSquare.EMPTY;
             }
 
-            for (int j2 = j-1; j2 >= 0; j2--)
+            for (int j2 = j - 1; j2 >= 0; j2--)
             {
                 for (int i2 = 1; i2 < GRID_HORIZONTAL_SIZE - 1; i2++)
                 {
                     switch (grid[i2][j2])
                     {
                         case FULL:
-	                        grid[i2][j2+1] = GridSquare.FULL;
+	                        grid[i2][j2 + 1] = GridSquare.FULL;
                             grid[i2][j2] = GridSquare.EMPTY;
                         case FADING:
-	                        grid[i2][j2+1] = GridSquare.FADING;
+	                        grid[i2][j2 + 1] = GridSquare.FADING;
                             grid[i2][j2] = GridSquare.EMPTY;
                         default:
                     }

@@ -4,7 +4,6 @@ on:
   push:
     branches: [ master, dev, ci_testing, experiments, '*.*.x' ]
     paths-ignore:
-      - '**.md'
       - 'LICENSE'
       - '.gitignore'
       - 'resources/docs.html'
@@ -318,7 +317,7 @@ jobs:
         run: ./scripts/tools/ci_tests.sh "./build/c3c.exe"
 
   build-linux:
-    name: Linux (x64) Ubuntu
+    name: Linux (x64) Ubuntu (Compile Check)
     needs: changes
     if: needs.changes.outputs.src == 'true' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
@@ -381,8 +380,8 @@ jobs:
           path: c3-linux-Debug.tar.gz
 
   test-emscripten-32bit:
-    name: Emscripten
-    needs: build-linux
+    name: Emscripten & QEMU
+    needs: build-linux-musl-static
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -393,7 +392,7 @@ jobs:
 
       - uses: actions/download-artifact@v8
         with:
-          name: c3-linux-${{matrix.build_type}}
+          name: c3-linux-static-${{matrix.build_type}}
           path: bin
 
       - name: Extract C3
@@ -413,6 +412,16 @@ jobs:
 
       - name: Run Emscripten Tests
         run: ./scripts/tools/emscripten_tests.sh "./bin/c3/c3c"
+
+      - name: Install QEMU RISC-V dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y opensbi qemu-system-misc u-boot-qemu gcc-riscv64-unknown-elf
+
+      - name: Embedded/QEMU Tests
+        run: |
+          cd resources/examples/embedded/riscv-qemu
+          make C3C_PATH=../../../../bin/c3/ run
 
   build-linux-musl-static:
     name: Linux (x64) musl Static
@@ -486,7 +495,7 @@ jobs:
           path: c3-linux-static-Debug.tar.gz
 
   build-linux-alpine:
-    name: Linux (x64) Alpine Dynamic
+    name: Linux (x64) Alpine Dynamic (Compile Check)
     needs: changes
     if: needs.changes.outputs.src == 'true' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
@@ -504,7 +513,6 @@ jobs:
         id: date
         run: echo "date=$(date +'${{ env.CACHE_INVALIDATION_SEED }}')" >> $GITHUB_OUTPUT
 
-      #https://wiki.alpinelinux.org/wiki/Local_APK_cache
       - name: Prepare real apk cache directory + symlink
         run: |
           mkdir -p /var/cache/apk
@@ -670,8 +678,6 @@ jobs:
       - name: Run Tests
         shell: cpa.sh {0}
         run: |
-          export MALLOC_OPTIONS=j
-          ulimit -d $(ulimit -Hd) || true
           ./scripts/tools/ci_tests.sh build-debug/c3c
 
       # We package here because we need the OpenBSD environment
@@ -1073,10 +1079,9 @@ jobs:
       - name: Prepare Assets
         run: |
           for config in Release Debug; do
-            for platform in windows windows-aarch64 macos linux linux-musl linux-static openbsd netbsd android-aarch64 android-x86_64 windows-setup windows-setup-aarch64; do
+            for platform in windows windows-aarch64 macos linux-static openbsd netbsd android-aarch64 android-x86_64 windows-setup windows-setup-aarch64; do
               if [ "$platform" = "windows-setup" ] || [ "$platform" = "windows-setup-aarch64" ]; then
                 ext="exe"
-              # Windows and macOS produce zip, others tar.gz
               elif [ "$platform" = "windows" ] || [ "$platform" = "windows-aarch64" ] || [ "$platform" = "macos" ]; then
                 ext="zip"
               else
@@ -1090,6 +1095,13 @@ jobs:
 
               mv "$src" "$dst" || true
             done
+
+            # Alias c3-linux-static to c3-linux for backward compatibility
+            if [ "$config" = "Release" ]; then
+              cp c3-linux-static.tar.gz c3-linux.tar.gz
+            else
+              cp c3-linux-static-debug.tar.gz c3-linux-debug.tar.gz
+            fi
           done
 
       - name: Set Release Names

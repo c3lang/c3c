@@ -133,6 +133,9 @@ bool command_accepts_files(CompilerCommand command)
 		case COMMAND_BENCHMARK:
 		case COMMAND_TEST:
 		case COMMAND_VENDOR_FETCH:
+		case COMMAND_FETCH:
+		case COMMAND_FETCH_INFO:
+		case COMMAND_FETCH_LIST:
 		case COMMAND_PROJECT:
 		case COMMAND_FETCH_SDK:
 			return false;
@@ -166,6 +169,9 @@ bool command_passes_args(CompilerCommand command)
 		case COMMAND_DIST:
 		case COMMAND_PRINT_SYNTAX:
 		case COMMAND_VENDOR_FETCH:
+		case COMMAND_FETCH:
+		case COMMAND_FETCH_INFO:
+		case COMMAND_FETCH_LIST:
 		case COMMAND_PROJECT:
 		case COMMAND_FETCH_SDK:
 			return false;
@@ -503,6 +509,9 @@ BUILD:
 		case COMMAND_PRINT_SYNTAX:
 		case COMMAND_PROJECT:
 		case COMMAND_FETCH_SDK:
+		case COMMAND_FETCH:
+		case COMMAND_FETCH_INFO:
+		case COMMAND_FETCH_LIST:
 		case COMMAND_DOCGEN:
 			target->run_after_compile = false;
 			break;
@@ -553,12 +562,15 @@ BUILD:
 	target->read_stdin = options->read_stdin;
 
 	if (options->cc) target->cc = options->cc;
+	if (options->cflags) target->cflags = options->cflags;
 	set_if_updated(target->optlevel, options->optlevel);
 	set_if_updated(target->optsize, options->optsize);
 	set_if_updated(target->optsetting, options->optsetting);
 	set_if_updated(target->single_module, options->single_module);
 	set_if_updated(target->unroll_loops, options->unroll_loops);
 	set_if_updated(target->merge_functions, options->merge_functions);
+	set_if_updated(target->data_sections, options->data_sections);
+	set_if_updated(target->function_sections, options->function_sections);
 	set_if_updated(target->loop_vectorization, options->loop_vectorization);
 	set_if_updated(target->slp_vectorization, options->slp_vectorization);
 	set_if_updated(target->validation_level, options->validation_level);
@@ -884,6 +896,17 @@ BUILD:
 	if (options->no_obj)
 	{
 		target->emit_object_files = false;
+	}
+	if (target->backend == BACKEND_C)
+	{
+		if (target->emit_llvm)
+		{
+			error_exit("'--emit-llvm' is not supported with the C backend.");
+		}
+		if (target->emit_asm)
+		{
+			error_exit("'--emit-asm' is not supported with the C backend.");
+		}
 	}
 	if (options->output_name && target->emit_object_files
 		&& target->single_module != SINGLE_MODULE_ON && target->type == TARGET_TYPE_OBJECT_FILES)

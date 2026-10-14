@@ -29,7 +29,7 @@
 #define DEFAULT_VECTOR_WIDTH 4096
 #define DEFAULT_STACK_OBJECT_SIZE 64
 #define MAX_ARRAY_SIZE   ((ByteSize)0x40000000)
-#define MAX_SOURCE_LOCATION_LEN (1024U * 1024U)
+#define MAX_SOURCE_LOCATION_LEN ((uint32_t)INT32_MAX)
 #define MAX_STRUCT_SIZE  ((ByteSize)0x40000000)
 #define MAX_STRUCT_PADDING 0xFFFF
 #define MAX_ALIGNMENT   ((AlignSize)0x10000000)
@@ -41,11 +41,18 @@
 #if defined( _WIN32 ) || defined( __WIN32__ ) || defined( _WIN64 )
 #define PLATFORM_WINDOWS 1
 #define PLATFORM_POSIX 0
+#define PLATFORM_LINUX 0
 #define STRCASECMP _stricmp
 #define STRNCASECMP _strnicmp
 #else
 #define PLATFORM_WINDOWS 0
 #define PLATFORM_POSIX 1
+#if defined(__linux__) || defined(__gnu_linux__)
+#define PLATFORM_LINUX 1
+#else
+#define PLATFORM_LINUX 0
+#endif
+
 #include <strings.h>
 #define STRCASECMP strcasecmp
 #define STRNCASECMP strncasecmp

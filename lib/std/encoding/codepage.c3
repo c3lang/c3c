@@ -154,7 +154,7 @@ fn String? decode_into(char[] dst, char[] src, CodePage code_page)
 		sz pos = (sz)c * 4;
 		char len = table.to_codepoint[pos];
 
-		dst[n:len] = table.to_codepoint[pos+1:len];
+		dst[n:len] = table.to_codepoint[pos + 1:len];
 		n += len;
 	}
 
@@ -230,7 +230,7 @@ fn sz decode_len(char[] src, CodePage code_page) @inline
 {
 	sz n;
 	CodePageTable *table = code_page.table;
-	foreach (sz c: src) n += table.to_codepoint[c *4 ];
+	foreach (sz c: src) n += table.to_codepoint[c * 4];
 	return n;
 }
 

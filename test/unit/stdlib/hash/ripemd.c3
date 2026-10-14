@@ -52,10 +52,10 @@ fn void basic_streamed()
 	{ // le scope
 		RipeMd{$bits} r @noinit;
 		r.init();
-		r.update(phrase[                   : phrase.len/4 ]);
-		r.update(phrase[ 1*(phrase.len/4)  : phrase.len/4 ]);
-		r.update(phrase[ 2*(phrase.len/4)  : phrase.len/4 ]);
-		r.update(phrase[ 3*(phrase.len/4)  ..             ]);
+		r.update(phrase[                   : phrase.len / 4 ]);
+		r.update(phrase[ 1 * (phrase.len / 4)  : phrase.len / 4 ]);
+		r.update(phrase[ 2 * (phrase.len / 4)  : phrase.len / 4 ]);
+		r.update(phrase[ 3 * (phrase.len / 4)  ..             ]);
 		test::@check(r.final()[..] == expected[$i]);
 	}
 	$endforeach
@@ -64,7 +64,7 @@ fn void basic_streamed()
 
 fn void large_input()
 {
-	char[] one_mb = mem::talloc_array(char, 1024*1024);
+	char[] one_mb = mem::talloc_array(char, 1024 * 1024);
 	one_mb[..] = 0xA5;
 
 	test::@check(ripemd::hash{128}(one_mb) == x'e8b57fa5f8415f7a17043b67509fc182');
@@ -81,16 +81,16 @@ fn void large_input_streamed()
 		x'c635c1763d2766e617f095fb3bb65ed3b533fb48a7ac127916a2f2ba1127d3cf',
 		x'3173e524ea770b420c986974b486ea18d4558db55000e6db67784fe5fc091fe5fcc8bc80b7753c34'
 	};
-	char[] one_mb = mem::talloc_array(char, 1024*1024);
+	char[] one_mb = mem::talloc_array(char, 1024 * 1024);
 	one_mb[..] = 0xA5;
 	$foreach $i, $bits : ripemd::PERMISSIBLE_SIZES_BITS:
 	{
 		RipeMd{$bits} r @noinit;
 		r.init();
-		r.update(one_mb[                   : one_mb.len/4 ]);
-		r.update(one_mb[ 1*(one_mb.len/4)  : one_mb.len/4 ]);
-		r.update(one_mb[ 2*(one_mb.len/4)  : one_mb.len/4 ]);
-		r.update(one_mb[ 3*(one_mb.len/4)  ..             ]);
+		r.update(one_mb[                   : one_mb.len / 4 ]);
+		r.update(one_mb[ 1 * (one_mb.len / 4)  : one_mb.len / 4 ]);
+		r.update(one_mb[ 2 * (one_mb.len / 4)  : one_mb.len / 4 ]);
+		r.update(one_mb[ 3 * (one_mb.len / 4)  ..             ]);
 		test::@check(r.final()[..] == expected[$i]);
 	}
 	$endforeach
@@ -104,7 +104,7 @@ fn void large_input_streamed_per_byte()
 		x'c635c1763d2766e617f095fb3bb65ed3b533fb48a7ac127916a2f2ba1127d3cf',
 		x'3173e524ea770b420c986974b486ea18d4558db55000e6db67784fe5fc091fe5fcc8bc80b7753c34'
 	};
-	char[] one_mb = mem::talloc_array(char, 1024*1024);
+	char[] one_mb = mem::talloc_array(char, 1024 * 1024);
 	one_mb[..] = 0xA5;
 	$foreach $i, $bits : ripemd::PERMISSIBLE_SIZES_BITS:
 	{
@@ -136,10 +136,10 @@ fn void walk_lengths_streamed()
 		{
 			RipeMd{$bits} r @noinit;
 			r.init();
-			r.update(arr[0][                   : arr[0].len/4 ]);
-			r.update(arr[0][ 1*(arr[0].len/4)  : arr[0].len/4 ]);
-			r.update(arr[0][ 2*(arr[0].len/4)  : arr[0].len/4 ]);
-			r.update(arr[0][ 3*(arr[0].len/4)  ..             ]);
+			r.update(arr[0][                   : arr[0].len / 4 ]);
+			r.update(arr[0][ 1 * (arr[0].len / 4)  : arr[0].len / 4 ]);
+			r.update(arr[0][ 2 * (arr[0].len / 4)  : arr[0].len / 4 ]);
+			r.update(arr[0][ 3 * (arr[0].len / 4)  ..             ]);
 			test::@check(r.final()[..] == arr[$i + 1]);
 		}
 		$endforeach

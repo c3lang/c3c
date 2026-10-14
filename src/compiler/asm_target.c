@@ -422,7 +422,7 @@ static void init_asm_riscv(PlatformTarget *target)
 	target->clobber_name_list = RISCVClobberNames;
 	target->extra_clobbers = NULL;
 	int bits = 0;
-	switch(target->arch) {
+	switch (target->arch) {
 		case ARCH_TYPE_RISCV64:
 			// math
 			reg_instr(target, "add", "w:r64/mem, r64/mem, r64/mem");
@@ -956,7 +956,7 @@ static void arm_arg_to_scratch(AsmArgType type)
 	scratch_buffer_clear();
 	if (type.is_write && !type.is_readwrite) scratch_buffer_append("w");
 	if (type.is_readwrite)  scratch_buffer_append("rw");
-	if (scratch_buffer.len) scratch_buffer_append(":");
+	if (scratch_buffer_len()) scratch_buffer_append(":");
 	bool has_print = false;
 	if (type.imm_arg_ubits)
 	{
@@ -1064,7 +1064,7 @@ static void print_arch_asm(PlatformTarget *target)
 			default:
 				UNREACHABLE_VOID
 		}
-		if (scratch_buffer.len) scratch_buffer_delete(2);
+		if (scratch_buffer_len()) scratch_buffer_delete(2);
 		printf("%-30s | ", scratch_buffer_to_string());
 		int len = 0;
 		for (int j = 0; j < instruction->param_count; j++)
@@ -1076,7 +1076,7 @@ static void print_arch_asm(PlatformTarget *target)
 			}
 			arm_arg_to_scratch(instruction->param[j]);
 			printf("%s", scratch_buffer_to_string());
-			len += scratch_buffer.len;
+			len += scratch_buffer_len();
 		}
 		for (int j = 0; j < 70 - len; j++) printf(" ");
 		printf("|\n");

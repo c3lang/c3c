@@ -71,7 +71,7 @@ fn void simple()
 	foreach (i, v : keccak_test::SIMPLE_VECTORS)
 	{
 		$foreach $i, $sz : keccak::SECURITY_LEVELS:
-			test::@check(keccak::hash($sz, 100, v[..])[:$sz/8] == expected[i][$i][..]);
+			test::@check(keccak::hash($sz, 100, v[..])[:$sz / 8] == expected[i][$i][..]);
 		$endforeach
 	}
 }
@@ -115,7 +115,7 @@ fn void interval()
 	for (sz i = 1, sz j = 0; i <= 257; i += 64, ++j)
 	{
 		$foreach $i, $sz : keccak::SECURITY_LEVELS:
-			test::@check(keccak::hash($sz, 100, x[:i])[:$sz/8] == expected[j][$i]);
+			test::@check(keccak::hash($sz, 100, x[:i])[:$sz / 8] == expected[j][$i]);
 		$endforeach
 	}
 }

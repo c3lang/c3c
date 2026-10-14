@@ -520,7 +520,7 @@ fn void? Deflater.scan_matches(&self, bool final)
 	self.match_pos = (uint)pos;
 }
 
-fn void? Deflater.emit_block(&self, bool final)=> @pool()
+fn void? Deflater.emit_block(&self, bool final) => @pool()
 {
 	if (self.token_count == 0 && !final) return;
 

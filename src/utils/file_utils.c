@@ -588,31 +588,30 @@ bool file_executable_in_path(const char *name)
 		return file_exists(name);
 	}
 
-	char *path_env = getenv("PATH");
+	const char *path_env = getenv("PATH");
 	if (!path_env) return false;
 
-	char *path_copy = strdup(path_env);
 #if PLATFORM_WINDOWS
-	const char *delim = ";";
+	const char separator = ';';
 #else
-	const char *delim = ":";
+	const char separator = ':';
 #endif
 
-	char *dir = strtok(path_copy, delim);
-	while (dir)
+	StringSlice path = slice_from_string(path_env);
+	while (path.len)
 	{
-		if (dir[0] != '\0')
+		StringSlice dir = slice_next_token(&path, separator);
+		if (dir.len)
 		{
-			const char *full_path = file_append_path_temp(dir, name);
+			scratch_buffer_clear();
+			scratch_buffer_append_len(dir.ptr, dir.len);
+			const char *full_path = file_append_path_temp(scratch_buffer_to_string(), name);
 			if (file_exists(full_path))
 			{
-				free(path_copy);
 				return true;
 			}
 		}
-		dir = strtok(NULL, delim);
 	}
-	free(path_copy);
 	return false;
 }
 

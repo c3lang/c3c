@@ -44,13 +44,6 @@ int main_real(int argc, const char *argv[])
 {
 	srand((unsigned int)time(NULL));
 	compiler_exe_name = argv[0];
-#ifdef __OpenBSD__
-	// override data size constrain set up by the system */
-	struct rlimit l;
-	getrlimit(RLIMIT_DATA, &l);
-	l.rlim_cur = l.rlim_max;
-	setrlimit(RLIMIT_DATA, &l);
-#endif
 #if PLATFORM_WINDOWS
 	// Set the console input and output codepage to utf8 to handle utf8 text correctly
 	SetConsoleCP(65001);
@@ -129,6 +122,15 @@ int main_real(int argc, const char *argv[])
 			break;
 		case COMMAND_VENDOR_FETCH:
 			vendor_fetch(&build_options);
+			break;
+		case COMMAND_FETCH:
+			fetch(&build_options);
+			break;
+		case COMMAND_FETCH_INFO:
+			fetch_info(&build_options);
+			break;
+		case COMMAND_FETCH_LIST:
+			fetch_list(&build_options);
 			break;
 		case COMMAND_CLEAN_RUN:
 		case COMMAND_BUILD:

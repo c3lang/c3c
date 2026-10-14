@@ -64,7 +64,7 @@ fn double incomplete_beta(double x, double a, double b, ConvergenceControl conv 
 	if (x == 0.0) return 0.0;
 	if (x == 1.0) return 1.0;
 
-	if (x > (a + 1.0)/(a + b + 2.0)) return 1.0 - incomplete_beta(1.0 - x, b, a, conv);
+	if (x > (a + 1.0) / (a + b + 2.0)) return 1.0 - incomplete_beta(1.0 - x, b, a, conv);
 
 	const double TINY = 1e-30;
 
@@ -80,7 +80,7 @@ fn double incomplete_beta(double x, double a, double b, ConvergenceControl conv 
 	sz m;
 	for (sz i = 0; i <= conv.max_iter; ++i)
 	{
-		m = i/2;
+		m = i / 2;
 
 		double numerator;
 
@@ -104,7 +104,7 @@ fn double incomplete_beta(double x, double a, double b, ConvergenceControl conv 
 		c = 1.0 + numerator / c;
 		if (math::abs(c) < TINY) c = TINY;
 
-		double cd = c*d;
+		double cd = c * d;
 		f *= cd;
 
 		if (math::abs(1.0 - cd) < conv.epsilon) return front * (f - 1.0);

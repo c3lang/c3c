@@ -115,8 +115,8 @@ fn void simple()
 	{
 		foreach (j, w : keccak_test::CUSTOMIZATION_STRINGS)
 		{
-			test::@check(cshake::xof(128, 64, v, customizer: w)[..] == expected[i][(j*2) + 0], `128(64): Failed on vector "%s" (c: "%s").`, v, w);
-			test::@check(cshake::xof(256, 64, v, customizer: w)[..] == expected[i][(j*2) + 1], `256(64): Failed on vector "%s" (c: "%s").`, v, w);
+			test::@check(cshake::xof(128, 64, v, customizer: w)[..] == expected[i][(j * 2) + 0], `128(64): Failed on vector "%s" (c: "%s").`, v, w);
+			test::@check(cshake::xof(256, 64, v, customizer: w)[..] == expected[i][(j * 2) + 1], `256(64): Failed on vector "%s" (c: "%s").`, v, w);
 		}
 	}
 }
@@ -171,8 +171,8 @@ fn void interval()
 	{
 		foreach (k, w : keccak_test::CUSTOMIZATION_STRINGS)
 		{
-			test::@check(cshake::xof(128, 64, x[:i], customizer: w)[..]  == expected[j][(k*2) + 0], "128(16): Failed on length %d.", i);
-			test::@check(cshake::xof(256, 64, x[:i], customizer: w)[..]  == expected[j][(k*2) + 1], "256(16): Failed on length %d.", i);
+			test::@check(cshake::xof(128, 64, x[:i], customizer: w)[..]  == expected[j][(k * 2) + 0], "128(16): Failed on length %d.", i);
+			test::@check(cshake::xof(256, 64, x[:i], customizer: w)[..]  == expected[j][(k * 2) + 1], "256(16): Failed on length %d.", i);
 		}
 	}
 }

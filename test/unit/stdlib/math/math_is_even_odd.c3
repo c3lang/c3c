@@ -6,7 +6,7 @@ macro test(start, ...)
 {
     $for var $i = 0; $i < $vaarg.len; $i++:
         var $Type = $vaarg[$i];
-        for ($Type i = ($Type)start; i < 5; i+=2)
+        for ($Type i = ($Type)start; i < 5; i += 2)
         {
 	    assert(math::is_even(i));
 	    assert(i.is_even());

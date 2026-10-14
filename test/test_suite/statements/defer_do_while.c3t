@@ -8,7 +8,7 @@ fn void test()
 	{
 		a++;
 		defer a++;
-	} while(a < 10);
+	} while (a < 10);
 }
 
 /* #expect: foo.ll

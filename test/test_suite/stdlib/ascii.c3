@@ -2,7 +2,7 @@ import std::io;
 
 fn void main()
 {
-    for(char c = 0; c < 255; c++)
+    for (char c = 0; c < 255; c++)
     {
         io::printfn("%c (%s) is...:", c, c);
         io::printfn("lower: %s; upper: %s; digit: %s; bdigit: %s; odigit: %s; xdigit: %s; alpha: %s; print: %s; graph: %s; space: %s; alnum: %s; punct: %s; blank: %s; cntrl: %s;",

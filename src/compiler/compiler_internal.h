@@ -958,6 +958,7 @@ typedef struct
 	SubscriptIndex index;
 	bool no_check;
 	bool ref;
+	bool prefer_ref;
 } ExprSubscript;
 
 typedef struct
@@ -2422,6 +2423,7 @@ void cast_no_check(Expr *expr, Type *to_type, bool add_optional);
 
 bool cast_to_index_len(SemaContext *context, Expr *index, bool is_len);
 
+const char *c_codegen(void *context);
 const char *llvm_codegen(void *context);
 const char *tilde_codegen(void *context);
 void **c_gen(Module** modules, int module_count);
@@ -2609,8 +2611,9 @@ void sema_decl_stack_restore(Decl **state);
 void sema_decl_stack_push(Decl *decl);
 Decl *sema_find_generic_instance(SemaContext *context, Module *module, Decl *generic, Decl *instance, const char *name);
 
-BoolErr sema_remove_due_to_conditionals(Attr **attrs);
-BoolErr sema_remove_due_to_conditional(Attr *attr);
+BoolErr sema_retain_conditional_feat(Attr **attrs);
+BoolErr sema_retain_feat(Attr *attr);
+BoolErr sema_evaluate_feature_expr_list(Expr** exprs);
 bool sema_error_failed_cast(SemaContext *context, Expr *expr, Type *from, Type *to);
 bool sema_add_local(SemaContext *context, Decl *decl);
 void sema_unwrap_var(SemaContext *context, Decl *decl);
@@ -2761,7 +2764,7 @@ AlignSize type_alloca_alignment(Type *type);
 AlignSize type_abi_alignment(Type *type);
 bool type_func_match(Type *fn_type, Type *rtype, int arg_count, ...);
 Type *type_find_largest_union_element(Type *type);
-Type *type_find_max_type(Type *type, Type *other, Expr *first, Expr *second);
+Type *type_find_max_type(SemaContext *context, Type *type, Type *other, Expr *first, Expr *second);
 Type *type_find_max_type_may_fail(Type *type, Type *other);
 Type *type_abi_find_single_struct_element(Type *type, bool in_abi);
 Module *type_base_module(Type *type);
@@ -3013,7 +3016,7 @@ INLINE bool type_may_implement_interface(Type *type)
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_TYPEDEF:
 		case TYPE_BITSTRUCT:
 			return true;
@@ -3112,7 +3115,7 @@ INLINE bool type_is_atomic(Type *type_flat)
 		case ALL_SIGNED_INTS:
 		case ALL_FLOATS:
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_BOOL:
@@ -3160,7 +3163,7 @@ INLINE bool type_may_negate(Type *type)
 		case TYPE_TYPEDEF:
 			type = type->decl->distinct->type;
 			goto RETRY;
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 			type = type->decl->enums.type_info->type;
 			goto RETRY;
 		case TYPE_ALIAS:
@@ -3218,7 +3221,7 @@ INLINE const char *type_invalid_storage_type_name(Type *type)
 
 INLINE Type *enum_inner_type(Type *enum_type)
 {
-	assert(enum_type->type_kind == TYPE_ENUM || enum_type->type_kind == TYPE_CONSTDEF);
+	assert(enum_type->type_kind == TYPE_ENUM || enum_type->type_kind == TYPE_CONSTSET);
 	return enum_type->decl->enums.type_info->type;
 }
 
@@ -3285,7 +3288,7 @@ INLINE Type *type_flatten_for_bitstruct(Type *type)
 	{
 		type = type->decl->distinct->type;
 	}
-	if (type->type_kind == TYPE_ENUM || type->type_kind == TYPE_CONSTDEF)
+	if (type->type_kind == TYPE_ENUM || type->type_kind == TYPE_CONSTSET)
 	{
 		type = enum_inner_type(type)->canonical;
 		goto RETRY;
@@ -3344,7 +3347,7 @@ static inline Type *type_base(Type *type)
 				type = type->decl->distinct->type;
 				break;
 			case TYPE_ENUM:
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 				type = enum_inner_type(type);
 				break;
 			case TYPE_OPTIONAL:
@@ -3360,7 +3363,7 @@ static inline Type *type_base(Type *type)
 
 
 static const bool is_distinct_like[TYPE_LAST + 1] = {
-	[TYPE_CONSTDEF] = true,
+	[TYPE_CONSTSET] = true,
 	[TYPE_TYPEDEF] = true
 };
 
@@ -3414,7 +3417,7 @@ static inline Type *type_flatten_and_inline(Type *type)
 			case TYPE_TYPEDEF:
 				type = type->decl->distinct->type;
 				continue;
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 				type = type->decl->enums.type_info->type;
 				continue;
 			default:
@@ -3436,7 +3439,7 @@ static inline Type *type_flat_distinct_enum_inline(Type *type)
 				if (!decl->is_substruct) return type;;
 				type = decl->distinct->type;
 				continue;
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 				decl = type->decl;
 				if (!decl->is_substruct) return type;
 				type = decl->enums.type_info->type;
@@ -3451,7 +3454,7 @@ INLINE bool type_is_user_defined(Type *type)
 {
 	static const bool user_defined_types[TYPE_LAST + 1] = {
 		[TYPE_ENUM]       = true,
-		[TYPE_CONSTDEF]   = true,
+		[TYPE_CONSTSET]   = true,
 		[TYPE_STRUCT]     = true,
 		[TYPE_FUNC_RAW]   = true,
 		[TYPE_UNION]      = true,
@@ -3497,7 +3500,7 @@ static inline Type *type_flatten_to_int(Type *type)
 			case TYPE_BITSTRUCT:
 				type = type->decl->strukt.container_type->type;
 				break;
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 				type = type->decl->enums.type_info->type;
 				break;
 			case TYPE_ENUM:
@@ -3521,7 +3524,7 @@ static inline CanonicalType *type_distinct_inline(Type *type)
 		type = type->canonical;
 		switch (type->type_kind)
 		{
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 				type = enum_inner_type(type);
 				break;
 			case TYPE_TYPEDEF:
@@ -3544,7 +3547,7 @@ static inline FlatType *type_flatten(Type *type)
 		type = type->canonical;
 		switch (type->type_kind)
 		{
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 				type = enum_inner_type(type);
 				break;
 			case TYPE_TYPEDEF:
@@ -3575,7 +3578,7 @@ static inline Type *type_flatten_no_export(Type *type)
 				if (type->decl->is_export) return type;
 				type = type->decl->distinct->type;
 				break;
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 				if (type->decl->is_export) return type;
 				type = enum_inner_type(type);
 				break;
@@ -3685,7 +3688,7 @@ static inline Type *type_flat_for_arithmethics(Type *type)
 			case TYPE_OPTIONAL:
 				type = type->optional;
 				continue;
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 			case TYPE_TYPEDEF:
 				inner = type_inline(type);
 				if (type->decl->is_substruct)
@@ -3806,7 +3809,7 @@ INLINE bool decl_has_interface(Decl *decl)
 		[DECL_UNION] = true,
 		[DECL_STRUCT] = true,
 		[DECL_ENUM] = true,
-		[DECL_CONSTDEF] = true,
+		[DECL_CONSTSET] = true,
 		[DECL_TYPEDEF] = true,
 		[DECL_BITSTRUCT] = true
 	};
@@ -4250,7 +4253,7 @@ bool static_lib_linker(const char *output_file, const char **files, int file_cou
 bool dynamic_lib_linker(const char *output_file, const char **files, int file_count);
 bool linker(const char *output_file, const char **files, int file_count);
 void platform_linker(const char *output_file, const char **files, int file_count);
-const char *cc_compiler(const char *cc, const char *file, const char *flags, const char **include_dirs, const char *output_subdir);
+const char *cc_compiler(const char *cc, const char *file, const char *out_name, const char *flags, const char **include_dirs, const char *output_subdir);
 const char *arch_to_linker_arch(ArchType arch);
 extern char swizzle[256];
 #define SWIZZLE_INDEX(c) ((swizzle[(int)(c)] - 1) & 0xF)
@@ -4906,5 +4909,5 @@ const char *os_type_to_string(OsType os);
 
 INLINE void expr_rewrite_const_string_from_scratch(Expr *expr_to_rewrite)
 {
-	expr_rewrite_const_string(expr_to_rewrite, scratch_buffer_copy(), (ArrayIndex)scratch_buffer.len);
+	expr_rewrite_const_string(expr_to_rewrite, scratch_buffer_copy(), (ArrayIndex)scratch_buffer_len());
 }

@@ -22,7 +22,7 @@ fn int main(int argc, char** argv)
         defer do {
             if (a == 1) break;
             defer1();
-        } while(0);
+        } while (0);
         defer2();
     }
     defer defer3();

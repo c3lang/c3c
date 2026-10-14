@@ -40,6 +40,11 @@ fi
 echo ">>> Running CI Tests using C3C at: $C3C_BIN"
 echo ">>> OS Mode: $OS_MODE (Detected System: $SYSTEM_NAME)"
 
+C3_BACKEND="${C3_BACKEND:-llvm}"
+if [[ "$C3_BACKEND" == "c" ]]; then
+    export CC="${CC:-clang}"
+fi
+
 # --- Create Disposable Workspace ---
 
 # Create temp directory
@@ -62,7 +67,11 @@ ROOT_DIR="$REAL_ROOT_DIR"
 run_c3c() {
     TARGET_ARGS=""
     if [[ "$OS_MODE" == "ios" ]]; then TARGET_ARGS="--target ios-aarch64-sim"; fi
-    "$C3C_BIN" $TARGET_ARGS --output-dir "$MY_WORK_DIR" --build-dir "$MY_WORK_DIR" --obj-out "$MY_WORK_DIR" "$@"
+    BACKEND_ARGS=""
+    if [[ -n "$C3_BACKEND" && "$C3_BACKEND" != "llvm" ]]; then
+        BACKEND_ARGS="--backend=$C3_BACKEND"
+    fi
+    "$C3C_BIN" $TARGET_ARGS $BACKEND_ARGS --output-dir "$MY_WORK_DIR" --build-dir "$MY_WORK_DIR" --obj-out "$MY_WORK_DIR" "$@"
 }
 
 # Helper for ios to simulate compile-run
@@ -199,6 +208,13 @@ run_dynlib_tests() {
             cc "$ROOT_DIR/resources/examples/dynlib-test/test_multi.c" -ldl -o multi
         fi
         ./multi
+    fi
+
+    if [[ "$OS_MODE" == "mac" ]]; then
+        local DL_DIR="$ROOT_DIR/resources/examples/dynlib-test"
+        run_c3c -vv dynamic-lib "$DL_DIR/linked_a.c3" "$DL_DIR/linked_foo.c3" -o linked_a
+        run_c3c -vv dynamic-lib "$DL_DIR/linked_b.c3" "$DL_DIR/linked_foo.c3" -o linked_b
+        run_c3c -vv compile-run "$DL_DIR/linked_main.c3" "$DL_DIR/linked_foo.c3" -l linked_a.dylib -l linked_b.dylib
     fi
 
     if [[ "$OS_MODE" == "windows" ]]; then
@@ -467,13 +483,18 @@ run_unit_tests() {
         xcrun simctl spawn booted "$MY_WORK_DIR/testrun" 2>/dev/null || true
     fi
 
+    RUNNER_ARGS=("--no-terminal")
+    if [[ -n "$C3_BACKEND" && "$C3_BACKEND" != "llvm" ]]; then
+        RUNNER_ARGS+=("--backend=$C3_BACKEND")
+    fi
+
     echo "--- Running Test Suite Runner ---"
     (
         cd "$MY_WORK_DIR"
         if [[ "$OS_MODE" == "ios" ]]; then
-            sim_run "$ROOT_DIR/test/src/test_suite_runner.c3" -O1 -- "$C3C_BIN" "$ROOT_DIR/test/test_suite/" --no-terminal
+            sim_run "$ROOT_DIR/test/src/test_suite_runner.c3" -O1 -- "$C3C_BIN" "$ROOT_DIR/test/test_suite/" "${RUNNER_ARGS[@]}"
         else
-            run_c3c compile-run -O1 "$ROOT_DIR/test/src/test_suite_runner.c3" -- "$C3C_BIN" "$ROOT_DIR/test/test_suite/" --no-terminal
+            run_c3c compile-run -O1 "$ROOT_DIR/test/src/test_suite_runner.c3" -- "$C3C_BIN" "$ROOT_DIR/test/test_suite/" "${RUNNER_ARGS[@]}"
         fi
     )
 }

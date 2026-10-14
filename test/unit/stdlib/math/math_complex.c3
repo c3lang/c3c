@@ -54,8 +54,8 @@ fn void complex_div()
 {
 	Complex a = {2, 5};
 	Complex b = {4, -1};
-	assert(a / b == (Complex) {3.0/17.0, 22.0/17.0});
+	assert(a / b == (Complex) {3.0 / 17.0, 22.0 / 17.0});
 	a /= b;
-	assert(a == (Complex) {3.0/17.0, 22.0/17.0});
+	assert(a == (Complex) {3.0 / 17.0, 22.0 / 17.0});
 }
 

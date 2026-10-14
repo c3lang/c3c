@@ -192,7 +192,7 @@ fn float elastic_inout(float t, float b, float c, float d) @inline
 
 	t -= 1;
 	return t < 0
-		? -0.5f * a * math::pow(2.0f, 10 * t) * math::sin((t * d - s) * (2 * (float)math::PI)/p) + b
+		? -0.5f * a * math::pow(2.0f, 10 * t) * math::sin((t * d - s) * (2 * (float)math::PI) / p) + b
 		:  a * math::pow(2.0f, -10 * t) * math::sin((t * d - s) * (2 * (float)math::PI) / p) * 0.5f + c + b;
 }
 

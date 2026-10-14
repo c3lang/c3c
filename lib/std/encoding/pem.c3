@@ -218,8 +218,8 @@ fn Pem? _decode_single(Allocator allocator, String[]* lines_io) @local
 	if (post_tag.len != tag.len || post_tag != tag) return MISMATCHED_TAG~;
 
 	// Now that the inner portion is decapsulated, tag is, strip off the boundaries.
-	*lines_io = lines[endl+1..];   // update the iterated slice of lines from the calling context - see: `decode`
-	lines = lines[1:endl-1];
+	*lines_io = lines[endl + 1..];   // update the iterated slice of lines from the calling context - see: `decode`
+	lines = lines[1:endl - 1];
 
 	if (!lines) return MISSING_BODY~;
 

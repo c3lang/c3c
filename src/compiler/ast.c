@@ -69,8 +69,8 @@ Decl *decl_new_with_type(const char *name, SourceLoc *loc, DeclKind decl_type)
 		case DECL_ENUM:
 			kind = TYPE_ENUM;
 			break;
-		case DECL_CONSTDEF:
-			kind = TYPE_CONSTDEF;
+		case DECL_CONSTSET:
+			kind = TYPE_CONSTSET;
 			break;
 		case DECL_TYPEDEF:
 			kind = TYPE_TYPEDEF;
@@ -129,7 +129,7 @@ const char *decl_to_a_name(Decl *decl)
 		case DECL_ALIAS: case DECL_ALIAS_PATH: case DECL_TYPE_ALIAS: return "an alias";
 		case DECL_TYPEDEF: return "a distinct type";
 		case DECL_ENUM: return "an enum";
-		case DECL_CONSTDEF: return "a constdef";
+		case DECL_CONSTSET: return "a constset";
 		case DECL_ENUM_CONSTANT: return "an enum value";
 		case DECL_ERASED: return "an erased declaration";
 		case DECL_FAULT: return "a fault";
@@ -365,7 +365,7 @@ bool decl_inherits_module_generic(Decl *decl)
 		case DECL_BITSTRUCT:
 		case DECL_DECLARRAY:
 		case DECL_ALIAS:
-		case DECL_CONSTDEF:
+		case DECL_CONSTSET:
 		case DECL_TYPEDEF:
 		case DECL_ENUM:
 		case DECL_FNTYPE:

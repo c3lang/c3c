@@ -51,7 +51,7 @@ macro int @sort_cmp(list_maybe_ref, pos, cmp = ..., ctx = ...) @local
 	var $cmp_by_value = $has_cmp &&& $defined($Typefrom($Typeof(cmp)::params[0].type) v = list[0]);
 
 	var a = list[pos];
-	var b = list[pos+1];
+	var b = list[pos + 1];
 
 	$switch:
 		$case $cmp_by_value && $has_context:

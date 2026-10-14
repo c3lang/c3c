@@ -175,6 +175,35 @@ fn void remove_if()
 	removed = test.remove_if(&select);
 	assert(removed == 2);
 	assert(test.array_view() == {11, 10, 20});
+
+	// Verify each element is evaluated strictly once
+	call_count = 0;
+	test.clear();
+	test.push_all({ 1, 2, 3, 4, 5, 6, 7 });
+	removed = test.remove_if(&counting_filter);
+	assert(call_count == 7);
+	assert(removed == 4);
+	assert(test.array_view() == { 2, 4, 6 });
+
+	// Remove none
+	test.clear();
+	test.push_all({ 2, 4, 6 });
+	removed = test.remove_if(&counting_filter);
+	assert(removed == 0);
+	assert(test.array_view() == { 2, 4, 6 });
+
+	// Remove all
+	test.clear();
+	test.push_all({ 1, 3, 5 });
+	removed = test.remove_if(&counting_filter);
+	assert(removed == 3);
+	assert(test.len() == 0);
+
+	// Empty list
+	test.clear();
+	removed = test.remove_if(&counting_filter);
+	assert(removed == 0);
+	assert(test.len() == 0);
 }
 
 fn void init_with_array()
@@ -226,6 +255,35 @@ fn void retain_if()
 	removed = test.retain_if(&filter);
 	assert(removed == 2);
 	assert(test.array_view() == {11, 10, 20});
+
+	// Verify each element is evaluated strictly once
+	call_count = 0;
+	test.clear();
+	test.push_all({ 1, 2, 3, 4, 5, 6, 7 });
+	removed = test.retain_if(&counting_filter);
+	assert(call_count == 7);
+	assert(removed == 3);
+	assert(test.array_view() == { 1, 3, 5, 7 });
+
+	// Retain all
+	test.clear();
+	test.push_all({ 1, 3, 5 });
+	removed = test.retain_if(&counting_filter);
+	assert(removed == 0);
+	assert(test.array_view() == { 1, 3, 5 });
+
+	// Retain none
+	test.clear();
+	test.push_all({ 2, 4, 6 });
+	removed = test.retain_if(&counting_filter);
+	assert(removed == 3);
+	assert(test.len() == 0);
+
+	// Empty list
+	test.clear();
+	removed = test.retain_if(&counting_filter);
+	assert(removed == 0);
+	assert(test.len() == 0);
 }
 
 fn void retain_using_test()
@@ -265,4 +323,12 @@ fn bool filter(int* i)
 fn bool select(int* i)
 {
 	return *i < 10;
+}
+
+int call_count;
+
+fn bool counting_filter(int* i)
+{
+	call_count++;
+	return (*i % 2) != 0;
 }

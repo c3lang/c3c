@@ -181,7 +181,7 @@ fn void draw_game()
 	defer rl::end_drawing();
 	if (game_over)
 	{
-		rl::draw_text("PRESS [ENTER] TO PLAY AGAIN", rl::get_screen_width() / 2 - rl::measure_text("PRESS [ENTER] TO PLAY AGAIN", 20)/2, rl::get_screen_height() / 2 - 50, 20, rl::GRAY);
+		rl::draw_text("PRESS [ENTER] TO PLAY AGAIN", rl::get_screen_width() / 2 - rl::measure_text("PRESS [ENTER] TO PLAY AGAIN", 20) / 2, rl::get_screen_height() / 2 - 50, 20, rl::GRAY);
 		return;
 	}
 	// Draw grid lines
@@ -190,9 +190,9 @@ fn void draw_game()
 		rl::draw_line_v(offset / 2 + { (float)SQUARE_SIZE * i, 0}, {(float)SQUARE_SIZE * i + offset.x / 2, SCREEN_HEIGHT - offset.y / 2}, rl::LIGHTGRAY);
 	}
 
-	for (int i = 0; i < SCREEN_HEIGHT/SQUARE_SIZE + 1; i++)
+	for (int i = 0; i < SCREEN_HEIGHT / SQUARE_SIZE + 1; i++)
 	{
-		rl::draw_line_v(offset / 2 + { 0, (float)SQUARE_SIZE * i }, { SCREEN_WIDTH - offset.x/2, (float)SQUARE_SIZE * i + offset.y / 2 }, rl::LIGHTGRAY);
+		rl::draw_line_v(offset / 2 + { 0, (float)SQUARE_SIZE * i }, { SCREEN_WIDTH - offset.x / 2, (float)SQUARE_SIZE * i + offset.y / 2 }, rl::LIGHTGRAY);
 	}
 
 	// Draw snake

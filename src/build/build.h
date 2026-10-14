@@ -17,6 +17,7 @@
 #define DEFAULT_SWITCHRANGE_MAX_SIZE (256)
 #define DEFAULT_SWITCH_JUMP_MAX_SIZE (0x3FFF)
 #define DEFAULT_PATH "."
+#define DEFAULT_FETCH_URL "http://localhost:8080"
 #define DEFAULT_STACK_PROBE_SIZE (0x1000)
 
 typedef enum
@@ -36,6 +37,9 @@ typedef enum
 	COMMAND_CLEAN_RUN,
 	COMMAND_CLEAN,
 	COMMAND_VENDOR_FETCH,
+	COMMAND_FETCH,
+	COMMAND_FETCH_LIST,
+	COMMAND_FETCH_INFO,
 	COMMAND_DIST,
 	COMMAND_BENCHMARK,
 	COMMAND_TEST,
@@ -201,6 +205,10 @@ typedef struct BuildOptions_
 	const char *bsd_sysroot;
 	int build_threads;
 	const char *echo_prefix;
+	const char *search_name;
+	const char *search_tag;
+	const char *fetch_url;
+	const char **vendor_libraries_to_fetch;
 	const char **libraries_to_fetch;
 	const char **files;
 	const char *test_filter;
@@ -258,6 +266,8 @@ typedef struct BuildOptions_
 	SingleModule single_module;
 	UnrollLoops unroll_loops;
 	MergeFunctions merge_functions;
+	SectionsSetting function_sections;
+	SectionsSetting data_sections;
 	AutoVectorization loop_vectorization;
 	AutoVectorization slp_vectorization;
 	bool emit_llvm;
@@ -291,6 +301,7 @@ typedef struct BuildOptions_
 	const char *benchfn;
 	const char *testfn;
 	const char *cc;
+	const char *cflags;
 	const char *build_dir;
 	const char *output_dir;
 	const char *llvm_out;
@@ -462,6 +473,8 @@ typedef struct
 	ShowBacktrace show_backtrace;
 	StripUnused strip_unused;
 	DebugInfo debug_info;
+	SectionsSetting function_sections;
+	SectionsSetting data_sections;
 	MergeFunctions merge_functions;
 	UnrollLoops unroll_loops;
 	AutoVectorization loop_vectorization;
@@ -589,6 +602,8 @@ static BuildTarget default_build_target = {
 		.merge_functions = MERGE_FUNCTIONS_NOT_SET,
 		.slp_vectorization = VECTORIZATION_NOT_SET,
 		.loop_vectorization = VECTORIZATION_NOT_SET,
+		.function_sections = SECTIONS_SETTING_NOT_SET,
+		.data_sections = SECTIONS_SETTING_NOT_SET,
 		.strip_unused = STRIP_UNUSED_NOT_SET,
 		.symtab_size = DEFAULT_SYMTAB_SIZE,
 		.reloc_model = RELOC_DEFAULT,

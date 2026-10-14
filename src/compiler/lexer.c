@@ -89,22 +89,9 @@ static inline void set_generic_token(Lexer *lexer, TokenType type)
 	lexer->data.lex_len = lexer->current - lexer->lexing_start;
 	lexer->data.lex_start = lexer->lexing_start;
 	uint32_t line = lexer->start_row;
-	uint32_t col;
-	uint32_t length;
-	if (line == lexer->current_row)
-	{
-		// Col is simple difference.
-		col = lexer->lexing_start - lexer->line_start + 1;
-		// Length is diff between current and start.
-		length = check_row(lexer->current - lexer->lexing_start);
-	}
-	else
-	{
-		// For multiline, we grab the diff from the starting line.
-		col = lexer->lexing_start - lexer->start_row_start + 1;
-		// But always set a single token length.
-		length = 1;
-	}
+	uint32_t col = lexer->lexing_start - lexer->start_row_start + 1;
+	uint32_t length = check_row(lexer->current - lexer->lexing_start);
+
 	lexer->tok_span.offset = lexer->lexing_start - lexer->file_begin;
 	lexer->tok_span.length = length;
 	lexer->tok_span.col = col;

@@ -287,7 +287,7 @@ INLINE void llvm_emit_unaligned_load(GenContext *c, BEValue *result_value, Expr 
 static inline LLVMValueRef llvm_syscall_asm(LLVMTypeRef func_type, char *call)
 {
 	return LLVMGetInlineAsm(func_type, call, strlen(call),
-							scratch_buffer_to_string(), scratch_buffer.len,
+							scratch_buffer_to_string(), scratch_buffer_len(),
 							true, true, LLVMInlineAsmDialectATT, /* can throw */ false);
 }
 

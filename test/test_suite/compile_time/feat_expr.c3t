@@ -1,0 +1,38 @@
+// #target: macos-x64
+module test;
+
+// Single feature
+$assert $feat(MACOS);
+$assert !$feat(WIN32);
+
+// Unary negation
+$assert $feat(!WIN32);
+$assert $feat(!LINUX);
+$assert !$feat(!MACOS);
+$assert $feat(!!MACOS);
+
+// Binary AND
+$assert $feat(MACOS & X86_64);
+$assert $feat(MACOS & DARWIN & POSIX);
+$assert !$feat(MACOS & WIN32);
+
+// Binary OR
+$assert $feat(WIN32 | MACOS);
+$assert $feat(MACOS | LINUX);
+$assert !$feat(WIN32 | LINUX);
+
+// Mixed unary and binary
+$assert $feat(!WIN32 & !LINUX);
+$assert $feat(WIN32 | !AARCH64);
+$assert $feat(!WIN32 & X86_64 & !AARCH64);
+
+// Parenthesised sub-expressions
+$assert $feat((MACOS | WIN32) & X86_64);
+$assert $feat(!(WIN32 | LINUX));
+$assert !$feat((MACOS | WIN32) & LINUX);
+
+// Comma-separated list, same OR semantics as @feat
+$assert $feat(WIN32, MACOS);
+$assert $feat(WIN32, LINUX, MACOS);
+$assert !$feat(WIN32, LINUX);
+$assert $feat(MACOS & X86_64, WIN32 & AARCH64);
