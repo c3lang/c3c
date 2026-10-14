@@ -666,7 +666,20 @@ static bool c_emit_struct_or_union_decl(GenContext *c, Type *type, const char *k
 		}
 	}
 
-	PRINTF("%s %s__ {\n", keyword, name);
+	AlignSize align = d ? d->alignment : 0;
+	bool packed     = d ? d->strukt.is_packed : false;
+	if (packed)
+	{
+		PRINT("#pragma pack(push, 1)\n");
+	}
+	if (align)
+	{
+		PRINTF("%s __c3_aligned(%u) %s__ {\n", keyword, align, name);
+	}
+	else
+	{
+		PRINTF("%s %s__ {\n", keyword, name);
+	}
 	if (field_count == 0)
 	{
 		PRINT("\tchar __empty;\n");
@@ -686,7 +699,7 @@ static bool c_emit_struct_or_union_decl(GenContext *c, Type *type, const char *k
 			}
 			if (m->alignment && m->alignment > type_abi_alignment(mt))
 			{
-				PRINTF("\t%s m%d __c3_aligned(%u);\n", c_type_name(c, mt), (int)i, m->alignment);
+				PRINTF("\t__c3_aligned(%u) %s m%d;\n", m->alignment, c_type_name(c, mt), (int)i);
 			}
 			else
 			{
@@ -694,24 +707,10 @@ static bool c_emit_struct_or_union_decl(GenContext *c, Type *type, const char *k
 			}
 		}
 	}
-	AlignSize align = d ? d->alignment : 0;
-	bool packed     = d ? d->strukt.is_packed : false;
-	if (align || packed)
+	PRINT("};\n");
+	if (packed)
 	{
-		PRINT("} ");
-		if (packed)
-		{
-			PRINT("__c3_packed ");
-		}
-		if (align)
-		{
-			PRINTF("__c3_aligned(%u) ", align);
-		}
-		PRINT(";\n");
-	}
-	else
-	{
-		PRINT("};\n");
+		PRINT("#pragma pack(pop)\n");
 	}
 	return true;
 }
@@ -879,7 +878,7 @@ bool c_emit_type_decl(GenContext *c, Type *type)
 			const char *ext     = (len == 0) ? "__extension__ " : "";
 			if (vec_align > type_abi_alignment(type->array.base))
 			{
-				PRINTF("%sstruct %s__ { %s ptr[%llu]; } __c3_aligned(%u);\n", ext, arr_name, base_tname, len, vec_align);
+				PRINTF("%sstruct __c3_aligned(%u) %s__ { %s ptr[%llu]; };\n", ext, vec_align, arr_name, base_tname, len);
 			}
 			else
 			{
