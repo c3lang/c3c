@@ -119,7 +119,7 @@ extern double fma(double, double, double);
 #define __builtin_pow         pow
 #define __builtin_fma         fma
 #define __builtin_prefetch(addr, ...) ((void)0)
-static inline int __c3_tcc_clz64(uint64_t x) {
+static inline int __c3_clz64(uint64_t x) {
 	if (x == 0) return 64;
 	int n = 0;
 	if ((x >> 32) == 0) { n += 32; x <<= 32; }
@@ -130,10 +130,10 @@ static inline int __c3_tcc_clz64(uint64_t x) {
 	if ((x >> 63) == 0) { n += 1; }
 	return n;
 }
-#define __builtin_clzll __c3_tcc_clz64
-#define __builtin_clzl  __c3_tcc_clz64
-#define __builtin_clz(x) (__c3_tcc_clz64(x) - 32)
-static inline int __c3_tcc_ctz64(uint64_t x) {
+#define __builtin_clzll __c3_clz64
+#define __builtin_clzl  __c3_clz64
+#define __builtin_clz(x) (__c3_clz64(x) - 32)
+static inline int __c3_ctz64(uint64_t x) {
 	if (x == 0) return 64;
 	int n = 0;
 	if ((x & 0xFFFFFFFFULL) == 0) { n += 32; x >>= 32; }
@@ -144,31 +144,31 @@ static inline int __c3_tcc_ctz64(uint64_t x) {
 	if ((x & 0x00000001ULL) == 0) { n += 1; }
 	return n;
 }
-#define __builtin_ctzll __c3_tcc_ctz64
-#define __builtin_ctzl  __c3_tcc_ctz64
-#define __builtin_ctz   __c3_tcc_ctz64
-static inline int __c3_tcc_popcount64(uint64_t x) {
+#define __builtin_ctzll __c3_ctz64
+#define __builtin_ctzl  __c3_ctz64
+#define __builtin_ctz   __c3_ctz64
+static inline int __c3_popcount64(uint64_t x) {
 	x = x - ((x >> 1) & 0x5555555555555555ULL);
 	x = (x & 0x3333333333333333ULL) + ((x >> 2) & 0x3333333333333333ULL);
 	x = (x + (x >> 4)) & 0x0F0F0F0F0F0F0F0FULL;
 	return (int)((x * 0x0101010101010101ULL) >> 56);
 }
-#define __builtin_popcountll __c3_tcc_popcount64
-#define __builtin_popcountl  __c3_tcc_popcount64
-#define __builtin_popcount   __c3_tcc_popcount64
-static inline uint16_t __c3_tcc_bswap16(uint16_t x) { return (uint16_t)((x << 8) | (x >> 8)); }
-static inline uint32_t __c3_tcc_bswap32(uint32_t x) {
+#define __builtin_popcountll __c3_popcount64
+#define __builtin_popcountl  __c3_popcount64
+#define __builtin_popcount   __c3_popcount64
+static inline uint16_t __c3_bswap16(uint16_t x) { return (uint16_t)((x << 8) | (x >> 8)); }
+static inline uint32_t __c3_bswap32(uint32_t x) {
 	return ((x << 24) & 0xff000000u) | ((x << 8) & 0x00ff0000u) | ((x >> 8) & 0x0000ff00u) | ((x >> 24) & 0x000000ffu);
 }
-static inline uint64_t __c3_tcc_bswap64(uint64_t x) {
+static inline uint64_t __c3_bswap64(uint64_t x) {
 	return ((x << 56) & 0xff00000000000000ull) | ((x << 40) & 0x00ff000000000000ull) |
 	       ((x << 24) & 0x0000ff0000000000ull) | ((x << 8)  & 0x000000ff00000000ull) |
 	       ((x >> 8)  & 0x00000000ff000000ull) | ((x >> 24) & 0x0000000000ff0000ull) |
 	       ((x >> 40) & 0x000000000000ff00ull) | ((x >> 56) & 0x00000000000000ffull);
 }
-#define __builtin_bswap16 __c3_tcc_bswap16
-#define __builtin_bswap32 __c3_tcc_bswap32
-#define __builtin_bswap64 __c3_tcc_bswap64
+#define __builtin_bswap16 __c3_bswap16
+#define __builtin_bswap32 __c3_bswap32
+#define __builtin_bswap64 __c3_bswap64
 #define __c3_abort()  (*(volatile int*)0 = 0)
 #ifndef __ATOMIC_SEQ_CST
 #define __ATOMIC_RELAXED 0
@@ -181,42 +181,70 @@ static inline uint64_t __c3_tcc_bswap64(uint64_t x) {
 #define __atomic_load_n(ptr, memorder) (*(ptr))
 #define __atomic_store_n(ptr, val, memorder) (*(ptr) = (val))
 #define __atomic_thread_fence(memorder) ((void)0)
-static inline uint64_t __c3_tcc_atomic_fetch_add(void *ptr, uint64_t val, int size) {
-#if defined(__x86_64__) && !defined(_MSC_VER)
-	if (size == 1) { uint8_t r = (uint8_t)val; __asm__ __volatile__("lock xaddb %0, %1" : "+r"(r), "+m"(*(uint8_t*)ptr) : : "memory"); return r; }
-	if (size == 2) { uint16_t r = (uint16_t)val; __asm__ __volatile__("lock xaddw %0, %1" : "+r"(r), "+m"(*(uint16_t*)ptr) : : "memory"); return r; }
-	if (size == 4) { uint32_t r = (uint32_t)val; __asm__ __volatile__("lock xaddl %0, %1" : "+r"(r), "+m"(*(uint32_t*)ptr) : : "memory"); return r; }
-	if (size == 8) { uint64_t r = (uint64_t)val; __asm__ __volatile__("lock xaddq %0, %1" : "+r"(r), "+m"(*(uint64_t*)ptr) : : "memory"); return r; }
+#if defined(_MSC_VER) && !defined(__clang__)
+char    _InterlockedExchangeAdd8(char volatile *, char);
+short   _InterlockedExchangeAdd16(short volatile *, short);
+long    _InterlockedExchangeAdd(long volatile *, long);
+__int64 _InterlockedExchangeAdd64(__int64 volatile *, __int64);
+char    _InterlockedAnd8(char volatile *, char);
+short   _InterlockedAnd16(short volatile *, short);
+long    _InterlockedAnd(long volatile *, long);
+__int64 _InterlockedAnd64(__int64 volatile *, __int64);
+char    _InterlockedOr8(char volatile *, char);
+short   _InterlockedOr16(short volatile *, short);
+long    _InterlockedOr(long volatile *, long);
+__int64 _InterlockedOr64(__int64 volatile *, __int64);
+char    _InterlockedXor8(char volatile *, char);
+short   _InterlockedXor16(short volatile *, short);
+long    _InterlockedXor(long volatile *, long);
+__int64 _InterlockedXor64(__int64 volatile *, __int64);
+char    _InterlockedExchange8(char volatile *, char);
+short   _InterlockedExchange16(short volatile *, short);
+long    _InterlockedExchange(long volatile *, long);
+__int64 _InterlockedExchange64(__int64 volatile *, __int64);
+char    _InterlockedCompareExchange8(char volatile *, char, char);
+short   _InterlockedCompareExchange16(short volatile *, short, short);
+long    _InterlockedCompareExchange(long volatile *, long, long);
+__int64 _InterlockedCompareExchange64(__int64 volatile *, __int64, __int64);
+#pragma intrinsic(_InterlockedExchangeAdd8, _InterlockedExchangeAdd16, _InterlockedExchangeAdd, _InterlockedExchangeAdd64)
+#pragma intrinsic(_InterlockedAnd8, _InterlockedAnd16, _InterlockedAnd, _InterlockedAnd64)
+#pragma intrinsic(_InterlockedOr8, _InterlockedOr16, _InterlockedOr, _InterlockedOr64)
+#pragma intrinsic(_InterlockedXor8, _InterlockedXor16, _InterlockedXor, _InterlockedXor64)
+#pragma intrinsic(_InterlockedExchange8, _InterlockedExchange16, _InterlockedExchange, _InterlockedExchange64)
+#pragma intrinsic(_InterlockedCompareExchange8, _InterlockedCompareExchange16, _InterlockedCompareExchange, _InterlockedCompareExchange64)
 #endif
-	uint64_t old = (size == 8) ? *(uint64_t*)ptr : ((size == 4) ? *(uint32_t*)ptr : ((size == 2) ? *(uint16_t*)ptr : *(uint8_t*)ptr));
-	if (size == 8) *(uint64_t*)ptr += val;
-	else if (size == 4) *(uint32_t*)ptr += (uint32_t)val;
-	else if (size == 2) *(uint16_t*)ptr += (uint16_t)val;
-	else *(uint8_t*)ptr += (uint8_t)val;
-	return old;
-}
-#define __atomic_fetch_add(ptr, val, memorder) __c3_tcc_atomic_fetch_add((void*)(ptr), (uint64_t)(val), sizeof(*(ptr)))
-static inline uint64_t __c3_tcc_atomic_fetch_sub(void *ptr, uint64_t val, int size) {
-	return __c3_tcc_atomic_fetch_add(ptr, (uint64_t)(-(int64_t)val), size);
-}
-#define __atomic_fetch_sub(ptr, val, memorder) __c3_tcc_atomic_fetch_sub((void*)(ptr), (uint64_t)(val), sizeof(*(ptr)))
-static inline uint64_t __c3_tcc_atomic_exchange_n(void *ptr, uint64_t val, int size) {
-#if defined(__x86_64__) && !defined(_MSC_VER)
-	if (size == 1) { uint8_t r = (uint8_t)val; __asm__ __volatile__("xchgb %0, %1" : "+r"(r), "+m"(*(uint8_t*)ptr) : : "memory"); return r; }
-	if (size == 2) { uint16_t r = (uint16_t)val; __asm__ __volatile__("xchgw %0, %1" : "+r"(r), "+m"(*(uint16_t*)ptr) : : "memory"); return r; }
-	if (size == 4) { uint32_t r = (uint32_t)val; __asm__ __volatile__("xchgl %0, %1" : "+r"(r), "+m"(*(uint32_t*)ptr) : : "memory"); return r; }
-	if (size == 8) { uint64_t r = (uint64_t)val; __asm__ __volatile__("xchgq %0, %1" : "+r"(r), "+m"(*(uint64_t*)ptr) : : "memory"); return r; }
-#endif
-	uint64_t old = (size == 8) ? *(uint64_t*)ptr : ((size == 4) ? *(uint32_t*)ptr : ((size == 2) ? *(uint16_t*)ptr : *(uint8_t*)ptr));
-	if (size == 8) *(uint64_t*)ptr = val;
-	else if (size == 4) *(uint32_t*)ptr = (uint32_t)val;
-	else if (size == 2) *(uint16_t*)ptr = (uint16_t)val;
-	else *(uint8_t*)ptr = (uint8_t)val;
-	return old;
-}
-#define __atomic_exchange_n(ptr, val, memorder) __c3_tcc_atomic_exchange_n((void*)(ptr), (uint64_t)(val), sizeof(*(ptr)))
-static inline bool __c3_tcc_atomic_compare_exchange_n(void *ptr, void *expected, uint64_t desired, int size) {
-#if defined(__x86_64__) && !defined(_MSC_VER)
+
+static inline bool __c3_atomic_compare_exchange_n(void *ptr, void *expected, uint64_t desired, int size) {
+#if defined(_MSC_VER) && !defined(__clang__)
+	if (size == 1) {
+		char exp = *(char*)expected;
+		char old = _InterlockedCompareExchange8((char volatile*)ptr, (char)desired, exp);
+		if (old == exp) return true;
+		*(char*)expected = old;
+		return false;
+	}
+	if (size == 2) {
+		short exp = *(short*)expected;
+		short old = _InterlockedCompareExchange16((short volatile*)ptr, (short)desired, exp);
+		if (old == exp) return true;
+		*(short*)expected = old;
+		return false;
+	}
+	if (size == 4) {
+		long exp = *(long*)expected;
+		long old = _InterlockedCompareExchange((long volatile*)ptr, (long)desired, exp);
+		if (old == exp) return true;
+		*(long*)expected = old;
+		return false;
+	}
+	if (size == 8) {
+		__int64 exp = *(__int64*)expected;
+		__int64 old = _InterlockedCompareExchange64((__int64 volatile*)ptr, (__int64)desired, exp);
+		if (old == exp) return true;
+		*(__int64*)expected = old;
+		return false;
+	}
+#elif defined(__x86_64__)
 	bool success;
 	if (size == 1) {
 		uint8_t exp = *(uint8_t*)expected;
@@ -259,8 +287,119 @@ static inline bool __c3_tcc_atomic_compare_exchange_n(void *ptr, void *expected,
 		return false;
 	}
 }
-#define __atomic_compare_exchange_n(ptr, exp, des, weak, succ, fail) __c3_tcc_atomic_compare_exchange_n((void*)(ptr), (void*)(exp), (uint64_t)(des), sizeof(*(ptr)))
-static inline bool __c3_tcc_add_overflow(uint64_t a, uint64_t b, void *res, int size, bool is_signed) {
+
+static inline uint64_t __c3_atomic_fetch_add(void *ptr, uint64_t val, int size) {
+#if defined(_MSC_VER) && !defined(__clang__)
+	if (size == 1) return (uint8_t)_InterlockedExchangeAdd8((char volatile*)ptr, (char)val);
+	if (size == 2) return (uint16_t)_InterlockedExchangeAdd16((short volatile*)ptr, (short)val);
+	if (size == 4) return (uint32_t)_InterlockedExchangeAdd((long volatile*)ptr, (long)val);
+	if (size == 8) return (uint64_t)_InterlockedExchangeAdd64((__int64 volatile*)ptr, (__int64)val);
+#elif defined(__x86_64__)
+	if (size == 1) { uint8_t r = (uint8_t)val; __asm__ __volatile__("lock xaddb %0, %1" : "+r"(r), "+m"(*(uint8_t*)ptr) : : "memory"); return r; }
+	if (size == 2) { uint16_t r = (uint16_t)val; __asm__ __volatile__("lock xaddw %0, %1" : "+r"(r), "+m"(*(uint16_t*)ptr) : : "memory"); return r; }
+	if (size == 4) { uint32_t r = (uint32_t)val; __asm__ __volatile__("lock xaddl %0, %1" : "+r"(r), "+m"(*(uint32_t*)ptr) : : "memory"); return r; }
+	if (size == 8) { uint64_t r = (uint64_t)val; __asm__ __volatile__("lock xaddq %0, %1" : "+r"(r), "+m"(*(uint64_t*)ptr) : : "memory"); return r; }
+#endif
+	uint64_t old = (size == 8) ? *(uint64_t*)ptr : ((size == 4) ? *(uint32_t*)ptr : ((size == 2) ? *(uint16_t*)ptr : *(uint8_t*)ptr));
+	while (1) {
+		uint64_t des = old + val;
+		uint64_t prev = old;
+		if (__c3_atomic_compare_exchange_n(ptr, &prev, des, size)) return old;
+		old = prev;
+	}
+}
+
+static inline uint64_t __c3_atomic_fetch_sub(void *ptr, uint64_t val, int size) {
+	return __c3_atomic_fetch_add(ptr, (uint64_t)(-(int64_t)val), size);
+}
+
+static inline uint64_t __c3_atomic_fetch_and(void *ptr, uint64_t val, int size) {
+#if defined(_MSC_VER) && !defined(__clang__)
+	if (size == 1) return (uint8_t)_InterlockedAnd8((char volatile*)ptr, (char)val);
+	if (size == 2) return (uint16_t)_InterlockedAnd16((short volatile*)ptr, (short)val);
+	if (size == 4) return (uint32_t)_InterlockedAnd((long volatile*)ptr, (long)val);
+	if (size == 8) return (uint64_t)_InterlockedAnd64((__int64 volatile*)ptr, (__int64)val);
+#endif
+	uint64_t old = (size == 8) ? *(uint64_t*)ptr : ((size == 4) ? *(uint32_t*)ptr : ((size == 2) ? *(uint16_t*)ptr : *(uint8_t*)ptr));
+	while (1) {
+		uint64_t des = old & val;
+		uint64_t prev = old;
+		if (__c3_atomic_compare_exchange_n(ptr, &prev, des, size)) return old;
+		old = prev;
+	}
+}
+
+static inline uint64_t __c3_atomic_fetch_or(void *ptr, uint64_t val, int size) {
+#if defined(_MSC_VER) && !defined(__clang__)
+	if (size == 1) return (uint8_t)_InterlockedOr8((char volatile*)ptr, (char)val);
+	if (size == 2) return (uint16_t)_InterlockedOr16((short volatile*)ptr, (short)val);
+	if (size == 4) return (uint32_t)_InterlockedOr((long volatile*)ptr, (long)val);
+	if (size == 8) return (uint64_t)_InterlockedOr64((__int64 volatile*)ptr, (__int64)val);
+#endif
+	uint64_t old = (size == 8) ? *(uint64_t*)ptr : ((size == 4) ? *(uint32_t*)ptr : ((size == 2) ? *(uint16_t*)ptr : *(uint8_t*)ptr));
+	while (1) {
+		uint64_t des = old | val;
+		uint64_t prev = old;
+		if (__c3_atomic_compare_exchange_n(ptr, &prev, des, size)) return old;
+		old = prev;
+	}
+}
+
+static inline uint64_t __c3_atomic_fetch_xor(void *ptr, uint64_t val, int size) {
+#if defined(_MSC_VER) && !defined(__clang__)
+	if (size == 1) return (uint8_t)_InterlockedXor8((char volatile*)ptr, (char)val);
+	if (size == 2) return (uint16_t)_InterlockedXor16((short volatile*)ptr, (short)val);
+	if (size == 4) return (uint32_t)_InterlockedXor((long volatile*)ptr, (long)val);
+	if (size == 8) return (uint64_t)_InterlockedXor64((__int64 volatile*)ptr, (__int64)val);
+#endif
+	uint64_t old = (size == 8) ? *(uint64_t*)ptr : ((size == 4) ? *(uint32_t*)ptr : ((size == 2) ? *(uint16_t*)ptr : *(uint8_t*)ptr));
+	while (1) {
+		uint64_t des = old ^ val;
+		uint64_t prev = old;
+		if (__c3_atomic_compare_exchange_n(ptr, &prev, des, size)) return old;
+		old = prev;
+	}
+}
+
+static inline uint64_t __c3_atomic_fetch_nand(void *ptr, uint64_t val, int size) {
+	uint64_t old = (size == 8) ? *(uint64_t*)ptr : ((size == 4) ? *(uint32_t*)ptr : ((size == 2) ? *(uint16_t*)ptr : *(uint8_t*)ptr));
+	while (1) {
+		uint64_t des = ~(old & val);
+		uint64_t prev = old;
+		if (__c3_atomic_compare_exchange_n(ptr, &prev, des, size)) return old;
+		old = prev;
+	}
+}
+
+static inline uint64_t __c3_atomic_exchange_n(void *ptr, uint64_t val, int size) {
+#if defined(_MSC_VER) && !defined(__clang__)
+	if (size == 1) return (uint8_t)_InterlockedExchange8((char volatile*)ptr, (char)val);
+	if (size == 2) return (uint16_t)_InterlockedExchange16((short volatile*)ptr, (short)val);
+	if (size == 4) return (uint32_t)_InterlockedExchange((long volatile*)ptr, (long)val);
+	if (size == 8) return (uint64_t)_InterlockedExchange64((__int64 volatile*)ptr, (__int64)val);
+#elif defined(__x86_64__)
+	if (size == 1) { uint8_t r = (uint8_t)val; __asm__ __volatile__("xchgb %0, %1" : "+r"(r), "+m"(*(uint8_t*)ptr) : : "memory"); return r; }
+	if (size == 2) { uint16_t r = (uint16_t)val; __asm__ __volatile__("xchgw %0, %1" : "+r"(r), "+m"(*(uint16_t*)ptr) : : "memory"); return r; }
+	if (size == 4) { uint32_t r = (uint32_t)val; __asm__ __volatile__("xchgl %0, %1" : "+r"(r), "+m"(*(uint32_t*)ptr) : : "memory"); return r; }
+	if (size == 8) { uint64_t r = (uint64_t)val; __asm__ __volatile__("xchgq %0, %1" : "+r"(r), "+m"(*(uint64_t*)ptr) : : "memory"); return r; }
+#endif
+	uint64_t old = (size == 8) ? *(uint64_t*)ptr : ((size == 4) ? *(uint32_t*)ptr : ((size == 2) ? *(uint16_t*)ptr : *(uint8_t*)ptr));
+	while (1) {
+		uint64_t prev = old;
+		if (__c3_atomic_compare_exchange_n(ptr, &prev, val, size)) return old;
+		old = prev;
+	}
+}
+
+#define __atomic_fetch_add(ptr, val, memorder) __c3_atomic_fetch_add((void*)(ptr), (uint64_t)(val), sizeof(*(ptr)))
+#define __atomic_fetch_sub(ptr, val, memorder) __c3_atomic_fetch_sub((void*)(ptr), (uint64_t)(val), sizeof(*(ptr)))
+#define __atomic_fetch_and(ptr, val, memorder) __c3_atomic_fetch_and((void*)(ptr), (uint64_t)(val), sizeof(*(ptr)))
+#define __atomic_fetch_or(ptr, val, memorder)  __c3_atomic_fetch_or((void*)(ptr), (uint64_t)(val), sizeof(*(ptr)))
+#define __atomic_fetch_xor(ptr, val, memorder) __c3_atomic_fetch_xor((void*)(ptr), (uint64_t)(val), sizeof(*(ptr)))
+#define __atomic_fetch_nand(ptr, val, memorder) __c3_atomic_fetch_nand((void*)(ptr), (uint64_t)(val), sizeof(*(ptr)))
+#define __atomic_exchange_n(ptr, val, memorder) __c3_atomic_exchange_n((void*)(ptr), (uint64_t)(val), sizeof(*(ptr)))
+#define __atomic_compare_exchange_n(ptr, exp, des, weak, succ, fail) __c3_atomic_compare_exchange_n((void*)(ptr), (void*)(exp), (uint64_t)(des), sizeof(*(ptr)))
+static inline bool __c3_add_overflow(uint64_t a, uint64_t b, void *res, int size, bool is_signed) {
 	if (size == 8) {
 		if (is_signed) {
 			int64_t sa = (int64_t)a, sb = (int64_t)b;
@@ -294,11 +433,11 @@ static inline bool __c3_tcc_add_overflow(uint64_t a, uint64_t b, void *res, int 
 }
 #if defined(_MSC_VER) && !defined(__clang__)
 #define __c3_is_signed(x) _Generic((x), char: (char)-1 < 0, signed char: 1, unsigned char: 0, short: 1, unsigned short: 0, int: 1, unsigned int: 0, long: 1, unsigned long: 0, long long: 1, unsigned long long: 0, default: 0)
-#define __builtin_add_overflow(a, b, res) __c3_tcc_add_overflow((uint64_t)(a), (uint64_t)(b), (void*)(res), sizeof(*(res)), __c3_is_signed(*(res)))
+#define __builtin_add_overflow(a, b, res) __c3_add_overflow((uint64_t)(a), (uint64_t)(b), (void*)(res), sizeof(*(res)), __c3_is_signed(*(res)))
 #else
-#define __builtin_add_overflow(a, b, res) __c3_tcc_add_overflow((uint64_t)(a), (uint64_t)(b), (void*)(res), sizeof(*(res)), ((__typeof__(*(res)))-1 < 0))
+#define __builtin_add_overflow(a, b, res) __c3_add_overflow((uint64_t)(a), (uint64_t)(b), (void*)(res), sizeof(*(res)), ((__typeof__(*(res)))-1 < 0))
 #endif
-static inline bool __c3_tcc_sub_overflow(uint64_t a, uint64_t b, void *res, int size, bool is_signed) {
+static inline bool __c3_sub_overflow(uint64_t a, uint64_t b, void *res, int size, bool is_signed) {
 	if (size == 8) {
 		if (is_signed) {
 			int64_t sa = (int64_t)a, sb = (int64_t)b;
@@ -326,11 +465,11 @@ static inline bool __c3_tcc_sub_overflow(uint64_t a, uint64_t b, void *res, int 
 	}
 }
 #if defined(_MSC_VER) && !defined(__clang__)
-#define __builtin_sub_overflow(a, b, res) __c3_tcc_sub_overflow((uint64_t)(a), (uint64_t)(b), (void*)(res), sizeof(*(res)), __c3_is_signed(*(res)))
+#define __builtin_sub_overflow(a, b, res) __c3_sub_overflow((uint64_t)(a), (uint64_t)(b), (void*)(res), sizeof(*(res)), __c3_is_signed(*(res)))
 #else
-#define __builtin_sub_overflow(a, b, res) __c3_tcc_sub_overflow((uint64_t)(a), (uint64_t)(b), (void*)(res), sizeof(*(res)), ((__typeof__(*(res)))-1 < 0))
+#define __builtin_sub_overflow(a, b, res) __c3_sub_overflow((uint64_t)(a), (uint64_t)(b), (void*)(res), sizeof(*(res)), ((__typeof__(*(res)))-1 < 0))
 #endif
-static inline bool __c3_tcc_mul_overflow(uint64_t a, uint64_t b, void *res, int size, bool is_signed) {
+static inline bool __c3_mul_overflow(uint64_t a, uint64_t b, void *res, int size, bool is_signed) {
 	if (size == 8) {
 		if (is_signed) {
 			int64_t sa = (int64_t)a, sb = (int64_t)b;
@@ -366,9 +505,9 @@ static inline bool __c3_tcc_mul_overflow(uint64_t a, uint64_t b, void *res, int 
 	}
 }
 #if defined(_MSC_VER) && !defined(__clang__)
-#define __builtin_mul_overflow(a, b, res) __c3_tcc_mul_overflow((uint64_t)(a), (uint64_t)(b), (void*)(res), sizeof(*(res)), __c3_is_signed(*(res)))
+#define __builtin_mul_overflow(a, b, res) __c3_mul_overflow((uint64_t)(a), (uint64_t)(b), (void*)(res), sizeof(*(res)), __c3_is_signed(*(res)))
 #else
-#define __builtin_mul_overflow(a, b, res) __c3_tcc_mul_overflow((uint64_t)(a), (uint64_t)(b), (void*)(res), sizeof(*(res)), ((__typeof__(*(res)))-1 < 0))
+#define __builtin_mul_overflow(a, b, res) __c3_mul_overflow((uint64_t)(a), (uint64_t)(b), (void*)(res), sizeof(*(res)), ((__typeof__(*(res)))-1 < 0))
 #endif
 #else
 #define __c3_abort    __builtin_trap
