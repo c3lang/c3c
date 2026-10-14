@@ -543,14 +543,14 @@ extern long syscall(long number, ...);
 #endif
 
 #if defined(__TINYC__)
-typedef uint64_t __c3_uint128;
-typedef int64_t __c3_int128;
+typedef uint64_t __c3_uint128; // hack, tcc doesn't have __uint128
+typedef int64_t __c3_int128; // hack, tcc doesn't have __int128
 #elif defined(__SIZEOF_INT128__) || (defined(__clang__) && !defined(_MSC_VER)) || (defined(__GNUC__) && defined(__x86_64__))
 typedef unsigned __int128 __c3_uint128;
 typedef __int128 __c3_int128;
 #else
-typedef uint64_t __c3_uint128;
-typedef int64_t __c3_int128;
+typedef uint64_t __c3_uint128; // hack, cl.exe doesn't have __uint128
+typedef int64_t __c3_int128; // hack, cl.exe doesn't have __int128
 #endif
 
 static inline bool __c3_type_matches(c3typeid_t self_type, c3typeid_t target_type) {

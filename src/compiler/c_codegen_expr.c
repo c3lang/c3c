@@ -1114,10 +1114,10 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 			unsigned long long arr_len = (unsigned long long)arr_t->array.len;
 			bool is_eq                 = (op == BINARYOP_EQ || op == BINARYOP_VEC_EQ);
 			Type *elem_t               = arr_t->array.base ? type_flatten(arr_t->array.base) : NULL;
-			if (elem_t && type_is_float(elem_t))
+			if (elem_t && (type_is_float(elem_t) || elem_t->type_kind == TYPE_SLICE))
 			{
 				c_emit_slice_elem_eq_loop(c, value->var, s_var, a_var,
-				                          str_printf("%llu", arr_len), false, is_eq);
+				                          str_printf("%llu", arr_len), elem_t->type_kind == TYPE_SLICE, is_eq);
 				goto done;
 			}
 			const char *cmp_op   = is_eq ? "==" : "!=";
@@ -1158,12 +1158,18 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 				{
 					base_t = type_flatten(base_t);
 				}
-				if (base_t && type_is_float(base_t))
+				if (base_t && (type_is_float(base_t) || base_t->type_kind == TYPE_SLICE))
 				{
 					int len              = c_type_aggregate_len(left_t);
 					bool is_eq           = (op == BINARYOP_EQ || op == BINARYOP_VEC_EQ);
+					bool elem_is_slice   = (base_t->type_kind == TYPE_SLICE);
 					const char *logic_op = is_eq ? "&&" : "||";
 					const char *cmp_op   = is_eq ? "==" : "!=";
+					if (len == 0)
+					{
+						PRINTF("bool ___var_%d = %s;\n", value->var, is_eq ? "true" : "false");
+						goto done;
+					}
 					PRINTF("bool ___var_%d = (", value->var);
 					for (int k = 0; k < len; k++)
 					{
@@ -1171,8 +1177,17 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 						{
 							PRINTF(" %s ", logic_op);
 						}
-						PRINTF("(___var_%d.ptr[%d] %s ___var_%d.ptr[%d])",
-						       left_value.var, k, cmp_op, right_value.var, k);
+						if (elem_is_slice)
+						{
+							PRINTF("%s(___var_%d.ptr[%d], ___var_%d.ptr[%d])",
+							       is_eq ? "__C3_SLICE_EQ" : "__C3_SLICE_NE",
+							       left_value.var, k, right_value.var, k);
+						}
+						else
+						{
+							PRINTF("(___var_%d.ptr[%d] %s ___var_%d.ptr[%d])",
+							       left_value.var, k, cmp_op, right_value.var, k);
+						}
 					}
 					PRINT(");\n");
 					goto done;
