@@ -51,6 +51,8 @@ sat_shl never saturates: int::max.sat_shl(1) gives -2.
 
 23 The TCC-only runtime code has bugs, by inspection: unsigned narrow __c3_tcc_sub_overflow never writes *res, and "+r"((uint8_t)desired) isn't an lvalue.
 
+24. Inline assembly (asm { ... }) is emitted as GNU extended inline assembly (__asm__ __volatile__). MSVC (cl.exe) on x64/ARM64 does not support inline assembly, so compiling code with inline asm under cl.exe triggers a compile-time #error. Use clang-cl, gcc, or LLVM when inline assembly is needed.
+
 */
 
 const char *c_intern(const char *str)

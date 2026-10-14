@@ -1040,9 +1040,13 @@ void c_emit_asm_block_stmt(GenContext *c, Ast *stmt)
 	{
 		Expr *str_expr   = exprptr(stmt->asm_block_stmt.asm_string);
 		const char *data = str_expr->const_expr.bytes.ptr;
+		PRINT("#if defined(_MSC_VER) && !defined(__clang__)\n");
+		PRINT("#error \"Inline assembly is not supported when compiling with MSVC (cl.exe). Use clang-cl, clang, gcc, or the LLVM backend instead.\"\n");
+		PRINT("#else\n");
 		PRINT("\t__asm__ __volatile__ (");
 		c_emit_string_literal(c, data, (ArrayIndex)strlen(data));
 		PRINT(");\n");
+		PRINT("#endif\n");
 		return;
 	}
 
@@ -1172,6 +1176,9 @@ void c_emit_asm_block_stmt(GenContext *c, Ast *stmt)
 		}
 	}
 
+	PRINT("#if defined(_MSC_VER) && !defined(__clang__)\n");
+	PRINT("#error \"Inline assembly is not supported when compiling with MSVC (cl.exe). Use clang-cl, clang, gcc, or the LLVM backend instead.\"\n");
+	PRINT("#else\n");
 	PRINT("\t__asm__ __volatile__ (\n\t\t");
 	c_emit_string_literal(c, gnu_asm, (ArrayIndex)strlen(gnu_asm));
 
@@ -1212,6 +1219,7 @@ void c_emit_asm_block_stmt(GenContext *c, Ast *stmt)
 	}
 
 	PRINT("\n\t);\n");
+	PRINT("#endif\n");
 }
 
 void c_emit_stmt(GenContext *c, Ast *stmt)
