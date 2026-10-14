@@ -1948,7 +1948,7 @@ bool parse_joined_strings(ParseContext *c, const char **str_ref, size_t *len_ref
 			}
 			else
 			{
-				*str_ref = str_cat_len(*str_ref, len - scratch_buffer.len - next_len, scratch_buffer.str, scratch_buffer.len);
+				*str_ref = str_cat_len(*str_ref, len - scratch_buffer_len() - next_len, scratch_buffer_ptr(), scratch_buffer_len());
 			}
 			scratch_buffer_clear();
 			// It might still overrun if it's too big:
@@ -1973,7 +1973,7 @@ ADVANCE:;
 
 	if (*str_ref)
 	{
-		*str_ref = str_cat_len(*str_ref, len - scratch_buffer.len, scratch_buffer.str, scratch_buffer.len);
+		*str_ref = str_cat_len(*str_ref, len - scratch_buffer_len(), scratch_buffer_ptr(), scratch_buffer_len());
 	}
 	else
 	{

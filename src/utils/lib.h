@@ -52,8 +52,8 @@ extern jmp_buf on_err_jump;
 extern bool debug_log;
 
 extern uintptr_t arena_zero;
-struct ScratchBuf { char str[MAX_STRING_BUFFER]; uint32_t len; };
-extern struct ScratchBuf scratch_buffer;
+struct ScratchBuf { char str[MAX_STRING_BUFFER]; int len; };
+extern struct ScratchBuf *sb_current;
 
 
 typedef struct Task_
@@ -190,6 +190,10 @@ UNUSED void scratch_buffer_append_unsigned_int(uint64_t i);
 void scratch_buffer_printf(const char *format, ...);
 char *scratch_buffer_to_string(void);
 char *scratch_buffer_copy(void);
+char *scratch_buffer_end_ptr(void);
+int scratch_buffer_len(void);
+const char *scratch_buffer_ptr(void);
+void scratch_buffer_set_len(int len);
 
 static inline bool is_power_of_two(uint64_t x);
 static inline uint32_t next_highest_power_of_2(uint32_t v);

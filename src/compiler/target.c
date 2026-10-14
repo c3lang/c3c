@@ -610,7 +610,7 @@ static void cpu_features_set_to_features(CpuFeatures enabled_features, CpuFeatur
 		scratch_buffer_append(list[i]);
 		scratch_buffer_append_char(',');
 	}
-	if (scratch_buffer.len > 0) scratch_buffer_delete(1);
+	if (scratch_buffer_len()) scratch_buffer_delete(1);
 	compiler.platform.features = scratch_buffer_copy();
 }
 

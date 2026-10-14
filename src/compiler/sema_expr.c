@@ -5681,10 +5681,10 @@ INLINE bool sema_expr_rewrite_to_generic_qname(SemaContext *context, Expr *expr,
 		scratch_buffer_append(module->name->module);
 		scratch_buffer_append("::");
 	}
-	uint32_t len = scratch_buffer.len + 1;
+	int len = scratch_buffer_len() + 1;
 	scratch_buffer_append(type->name);
-	while (scratch_buffer.str[len] != '{') len++;
-	scratch_buffer.len = len;
+	while (scratch_buffer_ptr()[len] != '{') len++;
+	scratch_buffer_set_len(len);
 	expr_rewrite_const_string_from_scratch(expr);
 	return true;
 EMPTY_GENERICS:

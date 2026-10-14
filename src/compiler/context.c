@@ -66,8 +66,8 @@ static bool filename_to_module_in_buffer(const char *path)
 		}
 		scratch_buffer_append_char(c);
 	}
-	if (last_was_underscore && scratch_buffer.len) scratch_buffer_delete(1);
-	if (!scratch_buffer.len) return false;
+	if (last_was_underscore && scratch_buffer_len()) scratch_buffer_delete(1);
+	if (!scratch_buffer_len()) return false;
 	return true;
 }
 
@@ -88,7 +88,7 @@ bool context_set_module_from_filename(ParseContext *context)
 	Path *path = CALLOCS(Path);
 	path->loc = make_loc(context->span);
 	path->module = module_name;
-	path->len = scratch_buffer.len;
+	path->len = scratch_buffer_len();
 	return create_module_or_check_name(context->unit, path);
 }
 

@@ -69,7 +69,7 @@ static void sema_generate_parameter_suffix_to_scratch(Expr **params, bool mangle
 			}
 			else
 			{
-				char *maybe_neg = &scratch_buffer.str[scratch_buffer.len];
+				char *maybe_neg = scratch_buffer_end_ptr();
 				if (type->type_kind == TYPE_I128 || type->type_kind == TYPE_U128)
 				{
 					char *str = int_to_str(param->const_expr.ixx, 10, false);
@@ -430,7 +430,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_pat
 		}
 	}
 	sema_generate_parameter_suffix_to_scratch(params, true);
-	if (scratch_buffer.len > MAX_GENERIC_SUFFIX)
+	if (scratch_buffer_len() > MAX_GENERIC_SUFFIX)
 	{
 		sema_error_at(context, invocation_loc, "The generic declaration is too deeply nested and is possibly recursive.");
 		return poisoned_decl;

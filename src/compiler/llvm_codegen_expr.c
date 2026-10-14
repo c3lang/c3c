@@ -4567,7 +4567,7 @@ static LLVMValueRef llvm_emit_real(LLVMTypeRef type, Float f)
 	}
 	scratch_buffer_clear();
 	scratch_buffer_printf("%a", f.f);
-	return LLVMConstRealOfStringAndSize(type, scratch_buffer.str, scratch_buffer.len);
+	return LLVMConstRealOfStringAndSize(type, scratch_buffer_ptr(), scratch_buffer_len());
 }
 
 static inline void llvm_emit_const_initializer_list_expr(GenContext *c, BEValue *value, Expr *expr)

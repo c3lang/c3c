@@ -4909,5 +4909,5 @@ const char *os_type_to_string(OsType os);
 
 INLINE void expr_rewrite_const_string_from_scratch(Expr *expr_to_rewrite)
 {
-	expr_rewrite_const_string(expr_to_rewrite, scratch_buffer_copy(), (ArrayIndex)scratch_buffer.len);
+	expr_rewrite_const_string(expr_to_rewrite, scratch_buffer_copy(), (ArrayIndex)scratch_buffer_len());
 }

@@ -1254,7 +1254,7 @@ static char *assemble_linker_command(const char **args, bool extra_quote)
 	{
 		if (i != 0) scratch_buffer_append_char(' ');
 		const char *arg = args[i];
-		ASSERT(arg != scratch_buffer.str && "Incorrectly passed a scratch buffer string as an argument.");
+		ASSERT(arg != scratch_buffer_ptr() && "Incorrectly passed a scratch buffer string as an argument.");
 		if (arg == quote_arg)
 		{
 			scratch_buffer_append_cmd_argument(args[++i]);

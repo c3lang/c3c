@@ -1183,7 +1183,7 @@ INLINE void fetch_lib(BuildOptions *options, bool is_vendor, const char **librar
 			const char *requested_version = at ? at + 1 : NULL;
 			scratch_buffer_clear();
 			scratch_buffer_append(lib);
-			if (at) scratch_buffer.len = (size_t)(at - lib);
+			if (at) scratch_buffer_set_len((int)(at - lib));
 			const char *lib_id = scratch_buffer_copy(); // durable "<ns>/<name>"
 			const char *slash = strrchr(lib_id, '/');
 			if (!slash || !slash[1])
@@ -1286,7 +1286,7 @@ static void scratch_buffer_append_json_array(JSONObject **elements)
 	FOREACH(JSONObject *, e, elements)
 	{
 		if (e->type != J_STRING) continue;
-		if (scratch_buffer.len) scratch_buffer_append(", ");
+		if (scratch_buffer_len()) scratch_buffer_append(", ");
 		scratch_buffer_append(e->str);
 	}
 }
@@ -2236,8 +2236,8 @@ const char *scratch_buffer_interned(void)
 
 const char *scratch_buffer_interned_as(TokenType* type)
 {
-	return symtab_add(scratch_buffer.str, scratch_buffer.len,
-					  fnv1a(scratch_buffer.str, scratch_buffer.len), type);
+	return symtab_add(sb_current->str, sb_current->len,
+					  fnv1a(sb_current->str, sb_current->len), type);
 }
 
 void scratch_buffer_append_native_safe_path(const char *data, int len)

@@ -136,9 +136,9 @@ static inline Path *parse_module_path(ParseContext *c)
 		else
 		{
 			scratch_buffer_append(string);
-			if (scratch_buffer.len > MAX_MODULE_PATH)
+			if (scratch_buffer_len() > MAX_MODULE_PATH)
 			{
-				max_exceeded = scratch_buffer.len;
+				max_exceeded = scratch_buffer_len();
 			}
 		}
 		if (!try_consume(c, TOKEN_SCOPE))
@@ -161,7 +161,7 @@ static inline Path *parse_module_path(ParseContext *c)
 		SourceLoc loc_start = extend_loc_with_token(&span, &c->prev_span);
 		print_error_at_loc(&loc_start, "The full module path is too long, it's %lld characters (%lld more than the maximum allowed %lld characters).", (long long int)max_exceeded, (long long int)max_exceeded - MAX_MODULE_PATH, (long long int)MAX_MODULE_PATH);
 	}
-	return path_create_from_string(scratch_buffer_to_string(), scratch_buffer.len, make_loc(span));
+	return path_create_from_string(scratch_buffer_to_string(), scratch_buffer_len(), make_loc(span));
 }
 
 
@@ -402,7 +402,7 @@ bool parse_path_prefix(ParseContext *c, Path** path_ref)
 	{
 		RETURN_PRINT_ERROR_AT(false, path, "A module name was expected here.");
 	}
-	path->len = scratch_buffer.len;
+	path->len = scratch_buffer_len();
 	*path_ref = path;
 	return true;
 }
