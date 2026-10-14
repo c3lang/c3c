@@ -77,6 +77,16 @@ void taskqueue_run(int threads, Task **task_list)
 	pthread_mutex_destroy(&queue.lock);
 }
 
+static pthread_mutex_t global_compile_lock = PTHREAD_MUTEX_INITIALIZER;
+void lock_acquire(void)
+{
+	pthread_mutex_lock(&global_compile_lock);
+}
+void lock_release(void)
+{
+	pthread_mutex_unlock(&global_compile_lock);
+}
+
 #elif PLATFORM_WINDOWS
 
 #include <Windows.h>
@@ -136,6 +146,16 @@ void taskqueue_run(int threads, Task **task_list)
 	DeleteCriticalSection(&queue.lock);
 }
 
+static SRWLOCK global_compile_lock = SRWLOCK_INIT;
+void lock_acquire(void)
+{
+	AcquireSRWLockExclusive(&global_compile_lock);
+}
+void lock_release(void)
+{
+	ReleaseSRWLockExclusive(&global_compile_lock);
+}
+
 #else
 
 void taskqueue_run(int threads, Task **task_list)
@@ -145,5 +165,8 @@ void taskqueue_run(int threads, Task **task_list)
 		task->task(task->arg);
 	}
 }
+
+void lock_acquire(void) {}
+void lock_release(void) {}
 
 #endif
