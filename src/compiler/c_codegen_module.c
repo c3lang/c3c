@@ -111,6 +111,9 @@ bool c_can_emit_static_initializer(Expr *expr)
 		case EXPR_BINARY:
 			return c_can_emit_static_initializer(exprptr(expr->binary_expr.left)) &&
 			       c_can_emit_static_initializer(exprptr(expr->binary_expr.right));
+		case EXPR_SUBSCRIPT_ADDR:
+			return c_can_emit_static_initializer(exprptr(expr->subscript_expr.expr)) &&
+			       c_can_emit_static_initializer(exprptr(expr->subscript_expr.index.expr));
 		case EXPR_IDENTIFIER:
 		{
 			Decl *d = c_decl_unwrap(expr->ident_expr);
@@ -126,6 +129,19 @@ bool c_can_emit_static_initializer(Expr *expr)
 			{
 				return c_can_emit_static_initializer(d->var.init_expr);
 			}
+			if (c_is_file_global(d))
+			{
+				return true;
+			}
+			return false;
+		}
+		case EXPR_DECL:
+		{
+			Decl *d = expr->decl_expr;
+			if (!d) return false;
+			if (d->decl_kind == DECL_FUNC || d->decl_kind == DECL_ENUM_CONSTANT || d->decl_kind == DECL_FAULT) return true;
+			if (c_is_file_global(d)) return true;
+			if (d->var.init_expr) return c_can_emit_static_initializer(d->var.init_expr);
 			return false;
 		}
 		case EXPR_RECAST:
@@ -532,6 +548,19 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 			PRINT("NULL");
 		}
 		PRINTF(", .len = %llu }", (unsigned long long)expr->make_slice_expr.len);
+		return;
+	}
+	if (expr->expr_kind == EXPR_SUBSCRIPT_ADDR)
+	{
+		Expr *parent = exprptr(expr->subscript_expr.expr);
+		Expr *index  = exprptr(expr->subscript_expr.index.expr);
+		Type *pt     = c_expr_type(parent);
+		const char *acc = (pt && (pt->type_kind == TYPE_ARRAY || pt->type_kind == TYPE_VECTOR)) ? ".ptr[" : "[";
+		PRINTF("(%s)&(", tname);
+		c_emit_const_init_expr(c, parent, pt);
+		PRINTF("%s", acc);
+		c_emit_const_init_expr(c, index, type_sz);
+		PRINT("])");
 		return;
 	}
 	if (expr->expr_kind == EXPR_UNARY)
