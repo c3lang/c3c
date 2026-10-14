@@ -278,9 +278,6 @@ static void view_target(BuildParseContext context, JSONObject *target, bool verb
 	TARGET_VIEW_BOOL("Data sections", "data-sections");
 }
 
-
-
-
 void fetch_project(BuildOptions* options)
 {
 	if (!download_available())

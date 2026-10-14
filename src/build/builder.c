@@ -133,6 +133,9 @@ bool command_accepts_files(CompilerCommand command)
 		case COMMAND_BENCHMARK:
 		case COMMAND_TEST:
 		case COMMAND_VENDOR_FETCH:
+		case COMMAND_FETCH:
+		case COMMAND_FETCH_INFO:
+		case COMMAND_FETCH_LIST:
 		case COMMAND_PROJECT:
 		case COMMAND_FETCH_SDK:
 			return false;
@@ -166,6 +169,9 @@ bool command_passes_args(CompilerCommand command)
 		case COMMAND_DIST:
 		case COMMAND_PRINT_SYNTAX:
 		case COMMAND_VENDOR_FETCH:
+		case COMMAND_FETCH:
+		case COMMAND_FETCH_INFO:
+		case COMMAND_FETCH_LIST:
 		case COMMAND_PROJECT:
 		case COMMAND_FETCH_SDK:
 			return false;
@@ -503,6 +509,9 @@ BUILD:
 		case COMMAND_PRINT_SYNTAX:
 		case COMMAND_PROJECT:
 		case COMMAND_FETCH_SDK:
+		case COMMAND_FETCH:
+		case COMMAND_FETCH_INFO:
+		case COMMAND_FETCH_LIST:
 		case COMMAND_DOCGEN:
 			target->run_after_compile = false;
 			break;

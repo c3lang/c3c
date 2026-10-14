@@ -17,6 +17,7 @@
 #define DEFAULT_SWITCHRANGE_MAX_SIZE (256)
 #define DEFAULT_SWITCH_JUMP_MAX_SIZE (0x3FFF)
 #define DEFAULT_PATH "."
+#define DEFAULT_FETCH_URL "http://localhost:8080"
 #define DEFAULT_STACK_PROBE_SIZE (0x1000)
 
 typedef enum
@@ -36,6 +37,9 @@ typedef enum
 	COMMAND_CLEAN_RUN,
 	COMMAND_CLEAN,
 	COMMAND_VENDOR_FETCH,
+	COMMAND_FETCH,
+	COMMAND_FETCH_LIST,
+	COMMAND_FETCH_INFO,
 	COMMAND_DIST,
 	COMMAND_BENCHMARK,
 	COMMAND_TEST,
@@ -201,6 +205,10 @@ typedef struct BuildOptions_
 	const char *bsd_sysroot;
 	int build_threads;
 	const char *echo_prefix;
+	const char *search_name;
+	const char *search_tag;
+	const char *fetch_url;
+	const char **vendor_libraries_to_fetch;
 	const char **libraries_to_fetch;
 	const char **files;
 	const char *test_filter;

@@ -419,6 +419,8 @@ static void scratch_buffer_append_double_quoted(const char *string)
 				}
 				continue;
 			}
+			default:
+				break;
 		}
 		scratch_buffer_append_char(c);
 	}
@@ -595,5 +597,3 @@ char *scratch_buffer_copy(void)
 {
 	return str_copy(scratch_buffer.str, scratch_buffer.len);
 }
-
-
