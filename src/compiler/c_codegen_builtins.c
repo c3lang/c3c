@@ -26,7 +26,7 @@ static const BuiltinMap simple_builtins_table[] = {
     {BUILTIN_FLOOR, "__builtin_floor"},
     {BUILTIN_CEIL, "__builtin_ceil"},
     {BUILTIN_ROUND, "__builtin_round"},
-    {BUILTIN_ROUNDEVEN, "__builtin_round"},
+    {BUILTIN_ROUNDEVEN, "__c3_roundeven"},
     {BUILTIN_TRUNC, "__builtin_trunc"},
     {BUILTIN_RINT, "__builtin_rint"},
     {BUILTIN_NEARBYINT, "__builtin_nearbyint"},
@@ -554,9 +554,12 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 		}
 		case BUILTIN_TRAP:
 		case BUILTIN_UNREACHABLE:
-		case BUILTIN_BREAKPOINT:
 			PRINT("__c3_abort();\n");
 			c->current_block_live = false;
+			c_value_set_void(value);
+			break;
+		case BUILTIN_BREAKPOINT:
+			PRINT("__c3_breakpoint();\n");
 			c_value_set_void(value);
 			break;
 		case BUILTIN_MIN:

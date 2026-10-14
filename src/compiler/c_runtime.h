@@ -510,6 +510,34 @@ static inline bool __c3_mul_overflow(uint64_t a, uint64_t b, void *res, int size
 #define __c3_abort    __builtin_trap
 #endif
 
+#if defined(_MSC_VER)
+#define __c3_breakpoint() __debugbreak()
+#elif defined(__clang__)
+#define __c3_breakpoint() __builtin_debugtrap()
+#elif defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+#define __c3_breakpoint() __asm__ volatile("int $3")
+#elif defined(__GNUC__) && defined(__aarch64__)
+#define __c3_breakpoint() __asm__ volatile("brk #0xf000")
+#elif defined(__GNUC__) && defined(__arm__)
+#define __c3_breakpoint() __asm__ volatile("bkpt #0")
+#else
+#define __c3_breakpoint() __c3_abort()
+#endif
+
+static inline double __c3_roundeven(double x) {
+#if defined(__GNUC__) && !defined(__TINYC__) && ((__GNUC__ >= 10) || defined(__clang__))
+	return __builtin_roundeven(x);
+#else
+	double r = __builtin_round(x);
+	if (__builtin_fabs(r - x) == 0.5) {
+		if (__builtin_fmod(r, 2.0) != 0.0) {
+			r = __builtin_copysign(__builtin_fabs(r) - 1.0, x);
+		}
+	}
+	return r;
+#endif
+}
+
 #define __C3_SLICE_EQ(a, b) \
 	(((a).len == (b).len) && ((a).len == 0 || (a).ptr == (b).ptr || __c3_memcmp((a).ptr, (b).ptr, (a).len * sizeof(*(a).ptr)) == 0))
 #define __C3_SLICE_NE(a, b) (!__C3_SLICE_EQ(a, b))
