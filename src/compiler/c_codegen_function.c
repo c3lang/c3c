@@ -147,7 +147,7 @@ void c_emit_assign_decl_fault(GenContext *c, Decl *decl, CValue *src_val, Expr *
 	{
 		PRINTF("___var_%d = NULL;\n", fvid);
 	}
-	PRINTF("__c3_current_fault = ___var_%d;\n", fvid);
+	PRINT("__c3_current_fault = NULL;\n");
 }
 
 VariableId c_ensure_cvalue_var(GenContext *c, CValue *val, Type *fallback_type)
