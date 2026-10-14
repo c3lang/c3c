@@ -807,6 +807,10 @@ bool c_emit_type_forward_decl(GenContext *c, Type *type)
 			{
 				PRINT("void");
 			}
+			else if (param_count == 0 && sig->variadic == VARIADIC_RAW)
+			{
+				// In C99/C11, () means unspecified parameters; bare (...) is invalid syntax
+			}
 			else
 			{
 				FOREACH_IDX(i, Decl *, p, sig->params)

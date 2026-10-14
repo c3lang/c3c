@@ -465,14 +465,16 @@ bool c_emit_function_decl(GenContext *c, Decl *fn, bool is_current_module)
 	{
 		if (emitted_count > 0)
 		{
-			PRINT(", ");
+			PRINT(", ...");
+			emitted_count++;
 		}
-		PRINT("...");
-		emitted_count++;
 	}
 	if (emitted_count == 0)
 	{
-		PRINT("void");
+		if (sig->variadic != VARIADIC_RAW)
+		{
+			PRINT("void");
+		}
 	}
 	PRINT(")");
 	const char *asm_name = c_get_decl_asm_name(fn);
@@ -689,14 +691,16 @@ void c_emit_function(GenContext *c, Decl *fn)
 	{
 		if (emitted_params > 0)
 		{
-			PRINT(", ");
+			PRINT(", ...");
+			emitted_params++;
 		}
-		PRINT("...");
-		emitted_params++;
 	}
 	if (emitted_params == 0)
 	{
-		PRINT("void");
+		if (sig->variadic != VARIADIC_RAW)
+		{
+			PRINT("void");
+		}
 	}
 	PRINT(") {\n");
 
