@@ -1376,6 +1376,10 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	{
 		llvm_attribute_add(c, function, attribute_id.noreturn, -1);
 	}
+	if (compiler.build.arch_os_target == OPENBSD_X64)
+	{
+		llvm_attribute_add_string(c, function, "no-jump-tables", "true", -1);
+	}
 	if (decl->is_export && arch_is_wasm(compiler.platform.arch))
 	{
 		if (c->code_module == decl->unit->module)

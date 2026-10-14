@@ -7,6 +7,7 @@
 
 ### Fixes
 - Fixed regression for MacOS loading multiple C3 dylibs. `@finalizer` now correctly works in descending order.
+- Fix miscompilation for OpenBSD on later processors. #3563
 
 ### Stdlib changes
 
