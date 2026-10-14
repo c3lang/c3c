@@ -3339,6 +3339,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
 			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | LOCAL_VARIABLE_TYPES | ATTR_GLOBAL | ATTR_BITSTRUCT | ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER, // NOLINT
 			[ATTRIBUTE_ALLOW_DEPRECATED] = ATTR_FUNC,
+			[ATTRIBUTE_ASMNAME] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST,
 			[ATTRIBUTE_BENCHMARK] = ATTR_FUNC,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST,
@@ -3691,6 +3692,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 		case ATTRIBUTE_SIMD:
 			RETURN_SEMA_ERROR(attr, "'@simd' is only allowed on typedef types.");
 		case ATTRIBUTE_SECTION:
+		case ATTRIBUTE_ASMNAME:
 		case ATTRIBUTE_CNAME:
 			if (decl->is_templated)
 			{
@@ -3706,6 +3708,13 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 				case ATTRIBUTE_SECTION:
 					if (!sema_check_section(context, attr)) return false;
 					attr_data->section = expr->const_expr.bytes.ptr;
+					break;
+				case ATTRIBUTE_ASMNAME:
+					decl->has_extname = true;
+					scratch_buffer_clear();
+					scratch_buffer_append_char(1);
+					scratch_buffer_append_len(expr->const_expr.bytes.ptr, expr->const_expr.bytes.len);
+					decl->extname = scratch_buffer_copy();
 					break;
 				case ATTRIBUTE_CNAME:
 					decl->has_extname = true;
