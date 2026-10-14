@@ -194,7 +194,7 @@ if with_llvm
     prefer_static = not get_option('link_dynamic')
     llvm_dep = dependency(
       'llvm',
-      version: ['>=19', '<=24'],
+      version: ['>=19', '<=25'],
       modules: llvm_modules,
       optional_modules: ['dtlto'],
       static: prefer_static,
@@ -206,7 +206,7 @@ if with_llvm
       message('Static LLVM not found; falling back to shared LLVM...')
       llvm_dep = dependency(
         'llvm',
-        version: ['>=19', '<=24'],
+        version: ['>=19', '<=25'],
         modules: llvm_modules,
         static: false,
         method: 'config-tool',

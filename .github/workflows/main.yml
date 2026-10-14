@@ -754,7 +754,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        llvm_version: [20, 21]
+        llvm_version: [20, 21, 22]
     steps:
       - uses: actions/checkout@v7
 
@@ -804,10 +804,10 @@ jobs:
             c3c-builder \
             bash -c "./scripts/tools/ci_tests.sh ./bin/c3c"
 
-  build-linux-llvm23:
+  build-linux-llvm24:
     needs: changes
     if: needs.changes.outputs.src == 'true' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    name: Linux (x64) LLVM 23
+    name: Linux (x64) LLVM 24
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     continue-on-error: true
@@ -815,23 +815,23 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install LLVM 23 from apt.llvm.org
+      - name: Install LLVM 24 from apt.llvm.org
         run: |
           sudo apt-get update
           sudo apt-get install -y wget lsb-release gnupg software-properties-common
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
-          sudo ./llvm.sh 23 all
+          sudo ./llvm.sh 24 all
           sudo apt-get install -y \
             meson ninja-build python3 \
-            liblld-23-dev \
-            libpolly-23-dev \
+            liblld-24-dev \
+            libpolly-24-dev \
             zlib1g-dev \
             libx11-dev libxrandr-dev libxinerama-dev libxi-dev libxxf86vm-dev libxcursor-dev
 
       - name: Meson Build
         run: |
-          export LLVM_CONFIG=llvm-config-23
+          export LLVM_CONFIG=llvm-config-24
           meson setup build --buildtype=debug
           meson compile -C build
 
