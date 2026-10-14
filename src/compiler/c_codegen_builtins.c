@@ -248,16 +248,28 @@ static void c_emit_builtin_sat(GenContext *c, CValue *value, Type *rtype, Builti
 	int bytes = (int)type_size(rtype);
 	if (type_is_signed(rtype))
 	{
-		const char *cond = (op == BUILTIN_SAT_SUB) ? "< 0" : ">= 0";
-		if (bytes == 16)
+		char is_max_cond[128];
+		if (op == BUILTIN_SAT_SUB)
 		{
-			PRINTF("\t___var_%d = (___var_%d %s) ? (__c3_int128)(~((__c3_uint128)1 << 127)) : (__c3_int128)((__c3_uint128)1 << 127);\n",
-			       temp, b->var, cond);
+			snprintf(is_max_cond, sizeof(is_max_cond), "___var_%d < 0", b->var);
+		}
+		else if (op == BUILTIN_SAT_MUL)
+		{
+			snprintf(is_max_cond, sizeof(is_max_cond), "(___var_%d < 0) == (___var_%d < 0)", a->var, b->var);
 		}
 		else
 		{
-			PRINTF("\t___var_%d = (___var_%d %s) ? (%s)(((uint64_t)1 << (sizeof(%s)*8-1)) - 1) : (%s)(~(((uint64_t)1 << (sizeof(%s)*8-1)) - 1));\n",
-			       temp, b->var, cond, tn, tn, tn, tn);
+			snprintf(is_max_cond, sizeof(is_max_cond), "___var_%d >= 0", b->var);
+		}
+		if (bytes == 16)
+		{
+			PRINTF("\t___var_%d = (%s) ? (__c3_int128)(~((__c3_uint128)1 << 127)) : (__c3_int128)((__c3_uint128)1 << 127);\n",
+			       temp, is_max_cond);
+		}
+		else
+		{
+			PRINTF("\t___var_%d = (%s) ? (%s)(((uint64_t)1 << (sizeof(%s)*8-1)) - 1) : (%s)(~(((uint64_t)1 << (sizeof(%s)*8-1)) - 1));\n",
+			       temp, is_max_cond, tn, tn, tn, tn);
 		}
 	}
 	else
