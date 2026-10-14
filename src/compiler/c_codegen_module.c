@@ -495,7 +495,7 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 	}
 	if (expr->expr_kind == EXPR_MAKE_ANY)
 	{
-		PRINT("(__c3_any__){ .ptr = ");
+		PRINT("{ .ptr = ");
 		if (expr->make_any_expr.inner)
 		{
 			PRINT("(void*)(");
@@ -520,7 +520,7 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 	}
 	if (expr->expr_kind == EXPR_MAKE_SLICE)
 	{
-		PRINTF("(%s){ .ptr = ", tname);
+		PRINT("{ .ptr = ");
 		if (expr->make_slice_expr.ptr)
 		{
 			PRINT("(void*)(");
@@ -634,7 +634,7 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 				Type *dt = c_decl_type(d);
 				if (type->type_kind == TYPE_SLICE && dt && c_type_is_vec_or_arr(dt))
 				{
-					PRINTF("(%s){ .ptr = (void*)%s.ptr, .len = %llu }", tname, c_get_decl_name(d), (unsigned long long)dt->array.len);
+					PRINTF("{ .ptr = (void*)%s.ptr, .len = %llu }", c_get_decl_name(d), (unsigned long long)dt->array.len);
 					return;
 				}
 				PRINTF("%s", c_get_decl_name(d));
@@ -1348,18 +1348,34 @@ static const char c_runtime_header_boilerplate[] =
     "#define __c3_aligned(n) __attribute__((aligned(n)))\n"
     "#define __c3_packed     __attribute__((packed))\n"
     "#elif defined(_MSC_VER)\n"
-    "#define __c3_aligned(n) __declspec(align(n))\n"
+    "#define __c3_aligned(n)\n"
     "#define __c3_packed\n"
     "#else\n"
     "#define __c3_aligned(n)\n"
     "#define __c3_packed\n"
     "#endif\n\n"
+    "#if defined(_MSC_VER) && !defined(__clang__)\n"
+    "void *memcpy(void *, const void *, size_t);\n"
+    "void *memset(void *, int, size_t);\n"
+    "void *memmove(void *, const void *, size_t);\n"
+    "int memcmp(const void *, const void *, size_t);\n"
+    "double fmod(double, double);\n"
+    "#define __c3_memcpy   memcpy\n"
+    "#define __c3_memset   memset\n"
+    "#define __c3_memmove  memmove\n"
+    "#define __c3_memcmp   memcmp\n"
+    "#define __c3_fmod     fmod\n"
+    "#define __attribute__(x)\n"
+    "#define __asm__(x)\n"
+    "#else\n"
     "#define __c3_memcpy   __builtin_memcpy\n"
     "#define __c3_memset   __builtin_memset\n"
     "#define __c3_memmove  __builtin_memmove\n"
     "#define __c3_memcmp   __builtin_memcmp\n"
-    "#define __c3_fmod     __builtin_fmod\n\n"
-    "#if defined(__TINYC__)\n"
+    "#define __c3_fmod     __builtin_fmod\n"
+    "#endif\n\n"
+    "#if defined(__TINYC__) || (defined(_MSC_VER) && !defined(__clang__))\n"
+    "extern size_t strlen(const char *);\n"
     "extern double round(double);\n"
     "extern double copysign(double, double);\n"
     "extern double fmod(double, double);\n"
@@ -1388,6 +1404,8 @@ static const char c_runtime_header_boilerplate[] =
     "extern double log10(double);\n"
     "extern double pow(double, double);\n"
     "extern double fma(double, double, double);\n"
+    "#define __builtin_expect(exp, c) (exp)\n"
+    "#define __builtin_strlen      strlen\n"
     "#define __builtin_round       round\n"
     "#define __builtin_copysign    copysign\n"
     "#define __builtin_fmod        fmod\n"
@@ -1481,7 +1499,7 @@ static const char c_runtime_header_boilerplate[] =
     "#define __atomic_store_n(ptr, val, memorder) (*(ptr) = (val))\n"
     "#define __atomic_thread_fence(memorder) ((void)0)\n"
     "static inline uint64_t __c3_tcc_atomic_fetch_add(void *ptr, uint64_t val, int size) {\n"
-    "#if defined(__x86_64__)\n"
+    "#if defined(__x86_64__) && !defined(_MSC_VER)\n"
     "\tif (size == 1) { uint8_t r = (uint8_t)val; __asm__ __volatile__(\"lock xaddb %0, %1\" : \"+r\"(r), \"+m\"(*(uint8_t*)ptr) : : \"memory\"); return r; }\n"
     "\tif (size == 2) { uint16_t r = (uint16_t)val; __asm__ __volatile__(\"lock xaddw %0, %1\" : \"+r\"(r), \"+m\"(*(uint16_t*)ptr) : : \"memory\"); return r; }\n"
     "\tif (size == 4) { uint32_t r = (uint32_t)val; __asm__ __volatile__(\"lock xaddl %0, %1\" : \"+r\"(r), \"+m\"(*(uint32_t*)ptr) : : \"memory\"); return r; }\n"
@@ -1500,7 +1518,7 @@ static const char c_runtime_header_boilerplate[] =
     "}\n"
     "#define __atomic_fetch_sub(ptr, val, memorder) __c3_tcc_atomic_fetch_sub((void*)(ptr), (uint64_t)(val), sizeof(*(ptr)))\n"
     "static inline uint64_t __c3_tcc_atomic_exchange_n(void *ptr, uint64_t val, int size) {\n"
-    "#if defined(__x86_64__)\n"
+    "#if defined(__x86_64__) && !defined(_MSC_VER)\n"
     "\tif (size == 1) { uint8_t r = (uint8_t)val; __asm__ __volatile__(\"xchgb %0, %1\" : \"+r\"(r), \"+m\"(*(uint8_t*)ptr) : : \"memory\"); return r; }\n"
     "\tif (size == 2) { uint16_t r = (uint16_t)val; __asm__ __volatile__(\"xchgw %0, %1\" : \"+r\"(r), \"+m\"(*(uint16_t*)ptr) : : \"memory\"); return r; }\n"
     "\tif (size == 4) { uint32_t r = (uint32_t)val; __asm__ __volatile__(\"xchgl %0, %1\" : \"+r\"(r), \"+m\"(*(uint32_t*)ptr) : : \"memory\"); return r; }\n"
@@ -1515,7 +1533,7 @@ static const char c_runtime_header_boilerplate[] =
     "}\n"
     "#define __atomic_exchange_n(ptr, val, memorder) __c3_tcc_atomic_exchange_n((void*)(ptr), (uint64_t)(val), sizeof(*(ptr)))\n"
     "static inline bool __c3_tcc_atomic_compare_exchange_n(void *ptr, void *expected, uint64_t desired, int size) {\n"
-    "#if defined(__x86_64__)\n"
+    "#if defined(__x86_64__) && !defined(_MSC_VER)\n"
     "\tbool success;\n"
     "\tif (size == 1) {\n"
     "\t\tuint8_t exp = *(uint8_t*)expected;\n"
@@ -1591,7 +1609,12 @@ static const char c_runtime_header_boilerplate[] =
     "\t\treturn r > max;\n"
     "\t}\n"
     "}\n"
+    "#if defined(_MSC_VER) && !defined(__clang__)\n"
+    "#define __c3_is_signed(x) _Generic((x), char: (char)-1 < 0, signed char: 1, unsigned char: 0, short: 1, unsigned short: 0, int: 1, unsigned int: 0, long: 1, unsigned long: 0, long long: 1, unsigned long long: 0, default: 0)\n"
+    "#define __builtin_add_overflow(a, b, res) __c3_tcc_add_overflow((uint64_t)(a), (uint64_t)(b), (void*)(res), sizeof(*(res)), __c3_is_signed(*(res)))\n"
+    "#else\n"
     "#define __builtin_add_overflow(a, b, res) __c3_tcc_add_overflow((uint64_t)(a), (uint64_t)(b), (void*)(res), sizeof(*(res)), ((__typeof__(*(res)))-1 < 0))\n"
+    "#endif\n"
     "static inline bool __c3_tcc_sub_overflow(uint64_t a, uint64_t b, void *res, int size, bool is_signed) {\n"
     "\tif (size == 8) {\n"
     "\t\tif (is_signed) {\n"
@@ -1619,7 +1642,11 @@ static const char c_runtime_header_boilerplate[] =
     "\t\treturn a < b;\n"
     "\t}\n"
     "}\n"
+    "#if defined(_MSC_VER) && !defined(__clang__)\n"
+    "#define __builtin_sub_overflow(a, b, res) __c3_tcc_sub_overflow((uint64_t)(a), (uint64_t)(b), (void*)(res), sizeof(*(res)), __c3_is_signed(*(res)))\n"
+    "#else\n"
     "#define __builtin_sub_overflow(a, b, res) __c3_tcc_sub_overflow((uint64_t)(a), (uint64_t)(b), (void*)(res), sizeof(*(res)), ((__typeof__(*(res)))-1 < 0))\n"
+    "#endif\n"
     "static inline bool __c3_tcc_mul_overflow(uint64_t a, uint64_t b, void *res, int size, bool is_signed) {\n"
     "\tif (size == 8) {\n"
     "\t\tif (is_signed) {\n"
@@ -1655,7 +1682,11 @@ static const char c_runtime_header_boilerplate[] =
     "\t\treturn r > max;\n"
     "\t}\n"
     "}\n"
+    "#if defined(_MSC_VER) && !defined(__clang__)\n"
+    "#define __builtin_mul_overflow(a, b, res) __c3_tcc_mul_overflow((uint64_t)(a), (uint64_t)(b), (void*)(res), sizeof(*(res)), __c3_is_signed(*(res)))\n"
+    "#else\n"
     "#define __builtin_mul_overflow(a, b, res) __c3_tcc_mul_overflow((uint64_t)(a), (uint64_t)(b), (void*)(res), sizeof(*(res)), ((__typeof__(*(res)))-1 < 0))\n"
+    "#endif\n"
     "#else\n"
     "#define __c3_abort    __builtin_trap\n"
     "#endif\n\n"
