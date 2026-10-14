@@ -8,8 +8,29 @@
 #include "lib.h"
 #include <stdio.h>
 
-struct ScratchBuf scratch_buffer;
+static struct ScratchBuf scratch_buffer;
+#define SCRATCH_BUFFERS 8
+static struct ScratchBuf *buffers[SCRATCH_BUFFERS] = { [0] = &scratch_buffer };
+static int buffer_counter = 0;
 struct ScratchBuf *sb_current = &scratch_buffer;
+
+void scratch_buffer_push(void)
+{
+	ASSERT(buffer_counter + 1 < SCRATCH_BUFFERS && "TOO MANY BUFFERS");
+	struct ScratchBuf *buf = buffers[++buffer_counter];
+	if (!buf)
+	{
+		buf = buffers[buffer_counter] = cmalloc(sizeof(struct ScratchBuf));
+	}
+	buf->len = 0;
+	sb_current = buf;
+}
+
+void scratch_buffer_pop(void)
+{
+	ASSERT(buffer_counter > 0 && "Unbalanced scratch buffer pop");
+	sb_current = buffers[--buffer_counter];
+}
 
 int str_findlist(const char *value, int count, const char** elements)
 {
@@ -383,6 +404,11 @@ void scratch_buffer_clear(void)
 bool scratch_buffer_may_append(size_t len)
 {
 	return len + sb_current->len < MAX_STRING_BUFFER - 1;
+}
+
+void scratch_buffer_append_slice(StringSlice slice)
+{
+	scratch_buffer_append_len(slice.ptr, slice.len);
 }
 
 void scratch_buffer_append_len(const char *string, size_t len)

@@ -1110,98 +1110,79 @@ static GenContext *c_gen_module(Module *module, int num)
 static const char *c_backend_cc     = NULL;
 static const char *c_backend_cflags = NULL;
 
-static inline void c_buf_append(char *buf, size_t cap, const char *str)
-{
-	size_t len = strlen(buf);
-	if (len + 1 < cap)
-	{
-		strncat(buf, str, cap - len - 1);
-	}
-}
-
-static inline void c_buf_append_slice(char *buf, size_t cap, StringSlice slice)
-{
-	size_t len = strlen(buf);
-	if (len + slice.len < cap)
-	{
-		memcpy(buf + len, slice.ptr, slice.len);
-		buf[len + slice.len] = '\0';
-	}
-}
 
 static const char *c_backend_build_cflags(const char *cc)
 {
 	bool is_cl    = str_ends_with(cc, "cl.exe");
 	bool is_tcc   = str_ends_with(cc, "tcc");
 	bool is_clang = strstr(cc, "clang") != NULL || strstr(cc, "zig") != NULL;
-	char buf[4096];
-	buf[0] = '\0';
 
+	scratch_buffer_clear();
 	bool has_warn_flags = compiler.build.cflags && (strstr(compiler.build.cflags, "-W") || strstr(compiler.build.cflags, "/W"));
 	if (is_cl)
 	{
-		c_buf_append(buf, sizeof(buf), has_warn_flags ? "/nologo " : "/nologo /w ");
+		scratch_buffer_append(has_warn_flags ? "/nologo " : "/nologo /w ");
 		if (!compiler.build.cflags || !strstr(compiler.build.cflags, "/std:"))
 		{
-			c_buf_append(buf, sizeof(buf), "/std:c11 ");
+			scratch_buffer_append("/std:c11 ");
 		}
 	}
 	else if (is_tcc)
 	{
 		if (!has_warn_flags)
 		{
-			c_buf_append(buf, sizeof(buf), "-w ");
+			scratch_buffer_append("-w ");
 		}
 	}
 	else
 	{
 		if (!has_warn_flags)
 		{
-			c_buf_append(buf, sizeof(buf), "-w -Wno-incompatible-pointer-types ");
+			scratch_buffer_append("-w -Wno-incompatible-pointer-types ");
 		}
-		c_buf_append(buf, sizeof(buf), "-fno-builtin -fwrapv -fno-strict-aliasing ");
+		scratch_buffer_append("-fno-builtin -fwrapv -fno-strict-aliasing ");
 
 		if (is_clang && compiler.build.arch_os_target != default_target)
 		{
-			c_buf_append(buf, sizeof(buf), "--target=");
-			c_buf_append(buf, sizeof(buf), compiler.platform.target_triple);
-			c_buf_append(buf, sizeof(buf), " ");
+			scratch_buffer_append("--target=");
+			scratch_buffer_append(compiler.platform.target_triple);
+			scratch_buffer_append(" ");
 		}
 		if (compiler.platform.os == OS_TYPE_IOS && compiler.build.ios.sysroot)
 		{
-			c_buf_append(buf, sizeof(buf), "-isysroot \"");
-			c_buf_append(buf, sizeof(buf), compiler.build.ios.sysroot);
-			c_buf_append(buf, sizeof(buf), "\" ");
+			scratch_buffer_append("-isysroot \"");
+			scratch_buffer_append(compiler.build.ios.sysroot);
+			scratch_buffer_append("\" ");
 		}
 		if (compiler.platform.os != OS_TYPE_WIN32 && compiler.platform.reloc_model != RELOC_NONE)
 		{
-			c_buf_append(buf, sizeof(buf), "-fPIC ");
+			scratch_buffer_append("-fPIC ");
 		}
 	}
 
 	switch (compiler.build.optsize)
 	{
 		case SIZE_OPTIMIZATION_SMALL:
-			c_buf_append(buf, sizeof(buf), is_cl ? "/O1 " : "-Os ");
+			scratch_buffer_append(is_cl ? "/O1 " : "-Os ");
 			break;
 		case SIZE_OPTIMIZATION_TINY:
-			c_buf_append(buf, sizeof(buf), is_cl ? "/O1 " : "-Oz ");
+			scratch_buffer_append(is_cl ? "/O1 " : "-Oz ");
 			break;
 		default:
 			switch (compiler.build.optlevel)
 			{
 				case OPTIMIZATION_NONE:
 				case OPTIMIZATION_NOT_SET:
-					c_buf_append(buf, sizeof(buf), is_cl ? "/Od " : "-O0 ");
+					scratch_buffer_append(is_cl ? "/Od " : "-O0 ");
 					break;
 				case OPTIMIZATION_LESS:
-					c_buf_append(buf, sizeof(buf), is_cl ? "/O1 " : "-O1 ");
+					scratch_buffer_append(is_cl ? "/O1 " : "-O1 ");
 					break;
 				case OPTIMIZATION_MORE:
-					c_buf_append(buf, sizeof(buf), is_cl ? "/O2 " : "-O2 ");
+					scratch_buffer_append(is_cl ? "/O2 " : "-O2 ");
 					break;
 				case OPTIMIZATION_AGGRESSIVE:
-					c_buf_append(buf, sizeof(buf), is_cl ? "/O2 " : "-O3 ");
+					scratch_buffer_append(is_cl ? "/O2 " : "-O3 ");
 					break;
 			}
 			break;
@@ -1209,67 +1190,67 @@ static const char *c_backend_build_cflags(const char *cc)
 
 	if (compiler.build.debug_info == DEBUG_INFO_FULL)
 	{
-		c_buf_append(buf, sizeof(buf), is_cl ? "/Z7 " : "-g ");
+		scratch_buffer_append(is_cl ? "/Z7 " : "-g ");
 	}
 	else if (compiler.build.debug_info == DEBUG_INFO_LINE_TABLES)
 	{
-		c_buf_append(buf, sizeof(buf), is_cl ? "/Z7 " : "-g1 ");
+		scratch_buffer_append(is_cl ? "/Z7 " : "-g1 ");
 	}
 	else if (!is_cl && compiler.build.debug_info == DEBUG_INFO_NONE)
 	{
-		c_buf_append(buf, sizeof(buf), "-g0 ");
+		scratch_buffer_append("-g0 ");
 	}
 
 	switch (compiler.build.feature.fp_math)
 	{
 		case FP_FAST:
-			c_buf_append(buf, sizeof(buf), is_cl ? "/fp:fast " : "-ffast-math ");
+			scratch_buffer_append(is_cl ? "/fp:fast " : "-ffast-math ");
 			break;
 		case FP_RELAXED:
 			if (!is_cl)
 			{
-				c_buf_append(buf, sizeof(buf), "-fno-trapping-math ");
+				scratch_buffer_append("-fno-trapping-math ");
 			}
 			break;
 		case FP_STRICT:
 		default:
-			c_buf_append(buf, sizeof(buf), is_cl ? "/fp:precise " : "-fno-fast-math ");
+			scratch_buffer_append(is_cl ? "/fp:precise " : "-fno-fast-math ");
 			break;
 	}
 
 	if (compiler.build.feature.sanitize_address)
 	{
-		c_buf_append(buf, sizeof(buf), is_cl ? "/fsanitize=address " : "-fsanitize=address ");
+		scratch_buffer_append(is_cl ? "/fsanitize=address " : "-fsanitize=address ");
 	}
 	if (!is_cl)
 	{
 		if (compiler.build.feature.sanitize_memory)
 		{
-			c_buf_append(buf, sizeof(buf), "-fsanitize=memory ");
+			scratch_buffer_append("-fsanitize=memory ");
 		}
 		if (compiler.build.feature.sanitize_thread)
 		{
-			c_buf_append(buf, sizeof(buf), "-fsanitize=thread ");
+			scratch_buffer_append("-fsanitize=thread ");
 		}
 		if (compiler.build.unroll_loops == UNROLL_LOOPS_ON)
 		{
-			c_buf_append(buf, sizeof(buf), "-funroll-loops ");
+			scratch_buffer_append("-funroll-loops ");
 		}
 		if (compiler.build.loop_vectorization == VECTORIZATION_ON)
 		{
-			c_buf_append(buf, sizeof(buf), "-ftree-vectorize ");
+			scratch_buffer_append("-ftree-vectorize ");
 		}
 		else if (compiler.build.loop_vectorization == VECTORIZATION_OFF)
 		{
-			c_buf_append(buf, sizeof(buf), "-fno-tree-vectorize ");
+			scratch_buffer_append("-fno-tree-vectorize ");
 		}
 	}
 
 	FOREACH(const char *, inc, compiler.build.cinclude_dirs)
 	{
-		c_buf_append(buf, sizeof(buf), is_cl ? "/I \"" : "-I \"");
-		c_buf_append(buf, sizeof(buf), inc);
-		c_buf_append(buf, sizeof(buf), "\" ");
+		scratch_buffer_append(is_cl ? "/I \"" : "-I \"");
+		scratch_buffer_append(inc);
+		scratch_buffer_append("\" ");
 	}
 
 	if (is_cl)
@@ -1281,15 +1262,17 @@ static const char *c_backend_build_cflags(const char *cc)
 			{
 				int sdk_len = (int)(semi - compiler.build.win.vs_dirs);
 				const char *vs_dir = semi + 1;
-				c_buf_append(buf, sizeof(buf), str_printf("/I \"%.*s\\include\\ucrt\" ", sdk_len, compiler.build.win.vs_dirs));
-				c_buf_append(buf, sizeof(buf), str_printf("/I \"%.*s\\include\\um\" ", sdk_len, compiler.build.win.vs_dirs));
-				c_buf_append(buf, sizeof(buf), str_printf("/I \"%.*s\\include\\shared\" ", sdk_len, compiler.build.win.vs_dirs));
-				c_buf_append(buf, sizeof(buf), str_printf("/I \"%s\\include\" ", vs_dir));
+				scratch_buffer_append(str_printf("/I \"%.*s\\include\\ucrt\" ", sdk_len, compiler.build.win.vs_dirs));
+				scratch_buffer_append(str_printf("/I \"%.*s\\include\\um\" ", sdk_len, compiler.build.win.vs_dirs));
+				scratch_buffer_append(str_printf("/I \"%.*s\\include\\shared\" ", sdk_len, compiler.build.win.vs_dirs));
+				scratch_buffer_append(str_printf("/I \"%s\\include\" ", vs_dir));
 			}
 		}
 		else
 		{
+			scratch_buffer_push();
 			WindowsSDK *sdk = windows_get_sdk();
+			scratch_buffer_pop();
 			if (sdk && sdk->cl_include_env && !getenv("INCLUDE"))
 			{
 				StringSlice env = slice_from_string(sdk->cl_include_env);
@@ -1298,9 +1281,9 @@ static const char *c_backend_build_cflags(const char *cc)
 					StringSlice slice = slice_next_token(&env, ';');
 					if (slice.len > 0)
 					{
-						c_buf_append(buf, sizeof(buf), "/I \"");
-						c_buf_append_slice(buf, sizeof(buf), slice);
-						c_buf_append(buf, sizeof(buf), "\" ");
+						scratch_buffer_append("/I \"");
+						scratch_buffer_append_slice(slice);
+						scratch_buffer_append("\" ");
 					}
 				}
 			}
@@ -1309,11 +1292,11 @@ static const char *c_backend_build_cflags(const char *cc)
 
 	if (compiler.build.cflags)
 	{
-		c_buf_append(buf, sizeof(buf), compiler.build.cflags);
-		c_buf_append(buf, sizeof(buf), " ");
+		scratch_buffer_append(compiler.build.cflags);
+		scratch_buffer_append(" ");
 	}
 
-	return str_dup(buf);
+	return scratch_buffer_copy();
 }
 
 const char *c_codegen(void *context)

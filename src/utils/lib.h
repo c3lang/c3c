@@ -175,10 +175,13 @@ static inline bool slice_strcmp(StringSlice slice, const char *other);
 static inline StringSlice slice_from_string(const char *data);
 void slice_trim(StringSlice *slice);
 
+void scratch_buffer_push(void);
+void scratch_buffer_pop(void);
 void scratch_buffer_clear(void);
 void scratch_buffer_delete(size_t len);
 void scratch_buffer_append(const char *string);
 void scratch_buffer_append_len(const char *string, size_t len);
+void scratch_buffer_append_slice(StringSlice slice);
 bool scratch_buffer_may_append(size_t len);
 void scratch_buffer_append_char(char c);
 void scratch_buffer_append_in_quote(const char *string);
