@@ -1349,7 +1349,7 @@ static void c_emit_bitstruct_write_container(GenContext *c, Expr *parent_expr, D
 		bit_size = 1;
 	}
 	uint64_t mask         = (bit_size >= 64) ? ~0ULL : (((uint64_t)1 << bit_size) - 1);
-	uint64_t shifted_mask = (bit_size + start_bit >= 64) ? ~0ULL : (mask << start_bit);
+	uint64_t shifted_mask = (bit_size >= 64) ? ~0ULL : (mask << start_bit);
 
 	bool is_arr = false;
 	if (bitstruct_decl)

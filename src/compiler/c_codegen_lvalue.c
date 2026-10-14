@@ -414,7 +414,7 @@ void c_emit_bitstruct_accessors_to_file(FILE *f, Decl *decl)
 		{
 			const char *c_tname   = c_type_name(NULL, container_type);
 			uint64_t mask         = (bit_size >= 64) ? ~0ULL : (((uint64_t)1 << bit_size) - 1);
-			uint64_t shifted_mask = (bit_size + start_bit >= 64) ? ~0ULL : (mask << start_bit);
+			uint64_t shifted_mask = (bit_size >= 64) ? ~0ULL : (mask << start_bit);
 			fprintf(f, "\t%s *v = (%s *)p;\n", c_tname, c_tname);
 			if (c_is_bitstruct_requires_byteswap(decl))
 			{
