@@ -305,8 +305,8 @@ void c_emit_const_initializer_rec(GenContext *c, ConstInitializer *init)
 		{
 			Type *elem_t                = flat->array.base ? c_safe_type_lower(flat->array.base) : type_char;
 			ConstInitializer **elements = init->kind == CONST_INIT_ARRAY_FULL ? init->init_array_full : init->init_array.elements;
-			int el_count                = vec_size(elements);
-			int len                     = init->kind == CONST_INIT_ARRAY_FULL ? el_count : (int)init->type->array.len;
+			int el_count                = (init->kind == CONST_INIT_ARRAY_FULL) ? (int)init->type->array.len : vec_size(elements);
+			int len                     = el_count;
 			PRINTF("{ .ptr = (%s[])", c_type_name(c, elem_t));
 			PRINT("{ ");
 			for (int i = 0; i < el_count; i++)
@@ -367,7 +367,7 @@ void c_emit_const_initializer_rec(GenContext *c, ConstInitializer *init)
 		{
 			PRINT("{ { ");
 			ConstInitializer **elements = init->kind == CONST_INIT_ARRAY_FULL ? init->init_array_full : init->init_array.elements;
-			int count                   = vec_size(elements);
+			int count                   = (init->kind == CONST_INIT_ARRAY_FULL) ? (int)init->type->array.len : vec_size(elements);
 			for (int i = 0; i < count; i++)
 			{
 				if (i > 0)
@@ -860,12 +860,12 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 					if (s_init->kind == CONST_INIT_ARRAY_FULL)
 					{
 						elements = s_init->init_array_full;
-						count    = vec_size(elements);
+						count    = (int)s_init->type->array.len;
 					}
 					else if (s_init->kind == CONST_INIT_ARRAY)
 					{
 						elements = s_init->init_array.elements;
-						count    = (int)s_init->type->array.len;
+						count    = vec_size(elements);
 					}
 					else if (s_init->kind == CONST_INIT_STRUCT)
 					{
@@ -874,7 +874,7 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 					}
 					if (elements)
 					{
-						int el_count = vec_size(elements);
+						int el_count = count;
 						PRINTF("{ .ptr = (%s[])", c_type_name(c, elem_t));
 						PRINT("{ ");
 						for (int i = 0; i < el_count; i++)

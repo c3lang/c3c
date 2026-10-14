@@ -1310,6 +1310,9 @@ void **c_gen(Module **modules, int module_count)
 		return NULL;
 	}
 	const char *dir = compiler.build.object_file_dir ? compiler.build.object_file_dir : ".";
+	scratch_buffer_clear();
+	scratch_buffer_append(dir);
+	dir_make_recursive(scratch_buffer_to_string());
 	c_emit_runtime_header(dir);
 	c_emit_shared_header(dir);
 
