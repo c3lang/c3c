@@ -147,7 +147,7 @@ void c_emit_assign_decl_fault(GenContext *c, Decl *decl, CValue *src_val, Expr *
 	{
 		PRINTF("___var_%d = NULL;\n", fvid);
 	}
-	PRINTF("__c3_current_fault = ___var_%d;\n", fvid);
+	PRINT("__c3_current_fault = NULL;\n");
 }
 
 VariableId c_ensure_cvalue_var(GenContext *c, CValue *val, Type *fallback_type)
@@ -465,14 +465,16 @@ bool c_emit_function_decl(GenContext *c, Decl *fn, bool is_current_module)
 	{
 		if (emitted_count > 0)
 		{
-			PRINT(", ");
+			PRINT(", ...");
+			emitted_count++;
 		}
-		PRINT("...");
-		emitted_count++;
 	}
 	if (emitted_count == 0)
 	{
-		PRINT("void");
+		if (sig->variadic != VARIADIC_RAW)
+		{
+			PRINT("void");
+		}
 	}
 	PRINT(")");
 	if (c_decl_needs_asm_label(fn))
@@ -688,14 +690,16 @@ void c_emit_function(GenContext *c, Decl *fn)
 	{
 		if (emitted_params > 0)
 		{
-			PRINT(", ");
+			PRINT(", ...");
+			emitted_params++;
 		}
-		PRINT("...");
-		emitted_params++;
 	}
 	if (emitted_params == 0)
 	{
-		PRINT("void");
+		if (sig->variadic != VARIADIC_RAW)
+		{
+			PRINT("void");
+		}
 	}
 	PRINT(") {\n");
 

@@ -5,8 +5,10 @@
 The C backend has some known issues / potential problems:
 
 1. A 64-bit bitstruct write to the top field wipes the other fields. bitstruct W : ulong { uint lo : 0..31; uint hi : 32..63; } then w.lo = 1; w.hi = 2 leaves lo == 0. The mask test is bit_size + start_bit >= 64 where it should be bit_size >= 64. It appears at c_codegen_expr.c:1343 and again at c_codegen_lvalue.c:417.
+(Fixed)
 
 2. Signed sat_mul saturates the wrong way. long::min.sat_mul(1000) gives MAX, because c_codegen_builtins.c:251 only looks at b's sign.
+(Fixed needs testing)
 
 3. float16, bfloat and float128 lower to float/double (c_codegen_type.c:544-548). struct { float16 a, b; } is 4 bytes to c3c but 8 in C, so mem::new_array(Pair, 4) overflows the heap (ASan-confirmed). Half-precision rounding is also lost.
 
@@ -14,14 +16,17 @@ The C backend has some known issues / potential problems:
 sat_shl never saturates: int::max.sat_shl(1) gives -2.
 
 5. roundeven is mapped to round (c_codegen_builtins.c:29).
+(Fixed)
 
 6. $$sysclock is hard-wired to 0, so benchmarks report 0.00 CPU clocks.
 
 7. $$breakpoint aborts.
+(Fixed)
 
 8. Stack use-after-scope (ASan-confirmed). Temporaries are declared inside conditional C blocks. int* p = c ? &&5 : &&7; *p dangles, and so do (int[]){…} slices in ternary branches.
 
 9. @finalizer order is reversed (c_codegen_function.c:653-660). LLVM runs priority 1, 2, default. The C build runs default, 2, 1, because it feeds the priority straight into destructor(N).
+(Tested: LLVM also executes default, 2, 1 via atexit LIFO; behavior matches LLVM)
 
 10. Null handling differs from LLVM. &((Foo*)null).b yields 0 instead of the field offset (c_codegen_lvalue.c:575). Loads through a null address silently return 0 (:1024).
 
@@ -32,12 +37,14 @@ sat_shl never saturates: int::max.sat_shl(1) gives -2.
 13. trap-on-wrap is broken. It emits __builtin_add_overflow(a, b, &___var_N) into a variable that is never declared (c_codegen_expr.c:1046). Ordinary stdlib code fails with use of undeclared identifier. The same block is duplicated at :1042-1056, and every check is type_is_signed, so unsigned overflow never traps (LLVM traps it).
 
 14. A module containing only an enum with associated values fails to link. c_module_has_live_code (c_codegen.c:373) ignores unit->enums, so no .c is written. The result is undefined: colors__Color__assoc_label.
+(Fixed)
 
 15. Symbol collisions. Modules net_utils and net::utils both mangle to net_utils__init and hit a duplicate-symbol link error (c_codegen.c:14-33, :126-128).
 
 16. An absolute -o breaks single-module builds. static-lib, -Oz and --single-module=yes build <objdir>//abs/path.c and fail (c_codegen.c:823). LLVM is fine here.
 
 17. Hello world doesn't compile on this clang. It emits typedef void (*f)(...) (c_codegen_type.c:820-827), which needs C23.
+(Fixed by 71485732d)
 
 18. Only four safe_mode_enabled() sites exist, versus 14+ in LLVM. Nothing checks slice ranges, array or slice indexing, null dereference, / or % by zero, or enum ordinal range. Division by zero silently returns 0 on arm64, and on x86 it crashes with SIGFPE and no panic. Panic messages are dropped too, so assert(x, "msg") becomes a bare trap. Contracts and shifts are checked. The unit tests pass because they don't exercise any of this.
 
@@ -46,10 +53,13 @@ sat_shl never saturates: int::max.sat_shl(1) gives -2.
 20. @section and @noinline are dropped; I confirmed this by diffing the emitted C against LLVM IR. @inline, @naked and @noreturn also look unhandled.
 
 21. --emit-llvm and --emit-asm print "written" but create empty directories.
+(Fixed)
 
 22. Every temp is declared at function top and again inline. A small function's frame is 944 bytes, about 1.7× LLVM's. nbodies at -O0 takes 5.3s versus 1.4s, with parity at -O2.
 
 23 The TCC-only runtime code has bugs, by inspection: unsigned narrow __c3_tcc_sub_overflow never writes *res, and "+r"((uint8_t)desired) isn't an lvalue.
+
+24. Inline assembly (asm { ... }) is emitted as GNU extended inline assembly (__asm__ __volatile__). MSVC (cl.exe) on x64/ARM64 does not support inline assembly, so compiling code with inline asm under cl.exe triggers a compile-time #error. Use clang-cl, gcc, or LLVM when inline assembly is needed.
 
 */
 
@@ -490,6 +500,13 @@ static bool c_module_has_live_code(Module *module)
 		FOREACH(Decl *, d, unit->vars)
 		{
 			if (d && !d->is_extern && !d->replacement && c_is_file_global(d) && d->is_live)
+			{
+				return true;
+			}
+		}
+		FOREACH(Decl *, d, unit->enums)
+		{
+			if (d && !d->is_extern && !d->replacement && d->enums.parameters && d->enums.values && (!strip_unused() || d->is_live))
 			{
 				return true;
 			}
@@ -1102,6 +1119,16 @@ static inline void c_buf_append(char *buf, size_t cap, const char *str)
 	}
 }
 
+static inline void c_buf_append_slice(char *buf, size_t cap, StringSlice slice)
+{
+	size_t len = strlen(buf);
+	if (len + slice.len < cap)
+	{
+		memcpy(buf + len, slice.ptr, slice.len);
+		buf[len + slice.len] = '\0';
+	}
+}
+
 static const char *c_backend_build_cflags(const char *cc)
 {
 	bool is_cl    = str_ends_with(cc, "cl.exe");
@@ -1114,6 +1141,10 @@ static const char *c_backend_build_cflags(const char *cc)
 	if (is_cl)
 	{
 		c_buf_append(buf, sizeof(buf), has_warn_flags ? "/nologo " : "/nologo /w ");
+		if (!compiler.build.cflags || !strstr(compiler.build.cflags, "/std:"))
+		{
+			c_buf_append(buf, sizeof(buf), "/std:c11 ");
+		}
 	}
 	else if (is_tcc)
 	{
@@ -1241,6 +1272,41 @@ static const char *c_backend_build_cflags(const char *cc)
 		c_buf_append(buf, sizeof(buf), "\" ");
 	}
 
+	if (is_cl)
+	{
+		if (compiler.build.win.vs_dirs)
+		{
+			const char *semi = strchr(compiler.build.win.vs_dirs, ';');
+			if (semi)
+			{
+				int sdk_len = (int)(semi - compiler.build.win.vs_dirs);
+				const char *vs_dir = semi + 1;
+				c_buf_append(buf, sizeof(buf), str_printf("/I \"%.*s\\include\\ucrt\" ", sdk_len, compiler.build.win.vs_dirs));
+				c_buf_append(buf, sizeof(buf), str_printf("/I \"%.*s\\include\\um\" ", sdk_len, compiler.build.win.vs_dirs));
+				c_buf_append(buf, sizeof(buf), str_printf("/I \"%.*s\\include\\shared\" ", sdk_len, compiler.build.win.vs_dirs));
+				c_buf_append(buf, sizeof(buf), str_printf("/I \"%s\\include\" ", vs_dir));
+			}
+		}
+		else
+		{
+			WindowsSDK *sdk = windows_get_sdk();
+			if (sdk && sdk->cl_include_env && !getenv("INCLUDE"))
+			{
+				StringSlice env = slice_from_string(sdk->cl_include_env);
+				while (env.len)
+				{
+					StringSlice slice = slice_next_token(&env, ';');
+					if (slice.len > 0)
+					{
+						c_buf_append(buf, sizeof(buf), "/I \"");
+						c_buf_append_slice(buf, sizeof(buf), slice);
+						c_buf_append(buf, sizeof(buf), "\" ");
+					}
+				}
+			}
+		}
+	}
+
 	if (compiler.build.cflags)
 	{
 		c_buf_append(buf, sizeof(buf), compiler.build.cflags);
@@ -1262,27 +1328,12 @@ const char *c_codegen(void *context)
 	{
 		const char *cc     = c_backend_cc ? c_backend_cc : (compiler.build.cc ? compiler.build.cc : find_c_compiler());
 		const char *cflags = c_backend_cflags ? c_backend_cflags : "";
-		bool is_cl         = str_ends_with(cc, "cl.exe");
-		char cmd[4096];
-		if (is_cl)
+		const char *out    = cc_compiler(cc, c->c_filename, c->object_filename, cflags, NULL, NULL);
+		if (!out)
 		{
-			snprintf(cmd, sizeof(cmd), "\"%s\" %s/c \"%s\" /Fo:\"%s\"", cc, cflags, c->c_filename, c->object_filename);
-		}
-		else
-		{
-			snprintf(cmd, sizeof(cmd), "\"%s\" %s-c \"%s\" -o \"%s\"", cc, cflags, c->c_filename, c->object_filename);
-		}
-		if (compiler.build.print_linking)
-		{
-			puts(cmd);
-		}
-		DEBUG_LOG("Compiling c sources using '%s'", cmd);
-		if (system(cmd) != 0)
-		{
-			fprintf(stderr, "Failed to compile '%s' using command '%s'.\n", c->c_filename, cmd);
 			exit(EXIT_FAILURE);
 		}
-		return c->object_filename;
+		return out;
 	}
 	return NULL;
 }
@@ -1294,6 +1345,9 @@ void **c_gen(Module **modules, int module_count)
 		return NULL;
 	}
 	const char *dir = compiler.build.object_file_dir ? compiler.build.object_file_dir : ".";
+	scratch_buffer_clear();
+	scratch_buffer_append(dir);
+	dir_make_recursive(scratch_buffer_to_string());
 	c_emit_runtime_header(dir);
 	c_emit_shared_header(dir);
 

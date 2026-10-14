@@ -135,6 +135,8 @@ void free_arena(void);
 void print_arena_status(void);
 void run_arena_allocator_tests(void);
 void taskqueue_run(int threads, Task **task_list);
+void lock_acquire(void);
+void lock_release(void);
 int cpus(void);
 const char *date_get(void);
 const char *time_get(void);

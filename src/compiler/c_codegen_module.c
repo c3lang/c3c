@@ -111,6 +111,9 @@ bool c_can_emit_static_initializer(Expr *expr)
 		case EXPR_BINARY:
 			return c_can_emit_static_initializer(exprptr(expr->binary_expr.left)) &&
 			       c_can_emit_static_initializer(exprptr(expr->binary_expr.right));
+		case EXPR_SUBSCRIPT_ADDR:
+			return c_can_emit_static_initializer(exprptr(expr->subscript_expr.expr)) &&
+			       c_can_emit_static_initializer(exprptr(expr->subscript_expr.index.expr));
 		case EXPR_IDENTIFIER:
 		{
 			Decl *d = c_decl_unwrap(expr->ident_expr);
@@ -126,6 +129,19 @@ bool c_can_emit_static_initializer(Expr *expr)
 			{
 				return c_can_emit_static_initializer(d->var.init_expr);
 			}
+			if (c_is_file_global(d))
+			{
+				return true;
+			}
+			return false;
+		}
+		case EXPR_DECL:
+		{
+			Decl *d = expr->decl_expr;
+			if (!d) return false;
+			if (d->decl_kind == DECL_FUNC || d->decl_kind == DECL_ENUM_CONSTANT || d->decl_kind == DECL_FAULT) return true;
+			if (c_is_file_global(d)) return true;
+			if (d->var.init_expr) return c_can_emit_static_initializer(d->var.init_expr);
 			return false;
 		}
 		case EXPR_RECAST:
@@ -136,6 +152,9 @@ bool c_can_emit_static_initializer(Expr *expr)
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_FLOAT_TO_INT:
 		case EXPR_EXT_TRUNC:
+		case EXPR_SCALAR_TO_VECTOR:
+		case EXPR_VECTOR_FROM_ARRAY:
+		case EXPR_VECTOR_TO_ARRAY:
 			return c_can_emit_static_initializer(expr->inner_expr);
 		case EXPR_TWO:
 			return c_can_emit_static_initializer(expr->two_expr.last);
@@ -305,8 +324,8 @@ void c_emit_const_initializer_rec(GenContext *c, ConstInitializer *init)
 		{
 			Type *elem_t                = flat->array.base ? c_safe_type_lower(flat->array.base) : type_char;
 			ConstInitializer **elements = init->kind == CONST_INIT_ARRAY_FULL ? init->init_array_full : init->init_array.elements;
-			int el_count                = vec_size(elements);
-			int len                     = init->kind == CONST_INIT_ARRAY_FULL ? el_count : (int)init->type->array.len;
+			int el_count                = (init->kind == CONST_INIT_ARRAY_FULL) ? (int)init->type->array.len : vec_size(elements);
+			int len                     = el_count;
 			PRINTF("{ .ptr = (%s[])", c_type_name(c, elem_t));
 			PRINT("{ ");
 			for (int i = 0; i < el_count; i++)
@@ -367,7 +386,7 @@ void c_emit_const_initializer_rec(GenContext *c, ConstInitializer *init)
 		{
 			PRINT("{ { ");
 			ConstInitializer **elements = init->kind == CONST_INIT_ARRAY_FULL ? init->init_array_full : init->init_array.elements;
-			int count                   = vec_size(elements);
+			int count                   = (init->kind == CONST_INIT_ARRAY_FULL) ? (int)init->type->array.len : vec_size(elements);
 			for (int i = 0; i < count; i++)
 			{
 				if (i > 0)
@@ -397,12 +416,12 @@ void c_emit_const_float_literal(GenContext *c, double f)
 {
 	if (isnan(f))
 	{
-		PRINT("(0.0 / 0.0)");
+		PRINT("__c3_nan");
 		return;
 	}
 	if (isinf(f))
 	{
-		PRINT(f < 0 ? "(-1.0 / 0.0)" : "(1.0 / 0.0)");
+		PRINT(f < 0 ? "(-__c3_inf)" : "(__c3_inf)");
 		return;
 	}
 	if (f == 0.0 && signbit(f))
@@ -495,7 +514,7 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 	}
 	if (expr->expr_kind == EXPR_MAKE_ANY)
 	{
-		PRINT("(__c3_any__){ .ptr = ");
+		PRINT("{ .ptr = ");
 		if (expr->make_any_expr.inner)
 		{
 			PRINT("(void*)(");
@@ -520,7 +539,7 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 	}
 	if (expr->expr_kind == EXPR_MAKE_SLICE)
 	{
-		PRINTF("(%s){ .ptr = ", tname);
+		PRINT("{ .ptr = ");
 		if (expr->make_slice_expr.ptr)
 		{
 			PRINT("(void*)(");
@@ -532,6 +551,19 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 			PRINT("NULL");
 		}
 		PRINTF(", .len = %llu }", (unsigned long long)expr->make_slice_expr.len);
+		return;
+	}
+	if (expr->expr_kind == EXPR_SUBSCRIPT_ADDR)
+	{
+		Expr *parent = exprptr(expr->subscript_expr.expr);
+		Expr *index  = exprptr(expr->subscript_expr.index.expr);
+		Type *pt     = c_expr_type(parent);
+		const char *acc = (pt && (pt->type_kind == TYPE_ARRAY || pt->type_kind == TYPE_VECTOR)) ? ".ptr[" : "[";
+		PRINTF("(%s)&(", tname);
+		c_emit_const_init_expr(c, parent, pt);
+		PRINTF("%s", acc);
+		c_emit_const_init_expr(c, index, type_sz);
+		PRINT("])");
 		return;
 	}
 	if (expr->expr_kind == EXPR_UNARY)
@@ -634,7 +666,7 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 				Type *dt = c_decl_type(d);
 				if (type->type_kind == TYPE_SLICE && dt && c_type_is_vec_or_arr(dt))
 				{
-					PRINTF("(%s){ .ptr = (void*)%s.ptr, .len = %llu }", tname, c_get_decl_name(d), (unsigned long long)dt->array.len);
+					PRINTF("{ .ptr = (void*)%s.ptr, .len = %llu }", c_get_decl_name(d), (unsigned long long)dt->array.len);
 					return;
 				}
 				PRINTF("%s", c_get_decl_name(d));
@@ -669,6 +701,25 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 	if (expr->expr_kind == EXPR_TWO)
 	{
 		c_emit_const_init_expr(c, expr->two_expr.last, type);
+		return;
+	}
+	if (expr->expr_kind == EXPR_VECTOR_FROM_ARRAY || expr->expr_kind == EXPR_VECTOR_TO_ARRAY)
+	{
+		c_emit_const_init_expr(c, expr->inner_expr, type);
+		return;
+	}
+	if (expr->expr_kind == EXPR_SCALAR_TO_VECTOR)
+	{
+		Type *target_type = (type && type->type_kind != TYPE_VOID) ? type : expr->type;
+		ArrayIndex len = target_type->array.len;
+		Type *elem_t = target_type->array.base;
+		PRINT("{ { ");
+		for (int i = 0; i < len; i++)
+		{
+			if (i > 0) PRINT(", ");
+			c_emit_const_init_expr(c, expr->inner_expr, elem_t);
+		}
+		PRINT(" } }");
 		return;
 	}
 	if (expr->expr_kind == EXPR_INITIALIZER_LIST)
@@ -860,12 +911,12 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 					if (s_init->kind == CONST_INIT_ARRAY_FULL)
 					{
 						elements = s_init->init_array_full;
-						count    = vec_size(elements);
+						count    = (int)s_init->type->array.len;
 					}
 					else if (s_init->kind == CONST_INIT_ARRAY)
 					{
 						elements = s_init->init_array.elements;
-						count    = (int)s_init->type->array.len;
+						count    = vec_size(elements);
 					}
 					else if (s_init->kind == CONST_INIT_STRUCT)
 					{
@@ -874,7 +925,7 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 					}
 					if (elements)
 					{
-						int el_count = vec_size(elements);
+						int el_count = count;
 						PRINTF("{ .ptr = (%s[])", c_type_name(c, elem_t));
 						PRINT("{ ");
 						for (int i = 0; i < el_count; i++)
@@ -1326,369 +1377,7 @@ static void c_collect_and_emit_bitstructs(FILE *f, HTable *emitted, Decl *d)
 	}
 }
 
-static const char c_runtime_header_boilerplate[] =
-    "/* Generated by C3 Compiler */\n"
-    "#ifndef __C3_RUNTIME_H__\n"
-    "#define __C3_RUNTIME_H__\n\n"
-    "#if defined(__clang__)\n"
-    "#pragma clang diagnostic ignored \"-Wunknown-warning-option\"\n"
-    "#elif defined(__GNUC__)\n"
-    "#pragma GCC diagnostic ignored \"-Wbuiltin-declaration-mismatch\"\n"
-    "#endif\n\n"
-    "#include <stdint.h>\n"
-    "#include <stddef.h>\n"
-    "#include <stdbool.h>\n"
-    "#if defined(_MSC_VER)\n"
-    "#define __c3_thread_local __declspec(thread)\n"
-    "#else\n"
-    "#define __c3_thread_local __thread\n"
-    "#endif\n\n"
-    "#if defined(__GNUC__) || defined(__clang__)\n"
-    "#define __c3_aligned(n) __attribute__((aligned(n)))\n"
-    "#define __c3_packed     __attribute__((packed))\n"
-    "#elif defined(_MSC_VER)\n"
-    "#define __c3_aligned(n) __declspec(align(n))\n"
-    "#define __c3_packed\n"
-    "#else\n"
-    "#define __c3_aligned(n)\n"
-    "#define __c3_packed\n"
-    "#endif\n\n"
-    "#define __c3_memcpy   __builtin_memcpy\n"
-    "#define __c3_memset   __builtin_memset\n"
-    "#define __c3_memmove  __builtin_memmove\n"
-    "#define __c3_memcmp   __builtin_memcmp\n"
-    "#define __c3_fmod     __builtin_fmod\n\n"
-    "#if defined(__TINYC__)\n"
-    "extern double round(double);\n"
-    "extern double copysign(double, double);\n"
-    "extern double fmod(double, double);\n"
-    "extern double fabs(double);\n"
-    "extern double floor(double);\n"
-    "extern double ceil(double);\n"
-    "extern double trunc(double);\n"
-    "extern double rint(double);\n"
-    "extern double nearbyint(double);\n"
-    "extern long lrint(double);\n"
-    "extern long lround(double);\n"
-    "extern double sqrt(double);\n"
-    "extern double sin(double);\n"
-    "extern double cos(double);\n"
-    "extern double tan(double);\n"
-    "extern double asin(double);\n"
-    "extern double acos(double);\n"
-    "extern double atan(double);\n"
-    "extern double sinh(double);\n"
-    "extern double cosh(double);\n"
-    "extern double tanh(double);\n"
-    "extern double exp(double);\n"
-    "extern double exp2(double);\n"
-    "extern double log(double);\n"
-    "extern double log2(double);\n"
-    "extern double log10(double);\n"
-    "extern double pow(double, double);\n"
-    "extern double fma(double, double, double);\n"
-    "#define __builtin_round       round\n"
-    "#define __builtin_copysign    copysign\n"
-    "#define __builtin_fmod        fmod\n"
-    "#define __builtin_fabs        fabs\n"
-    "#define __builtin_floor       floor\n"
-    "#define __builtin_ceil        ceil\n"
-    "#define __builtin_trunc       trunc\n"
-    "#define __builtin_rint        rint\n"
-    "#define __builtin_nearbyint   nearbyint\n"
-    "#define __builtin_lrint       lrint\n"
-    "#define __builtin_lround      lround\n"
-    "#define __builtin_sqrt        sqrt\n"
-    "#define __builtin_sin         sin\n"
-    "#define __builtin_cos         cos\n"
-    "#define __builtin_tan         tan\n"
-    "#define __builtin_asin        asin\n"
-    "#define __builtin_acos        acos\n"
-    "#define __builtin_atan        atan\n"
-    "#define __builtin_sinh        sinh\n"
-    "#define __builtin_cosh        cosh\n"
-    "#define __builtin_tanh        tanh\n"
-    "#define __builtin_exp         exp\n"
-    "#define __builtin_exp2        exp2\n"
-    "#define __builtin_exp10(x)    pow(10.0, (x))\n"
-    "#define __builtin_log         log\n"
-    "#define __builtin_log2        log2\n"
-    "#define __builtin_log10       log10\n"
-    "#define __builtin_pow         pow\n"
-    "#define __builtin_fma         fma\n"
-    "#define __builtin_prefetch(addr, ...) ((void)0)\n"
-    "static inline int __c3_tcc_clz64(uint64_t x) {\n"
-    "\tif (x == 0) return 64;\n"
-    "\tint n = 0;\n"
-    "\tif ((x >> 32) == 0) { n += 32; x <<= 32; }\n"
-    "\tif ((x >> 48) == 0) { n += 16; x <<= 16; }\n"
-    "\tif ((x >> 56) == 0) { n += 8;  x <<= 8;  }\n"
-    "\tif ((x >> 60) == 0) { n += 4;  x <<= 4;  }\n"
-    "\tif ((x >> 62) == 0) { n += 2;  x <<= 2;  }\n"
-    "\tif ((x >> 63) == 0) { n += 1; }\n"
-    "\treturn n;\n"
-    "}\n"
-    "#define __builtin_clzll __c3_tcc_clz64\n"
-    "#define __builtin_clzl  __c3_tcc_clz64\n"
-    "#define __builtin_clz(x) (__c3_tcc_clz64(x) - 32)\n"
-    "static inline int __c3_tcc_ctz64(uint64_t x) {\n"
-    "\tif (x == 0) return 64;\n"
-    "\tint n = 0;\n"
-    "\tif ((x & 0xFFFFFFFFULL) == 0) { n += 32; x >>= 32; }\n"
-    "\tif ((x & 0x0000FFFFULL) == 0) { n += 16; x >>= 16; }\n"
-    "\tif ((x & 0x000000FFULL) == 0) { n += 8;  x >>= 8;  }\n"
-    "\tif ((x & 0x0000000FULL) == 0) { n += 4;  x >>= 4;  }\n"
-    "\tif ((x & 0x00000003ULL) == 0) { n += 2;  x >>= 2;  }\n"
-    "\tif ((x & 0x00000001ULL) == 0) { n += 1; }\n"
-    "\treturn n;\n"
-    "}\n"
-    "#define __builtin_ctzll __c3_tcc_ctz64\n"
-    "#define __builtin_ctzl  __c3_tcc_ctz64\n"
-    "#define __builtin_ctz   __c3_tcc_ctz64\n"
-    "static inline int __c3_tcc_popcount64(uint64_t x) {\n"
-    "\tx = x - ((x >> 1) & 0x5555555555555555ULL);\n"
-    "\tx = (x & 0x3333333333333333ULL) + ((x >> 2) & 0x3333333333333333ULL);\n"
-    "\tx = (x + (x >> 4)) & 0x0F0F0F0F0F0F0F0FULL;\n"
-    "\treturn (int)((x * 0x0101010101010101ULL) >> 56);\n"
-    "}\n"
-    "#define __builtin_popcountll __c3_tcc_popcount64\n"
-    "#define __builtin_popcountl  __c3_tcc_popcount64\n"
-    "#define __builtin_popcount   __c3_tcc_popcount64\n"
-    "static inline uint16_t __c3_tcc_bswap16(uint16_t x) { return (uint16_t)((x << 8) | (x >> 8)); }\n"
-    "static inline uint32_t __c3_tcc_bswap32(uint32_t x) {\n"
-    "\treturn ((x << 24) & 0xff000000u) | ((x << 8) & 0x00ff0000u) | ((x >> 8) & 0x0000ff00u) | ((x >> 24) & 0x000000ffu);\n"
-    "}\n"
-    "static inline uint64_t __c3_tcc_bswap64(uint64_t x) {\n"
-    "\treturn ((x << 56) & 0xff00000000000000ull) | ((x << 40) & 0x00ff000000000000ull) |\n"
-    "\t       ((x << 24) & 0x0000ff0000000000ull) | ((x << 8)  & 0x000000ff00000000ull) |\n"
-    "\t       ((x >> 8)  & 0x00000000ff000000ull) | ((x >> 24) & 0x0000000000ff0000ull) |\n"
-    "\t       ((x >> 40) & 0x000000000000ff00ull) | ((x >> 56) & 0x00000000000000ffull);\n"
-    "}\n"
-    "#define __builtin_bswap16 __c3_tcc_bswap16\n"
-    "#define __builtin_bswap32 __c3_tcc_bswap32\n"
-    "#define __builtin_bswap64 __c3_tcc_bswap64\n"
-    "#define __c3_abort()  (*(volatile int*)0 = 0)\n"
-    "#ifndef __ATOMIC_SEQ_CST\n"
-    "#define __ATOMIC_RELAXED 0\n"
-    "#define __ATOMIC_CONSUME 1\n"
-    "#define __ATOMIC_ACQUIRE 2\n"
-    "#define __ATOMIC_RELEASE 3\n"
-    "#define __ATOMIC_ACQ_REL 4\n"
-    "#define __ATOMIC_SEQ_CST 5\n"
-    "#endif\n"
-    "#define __atomic_load_n(ptr, memorder) (*(ptr))\n"
-    "#define __atomic_store_n(ptr, val, memorder) (*(ptr) = (val))\n"
-    "#define __atomic_thread_fence(memorder) ((void)0)\n"
-    "static inline uint64_t __c3_tcc_atomic_fetch_add(void *ptr, uint64_t val, int size) {\n"
-    "#if defined(__x86_64__)\n"
-    "\tif (size == 1) { uint8_t r = (uint8_t)val; __asm__ __volatile__(\"lock xaddb %0, %1\" : \"+r\"(r), \"+m\"(*(uint8_t*)ptr) : : \"memory\"); return r; }\n"
-    "\tif (size == 2) { uint16_t r = (uint16_t)val; __asm__ __volatile__(\"lock xaddw %0, %1\" : \"+r\"(r), \"+m\"(*(uint16_t*)ptr) : : \"memory\"); return r; }\n"
-    "\tif (size == 4) { uint32_t r = (uint32_t)val; __asm__ __volatile__(\"lock xaddl %0, %1\" : \"+r\"(r), \"+m\"(*(uint32_t*)ptr) : : \"memory\"); return r; }\n"
-    "\tif (size == 8) { uint64_t r = (uint64_t)val; __asm__ __volatile__(\"lock xaddq %0, %1\" : \"+r\"(r), \"+m\"(*(uint64_t*)ptr) : : \"memory\"); return r; }\n"
-    "#endif\n"
-    "\tuint64_t old = (size == 8) ? *(uint64_t*)ptr : ((size == 4) ? *(uint32_t*)ptr : ((size == 2) ? *(uint16_t*)ptr : *(uint8_t*)ptr));\n"
-    "\tif (size == 8) *(uint64_t*)ptr += val;\n"
-    "\telse if (size == 4) *(uint32_t*)ptr += (uint32_t)val;\n"
-    "\telse if (size == 2) *(uint16_t*)ptr += (uint16_t)val;\n"
-    "\telse *(uint8_t*)ptr += (uint8_t)val;\n"
-    "\treturn old;\n"
-    "}\n"
-    "#define __atomic_fetch_add(ptr, val, memorder) __c3_tcc_atomic_fetch_add((void*)(ptr), (uint64_t)(val), sizeof(*(ptr)))\n"
-    "static inline uint64_t __c3_tcc_atomic_fetch_sub(void *ptr, uint64_t val, int size) {\n"
-    "\treturn __c3_tcc_atomic_fetch_add(ptr, (uint64_t)(-(int64_t)val), size);\n"
-    "}\n"
-    "#define __atomic_fetch_sub(ptr, val, memorder) __c3_tcc_atomic_fetch_sub((void*)(ptr), (uint64_t)(val), sizeof(*(ptr)))\n"
-    "static inline uint64_t __c3_tcc_atomic_exchange_n(void *ptr, uint64_t val, int size) {\n"
-    "#if defined(__x86_64__)\n"
-    "\tif (size == 1) { uint8_t r = (uint8_t)val; __asm__ __volatile__(\"xchgb %0, %1\" : \"+r\"(r), \"+m\"(*(uint8_t*)ptr) : : \"memory\"); return r; }\n"
-    "\tif (size == 2) { uint16_t r = (uint16_t)val; __asm__ __volatile__(\"xchgw %0, %1\" : \"+r\"(r), \"+m\"(*(uint16_t*)ptr) : : \"memory\"); return r; }\n"
-    "\tif (size == 4) { uint32_t r = (uint32_t)val; __asm__ __volatile__(\"xchgl %0, %1\" : \"+r\"(r), \"+m\"(*(uint32_t*)ptr) : : \"memory\"); return r; }\n"
-    "\tif (size == 8) { uint64_t r = (uint64_t)val; __asm__ __volatile__(\"xchgq %0, %1\" : \"+r\"(r), \"+m\"(*(uint64_t*)ptr) : : \"memory\"); return r; }\n"
-    "#endif\n"
-    "\tuint64_t old = (size == 8) ? *(uint64_t*)ptr : ((size == 4) ? *(uint32_t*)ptr : ((size == 2) ? *(uint16_t*)ptr : *(uint8_t*)ptr));\n"
-    "\tif (size == 8) *(uint64_t*)ptr = val;\n"
-    "\telse if (size == 4) *(uint32_t*)ptr = (uint32_t)val;\n"
-    "\telse if (size == 2) *(uint16_t*)ptr = (uint16_t)val;\n"
-    "\telse *(uint8_t*)ptr = (uint8_t)val;\n"
-    "\treturn old;\n"
-    "}\n"
-    "#define __atomic_exchange_n(ptr, val, memorder) __c3_tcc_atomic_exchange_n((void*)(ptr), (uint64_t)(val), sizeof(*(ptr)))\n"
-    "static inline bool __c3_tcc_atomic_compare_exchange_n(void *ptr, void *expected, uint64_t desired, int size) {\n"
-    "#if defined(__x86_64__)\n"
-    "\tbool success;\n"
-    "\tif (size == 1) {\n"
-    "\t\tuint8_t exp = *(uint8_t*)expected;\n"
-    "\t\t__asm__ __volatile__(\"lock cmpxchgb %2, %1; sete %0\" : \"=q\"(success), \"+m\"(*(uint8_t*)ptr), \"+r\"((uint8_t)desired), \"+a\"(exp) : : \"memory\");\n"
-    "\t\tif (!success) *(uint8_t*)expected = exp;\n"
-    "\t\treturn success;\n"
-    "\t}\n"
-    "\tif (size == 2) {\n"
-    "\t\tuint16_t exp = *(uint16_t*)expected;\n"
-    "\t\t__asm__ __volatile__(\"lock cmpxchgw %2, %1; sete %0\" : \"=q\"(success), \"+m\"(*(uint16_t*)ptr), \"+r\"((uint16_t)desired), \"+a\"(exp) : : \"memory\");\n"
-    "\t\tif (!success) *(uint16_t*)expected = exp;\n"
-    "\t\treturn success;\n"
-    "\t}\n"
-    "\tif (size == 4) {\n"
-    "\t\tuint32_t exp = *(uint32_t*)expected;\n"
-    "\t\t__asm__ __volatile__(\"lock cmpxchgl %2, %1; sete %0\" : \"=q\"(success), \"+m\"(*(uint32_t*)ptr), \"+r\"((uint32_t)desired), \"+a\"(exp) : : \"memory\");\n"
-    "\t\tif (!success) *(uint32_t*)expected = exp;\n"
-    "\t\treturn success;\n"
-    "\t}\n"
-    "\tif (size == 8) {\n"
-    "\t\tuint64_t exp = *(uint64_t*)expected;\n"
-    "\t\t__asm__ __volatile__(\"lock cmpxchgq %2, %1; sete %0\" : \"=q\"(success), \"+m\"(*(uint64_t*)ptr), \"+r\"(desired), \"+a\"(exp) : : \"memory\");\n"
-    "\t\tif (!success) *(uint64_t*)expected = exp;\n"
-    "\t\treturn success;\n"
-    "\t}\n"
-    "#endif\n"
-    "\tuint64_t cur = (size == 8) ? *(uint64_t*)ptr : ((size == 4) ? *(uint32_t*)ptr : ((size == 2) ? *(uint16_t*)ptr : *(uint8_t*)ptr));\n"
-    "\tuint64_t exp = (size == 8) ? *(uint64_t*)expected : ((size == 4) ? *(uint32_t*)expected : ((size == 2) ? *(uint16_t*)expected : *(uint8_t*)expected));\n"
-    "\tif (cur == exp) {\n"
-    "\t\tif (size == 8) *(uint64_t*)ptr = desired;\n"
-    "\t\telse if (size == 4) *(uint32_t*)ptr = (uint32_t)desired;\n"
-    "\t\telse if (size == 2) *(uint16_t*)ptr = (uint16_t)desired;\n"
-    "\t\telse *(uint8_t*)ptr = (uint8_t)desired;\n"
-    "\t\treturn true;\n"
-    "\t} else {\n"
-    "\t\tif (size == 8) *(uint64_t*)expected = cur;\n"
-    "\t\telse if (size == 4) *(uint32_t*)expected = (uint32_t)cur;\n"
-    "\t\telse if (size == 2) *(uint16_t*)expected = (uint16_t)cur;\n"
-    "\t\telse *(uint8_t*)expected = (uint8_t)cur;\n"
-    "\t\treturn false;\n"
-    "\t}\n"
-    "}\n"
-    "#define __atomic_compare_exchange_n(ptr, exp, des, weak, succ, fail) __c3_tcc_atomic_compare_exchange_n((void*)(ptr), (void*)(exp), (uint64_t)(des), sizeof(*(ptr)))\n"
-    "static inline bool __c3_tcc_add_overflow(uint64_t a, uint64_t b, void *res, int size, bool is_signed) {\n"
-    "\tif (size == 8) {\n"
-    "\t\tif (is_signed) {\n"
-    "\t\t\tint64_t sa = (int64_t)a, sb = (int64_t)b;\n"
-    "\t\t\tint64_t r = (int64_t)((uint64_t)sa + (uint64_t)sb);\n"
-    "\t\t\t*(int64_t*)res = r;\n"
-    "\t\t\treturn (sa > 0 && sb > 0 && r < sa) || (sa < 0 && sb < 0 && r > sa);\n"
-    "\t\t} else {\n"
-    "\t\t\tuint64_t r = a + b;\n"
-    "\t\t\t*(uint64_t*)res = r;\n"
-    "\t\t\treturn r < a;\n"
-    "\t\t}\n"
-    "\t}\n"
-    "\tif (is_signed) {\n"
-    "\t\tint64_t sa = (size == 4) ? (int64_t)(int32_t)a : ((size == 2) ? (int64_t)(int16_t)a : (int64_t)(int8_t)a);\n"
-    "\t\tint64_t sb = (size == 4) ? (int64_t)(int32_t)b : ((size == 2) ? (int64_t)(int16_t)b : (int64_t)(int8_t)b);\n"
-    "\t\tint64_t r = sa + sb;\n"
-    "\t\tint64_t min = (size == 4) ? INT32_MIN : ((size == 2) ? INT16_MIN : INT8_MIN);\n"
-    "\t\tint64_t max = (size == 4) ? INT32_MAX : ((size == 2) ? INT16_MAX : INT8_MAX);\n"
-    "\t\tif (size == 4) *(int32_t*)res = (int32_t)r;\n"
-    "\t\telse if (size == 2) *(int16_t*)res = (int16_t)r;\n"
-    "\t\telse *(int8_t*)res = (int8_t)r;\n"
-    "\t\treturn r < min || r > max;\n"
-    "\t} else {\n"
-    "\t\tuint64_t r = a + b;\n"
-    "\t\tuint64_t max = (size == 4) ? UINT32_MAX : ((size == 2) ? UINT16_MAX : UINT8_MAX);\n"
-    "\t\tif (size == 4) *(uint32_t*)res = (uint32_t)r;\n"
-    "\t\telse if (size == 2) *(uint16_t*)res = (uint16_t)r;\n"
-    "\t\telse *(uint8_t*)res = (uint8_t)r;\n"
-    "\t\treturn r > max;\n"
-    "\t}\n"
-    "}\n"
-    "#define __builtin_add_overflow(a, b, res) __c3_tcc_add_overflow((uint64_t)(a), (uint64_t)(b), (void*)(res), sizeof(*(res)), ((__typeof__(*(res)))-1 < 0))\n"
-    "static inline bool __c3_tcc_sub_overflow(uint64_t a, uint64_t b, void *res, int size, bool is_signed) {\n"
-    "\tif (size == 8) {\n"
-    "\t\tif (is_signed) {\n"
-    "\t\t\tint64_t sa = (int64_t)a, sb = (int64_t)b;\n"
-    "\t\t\tint64_t r = (int64_t)((uint64_t)sa - (uint64_t)sb);\n"
-    "\t\t\t*(int64_t*)res = r;\n"
-    "\t\t\treturn (sb > 0 && sa < INT64_MIN + sb) || (sb < 0 && sa > INT64_MAX + sb);\n"
-    "\t\t} else {\n"
-    "\t\t\t*(uint64_t*)res = a - b;\n"
-    "\t\t\treturn a < b;\n"
-    "\t\t}\n"
-    "\t}\n"
-    "\tif (is_signed) {\n"
-    "\t\tint64_t sa = (size == 4) ? (int64_t)(int32_t)a : ((size == 2) ? (int64_t)(int16_t)a : (int64_t)(int8_t)a);\n"
-    "\t\tint64_t sb = (size == 4) ? (int64_t)(int32_t)b : ((size == 2) ? (int64_t)(int16_t)b : (int64_t)(int8_t)b);\n"
-    "\t\tint64_t r = sa - sb;\n"
-    "\t\tint64_t min = (size == 4) ? INT32_MIN : ((size == 2) ? INT16_MIN : INT8_MIN);\n"
-    "\t\tint64_t max = (size == 4) ? INT32_MAX : ((size == 2) ? INT16_MAX : INT8_MAX);\n"
-    "\t\tif (size == 4) *(int32_t*)res = (int32_t)r;\n"
-    "\t\telse if (size == 2) *(int16_t*)res = (int16_t)r;\n"
-    "\t\telse *(int8_t*)res = (int8_t)r;\n"
-    "\t\treturn r < min || r > max;\n"
-    "\t} else {\n"
-    "\t\tuint64_t r = a - b;\n"
-    "\t\treturn a < b;\n"
-    "\t}\n"
-    "}\n"
-    "#define __builtin_sub_overflow(a, b, res) __c3_tcc_sub_overflow((uint64_t)(a), (uint64_t)(b), (void*)(res), sizeof(*(res)), ((__typeof__(*(res)))-1 < 0))\n"
-    "static inline bool __c3_tcc_mul_overflow(uint64_t a, uint64_t b, void *res, int size, bool is_signed) {\n"
-    "\tif (size == 8) {\n"
-    "\t\tif (is_signed) {\n"
-    "\t\t\tint64_t sa = (int64_t)a, sb = (int64_t)b;\n"
-    "\t\t\tint64_t r = (int64_t)((uint64_t)sa * (uint64_t)sb);\n"
-    "\t\t\t*(int64_t*)res = r;\n"
-    "\t\t\tif (sa == 0 || sb == 0) return false;\n"
-    "\t\t\tif (sa == -1 && sb == INT64_MIN) return true;\n"
-    "\t\t\tif (sb == -1 && sa == INT64_MIN) return true;\n"
-    "\t\t\treturn (r / sa) != sb;\n"
-    "\t\t} else {\n"
-    "\t\t\tuint64_t r = a * b;\n"
-    "\t\t\t*(uint64_t*)res = r;\n"
-    "\t\t\treturn a != 0 && (r / a) != b;\n"
-    "\t\t}\n"
-    "\t}\n"
-    "\tif (is_signed) {\n"
-    "\t\tint64_t sa = (size == 4) ? (int64_t)(int32_t)a : ((size == 2) ? (int64_t)(int16_t)a : (int64_t)(int8_t)a);\n"
-    "\t\tint64_t sb = (size == 4) ? (int64_t)(int32_t)b : ((size == 2) ? (int64_t)(int16_t)b : (int64_t)(int8_t)b);\n"
-    "\t\tint64_t r = sa * sb;\n"
-    "\t\tint64_t min = (size == 4) ? INT32_MIN : ((size == 2) ? INT16_MIN : INT8_MIN);\n"
-    "\t\tint64_t max = (size == 4) ? INT32_MAX : ((size == 2) ? INT16_MAX : INT8_MAX);\n"
-    "\t\tif (size == 4) *(int32_t*)res = (int32_t)r;\n"
-    "\t\telse if (size == 2) *(int16_t*)res = (int16_t)r;\n"
-    "\t\telse *(int8_t*)res = (int8_t)r;\n"
-    "\t\treturn r < min || r > max;\n"
-    "\t} else {\n"
-    "\t\tuint64_t r = a * b;\n"
-    "\t\tuint64_t max = (size == 4) ? UINT32_MAX : ((size == 2) ? UINT16_MAX : UINT8_MAX);\n"
-    "\t\tif (size == 4) *(uint32_t*)res = (uint32_t)r;\n"
-    "\t\telse if (size == 2) *(uint16_t*)res = (uint16_t)r;\n"
-    "\t\telse *(uint8_t*)res = (uint8_t)r;\n"
-    "\t\treturn r > max;\n"
-    "\t}\n"
-    "}\n"
-    "#define __builtin_mul_overflow(a, b, res) __c3_tcc_mul_overflow((uint64_t)(a), (uint64_t)(b), (void*)(res), sizeof(*(res)), ((__typeof__(*(res)))-1 < 0))\n"
-    "#else\n"
-    "#define __c3_abort    __builtin_trap\n"
-    "#endif\n\n"
-    "#define __C3_SLICE_EQ(a, b) \\\n"
-    "\t(((a).len == (b).len) && ((a).len == 0 || (a).ptr == (b).ptr || __c3_memcmp((a).ptr, (b).ptr, (a).len * sizeof(*(a).ptr)) == 0))\n"
-    "#define __C3_SLICE_NE(a, b) (!__C3_SLICE_EQ(a, b))\n\n"
-    "typedef struct {\n\tconst char *ptr;\n\tsize_t len;\n} c3string_t;\n\n"
-    "typedef struct c3type_info__ {\n"
-    "\tuint8_t kind;\n\tconst struct c3type_info__ *parentof;\n\tvoid *dtable;\n\tsize_t size;\n\tconst struct c3type_info__ *inner;\n\tsize_t len;\n\tconst char *name;\n\tconst c3string_t *names;\n} c3type_info_t;\n\n"
-    "typedef const c3type_info_t* c3typeid_t;\n"
-    "typedef void* c3fault_t;\n"
-    "extern __c3_thread_local c3fault_t __c3_current_fault;\n"
-    "typedef struct { void* ptr; c3typeid_t typeid; } __c3_any__;\n\n"
-    "#if !defined(_WIN32) && !defined(_WIN64)\n"
-    "extern long syscall(long number, ...);\n"
-    "#endif\n\n"
-    "#if defined(__TINYC__)\n"
-    "typedef uint64_t __c3_uint128;\n"
-    "typedef int64_t __c3_int128;\n"
-    "#elif defined(__SIZEOF_INT128__) || (defined(__clang__) && !defined(_MSC_VER)) || (defined(__GNUC__) && defined(__x86_64__))\n"
-    "typedef unsigned __int128 __c3_uint128;\n"
-    "typedef __int128 __c3_int128;\n"
-    "#else\n"
-    "typedef uint64_t __c3_uint128;\n"
-    "typedef int64_t __c3_int128;\n"
-    "#endif\n\n"
-    "static inline bool __c3_type_matches(c3typeid_t self_type, c3typeid_t target_type) {\n"
-    "\tif (!self_type || !target_type) { return false; }\n"
-    "\tfor (c3typeid_t t = self_type; t != NULL; t = t->parentof) {\n"
-    "\t\tif (t == target_type) { return true; }\n"
-    "\t}\n"
-    "\treturn false;\n"
-    "}\n\n"
-    "void __c3_init_runtime(void);\n\n";
+#include "c_runtime_header.h"
 
 static Type **c_collect_runtime_types(HTable *emitted_types)
 {
@@ -1731,7 +1420,7 @@ void c_emit_runtime_header(const char *dir)
 		error_exit("Failed to open output runtime header '%s'.", header_path);
 	}
 
-	fputs(c_runtime_header_boilerplate, f);
+	fwrite(c_runtime_header_boilerplate, 1, c_runtime_header_boilerplate_len, f);
 
 	HTable emitted_types;
 	Type **all_types = c_collect_runtime_types(&emitted_types);
@@ -1824,7 +1513,6 @@ void c_emit_runtime_header(const char *dir)
 			}
 		}
 	}
-	fputs("\n#endif /* __C3_RUNTIME_H__ */\n", f);
 	fclose(f);
 }
 

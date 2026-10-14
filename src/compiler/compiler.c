@@ -339,7 +339,9 @@ static int compile_cfiles(const char *cc, const char **files, const char *flags,
 	int total = 0;
 	FOREACH(const char *, file, files)
 	{
-		out_files[total++] = cc_compiler(cc, file, flags, include_dirs, output_subdir);
+		const char *out = cc_compiler(cc, file, NULL, flags, include_dirs, output_subdir);
+		if (!out) error_exit("Failed to compile '%s'.\n", file);
+		out_files[total++] = out;
 	}
 	return total;
 }

@@ -414,7 +414,7 @@ void c_emit_bitstruct_accessors_to_file(FILE *f, Decl *decl)
 		{
 			const char *c_tname   = c_type_name(NULL, container_type);
 			uint64_t mask         = (bit_size >= 64) ? ~0ULL : (((uint64_t)1 << bit_size) - 1);
-			uint64_t shifted_mask = (bit_size + start_bit >= 64) ? ~0ULL : (mask << start_bit);
+			uint64_t shifted_mask = (bit_size >= 64) ? ~0ULL : (mask << start_bit);
 			fprintf(f, "\t%s *v = (%s *)p;\n", c_tname, c_tname);
 			if (c_is_bitstruct_requires_byteswap(decl))
 			{
@@ -927,7 +927,7 @@ void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target
 				if (fvid != 0)
 				{
 					out_val->optional = fvid;
-					PRINTF("__c3_current_fault = ___var_%d;\n", fvid);
+					PRINTF("if (___var_%d != NULL && __c3_current_fault == NULL) { __c3_current_fault = ___var_%d; }\n", fvid, fvid);
 				}
 				if (c_type_is_aggregate(target_type))
 				{
@@ -1132,7 +1132,7 @@ void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *right_val, const ch
 				{
 					PRINTF("%s__f = __c3_current_fault;\n", gname);
 				}
-				PRINTF("__c3_current_fault = %s__f;\n", gname);
+				PRINT("__c3_current_fault = NULL;\n");
 			}
 			Type *gt = c_decl_type(left_decl);
 			if (!right_val || right_val->var == 0)

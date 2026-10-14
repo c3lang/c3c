@@ -40,30 +40,6 @@ const CInt SD_SEND = 1;
 const CInt SD_BOTH = 2;
 extern fn CInt shutdown(Win32_SOCKET s, CInt how);
 
-struct SystemInfo
-{
-	union
-	{
-		uint dwOemId;
-		struct
-		{
-			ushort wProcessorArchitecture;
-			ushort wReserved;
-		}
-	}
-	uint     dwPageSize;
-	void*    lpMinimumApplicationAddress;
-	void*    lpMaximumApplicationAddress;
-	usz      dwActiveProcessorMask;
-	uint     dwNumberOfProcessors;
-	uint     dwProcessorType;
-	uint     dwAllocationGranularity;
-	ushort   wProcessorLevel;
-	ushort   wProcessorRevision;
-}
-
-extern fn CInt get_system_info(SystemInfo*) @cname("GetSystemInfo");
-
 // Aliases to simplify libc use
 macro Tm* localtime_r(Time_t* timer, Tm* buf) => _localtime64_s(buf, timer);
 macro CInt setjmp(JmpBuf* buffer) => _setjmp(buffer, null);
