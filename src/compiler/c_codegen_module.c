@@ -397,12 +397,12 @@ void c_emit_const_float_literal(GenContext *c, double f)
 {
 	if (isnan(f))
 	{
-		PRINT("(0.0 / 0.0)");
+		PRINT("__c3_nan");
 		return;
 	}
 	if (isinf(f))
 	{
-		PRINT(f < 0 ? "(-1.0 / 0.0)" : "(1.0 / 0.0)");
+		PRINT(f < 0 ? "(-__c3_inf)" : "(__c3_inf)");
 		return;
 	}
 	if (f == 0.0 && signbit(f))
@@ -1373,6 +1373,13 @@ static const char c_runtime_header_boilerplate[] =
     "#define __c3_memmove  __builtin_memmove\n"
     "#define __c3_memcmp   __builtin_memcmp\n"
     "#define __c3_fmod     __builtin_fmod\n"
+    "#endif\n\n"
+    "#if defined(__GNUC__) || defined(__clang__)\n"
+    "#define __c3_inf (__builtin_inff())\n"
+    "#define __c3_nan (__builtin_nanf(\"\"))\n"
+    "#else\n"
+    "#define __c3_inf ((double)((float)(1e+300 * 1e+300)))\n"
+    "#define __c3_nan ((double)((float)(((float)(1e+300 * 1e+300)) * 0.0F)))\n"
     "#endif\n\n"
     "#if defined(__TINYC__) || (defined(_MSC_VER) && !defined(__clang__))\n"
     "extern size_t strlen(const char *);\n"
