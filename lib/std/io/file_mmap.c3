@@ -10,9 +10,9 @@ struct FileMmap
 }
 
 <*
- Provides a slice of bytes to the expected mapped range discarding the extra bytes due to misaligment of offset and/or size.
+ Provides a slice of bytes to the expected mapped range discarding the extra bytes due to misaligment of offset and/or size. When offset and len are specified to be zero in File::mmap_open(), this returns a slice containing the entire file.
 
- @return "Slice of the mapped range where the first byte matches the file's byte at the offset specified to File::file_mmap()"
+ @return "Slice of the mapped range of the file"
 *>
 fn char[] FileMmap.bytes(&self)
 {
@@ -20,7 +20,7 @@ fn char[] FileMmap.bytes(&self)
 }
 
 <*
-  Destroys the underlying VirtualMemory object ie. calls munmap()"
+  Destroys the underlying VirtualMemory (calls munmap()), and closes the underlying file (calls file.close())"
 *>
 fn void? FileMmap.destroy(&self) @maydiscard
 {
