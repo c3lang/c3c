@@ -857,23 +857,31 @@ void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target
 		target_type = type_int;
 	}
 
-	int temp          = c_emit_temp_var(c, out_val, target_type);
-	const char *tname = c_type_name(c, target_type);
-
 	if (!expr)
 	{
+		int temp = c_emit_temp_var(c, out_val, target_type);
 		c_emit_var_zero_init(c, temp, target_type);
 		return;
 	}
 	if (expr->expr_kind == EXPR_RECAST || expr->expr_kind == EXPR_ADDR_CONVERSION || expr->expr_kind == EXPR_RVALUE)
 	{
-		PRINTF("%s ___var_%d;\n", tname, temp);
-		CValue inner_val = {0};
-		c_emit_expr(c, &inner_val, expr->inner_expr);
-		c_value_rvalue(c, &inner_val);
+		c_emit_expr(c, out_val, expr->inner_expr);
+		c_value_rvalue(c, out_val);
+		if (!c_type_is_aggregate(target_type) && out_val->type &&
+		    (target_type == out_val->type || strcmp(c_type_name(c, target_type), c_type_name(c, out_val->type)) == 0))
+		{
+			return;
+		}
+		int temp = c_emit_temp_var(c, NULL, target_type);
+		PRINTF("%s ___var_%d;\n", c_type_name(c, target_type), temp);
+		CValue inner_val = *out_val;
 		c_emit_assign_var(c, temp, target_type, &inner_val);
+		*out_val = (CValue){.var = temp, .type = target_type, .kind = CV_VALUE};
 		return;
 	}
+
+	int temp          = c_emit_temp_var(c, out_val, target_type);
+	const char *tname = c_type_name(c, target_type);
 	if (expr->expr_kind == EXPR_IDENTIFIER || expr->expr_kind == EXPR_DECL)
 	{
 		Decl *decl = (expr->expr_kind == EXPR_DECL) ? expr->decl_expr : c_decl_unwrap(expr->ident_expr);

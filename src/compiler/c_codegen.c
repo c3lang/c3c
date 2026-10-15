@@ -1180,11 +1180,11 @@ static const char *c_backend_build_cflags(const char *cc)
 
 	if (compiler.build.debug_info == DEBUG_INFO_FULL)
 	{
-		scratch_buffer_append(is_cl ? "/Z7 " : "-g ");
+		scratch_buffer_append(is_cl ? "/Z7 " : (is_clang ? "-g -fno-standalone-debug " : "-g "));
 	}
 	else if (compiler.build.debug_info == DEBUG_INFO_LINE_TABLES)
 	{
-		scratch_buffer_append(is_cl ? "/Z7 " : "-g1 ");
+		scratch_buffer_append(is_cl ? "/Z7 " : (is_clang ? "-gline-tables-only " : "-g1 "));
 	}
 	else if (!is_cl && compiler.build.debug_info == DEBUG_INFO_NONE)
 	{

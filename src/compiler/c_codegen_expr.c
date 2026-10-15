@@ -2120,6 +2120,14 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			c_emit_expr(c, &inner_val, expr->inner_expr);
 			c_value_rvalue(c, &inner_val);
 			Type *target_type = c_expr_type_or(expr, type_int);
+
+			if (inner_val.var != 0 && !c_type_is_aggregate(target_type) && inner_val.type &&
+			    (target_type == inner_val.type || strcmp(c_type_name(c, target_type), c_type_name(c, inner_val.type)) == 0))
+			{
+				*value = inner_val;
+				return;
+			}
+
 			int temp          = c_emit_temp_var(c, value, target_type);
 			const char *tname = c_type_name(c, target_type);
 
