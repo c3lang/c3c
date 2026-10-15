@@ -1122,6 +1122,31 @@ const int WGL_CONTEXT_ROBUST_ACCESS_BIT_ARB = 0x00000004;
 
 // --- helpers
 
+fn void _apply_border(GfxWindow* win, bool border)
+{
+	Win32_RECT rect;
+	win32::getClientRect(win.src.window, &rect);
+	Win32_LONG style = win32::getWindowLongW(win.src.window, win32::GWL_STYLE);
+
+	if (!border)
+	{
+		style &= ~(Win32_LONG)win32::WS_OVERLAPPEDWINDOW;
+		style |= (Win32_LONG)win32::WS_POPUP;
+	}
+	else
+	{
+		style &= ~(Win32_LONG)win32::WS_POPUP;
+		style |= (Win32_LONG)gfx::_winapi_window_get_style(win.internal.flags);
+	}
+
+	Win32_DWORD ex_style = gfx::_winapi_window_get_style_ex(win, win.internal.flags);
+	win32::clientToScreen(win.src.window, (Win32_POINT*)&rect.left);
+	win32::clientToScreen(win.src.window, (Win32_POINT*)&rect.right);
+	win32::adjustWindowRectEx(&rect, (Win32_DWORD)style, 0, ex_style);
+	win32::setWindowLongW(win.src.window, -16, style);
+	win32::setWindowPos(win.src.window, win32::HWND_TOP, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0x0020 | 0x0010 | 0x0004);
+}
+
 fn Win32_HICON _load_handle_image(char* data, int w, int h, GfxFormat format, int icon) @local
 {
 	Win32_BITMAPV5HEADER bi = {
@@ -1518,31 +1543,6 @@ fn int _get_monitor_handle_callback(void* monitor, void* hdcMonitor, Win32_RECT*
 		if (mi.szDevice[i] == 0 && node.adapter_name[i] == 0) node.monitor = monitor;
 	}
 	return 1;
-}
-
-fn void _apply_border(GfxWindow* win, bool border) @local
-{
-	Win32_RECT rect;
-	win32::getClientRect(win.src.window, &rect);
-	Win32_LONG style = win32::getWindowLongW(win.src.window, win32::GWL_STYLE);
-
-	if (!border)
-	{
-		style &= ~(Win32_LONG)win32::WS_OVERLAPPEDWINDOW;
-		style |= (Win32_LONG)win32::WS_POPUP;
-	}
-	else
-	{
-		style &= ~(Win32_LONG)win32::WS_POPUP;
-		style |= (Win32_LONG)gfx::_winapi_window_get_style(win.internal.flags);
-	}
-
-	Win32_DWORD ex_style = gfx::_winapi_window_get_style_ex(win, win.internal.flags);
-	win32::clientToScreen(win.src.window, (Win32_POINT*)&rect.left);
-	win32::clientToScreen(win.src.window, (Win32_POINT*)&rect.right);
-	win32::adjustWindowRectEx(&rect, (Win32_DWORD)style, 0, ex_style);
-	win32::setWindowLongW(win.src.window, -16, style);
-	win32::setWindowPos(win.src.window, win32::HWND_TOP, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0x0020 | 0x0010 | 0x0004);
 }
 
 macro GfxPoint _param_to_point(iptr lParam)
