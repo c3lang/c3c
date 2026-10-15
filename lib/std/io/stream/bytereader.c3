@@ -1,5 +1,8 @@
 module std::io;
 
+<*
+	An InStream-implementing struct mapping to a character array.
+*>
 struct ByteReader (InStream)
 {
 	char[] bytes;
@@ -11,6 +14,11 @@ fn long ByteReader.len(&self) @dynamic
 	return self.bytes.len;
 }
 
+<*
+	Initializes the ByteReader struct by assigning it to a character array
+
+	@param bytes : "The character array of data to assign to the ByteReader struct"
+*>
 fn ByteReader* ByteReader.init(&self, char[] bytes)
 {
 	*self = { .bytes = bytes };
