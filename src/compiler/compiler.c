@@ -788,6 +788,11 @@ void compiler_compile(void)
 	{
 		OUTF("Asm files written to '%s'.\n", compiler.build.asm_file_dir);
 	}
+	if (compiler.build.backend == BACKEND_C && !compiler.build.emit_object_files)
+	{
+		const char *c_out_dir = compiler.build.object_file_dir ? compiler.build.object_file_dir : ".";
+		OUTF("C files written to '%s'.\n", c_out_dir);
+	}
 	free_arenas();
 
 	int output_file_count = vec_size(gen_contexts);
@@ -823,24 +828,22 @@ void compiler_compile(void)
 	int data_idx = 0;
 
 	const char *default_cc = (cfiles || cfiles_library) ? find_c_compiler() : NULL;
+	if (default_cc && !file_executable_in_path(default_cc))
+		error_exit("C compiler '%s' was not found.", default_cc);
 
-	// Enqueue C sources first so long-running files (e.g. miniaudio.c) start immediately
-	FOREACH(const char *, c_src, compiler.build.csources)
+	for (int i = 0; i < output_file_count; i++)
 	{
-		compile_data[data_idx] = (CompileData){
-			.c_file        = c_src,
-			.cc            = compiler.build.cc ? compiler.build.cc : default_cc,
-			.cflags        = compiler.build.cflags,
-			.cinclude_dirs = compiler.build.cinclude_dirs,
-			.output_subdir = "tmp_c_compile",
-		};
-		compile_data[data_idx].task = (Task){ &thread_compile_c_source, &compile_data[data_idx] };
+		compile_data[data_idx] = (CompileData){ .context = gen_contexts[i] };
+		compile_data[data_idx].task = (Task){ task, &compile_data[data_idx] };
 		vec_add(tasks, &compile_data[data_idx].task);
 		data_idx++;
 	}
+
 	FOREACH(LibraryTarget *, lib, compiler.build.ccompiling_libraries)
 	{
 		const char *lib_cc = lib->cc ? lib->cc : default_cc;
+		if (lib->cc && !file_executable_in_path(lib->cc))
+			error_exit("Library '%s' specifies C compiler '%s' which was not found.", lib->parent->provides, lib->cc);
 		FOREACH(const char *, lib_src, lib->csources)
 		{
 			compile_data[data_idx] = (CompileData){
@@ -855,10 +858,17 @@ void compiler_compile(void)
 			data_idx++;
 		}
 	}
-	for (int i = 0; i < output_file_count; i++)
+
+	FOREACH(const char *, c_src, compiler.build.csources)
 	{
-		compile_data[data_idx] = (CompileData){ .context = gen_contexts[i] };
-		compile_data[data_idx].task = (Task){ task, &compile_data[data_idx] };
+		compile_data[data_idx] = (CompileData){
+			.c_file        = c_src,
+			.cc            = default_cc,
+			.cflags        = compiler.build.cflags,
+			.cinclude_dirs = compiler.build.cinclude_dirs,
+			.output_subdir = "tmp_c_compile",
+		};
+		compile_data[data_idx].task = (Task){ &thread_compile_c_source, &compile_data[data_idx] };
 		vec_add(tasks, &compile_data[data_idx].task);
 		data_idx++;
 	}
@@ -2348,13 +2358,20 @@ File *compile_and_invoke(const char *file, const char *args, const char *stdin_d
 
 const char *find_c_compiler(void)
 {
-	if (compiler.build.cc) return compiler.build.cc;
+	if (compiler.build.cc)
+	{
+		if (!file_executable_in_path(compiler.build.cc))
+			error_exit("C compiler '%s' (set via --cc) was not found.", compiler.build.cc);
+		return compiler.build.cc;
+	}
 	static const char *cc = NULL;
 	if (cc) return cc;
 	const char *cc_env = getenv("C3C_CC");
 	if (cc_env && strlen(cc_env) > 0)
 	{
 		INFO_LOG("Setting CC to %s from environment variable 'C3C_CC'.", cc_env);
+		if (!file_executable_in_path(cc_env))
+			error_exit("C compiler '%s' (set via C3C_CC) was not found.", cc_env);
 		cc = strdup(cc_env);
 		return cc;
 	}
@@ -2368,7 +2385,6 @@ const char *find_c_compiler(void)
 	return cc = "cl.exe";
 #else
 	if (compiler.platform.os == OS_TYPE_EMSCRIPTEN) return cc = "emcc";
-	if (file_executable_in_path("clang")) return cc = "clang";
 	return cc = "cc";
 #endif
 }

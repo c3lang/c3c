@@ -1354,6 +1354,8 @@ void platform_linker(const char *output_file, const char **files, int file_count
 
 const char *cc_compiler(const char *cc, const char *file, const char *out_name, const char *flags, const char **include_dirs, const char *output_subdir)
 {
+	lock_acquire();
+
 	if (!out_name)
 	{
 		const char *dir = compiler.build.object_file_dir;
@@ -1380,8 +1382,6 @@ const char *cc_compiler(const char *cc, const char *file, const char *out_name, 
 		           : str_printf("%s%s", filename, get_object_extension());
 	}
 	bool is_cl_exe = str_ends_with(cc, "cl.exe");
-
-	lock_acquire();
 
 	const char **parts = NULL;
 	const char ***args_ref = &parts;

@@ -1298,11 +1298,9 @@ const char *c_codegen(void *context)
 		return NULL;
 	}
 
-	if (compiler.build.emit_object_files || compiler.build.type == TARGET_TYPE_EXECUTABLE || compiler.build.type == TARGET_TYPE_STATIC_LIB || compiler.build.type == TARGET_TYPE_DYNAMIC_LIB || compiler.build.type == TARGET_TYPE_TEST || compiler.build.type == TARGET_TYPE_BENCHMARK)
+	if (c_backend_cc)
 	{
-		const char *cc     = c_backend_cc ? c_backend_cc : (compiler.build.cc ? compiler.build.cc : find_c_compiler());
-		const char *cflags = c_backend_cflags ? c_backend_cflags : "";
-		const char *out    = cc_compiler(cc, c->c_filename, c->object_filename, cflags, NULL, NULL);
+		const char *out = cc_compiler(c_backend_cc, c->c_filename, c->object_filename, c_backend_cflags, NULL, NULL);
 		if (!out)
 		{
 			exit(EXIT_FAILURE);
@@ -1331,8 +1329,22 @@ void **c_gen(Module **modules, int module_count)
 	c_emit_runtime_header(dir);
 	c_emit_shared_header(dir);
 
-	c_backend_cc     = compiler.build.cc ? compiler.build.cc : find_c_compiler();
-	c_backend_cflags = c_backend_build_cflags(c_backend_cc);
+	bool will_compile = compiler.build.emit_object_files
+		|| compiler.build.type == TARGET_TYPE_EXECUTABLE
+		|| compiler.build.type == TARGET_TYPE_STATIC_LIB
+		|| compiler.build.type == TARGET_TYPE_DYNAMIC_LIB
+		|| compiler.build.type == TARGET_TYPE_TEST
+		|| compiler.build.type == TARGET_TYPE_BENCHMARK;
+	if (will_compile)
+	{
+		c_backend_cc     = find_c_compiler();
+		c_backend_cflags = c_backend_build_cflags(c_backend_cc);
+	}
+	else
+	{
+		c_backend_cc     = NULL;
+		c_backend_cflags = NULL;
+	}
 
 	GenContext **gen_contexts = NULL;
 	GenContext *rt            = c_emit_runtime_c(dir);
