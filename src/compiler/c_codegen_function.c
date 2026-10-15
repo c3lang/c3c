@@ -412,11 +412,11 @@ bool c_emit_function_decl(GenContext *c, Decl *fn, bool is_current_module)
 	}
 	const char *fn_name = c_get_decl_name(fn);
 
-	if (htable_get(&c->decl_names, (void *)fn_name))
+	if (htable_get(c->decl_names, (void *)fn_name))
 	{
 		return false;
 	}
-	htable_set(&c->decl_names, (void *)fn_name, (void *)1);
+	htable_set(c->decl_names, (void *)fn_name, (void *)1);
 
 	Signature *sig = &fn->func_decl.signature;
 	Type *rtype    = typeget(sig->rtype);

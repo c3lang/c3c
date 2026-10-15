@@ -167,6 +167,11 @@ typedef struct CompileData_
 	void *context;
 	const char *object_name;
 	Task task;
+	const char *c_file;
+	const char *cc;
+	const char *cflags;
+	const char **cinclude_dirs;
+	const char *output_subdir;
 } CompileData;
 
 #if LLVM_AVAILABLE
@@ -181,6 +186,13 @@ void thread_compile_task_llvm(void *compile_data)
 	error_exit("LLVM backend not available.");
 }
 #endif 
+
+static void thread_compile_c_source(void *compile_data)
+{
+	CompileData *data = compile_data;
+	data->object_name = cc_compiler(data->cc, data->c_file, NULL, data->cflags, data->cinclude_dirs, data->output_subdir);
+	if (!data->object_name) error_exit("Failed to compile '%s'.\n", data->c_file);
+}
 
 void thread_compile_task_c(void *compile_data)
 {
@@ -327,23 +339,6 @@ static void free_arenas(void)
 	sourceloc_arena_free();
 
 	if (compiler.build.print_stats) print_arena_status();
-}
-
-static int compile_cfiles(const char *cc, const char **files, const char *flags, const char **include_dirs,
-						  const char **out_files, const char *output_subdir)
-{
-	if (!cc || !file_executable_in_path(cc))
-	{
-		cc = find_c_compiler();
-	}
-	int total = 0;
-	FOREACH(const char *, file, files)
-	{
-		const char *out = cc_compiler(cc, file, NULL, flags, include_dirs, output_subdir);
-		if (!out) error_exit("Failed to compile '%s'.\n", file);
-		out_files[total++] = out;
-	}
-	return total;
 }
 
 static void compiler_print_bench(void)
@@ -820,35 +815,55 @@ void compiler_compile(void)
 				   "and all the other code was optimized away.");
 	}
 
-	CompileData *compile_data = ccalloc(sizeof(CompileData), output_file_count);
+	int task_total = output_file_count + cfiles + cfiles_library;
+	CompileData *compile_data = ccalloc(sizeof(CompileData), task_total);
 	const char **obj_files = cmalloc(sizeof(char*) * total_output);
 
-	if (cfiles)
+	Task **tasks = NULL;
+	int data_idx = 0;
+
+	const char *default_cc = (cfiles || cfiles_library) ? find_c_compiler() : NULL;
+
+	// Enqueue C sources first so long-running files (e.g. miniaudio.c) start immediately
+	FOREACH(const char *, c_src, compiler.build.csources)
 	{
-		int compiled = compile_cfiles(compiler.build.cc, compiler.build.csources,
-									  compiler.build.cflags, compiler.build.cinclude_dirs, &obj_files[output_file_count], "tmp_c_compile");
-		ASSERT((int)cfiles == compiled);
-		(void)compiled;
+		compile_data[data_idx] = (CompileData){
+			.c_file        = c_src,
+			.cc            = compiler.build.cc ? compiler.build.cc : default_cc,
+			.cflags        = compiler.build.cflags,
+			.cinclude_dirs = compiler.build.cinclude_dirs,
+			.output_subdir = "tmp_c_compile",
+		};
+		compile_data[data_idx].task = (Task){ &thread_compile_c_source, &compile_data[data_idx] };
+		vec_add(tasks, &compile_data[data_idx].task);
+		data_idx++;
 	}
-	const char **obj_file_next = &obj_files[output_file_count + cfiles];
 	FOREACH(LibraryTarget *, lib, compiler.build.ccompiling_libraries)
 	{
-		obj_file_next += compile_cfiles(lib->cc ? lib->cc : compiler.build.cc, lib->csources,
-										lib->cflags, lib->cinclude_dirs, obj_file_next, lib->parent->provides);
+		const char *lib_cc = lib->cc ? lib->cc : default_cc;
+		FOREACH(const char *, lib_src, lib->csources)
+		{
+			compile_data[data_idx] = (CompileData){
+				.c_file        = lib_src,
+				.cc            = lib_cc,
+				.cflags        = lib->cflags,
+				.cinclude_dirs = lib->cinclude_dirs,
+				.output_subdir = lib->parent->provides,
+			};
+			compile_data[data_idx].task = (Task){ &thread_compile_c_source, &compile_data[data_idx] };
+			vec_add(tasks, &compile_data[data_idx].task);
+			data_idx++;
+		}
 	}
-	for (int i = 0; i < external_objfile_count; i++)
-	{
-		obj_file_next[0] = compiler.build.object_files[i];
-		obj_file_next++;
-	}
-
-	Task **tasks = NULL;
 	for (int i = 0; i < output_file_count; i++)
 	{
-		compile_data[i] = (CompileData) { .context = gen_contexts[i] };
-		compile_data[i].task = (Task) { task, &compile_data[i] };
-		vec_add(tasks, &compile_data[i].task);
+		compile_data[data_idx] = (CompileData){ .context = gen_contexts[i] };
+		compile_data[data_idx].task = (Task){ task, &compile_data[data_idx] };
+		vec_add(tasks, &compile_data[data_idx].task);
+		data_idx++;
 	}
+
+	output_file_count = task_total;
 
 #if USE_PTHREAD
 	INFO_LOG("Will use %d thread(s).\n", compiler.build.build_threads);
@@ -867,7 +882,7 @@ void compiler_compile(void)
 	for (int i = output_file_count; i > 0; i--)
 	{
 		const char *name = compile_data[i - 1].object_name;
-		if (!name) output_file_count--;
+		if (!name) continue;
 		obj_files[index++] = name;
 		if (compiler.build.print_output)
 		{
@@ -879,8 +894,12 @@ void compiler_compile(void)
 		puts("# output-files-end");
 	}
 
-	output_file_count += cfiles + cfiles_library + external_objfile_count;
-	int objfile_delete_count = output_file_count - external_objfile_count;
+	for (int i = 0; i < external_objfile_count; i++)
+	{
+		obj_files[index++] = compiler.build.object_files[i];
+	}
+	output_file_count = index;
+	int objfile_delete_count = index - external_objfile_count;
 	free(compile_data);
 	compiler_codegen_time = bench_mark();
 
@@ -2349,6 +2368,7 @@ const char *find_c_compiler(void)
 	return cc = "cl.exe";
 #else
 	if (compiler.platform.os == OS_TYPE_EMSCRIPTEN) return cc = "emcc";
+	if (file_executable_in_path("clang")) return cc = "clang";
 	return cc = "cc";
 #endif
 }

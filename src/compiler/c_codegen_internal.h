@@ -109,14 +109,14 @@ typedef struct GenContext
 
 	CLocalVar *function_locals;
 
-	HTable gen_decl;
-	HTable gen_def;
+	HTable *gen_decl;
+	HTable *gen_def;
 	HTable local_vars;
 	HTable local_fault_vars;
 	HTable declared_vars;
-	HTable decl_names;
+	HTable *decl_names;
 	HTable emitted_func_defs;
-	HTable emitted_global_decls;
+	HTable *emitted_global_decls;
 	HTable emitted_global_defs;
 } GenContext;
 
