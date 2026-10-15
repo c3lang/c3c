@@ -128,6 +128,7 @@ struct GfxWindowInternal
 	bool in_focus;
 	bool mouse_inside;
 	bool maximized_state;
+	bool window_in_fullscreen;
 	GfxKeyModifier mod;
 	GfxEventMask enabled_events;
 	GfxWindowFlags flags;

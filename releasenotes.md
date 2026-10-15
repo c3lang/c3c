@@ -9,6 +9,7 @@
 - Fixed regression for MacOS loading multiple C3 dylibs. `@finalizer` now correctly works in descending order.
 - Fix miscompilation for OpenBSD on later processors. #3563
 - Polling a GfxEvent for a window and having events on other windows would silently discard the last event.
+- Setting no-border state during fullscreen on Win32 would not work properly.
 
 ### Stdlib changes
 

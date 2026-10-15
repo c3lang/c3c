@@ -496,28 +496,11 @@ fn void window_set_aspect_ratio(GfxWindow* win, int w, int h) @private
 fn void window_set_border(GfxWindow* win, bool border)
 {
 	win.internal.flags.no_border = !border;
-	Win32_RECT rect;
-	win32::getClientRect(win.src.window, &rect);
-	Win32_LONG style = win32::getWindowLongW(win.src.window, win32::GWL_STYLE);
-
-	if (!border)
-	{
-		style &= ~(Win32_LONG)win32::WS_OVERLAPPEDWINDOW;
-		style |= (Win32_LONG)win32::WS_POPUP;
-	}
-	else
-	{
-		style &= ~(Win32_LONG)win32::WS_POPUP;
-		style |= (Win32_LONG)gfx::_winapi_window_get_style(win.internal.flags);
-	}
-
-	Win32_DWORD ex_style = gfx::_winapi_window_get_style_ex(win, win.internal.flags);
-	win32::clientToScreen(win.src.window, (Win32_POINT*)&rect.left);
-	win32::clientToScreen(win.src.window, (Win32_POINT*)&rect.right);
-	win32::adjustWindowRectEx(&rect, (Win32_DWORD)style, 0, ex_style);
-	win32::setWindowLongW(win.src.window, -16, style);
-	win32::setWindowPos(win.src.window, win32::HWND_TOP, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0x0020 | 0x0010 | 0x0004);
+	// A fullscreen window has no border, the one asked for is applied when it leaves fullscreen.
+	if (win.internal.window_in_fullscreen) return;
+	_apply_border(win, border);
 }
+
 
 fn void window_set_capture_mouse_platform(GfxWindow* win, bool state)
 {
@@ -548,17 +531,19 @@ fn void window_set_floating(GfxWindow* win, bool floating)
 
 fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
 {
+	if (win.internal.window_in_fullscreen == fullscreen) return;
 	GfxMonitor*? mon = window_find_monitor(win);
 	if (catch mon) return;
 
 	if (!fullscreen)
 	{
+		win.internal.window_in_fullscreen = false;
 		win.internal.flags.fullscreen = false;
 		win.bounds = win.internal.old_bounds;
 
 		// Ignore errors
 		(void)monitor_set_mode(mon, &win.internal.old_mode);
-		window_set_border(win, true);
+		_apply_border(win, !win.internal.flags.no_border);
 
 		Win32_RECT rect = {0, 0, ...win.internal.old_bounds.size};
 		uint style = gfx::_winapi_window_get_style(win.internal.flags);
@@ -572,7 +557,8 @@ fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
 	win.internal.old_bounds = win.bounds;
 	win.internal.old_mode = mon.mode;
 	win.internal.flags.fullscreen = true;
-	window_set_border(win, false);
+	_apply_border(win, false);
+	win.internal.window_in_fullscreen = true;
 
 	win32::setWindowPos(win.src.window, win32::HWND_TOPMOST, ...mon.origin, 0, 0, 0x0200 | 0x0020 | 0x0040 | 0x0001);
 	win.origin = mon.origin;
@@ -1532,6 +1518,31 @@ fn int _get_monitor_handle_callback(void* monitor, void* hdcMonitor, Win32_RECT*
 		if (mi.szDevice[i] == 0 && node.adapter_name[i] == 0) node.monitor = monitor;
 	}
 	return 1;
+}
+
+fn void _apply_border(GfxWindow* win, bool border) @local
+{
+	Win32_RECT rect;
+	win32::getClientRect(win.src.window, &rect);
+	Win32_LONG style = win32::getWindowLongW(win.src.window, win32::GWL_STYLE);
+
+	if (!border)
+	{
+		style &= ~(Win32_LONG)win32::WS_OVERLAPPEDWINDOW;
+		style |= (Win32_LONG)win32::WS_POPUP;
+	}
+	else
+	{
+		style &= ~(Win32_LONG)win32::WS_POPUP;
+		style |= (Win32_LONG)gfx::_winapi_window_get_style(win.internal.flags);
+	}
+
+	Win32_DWORD ex_style = gfx::_winapi_window_get_style_ex(win, win.internal.flags);
+	win32::clientToScreen(win.src.window, (Win32_POINT*)&rect.left);
+	win32::clientToScreen(win.src.window, (Win32_POINT*)&rect.right);
+	win32::adjustWindowRectEx(&rect, (Win32_DWORD)style, 0, ex_style);
+	win32::setWindowLongW(win.src.window, -16, style);
+	win32::setWindowPos(win.src.window, win32::HWND_TOP, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0x0020 | 0x0010 | 0x0004);
 }
 
 macro GfxPoint _param_to_point(iptr lParam)
