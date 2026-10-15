@@ -725,6 +725,7 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 	if (!win32::describePixelFormat(win.src.hdc, pixel_format, Win32_PIXELFORMATDESCRIPTOR::size, &suggested)
 		|| !win32::setPixelFormat(win.src.hdc, pixel_format, &pfd)) return gfx::FAILED_TO_SET_WGL_PIXEL_FORMAT~;
 
+	Win32_HGLRC share = hints.share ? hints.share.ctx : null;
 	if (gfx::wgl_create_context_attribs_arb_fn != null)
 	{
 		FixedList{int, 40} stack;
@@ -763,22 +764,24 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 		if (flags) stack.push_all({ WGL_CONTEXT_FLAGS_ARB, flags });
 
 		stack.push_all({ 0, 0 });
-		win.src.ctx.native.ctx = gfx::wgl_create_context_attribs_arb_fn(win.src.hdc, null, stack.array_view());
+		win.src.ctx.native.ctx = gfx::wgl_create_context_attribs_arb_fn(win.src.hdc, share, stack.array_view());
 	}
 
 	if (gfx::wgl_create_context_attribs_arb_fn == null || win.src.ctx.native.ctx == null)
 	{
 		log::warn("Failed to create accelerated OpenGL context", category: log::CATEGORY_VIDEO);
 		win.src.ctx.native.ctx = gfx::wgl_create_context_fn(win.src.hdc);
+		if (share && win.src.ctx.native.ctx && !gfx::wgl_share_lists_fn(share, win.src.ctx.native.ctx))
+		{
+			log::warn("Failed to share OpenGL contexts", category: log::CATEGORY_VIDEO);
+		}
 	}
 
 	win32::releaseDC(win.src.window, win.src.hdc);
 	win.src.hdc = win32::getDC(win.src.window);
 
-	if (hints.share != null) gfx::wgl_share_lists_fn(get_current_opengl_context(), hints.share.ctx);
-
 	gfx::wgl_make_current_fn(win.src.hdc, win.src.ctx.native.ctx);
-	log::info("Failed to create accelerated OpenGL context", category: log::CATEGORY_VIDEO);
+	log::info("OpenGL context initialized.", category: log::CATEGORY_VIDEO);
 }
 
 fn void window_make_current_opengl_context(GfxWindow* win)
