@@ -35,6 +35,7 @@ sat_shl never saturates: int::max.sat_shl(1) gives -2.
 12. goto to an undeclared label. is_opt emits goto __C3_LABEL_n (c_codegen_expr.c:994,1002), but the label is only emitted on the fall-through path (:1236). Shifts, vector ops, float %, slice compares and similar early-return paths skip it. int? r = get(3) << 2; fails. It also hits real stdlib code: std::gfx scale_to_monitor (monitor.scale * (Vec2)size) breaks --strip-unused=no.
 
 13. trap-on-wrap is broken. It emits __builtin_add_overflow(a, b, &___var_N) into a variable that is never declared (c_codegen_expr.c:1046). Ordinary stdlib code fails with use of undeclared identifier. The same block is duplicated at :1042-1056, and every check is type_is_signed, so unsigned overflow never traps (LLVM traps it).
+(Fixed)
 
 14. A module containing only an enum with associated values fails to link. c_module_has_live_code (c_codegen.c:373) ignores unit->enums, so no .c is written. The result is undefined: colors__Color__assoc_label.
 (Fixed)

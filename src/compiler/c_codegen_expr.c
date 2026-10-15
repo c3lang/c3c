@@ -873,7 +873,7 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 				}
 			}
 		}
-		else if (compiler.build.feature.trap_on_wrap && type_is_signed(target_t) && !c_type_is_aggregate(target_t) &&
+		else if (compiler.build.feature.trap_on_wrap && type_is_integer(target_t) && !c_type_is_aggregate(target_t) &&
 		         (op == BINARYOP_ADD_ASSIGN || op == BINARYOP_SUB_ASSIGN || op == BINARYOP_MULT_ASSIGN))
 		{
 			CValue current_left = {0};
@@ -1041,8 +1041,8 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 		}
 	}
 
-	if (compiler.build.feature.trap_on_wrap && type_is_signed(expr_type) && !c_type_is_aggregate(expr_type) &&
-	    (op == BINARYOP_ADD || op == BINARYOP_SUB || op == BINARYOP_MULT))
+	if (compiler.build.feature.trap_on_wrap && left_t && right_t && type_is_integer(left_t) && type_is_integer(right_t) &&
+	    !c_type_is_aggregate(expr_type) && (op == BINARYOP_ADD || op == BINARYOP_SUB || op == BINARYOP_MULT))
 	{
 		const char *bname = (op == BINARYOP_ADD) ? "__builtin_add_overflow" : (op == BINARYOP_SUB ? "__builtin_sub_overflow" : "__builtin_mul_overflow");
 		PRINTF("%s ___var_%d;\n", type_string, value->var);
@@ -1443,7 +1443,7 @@ void c_emit_inc_dec(GenContext *c, CValue *value, Expr *expr, bool is_post)
 		c_emit_bitstruct_read_container(c, &cur_val, parent_expr, bitstruct_decl, member, member_type, container_ptr_var, c_tname);
 
 		int new_temp = c_emit_temp_var(c, NULL, member_type);
-		if (compiler.build.feature.trap_on_wrap && type_is_signed(member_type))
+		if (compiler.build.feature.trap_on_wrap && type_is_integer(member_type))
 		{
 			PRINTF("%s ___var_%d;\n", mname, new_temp);
 			PRINTF("if (%s(___var_%d, 1, &___var_%d)) { __c3_abort(); }\n", bname, cur_val.var, new_temp);
@@ -1497,7 +1497,7 @@ void c_emit_inc_dec(GenContext *c, CValue *value, Expr *expr, bool is_post)
 			PRINTF("___var_%d.ptr[%d] = ___var_%d.ptr[%d] %s 1;\n", new_temp, k, old_val.var, k, op_str);
 		}
 	}
-	else if (compiler.build.feature.trap_on_wrap && type_is_signed(target_type))
+	else if (compiler.build.feature.trap_on_wrap && type_is_integer(target_type))
 	{
 		PRINTF("%s ___var_%d;\n", tname, new_temp);
 		PRINTF("if (%s(___var_%d, 1, &___var_%d)) { __c3_abort(); }\n", bname, old_val.var, new_temp);
@@ -1811,7 +1811,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 				}
 
 				int res_temp = c_emit_temp_var(c, &result_val, member_type);
-				if (compiler.build.feature.trap_on_wrap && type_is_signed(member_type) &&
+				if (compiler.build.feature.trap_on_wrap && type_is_integer(member_type) &&
 				    (base_op == BINARYOP_ADD || base_op == BINARYOP_SUB || base_op == BINARYOP_MULT))
 				{
 					const char *bname = (base_op == BINARYOP_ADD) ? "__builtin_add_overflow" : (base_op == BINARYOP_SUB) ? "__builtin_sub_overflow"
