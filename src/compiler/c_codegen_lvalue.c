@@ -31,9 +31,11 @@ bool c_find_member_index_rec(Decl *parent_decl, Decl *member, int *out_indices, 
 		return false;
 	}
 
+	Decl *unwrapped_member = c_decl_unwrap(member);
+
 	FOREACH_IDX(i1, Decl *, m, parent_decl->strukt.members)
 	{
-		if (m == member)
+		if (c_decl_unwrap(m) == unwrapped_member)
 		{
 			if (*out_depth < max_depth)
 			{
@@ -57,13 +59,13 @@ bool c_find_member_index_rec(Decl *parent_decl, Decl *member, int *out_indices, 
 
 	FOREACH_IDX(i3, Decl *, m, parent_decl->strukt.members)
 	{
-		if (m->decl_kind == DECL_STRUCT || m->decl_kind == DECL_UNION || m->decl_kind == DECL_BITSTRUCT ||
-		    (m->decl_kind == DECL_VAR && is_valid_type_ptr(m->type) &&
-		     (type_flatten(m->type)->type_kind == TYPE_STRUCT || type_flatten(m->type)->type_kind == TYPE_UNION || type_flatten(m->type)->type_kind == TYPE_BITSTRUCT)))
+		bool is_sub = (m->decl_kind == DECL_STRUCT || m->decl_kind == DECL_UNION || m->decl_kind == DECL_BITSTRUCT || m->is_substruct || !m->name);
+		if (is_sub)
 		{
-			Decl *sub_decl  = (m->decl_kind == DECL_STRUCT || m->decl_kind == DECL_UNION || m->decl_kind == DECL_BITSTRUCT)
-			                      ? m
-			                      : type_flatten(m->type)->decl;
+			Decl *sub_decl = (m->decl_kind == DECL_STRUCT || m->decl_kind == DECL_UNION || m->decl_kind == DECL_BITSTRUCT)
+			                     ? m
+			                     : (m->type ? type_flatten(m->type)->decl : NULL);
+			if (!sub_decl) continue;
 			int saved_depth = *out_depth;
 			if (*out_depth < max_depth)
 			{
