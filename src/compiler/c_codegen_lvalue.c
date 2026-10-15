@@ -867,6 +867,7 @@ void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target
 	}
 	if (expr->expr_kind == EXPR_RECAST || expr->expr_kind == EXPR_ADDR_CONVERSION || expr->expr_kind == EXPR_RVALUE)
 	{
+		PRINTF("%s ___var_%d;\n", tname, temp);
 		CValue inner_val = {0};
 		c_emit_expr(c, &inner_val, expr->inner_expr);
 		c_value_rvalue(c, &inner_val);

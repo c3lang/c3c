@@ -193,6 +193,7 @@ void c_value_rvalue(GenContext *c, CValue *val)
 
 	if (c_type_is_aggregate(t))
 	{
+		PRINTF("%s ___var_%d;\n", tname, temp);
 		PRINTF("__c3_memcpy(&___var_%d, (void*)___var_%d, sizeof(%s));\n", temp, val->var, tname);
 	}
 	else
@@ -489,6 +490,10 @@ void c_emit_local_var_declarations(GenContext *c)
 {
 	FOREACH(CLocalVar, lv, c->function_locals)
 	{
+		if (!lv.decl)
+		{
+			continue;
+		}
 		if (htable_get(&c->declared_vars, (void *)(uintptr_t)lv.id))
 		{
 			continue;

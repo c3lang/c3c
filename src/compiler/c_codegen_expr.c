@@ -375,7 +375,7 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 				if (num_varargs == 0)
 				{
 					int slice_var = c_emit_temp_var(c, &c_args[arg_idx++], slice_type);
-					PRINTF("___var_%d = (%s){ .ptr = NULL, .len = 0 };\n", slice_var, slice_tname);
+					PRINTF("%s ___var_%d = (%s){ .ptr = NULL, .len = 0 };\n", slice_tname, slice_var, slice_tname);
 				}
 				else
 				{
@@ -426,7 +426,7 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 						}
 					}
 					int slice_var = c_emit_temp_var(c, &c_args[arg_idx++], slice_type);
-					PRINTF("___var_%d = (%s){ .ptr = ___var_%d, .len = %d };\n", slice_var, slice_tname, arr_var, num_varargs);
+					PRINTF("%s ___var_%d = (%s){ .ptr = ___var_%d, .len = %d };\n", slice_tname, slice_var, slice_tname, arr_var, num_varargs);
 					free(vvals);
 				}
 			}
@@ -890,6 +890,7 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 				PRINTF("%s ___var_%d = *(%s*)___var_%d;\n", target_tname, cur_temp, target_tname, addr_val.var);
 			}
 			int res_temp      = c_emit_temp_var(c, NULL, target_t);
+			PRINTF("%s ___var_%d;\n", target_tname, res_temp);
 			const char *bname = (op == BINARYOP_ADD_ASSIGN) ? "__builtin_add_overflow" : (op == BINARYOP_SUB_ASSIGN) ? "__builtin_sub_overflow"
 			                                                                                                         : "__builtin_mul_overflow";
 			PRINTF("if (%s(___var_%d, ___var_%d, &___var_%d)) { __c3_abort(); }\n",
@@ -920,6 +921,7 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 			res_type = type_int;
 		}
 		int temp        = c_emit_temp_var(c, value, res_type);
+		PRINTF("%s ___var_%d;\n", c_type_name(c, res_type), temp);
 		CValue left_val = {0};
 		c_emit_expr(c, &left_val, exprptr(binary->left));
 		c_value_rvalue(c, &left_val);
@@ -1443,6 +1445,7 @@ void c_emit_inc_dec(GenContext *c, CValue *value, Expr *expr, bool is_post)
 		int new_temp = c_emit_temp_var(c, NULL, member_type);
 		if (compiler.build.feature.trap_on_wrap && type_is_signed(member_type))
 		{
+			PRINTF("%s ___var_%d;\n", mname, new_temp);
 			PRINTF("if (%s(___var_%d, 1, &___var_%d)) { __c3_abort(); }\n", bname, cur_val.var, new_temp);
 		}
 		else
@@ -1496,6 +1499,7 @@ void c_emit_inc_dec(GenContext *c, CValue *value, Expr *expr, bool is_post)
 	}
 	else if (compiler.build.feature.trap_on_wrap && type_is_signed(target_type))
 	{
+		PRINTF("%s ___var_%d;\n", tname, new_temp);
 		PRINTF("if (%s(___var_%d, 1, &___var_%d)) { __c3_abort(); }\n", bname, old_val.var, new_temp);
 	}
 	else
@@ -1687,6 +1691,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 
 			if (uop == UNARYOP_NEG && compiler.build.feature.trap_on_wrap && type_is_signed(target_type) && !c_type_is_aggregate(target_type))
 			{
+				PRINTF("%s ___var_%d;\n", tname, temp);
 				PRINTF("if (__builtin_sub_overflow(0, ___var_%d, &___var_%d)) { __c3_abort(); }\n",
 				       inner_val.var, temp);
 				return;
@@ -1811,6 +1816,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 				{
 					const char *bname = (base_op == BINARYOP_ADD) ? "__builtin_add_overflow" : (base_op == BINARYOP_SUB) ? "__builtin_sub_overflow"
 					                                                                                                     : "__builtin_mul_overflow";
+					PRINTF("%s ___var_%d;\n", mname, res_temp);
 					PRINTF("if (%s(___var_%d, ___var_%d, &___var_%d)) { __c3_abort(); }\n",
 					       bname, cur_val.var, right_val.var, res_temp);
 				}
@@ -2129,6 +2135,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 				return;
 			}
 
+			PRINTF("%s ___var_%d;\n", tname, temp);
 			c_emit_assign_var(c, temp, target_type, &inner_val);
 			return;
 		}
@@ -2357,6 +2364,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			const char *tname = c_type_name(c, target_type);
 			if (expr->designated_init.splat)
 			{
+				PRINTF("%s ___var_%d;\n", tname, temp);
 				CValue splat_val = {0};
 				c_emit_expr(c, &splat_val, expr->designated_init.splat);
 				c_value_rvalue(c, &splat_val);
