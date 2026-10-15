@@ -9,11 +9,13 @@ struct File (InStream, OutStream)
 module std::io::file;
 import libc, std::io::path, std::io::os, std::time;
 
+<* C fopen wrapper *>
 fn File? open(String filename, String mode)
 {
 	return from_handle(os::native_fopen(filename, mode));
 }
 
+<* C fopen wrapper accepting a Path instead of a String *>
 fn File? open_path(Path path, String mode)
 {
 	return from_handle(os::native_fopen((String)path, mode));
@@ -62,6 +64,7 @@ fn void? delete(String filename) @maydiscard
 
 
 <*
+ C freopen wrapper
  @require self.file != null
 *>
 fn void? File.reopen(&self, String filename, String mode)
@@ -70,6 +73,7 @@ fn void? File.reopen(&self, String filename, String mode)
 }
 
 <*
+ C fseek wrapper
  @require self.file != null
 *>
 fn void? File.seek(&self, long offset, SeekOrigin whence = FROM_START) @dynamic
@@ -78,6 +82,7 @@ fn void? File.seek(&self, long offset, SeekOrigin whence = FROM_START) @dynamic
 }
 
 <*
+ C ftell wrapper
  @require self.file != null
 *>
 fn long? File.cursor(&self) @dynamic
@@ -102,6 +107,7 @@ fn void? File.memopen(File* file, char[] data, String mode)
 
 
 <*
+ C fputc wrapper
  @require self.file != null
 *>
 fn void? File.write_byte(&self, char c) @dynamic
@@ -110,6 +116,7 @@ fn void? File.write_byte(&self, char c) @dynamic
 }
 
 <*
+ C fclose wrapper
  @param [&inout] self
 *>
 fn void? File.close(&self) @inline @dynamic @maydiscard
@@ -144,6 +151,7 @@ fn long? File.size(&self) @dynamic
 }
 
 <*
+ Whether EOF has been reached
  @require self.file != null
 *>
 fn bool File.eof(&self) @inline
@@ -152,6 +160,7 @@ fn bool File.eof(&self) @inline
 }
 
 <*
+ C fread wrapper
  @param [in] buffer
 *>
 fn sz? File.read(&self, char[] buffer) @dynamic
@@ -160,7 +169,8 @@ fn sz? File.read(&self, char[] buffer) @dynamic
 }
 
 <*
- @param [out] buffer
+ C fwrite wrapper
+ @param [out] buffer : "The buffer to write to the file"
  @require self.file != null : `File must be initialized`
 *>
 fn sz? File.write(&self, char[] buffer) @dynamic
@@ -178,6 +188,10 @@ fn bool File.isatty(self) @feat(LIBC)
 	return libc::isatty(self.fd()) > 0;
 }
 
+<*
+ Reads a character using C fgetc, catching EOF
+ @return? io::EOF
+*>
 fn char? File.read_byte(&self) @dynamic
 {
 	int c = libc::fgetc(self.file);
