@@ -20,7 +20,7 @@ fn char[] FileMmap.bytes(&self)
 }
 
 <*
-  Destroys the underlying VirtualMemory (calls munmap()), and closes the underlying file (calls file.close())"
+ Destroys the underlying VirtualMemory (calls munmap()), and closes the underlying file (calls file.close())"
 *>
 fn void? FileMmap.destroy(&self) @maydiscard
 {
@@ -29,6 +29,7 @@ fn void? FileMmap.destroy(&self) @maydiscard
 	if (err1) return err1~;
 	if (err2) return err2~;
 }
+
 
 module std::io::file @feat(POSIX, WIN32);
 
