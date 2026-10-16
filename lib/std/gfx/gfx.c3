@@ -876,8 +876,8 @@ fn void finalize()
 	free_monitors();
 	log::info("Global context destroyed", category: log::CATEGORY_VIDEO);
 	unload_egl();
-	unload_opengl();
 	_destroy_platform();
+	unload_opengl();
 	_gfx.root = null;
 	_gfx = {};
 }
@@ -1810,9 +1810,9 @@ fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType type
  cannot interrupt that. To keep drawing during it, install a set_repaint_callback callback,
  which is invoked from inside the platform loop.
 
- If a window is given it instead picks next queued event for that window. Events belonging
- to other windows are kept, not discarded; they are rotated to the back of the
- queue and remain available to those windows.
+ If a window is given it instead picks the next queued event for that window, or one
+ that belongs to no window. Events belonging to other windows are not discarded: they stay
+ queued, in their original order, and remain available to those windows.
 
  @param [in] window : "Optionally only get events pertaining to a particular window"
  @return "The next event"
@@ -1836,9 +1836,9 @@ fn GfxEvent? poll(GfxWindow* window = null)
  Use this to drain what is already queued without giving the platform a chance to
  deliver more; poll() is the usual choice.
 
- If a window is given it instead picks next queued event for that window. Events belonging
- to other windows are kept, not discarded; they are rotated to the back of the
- queue and remain available to those windows.
+ If a window is given it instead picks the next queued event for that window, or one
+ that belongs to no window. Events belonging to other windows are not discarded: they stay
+ queued, in their original order, and remain available to those windows.
 
  @param [in] window : "Optionally the window to filter on"
  @return "The next event"

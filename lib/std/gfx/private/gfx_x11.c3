@@ -1045,7 +1045,7 @@ fn void window_make_current_opengl_context(GfxWindow* win)
 {
 	if (!win)
 	{
-		_glx_make_current_fn(null, 0, null);
+		_glx_make_current_fn(ctx.display, 0, null);
 	}
 	else
 	{
@@ -1061,9 +1061,14 @@ fn void window_opengl_swap_buffers(GfxWindow* win)
 
 fn void window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* gl_ctx)
 {
-	if ((GLXWindow)win.src.ctx.native.window != win.src.window) _glx_destroy_window_fn(ctx.display, (GLXWindow)win.src.ctx.native.window);
+
+	if (_glx_get_current_context_fn() == gl_ctx.ctx)
+	{
+		window_make_current_opengl_context(null);
+	}
+	if ((GLXWindow)gl_ctx.window != win.src.window) _glx_destroy_window_fn(ctx.display, (GLXWindow)gl_ctx.window);
 	_glx_destroy_context_fn(ctx.display, gl_ctx.ctx);
-	win.src.ctx.native = null;
+	if (win.src.ctx.native == gl_ctx) win.src.ctx.native = null;
 }
 
 fn void window_set_opengl_swap_interval(GfxWindow* win, int swap_interval)
