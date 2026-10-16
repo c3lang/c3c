@@ -1,0 +1,25 @@
+// #mode: static-lib
+module test;
+
+struct Test @export
+{
+	int a;
+	int b;
+}
+
+fn int Test.mult(self)
+{
+	return self.a * self.b;
+}
+
+fn int Test.hidden_mult(self) @export("__hidden_mult")
+{
+	return self.a * self.b;
+}
+
+/* #expect: test.h
+typedef struct test__Test__ test__Test;
+/* #expect: test.h
+extern int32_t test__Test__mult(test__Test self);
+/* #expect-not: test.h
+hidden_mult
