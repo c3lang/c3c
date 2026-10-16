@@ -1514,7 +1514,8 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			Win32_POINT pt;
 			win32::dragQueryPoint(drop, &pt);
 			_data_drag_callback(win, FILE, MOVE, { pt.x, pt.y });
-			if (!win.internal.enabled_events.data_drop) return win32::defWindowProcW(hWnd, message, wParam, lParam);
+			defer win32::dragFinish(drop);
+			if (!win.internal.enabled_events.data_drop) return 0;
 			uint count = win32::dragQueryFileW(drop, 0xffffffff, null, 0);
 			for (uint i = 0; i < count; i++) @pool()
 			{
@@ -1530,7 +1531,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 				}
 				_data_drop_callback(win, s, FILE);
 			};
-			win32::dragFinish(drop);
+			return 0;
 		default:
 			break;
 	}

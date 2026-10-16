@@ -14,6 +14,7 @@
 - Win32 did not support sharing of OpenGL contexts.
 - Win32 OpenGL pixel format selection ignored several hints.
 - Added `FAILED_TO_CREATE_WGL_CONTEXT` for Win32 WGL format fails.
+- Win32 handle would leak on drag-and-drop when dnd was disabled.
 
 ### Stdlib changes
 
