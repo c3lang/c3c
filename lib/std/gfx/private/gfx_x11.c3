@@ -306,27 +306,14 @@ fn void? monitor_request_mode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorM
 	if (!oi) return gfx::MONITOR_MODE_CHANGE_FAILED~;
 	defer xRRFreeOutputInfo(oi);
 
-	bool output = false;
-	RRMode native = 0;
-
 	for (int i = 0; i < oi.nmode; i++)
 	{
 		GfxMonitorMode found_mode;
 		void* mi = _get_mode(ci, res, oi.modes[i], &found_mode);
 		if (mi == null) continue;
-		if (mode.equals_request(&found_mode, request))
-		{
-			native = ((XRRModeInfoNative*)mi).id;
-			output = true;
-			mon.mode = found_mode;
-			break;
-		}
+		if (mode.equals_request(&found_mode, request)) return monitor_set_mode(mon, &found_mode);
 	}
-	if (native != 0)
-	{
-		xRRSetCrtcConfig(ctx.display, res, mon.node.crtc, 0, ci.x, ci.y, native, ci.rotation, ci.outputs, ci.noutput);
-	}
-	if (!output) return gfx::MONITOR_MODE_CHANGE_FAILED~;
+	return gfx::MONITOR_MODE_CHANGE_FAILED~;
 }
 
 fn void? monitor_set_gamma(GfxMonitor* monitor, float gamma)
@@ -370,6 +357,7 @@ fn void? monitor_set_mode(GfxMonitor* mon, GfxMonitorMode* mode)
 	xRRFreeCrtcInfo(ci);
 	xRRFreeScreenResources(res);
 	if (!out) return gfx::MONITOR_MODE_CHANGE_FAILED~;
+	mon.mode = *mode;
 }
 
 fn void poll_monitors()
@@ -907,15 +895,17 @@ fn void window_show_platform(GfxWindow* win)
 
 // Window - opengl
 
-fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* context, GfxGlHints* hints)
+fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* context, GfxGlHints* hints) => @pool()
 {
 	win.src.ctx.native = context;
 	win.src.backing = { .opengl };
 
 	bool show_window = false;
+	String name = "";
 	if (win.src.window)
 	{
 		show_window = !window_is_minimized(win);
+		name = _window_name(win.src.window);
 		x11::window_destroy_platform(win);
 	}
 
@@ -977,7 +967,8 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* conte
 	XVisualInfo visual = *vi;
 	xFree(vi);
 
-	_create_window(visual, "", win.internal.flags, win)!;
+	_create_window(visual, name, win.internal.flags, win)!;
+	win.set_name(name);
 
 	if (show_window) win.show();
 
@@ -1988,6 +1979,18 @@ fn void _x11_im_init_callback(XDisplay* d, XPointer client_data, XPointer call_d
 	callback.callback = &_x11_im_callback;
 	callback.client_data = null;
 	xSetIMValues(ctx.im, "destroyCallback", &callback, (char*)null);
+}
+
+fn String _window_name(XWindow window) @local
+{
+	Atom actual_type;
+	int actual_format;
+	CULong nitems, bytes_after;
+	char* data;
+	int status = xGetWindowProperty(ctx.display, window, ctx.net_wm_name, 0, ~0, 0, ctx.utf8_string, &actual_type, &actual_format, &nitems, &bytes_after, &data);
+	if (status || !data) return "";
+	defer xFree(data);
+	return ((String)data[:(sz)nitems]).tcopy();
 }
 
 fn int _error_handler(XDisplay* display, XErrorEvent* ev) @local
