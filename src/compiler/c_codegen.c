@@ -35,6 +35,7 @@ sat_shl never saturates: int::max.sat_shl(1) gives -2.
 12. goto to an undeclared label. is_opt emits goto __C3_LABEL_n (c_codegen_expr.c:994,1002), but the label is only emitted on the fall-through path (:1236). Shifts, vector ops, float %, slice compares and similar early-return paths skip it. int? r = get(3) << 2; fails. It also hits real stdlib code: std::gfx scale_to_monitor (monitor.scale * (Vec2)size) breaks --strip-unused=no.
 
 13. trap-on-wrap is broken. It emits __builtin_add_overflow(a, b, &___var_N) into a variable that is never declared (c_codegen_expr.c:1046). Ordinary stdlib code fails with use of undeclared identifier. The same block is duplicated at :1042-1056, and every check is type_is_signed, so unsigned overflow never traps (LLVM traps it).
+(Fixed)
 
 14. A module containing only an enum with associated values fails to link. c_module_has_live_code (c_codegen.c:373) ignores unit->enums, so no .c is written. The result is undefined: colors__Color__assoc_label.
 (Fixed)
@@ -56,12 +57,19 @@ sat_shl never saturates: int::max.sat_shl(1) gives -2.
 (Fixed)
 
 22. Every temp is declared at function top and again inline. A small function's frame is 944 bytes, about 1.7× LLVM's. nbodies at -O0 takes 5.3s versus 1.4s, with parity at -O2.
+(Fixed)
 
 23 The TCC-only runtime code has bugs, by inspection: unsigned narrow __c3_tcc_sub_overflow never writes *res, and "+r"((uint8_t)desired) isn't an lvalue.
 
 24. Inline assembly (asm { ... }) is emitted as GNU extended inline assembly (__asm__ __volatile__). MSVC (cl.exe) on x64/ARM64 does not support inline assembly, so compiling code with inline asm under cl.exe triggers a compile-time #error. Use clang-cl, gcc, or LLVM when inline assembly is needed.
 
 */
+
+static HTable c_decl_name_cache;
+static HTable c_shared_gen_decl;
+static HTable c_shared_gen_def;
+static HTable c_shared_decl_names;
+static HTable c_shared_emitted_global_decls;
 
 const char *c_intern(const char *str)
 {
@@ -74,25 +82,26 @@ const char *c_intern(const char *str)
 	return symtab_add(str, len, fnv1a(str, len), &type);
 }
 
+static inline char c_sanitize_char(char c)
+{
+	if (c == '*') return 'p';
+	if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') return c;
+	return '_';
+}
+
 const char *c_sanitize_name(const char *name)
 {
-	if (!name)
-	{
-		return "_anon";
-	}
-	char *res = str_dup(name);
-	for (char *p = res; *p; p++)
-	{
-		if (*p == '*')
-		{
-			*p = 'p';
-		}
-		else if (!((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' && *p <= '9') || *p == '_'))
-		{
-			*p = '_';
-		}
-	}
-	return c_intern(res);
+	if (!name) return "_anon";
+	const char *p = name;
+	while (*p && c_sanitize_char(*p) == *p) p++;
+	if (!*p) return c_intern(name);
+
+	scratch_buffer_push();
+	scratch_buffer_clear();
+	for (p = name; *p; p++) scratch_buffer_append_char(c_sanitize_char(*p));
+	const char *interned = scratch_buffer_interned();
+	scratch_buffer_pop();
+	return interned;
 }
 
 static inline bool c_is_builtin_symbol_collision(const char *name)
@@ -154,14 +163,8 @@ bool c_decl_needs_asm_label(Decl *decl)
 	return asm_name && (c_decl_has_asm_name(decl) || c_is_builtin_symbol_collision(asm_name));
 }
 
-const char *c_get_decl_name(Decl *decl)
+static const char *c_compute_decl_name(Decl *decl)
 {
-	if (!decl)
-	{
-		return "unknown";
-	}
-	decl = c_decl_unwrap(decl);
-
 	if ((decl == compiler.context.main && !decl->func_decl.type_parent) ||
 	    (decl->is_synthetic && decl->name && strcmp(decl->name, "main") == 0))
 	{
@@ -216,6 +219,17 @@ const char *c_get_decl_name(Decl *decl)
 	scratch_buffer_set_extern_decl_name(decl, true);
 	char *str = scratch_buffer_copy();
 	return c_check_collision(c_sanitize_name(str));
+}
+
+const char *c_get_decl_name(Decl *decl)
+{
+	if (!decl) return "unknown";
+	decl = c_decl_unwrap(decl);
+	const char *cached = htable_get(&c_decl_name_cache, decl);
+	if (cached) return cached;
+	const char *name = c_compute_decl_name(decl);
+	htable_set(&c_decl_name_cache, decl, (void *)name);
+	return name;
 }
 
 const char *c_get_enum_assoc_name(Decl *enum_decl, Decl *param)
@@ -364,7 +378,6 @@ static void c_traverse_decl(GenContext *c, Decl *d, CDeclVisitor visitor, void *
 	{
 		return;
 	}
-	decl_append_links_to_global_during_codegen(d);
 	visitor(c, d, userdata);
 
 	if (decl_has_members(d) && d->strukt.members)
@@ -545,6 +558,7 @@ static void c_emit_decl_types(GenContext *c, Decl *d, bool forward_decl)
 static void visit_forward_decl(GenContext *c, Decl *d, void *ud)
 {
 	(void)ud;
+	decl_append_links_to_global_during_codegen(d);
 	c_emit_decl_types(c, d, true);
 }
 
@@ -582,22 +596,6 @@ static void visit_fn_prototype(GenContext *c, Decl *d, void *ud)
 	}
 	bool is_current = (!c->current_module || (d->unit && d->unit->module == c->current_module));
 	c_emit_function_decl(c, d, is_current);
-}
-
-static void visit_mark_declared(GenContext *c, Decl *d, void *ud)
-{
-	(void)ud;
-	d = c_decl_unwrap(d);
-	if (d && d->decl_kind == DECL_FUNC)
-	{
-		const char *fn_name = c_get_decl_name(d);
-		htable_set(&c->decl_names, (void *)fn_name, (void *)1);
-	}
-	if (d && d->decl_kind == DECL_VAR && c_is_file_global(d))
-	{
-		const char *vname = c_get_decl_name(d);
-		htable_set(&c->emitted_global_decls, (void *)vname, (void *)1);
-	}
 }
 
 static void visit_dynamic_dispatcher(GenContext *c, Decl *d, void *ud)
@@ -639,11 +637,11 @@ static void visit_global_forward_decl(GenContext *c, Decl *d, void *ud)
 				continue;
 			}
 			const char *arr_name = c_get_enum_assoc_name(d, p);
-			if (htable_get(&c->emitted_global_decls, (void *)arr_name))
+			if (htable_get(c->emitted_global_decls, (void *)arr_name))
 			{
 				continue;
 			}
-			htable_set(&c->emitted_global_decls, (void *)arr_name, (void *)1);
+			htable_set(c->emitted_global_decls, (void *)arr_name, (void *)1);
 			Type *ptype = p->type ? c_safe_type_lower(p->type) : type_int;
 			c_emit_type_forward_decl(c, ptype);
 			PRINTF("extern const %s %s[%d];\n", c_type_name(c, ptype), arr_name, num_values);
@@ -716,14 +714,14 @@ static void c_emit_shared_header(const char *dir)
 	}
 
 	GenContext *c = cmalloc(sizeof(GenContext));
-	*c            = (GenContext){
-	    .file           = f,
-	    .current_module = NULL,
+	*c = (GenContext){
+	    .file                 = f,
+	    .current_module       = NULL,
+	    .gen_decl             = &c_shared_gen_decl,
+	    .gen_def              = &c_shared_gen_def,
+	    .decl_names           = &c_shared_decl_names,
+	    .emitted_global_decls = &c_shared_emitted_global_decls,
 	};
-	htable_init(&c->gen_decl, 16384);
-	htable_init(&c->gen_def, 16384);
-	htable_init(&c->decl_names, 8192);
-	htable_init(&c->emitted_global_decls, 8192);
 
 	fputs("/* Generated by C3 Compiler (Shared Header) */\n", f);
 	fputs("#ifndef __C3_SHARED_H__\n", f);
@@ -769,22 +767,7 @@ static void c_emit_shared_header(const char *dir)
 
 	fputs("#endif /* __C3_SHARED_H__ */\n", f);
 	fclose(f);
-}
-
-static void c_mark_all_types_declared(GenContext *c)
-{
-	int type_count = vec_size(compiler.context.type);
-	for (int i = 0; i < type_count; i++)
-	{
-		Type *t = compiler.context.type[i];
-		if (c_type_needs_emission(t))
-		{
-			const char *tname = c_type_name(c, t);
-			htable_set(&c->gen_decl, (void *)tname, (void *)1);
-			htable_set(&c->gen_def, (void *)tname, (void *)1);
-		}
-	}
-	c_traverse_all_modules(c, visit_mark_declared, NULL);
+	free(c);
 }
 
 static void c_try_emit_function_def(GenContext *c, Decl *decl, bool only_used)
@@ -927,30 +910,38 @@ static GenContext *c_gen_module(Module *module, int num)
 
 	GenContext *c = cmalloc(sizeof(GenContext));
 	*c            = (GenContext){
-	    .file               = f,
-	    .base_name          = base_name,
-	    .c_filename         = c_filename,
-	    .object_filename    = object_filename,
-	    .current_module     = module,
-	    .current_block_live = true,
+	    .file                 = f,
+	    .base_name            = base_name,
+	    .c_filename           = c_filename,
+	    .object_filename      = object_filename,
+	    .current_module       = module,
+	    .current_block_live   = true,
+	    .gen_decl             = &c_shared_gen_decl,
+	    .gen_def              = &c_shared_gen_def,
+	    .decl_names           = &c_shared_decl_names,
+	    .emitted_global_decls = &c_shared_emitted_global_decls,
 	};
-	htable_init(&c->gen_decl, 16384);
-	htable_init(&c->gen_def, 16384);
 	htable_init(&c->local_vars, 4096);
 	htable_init(&c->local_fault_vars, 4096);
 	htable_init(&c->declared_vars, 4096);
-	htable_init(&c->decl_names, 8192);
 	htable_init(&c->emitted_func_defs, 8192);
-	htable_init(&c->emitted_global_decls, 8192);
 	htable_init(&c->emitted_global_defs, 8192);
 
 	fputs("/* Generated by C3 Compiler */\n", f);
 	fputs("#include \"__c3_shared.h\"\n\n", f);
 
-	c_mark_all_types_declared(c);
-
 	fputs("/* GLOBALS */\n", f);
-	c_traverse_all_modules(c, visit_global_def, NULL);
+	if (module)
+	{
+		FOREACH(CompilationUnit *, unit, module->units)
+		{
+			c_traverse_unit(c, unit, visit_global_def, NULL);
+		}
+	}
+	else
+	{
+		c_traverse_all_modules(c, visit_global_def, NULL);
+	}
 	fputs("\n", f);
 
 	fputs("/* FUNCTION BODIES */\n", f);
@@ -1190,11 +1181,11 @@ static const char *c_backend_build_cflags(const char *cc)
 
 	if (compiler.build.debug_info == DEBUG_INFO_FULL)
 	{
-		scratch_buffer_append(is_cl ? "/Z7 " : "-g ");
+		scratch_buffer_append(is_cl ? "/Z7 " : (is_clang ? "-g -fno-standalone-debug " : "-g "));
 	}
 	else if (compiler.build.debug_info == DEBUG_INFO_LINE_TABLES)
 	{
-		scratch_buffer_append(is_cl ? "/Z7 " : "-g1 ");
+		scratch_buffer_append(is_cl ? "/Z7 " : (is_clang ? "-gline-tables-only " : "-g1 "));
 	}
 	else if (!is_cl && compiler.build.debug_info == DEBUG_INFO_NONE)
 	{
@@ -1307,11 +1298,9 @@ const char *c_codegen(void *context)
 		return NULL;
 	}
 
-	if (compiler.build.emit_object_files || compiler.build.type == TARGET_TYPE_EXECUTABLE || compiler.build.type == TARGET_TYPE_STATIC_LIB || compiler.build.type == TARGET_TYPE_DYNAMIC_LIB || compiler.build.type == TARGET_TYPE_TEST || compiler.build.type == TARGET_TYPE_BENCHMARK)
+	if (c_backend_cc)
 	{
-		const char *cc     = c_backend_cc ? c_backend_cc : (compiler.build.cc ? compiler.build.cc : find_c_compiler());
-		const char *cflags = c_backend_cflags ? c_backend_cflags : "";
-		const char *out    = cc_compiler(cc, c->c_filename, c->object_filename, cflags, NULL, NULL);
+		const char *out = cc_compiler(c_backend_cc, c->c_filename, c->object_filename, c_backend_cflags, NULL, NULL);
 		if (!out)
 		{
 			exit(EXIT_FAILURE);
@@ -1327,6 +1316,12 @@ void **c_gen(Module **modules, int module_count)
 	{
 		return NULL;
 	}
+	htable_init(&c_decl_name_cache, 16384);
+	htable_init(&c_shared_gen_decl, 16384);
+	htable_init(&c_shared_gen_def, 16384);
+	htable_init(&c_shared_decl_names, 8192);
+	htable_init(&c_shared_emitted_global_decls, 8192);
+
 	const char *dir = compiler.build.object_file_dir ? compiler.build.object_file_dir : ".";
 	scratch_buffer_clear();
 	scratch_buffer_append(dir);
@@ -1334,8 +1329,22 @@ void **c_gen(Module **modules, int module_count)
 	c_emit_runtime_header(dir);
 	c_emit_shared_header(dir);
 
-	c_backend_cc     = compiler.build.cc ? compiler.build.cc : find_c_compiler();
-	c_backend_cflags = c_backend_build_cflags(c_backend_cc);
+	bool will_compile = compiler.build.emit_object_files
+		|| compiler.build.type == TARGET_TYPE_EXECUTABLE
+		|| compiler.build.type == TARGET_TYPE_STATIC_LIB
+		|| compiler.build.type == TARGET_TYPE_DYNAMIC_LIB
+		|| compiler.build.type == TARGET_TYPE_TEST
+		|| compiler.build.type == TARGET_TYPE_BENCHMARK;
+	if (will_compile)
+	{
+		c_backend_cc     = find_c_compiler();
+		c_backend_cflags = c_backend_build_cflags(c_backend_cc);
+	}
+	else
+	{
+		c_backend_cc     = NULL;
+		c_backend_cflags = NULL;
+	}
 
 	GenContext **gen_contexts = NULL;
 	GenContext *rt            = c_emit_runtime_c(dir);

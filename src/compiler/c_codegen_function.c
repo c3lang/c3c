@@ -193,6 +193,7 @@ void c_value_rvalue(GenContext *c, CValue *val)
 
 	if (c_type_is_aggregate(t))
 	{
+		PRINTF("%s ___var_%d;\n", tname, temp);
 		PRINTF("__c3_memcpy(&___var_%d, (void*)___var_%d, sizeof(%s));\n", temp, val->var, tname);
 	}
 	else
@@ -412,11 +413,11 @@ bool c_emit_function_decl(GenContext *c, Decl *fn, bool is_current_module)
 	}
 	const char *fn_name = c_get_decl_name(fn);
 
-	if (htable_get(&c->decl_names, (void *)fn_name))
+	if (htable_get(c->decl_names, (void *)fn_name))
 	{
 		return false;
 	}
-	htable_set(&c->decl_names, (void *)fn_name, (void *)1);
+	htable_set(c->decl_names, (void *)fn_name, (void *)1);
 
 	Signature *sig = &fn->func_decl.signature;
 	Type *rtype    = typeget(sig->rtype);
@@ -489,6 +490,10 @@ void c_emit_local_var_declarations(GenContext *c)
 {
 	FOREACH(CLocalVar, lv, c->function_locals)
 	{
+		if (!lv.decl)
+		{
+			continue;
+		}
 		if (htable_get(&c->declared_vars, (void *)(uintptr_t)lv.id))
 		{
 			continue;
