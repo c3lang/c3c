@@ -11,26 +11,26 @@ interface InStream
 	fn void? close() @optional;
 
 	<*
-		Returns the position of the stream/file cursor
+	 Returns the position of the stream/file cursor
 
-		@return "The position of the stream cursor"
+	 @return "The position of the stream cursor"
 	*>
 	fn long? cursor() @optional;
 
 	<*
-		Moves the stream/file cursor to the designated offset from the specified SeekOrigin.
+	 Moves the stream/file cursor to the designated offset from the specified SeekOrigin.
 
-		@param whence : "A SeekOrigin enum (FROM_START, FROM_END, FROM_CURSOR) designating where from to move the cursor"
-		@param offset : "The offset to move the cursor from the SeekOrigin enum"
+	 @param whence : "A SeekOrigin enum (FROM_START, FROM_END, FROM_CURSOR) designating where from to move the cursor"
+	 @param offset : "The offset to move the cursor from the SeekOrigin enum"
 	*>
 	fn void? seek(long offset, SeekOrigin whence = FROM_START) @optional;
 	fn long len() @optional;
 	fn long? size() @optional;
 
 	<*
-		Returns the amount of bytes left available to read
+	 Returns the amount of bytes left available to read
 
-		@return "The amount of bytes left available to read"
+	 @return "The amount of bytes left available to read"
 	*>
 	fn long? available() @optional;
 
