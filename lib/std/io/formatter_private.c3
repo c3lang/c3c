@@ -7,11 +7,11 @@ const char[16] XDIGITS_L = "0123456789abcdef";
 excuse BAD_FORMAT;
 
 <*
-	Prints bytes as hex characters
+ Prints bytes as hex characters
 
-	@param f : "The formatter to print to"
-	@param out : "The byte array to print as hex characters"
-	@param uppercase : "Whether A-F will be capitalized (A-F) or lowercase (a-f)"
+ @param f : "The formatter to print to"
+ @param out : "The byte array to print as hex characters"
+ @param uppercase : "Whether A-F will be capitalized (A-F) or lowercase (a-f)"
 *>
 fn sz? print_hex_chars(Formatter* f, char[] out, bool uppercase) @inline
 {
