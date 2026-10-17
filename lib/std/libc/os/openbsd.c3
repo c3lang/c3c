@@ -63,6 +63,9 @@ const SCHED_OTHER = 2;
 const SCHED_FIFO  = 1;
 const SCHED_RR    = 3;
 
+extern fn CInt pledge(ZString promises, ZString execpromises);
+extern fn CInt unveil(ZString path, ZString permissions);
+
 module libc::termios @feat(OPENBSD);
 
 bitstruct Tc_iflags : CUInt
