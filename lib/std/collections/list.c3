@@ -15,6 +15,9 @@ const List ONHEAP = { .allocator = LIST_HEAP_ALLOCATOR };
 
 macro bool type_is_overaligned() => Type::alignment > mem::DEFAULT_MEM_ALIGNMENT;
 
+<*
+ A C3 list is analogous to a C++ std::vector, it is contiguous in memory and is reallocated if the capacity is exceeded.
+*>
 struct List (Printable)
 {
 	sz size;
