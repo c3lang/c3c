@@ -572,7 +572,9 @@ void sema_trace_liveness(void)
 				    function->func_decl.attr_init ||
 				    (function->func_decl.attr_test) ||
 				    (function->func_decl.attr_benchmark))
+				{
 					sema_trace_decl_liveness(function);
+				}
 			}
 			FOREACH(Decl *, method, unit->methods)
 			{

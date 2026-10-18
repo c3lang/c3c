@@ -319,7 +319,9 @@ bool parse_module(ParseContext *c)
 			case ATTRIBUTE_EXPORT:
 				if (attr->exprs) RETURN_PRINT_ERROR_AT(false, attr, "Expected no arguments to '@export'");
 				if (c->unit->export_by_default)
+				{
 					RETURN_PRINT_ERROR_AT(false, attr, "'@export' appeared more than once.");
+				}
 				c->unit->export_by_default = true;
 				continue;
 			case ATTRIBUTE_CNAME:
@@ -3791,4 +3793,3 @@ CONTRACT_NOT_ALLOWED:
 	print_error_at(c->contracts.first, "Contracts are only used for modules, functions and macros.");
 	return poisoned_decl;
 }
-
