@@ -4,6 +4,7 @@
 
 ### Changes / improvements
 - `@asmname` allows defining external names like `@cname` but without normal name mangling.
+- Improved GfxKey mappings.
 
 ### Fixes
 - Fixed regression for MacOS loading multiple C3 dylibs. `@finalizer` now correctly works in descending order.
@@ -12,6 +13,11 @@
 - Setting no-border state during fullscreen on Win32 would not work properly.
 - X11 window destruction order was incorrect.
 - Win32 did not support sharing of OpenGL contexts.
+- Win32 OpenGL pixel format selection ignored several hints.
+- Added `FAILED_TO_CREATE_WGL_CONTEXT` for Win32 WGL format fails.
+- Win32 handle would leak on drag-and-drop when dnd was disabled.
+- X11 mode change did not change the stored mode.
+- X11 window name is now kept when recreating a window for opengl init.
 
 ### Stdlib changes
 

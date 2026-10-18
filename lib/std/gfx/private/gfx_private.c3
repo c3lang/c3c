@@ -1,6 +1,6 @@
 module std::gfx @feat(LINUX, BSD, MACOS, WASM, WIN32) @feat(!(BSD | LINUX) | WAYLAND | !NO_X11) @private;
-import libc, std::math, std::collections::list, std::os, std::gfx::x11 @public, std::gfx::egl @public, std::time, std::net::url;
-import std::gfx::wl @public;
+import libc, std::math, std::collections::list, std::os, std::gfx::win32 @public, std::gfx::x11 @public;
+import std::gfx::egl @public, std::time, std::net::url, std::gfx::wl @public;
 
 const MAX_EVENTS = 32;
 const PREALLOCATED_MONITORS = 0;
@@ -228,18 +228,23 @@ fn void _init_unix_keycodes() @feat(LINUX, BSD)
 fn void _init_keycodes()
 {
 	_gfx.keycodes = {};
+	_gfx.api_keycodes = {};
 	_init_keycodes_platform();
-	for (int i = 0; i < GFX_KEYS; i++)
+	// Key 0, NULL, keeps the api keycode 0.
+	for (int i = 1; i < GFX_KEYS; i++)
 	{
-		for (int y = 0; y < _gfx.keycodes.len; y++)
+		foreach_r (y, key : _gfx.keycodes)
 		{
-			if (_gfx.keycodes[y] == (GfxKey)i)
+			if (key == (GfxKey)i)
 			{
 				_gfx.api_keycodes[i] = (uint)y;
 				break;
 			}
 		}
 	}
+	$if $feat(WIN32):
+		win32::init_mapped_keys();
+	$endif
 	reset_key();
 }
 

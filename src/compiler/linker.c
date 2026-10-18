@@ -1354,6 +1354,8 @@ void platform_linker(const char *output_file, const char **files, int file_count
 
 const char *cc_compiler(const char *cc, const char *file, const char *out_name, const char *flags, const char **include_dirs, const char *output_subdir)
 {
+	lock_acquire();
+
 	if (!out_name)
 	{
 		const char *dir = compiler.build.object_file_dir;
@@ -1380,8 +1382,6 @@ const char *cc_compiler(const char *cc, const char *file, const char *out_name, 
 		           : str_printf("%s%s", filename, get_object_extension());
 	}
 	bool is_cl_exe = str_ends_with(cc, "cl.exe");
-
-	lock_acquire();
 
 	const char **parts = NULL;
 	const char ***args_ref = &parts;
@@ -1438,9 +1438,8 @@ const char *cc_compiler(const char *cc, const char *file, const char *out_name, 
 #endif
 
 	const char *output = assemble_linker_command(parts, PLATFORM_WINDOWS);
-	char cmd[8192];
-	snprintf(cmd, sizeof(cmd), "%s", output);
 
+	char *cmd = strdup(output);
 	lock_release();
 
 	if (compiler.build.print_linking)
@@ -1451,8 +1450,9 @@ const char *cc_compiler(const char *cc, const char *file, const char *out_name, 
 	if (system(cmd) != 0)
 	{
 		fprintf(stderr, "Failed to compile c sources using command '%s'.\n", cmd);
-		return NULL;
+		out_name = NULL;
 	}
+	free(cmd);
 	return out_name;
 }
 

@@ -723,21 +723,27 @@ static void parse_command(BuildOptions *options)
 				if (match_longopt("msvc-version"))
 				{
 					if (at_end() || next_is_opt())
+					{
 						error_exit("error: msvc-version needs a version.");
+					}
 					options->msvc_version_override = next_arg();
 					continue;
 				}
 				if (match_longopt("sdk-version"))
 				{
 					if (at_end() || next_is_opt())
+					{
 						error_exit("error: sdk-version needs a version.");
+					}
 					options->msvc_sdk_version_override = next_arg();
 					continue;
 				}
 				if (match_longopt("arch"))
 				{
 					if (at_end() || next_is_opt())
+					{
 						error_exit("error: --arch needs an architecture (x64, arm64).");
+					}
 					vec_add(options->fetch_sdk_archs, next_arg());
 					continue;
 				}
@@ -775,7 +781,9 @@ static void parse_command(BuildOptions *options)
 				if (match_longopt("sdk-version"))
 				{
 					if (at_end() || next_is_opt())
+					{
 						error_exit("error: sdk-version needs a version.");
+					}
 					options->macos_sdk_version_override = next_arg();
 					continue;
 				}

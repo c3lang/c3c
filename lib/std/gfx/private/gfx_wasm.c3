@@ -399,6 +399,14 @@ fn void init_keycodes_platform()
 
 fn GfxKey physical_to_mapped_key(GfxKey key) => key;
 
+// ---- DOM wheel delta modes ----
+constset DomDeltaMode : inline uint
+{
+	PIXEL = 0,
+	LINE  = 1,
+	PAGE  = 2,
+}
+
 // ---- DOM virtual key codes ----
 constset DomKey : inline int
 {
@@ -780,7 +788,7 @@ struct EmscriptenWheelEvent
 	double deltaX;
 	double deltaY;
 	double deltaZ;
-	uint deltaMode;
+	DomDeltaMode deltaMode;
 }
 
 struct EmscriptenFocusEvent
@@ -945,7 +953,16 @@ fn int c3_on_mouseup(int event_type, EmscriptenMouseEvent* e, void* user_data)
 
 fn int c3_on_wheel(int event_type, EmscriptenWheelEvent* e, void* user_data)
 {
-	_mouse_scroll_callback(_gfx.root, { (float)e.deltaX, -(float)e.deltaY });
+	float scale;
+	switch (e.deltaMode)
+	{
+		case PIXEL: scale = 1.0f / 100.0f;
+		case LINE:  scale = 1.0f / 3.0f;
+		case PAGE:  scale = 80.0f;
+		default:    scale = 1.0f / 100.0f;
+	}
+	Vec2 delta = { (float)e.deltaX, -(float)e.deltaY };
+	_mouse_scroll_callback(_gfx.root, delta * scale);
 	return 1;
 }
 

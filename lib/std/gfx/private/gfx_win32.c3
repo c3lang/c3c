@@ -657,50 +657,55 @@ fn void window_show_platform(GfxWindow* win)
 
 // Window - opengl
 
+
 fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
 {
-	win.src.ctx.native = ctx;
-	win.src.backing = { .opengl };
-
 	Win32_PIXELFORMATDESCRIPTOR pfd = {
-		.nSize = Win32_PIXELFORMATDESCRIPTOR::size,
-		.nVersion = 1,
-		.dwFlags = win32::PFD_DRAW_TO_WINDOW | win32::PFD_SUPPORT_OPENGL | win32::PFD_DOUBLEBUFFER,
-		.iPixelType = win32::PFD_TYPE_RGBA,
-		.iLayerType = win32::PFD_MAIN_PLANE,
-		.cColorBits = 32,
-		.cAlphaBits = 8,
-		.cDepthBits = 24,
-		.cStencilBits = (char)hints.stencil,
-		.cAuxBuffers = (char)hints.aux_buffers,
+		.nSize           = Win32_PIXELFORMATDESCRIPTOR::size,
+		.nVersion        = 1,
+		.dwFlags         = win32::PFD_DRAW_TO_WINDOW | win32::PFD_SUPPORT_OPENGL,
+		.iPixelType      = win32::PFD_TYPE_RGBA,
+		.iLayerType      = win32::PFD_MAIN_PLANE,
+		.cColorBits      = (char)(hints.rgba_size.r + hints.rgba_size.g + hints.rgba_size.b),
+		.cRedBits        = (char)hints.rgba_size.r,
+		.cGreenBits      = (char)hints.rgba_size.g,
+		.cBlueBits       = (char)hints.rgba_size.b,
+		.cAlphaBits      = (char)hints.rgba_size.a,
+		.cAccumBits      = (char)(hints.accum_size.r + hints.accum_size.g + hints.accum_size.b + hints.accum_size.a),
+		.cAccumRedBits   = (char)hints.accum_size.r,
+		.cAccumGreenBits = (char)hints.accum_size.g,
+		.cAccumBlueBits  = (char)hints.accum_size.b,
+		.cAccumAlphaBits = (char)hints.accum_size.a,
+		.cDepthBits      = (char)hints.depth,
+		.cStencilBits    = (char)hints.stencil,
+		.cAuxBuffers     = (char)hints.aux_buffers,
 	};
+	if (hints.double_buffer) pfd.dwFlags |= win32::PFD_DOUBLEBUFFER;
 	if (hints.stereo) pfd.dwFlags |= win32::PFD_STEREO;
-	if (hints.renderer == SOFTWARE) pfd.dwFlags |= win32::PFD_GENERIC_FORMAT | win32::PFD_GENERIC_ACCELERATED;
 
-	int pixel_format = win32::choosePixelFormat(win.src.hdc, &pfd);
+	int pixel_format = 0;
 	if (gfx::wgl_choose_pixel_format_arb_fn)
 	{
 		FixedList{int, 50} stack;
 		stack.push_all({
-			WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
 			WGL_DRAW_TO_WINDOW_ARB, 1,
-			WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
 			WGL_SUPPORT_OPENGL_ARB, 1,
-			WGL_COLOR_BITS_ARB, 32,
-			WGL_DOUBLE_BUFFER_ARB, 1,
-			WGL_ALPHA_BITS_ARB,         hints.rgba_size.a,
-			WGL_DEPTH_BITS_ARB,         hints.depth,
-			WGL_STENCIL_BITS_ARB,       hints.stencil,
-			WGL_STEREO_ARB,             hints.stereo,
-			WGL_AUX_BUFFERS_ARB,        hints.aux_buffers,
-			WGL_RED_BITS_ARB,           hints.rgba_size.r,
-			WGL_GREEN_BITS_ARB,         hints.rgba_size.g,
-			WGL_BLUE_BITS_ARB,          hints.rgba_size.b,
-			WGL_ACCUM_RED_BITS_ARB,     hints.accum_size.r,
-			WGL_ACCUM_GREEN_BITS_ARB,   hints.accum_size.g,
-			WGL_ACCUM_BLUE_BITS_ARB,    hints.accum_size.b,
-			WGL_ACCUM_ALPHA_BITS_ARB,   hints.accum_size.a,
+			WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
+			WGL_RED_BITS_ARB, hints.rgba_size.r,
+			WGL_GREEN_BITS_ARB, hints.rgba_size.g,
+			WGL_BLUE_BITS_ARB, hints.rgba_size.b,
+			WGL_DOUBLE_BUFFER_ARB, hints.double_buffer,
+			WGL_DEPTH_BITS_ARB, hints.depth,
 		});
+		if (hints.rgba_size.a) stack.push_all({ WGL_ALPHA_BITS_ARB, hints.rgba_size.a });
+		if (hints.stencil) stack.push_all({ WGL_STENCIL_BITS_ARB, hints.stencil });
+		if (hints.accum_size.r) stack.push_all({ WGL_ACCUM_RED_BITS_ARB, hints.accum_size.r });
+		if (hints.accum_size.g) stack.push_all({ WGL_ACCUM_GREEN_BITS_ARB, hints.accum_size.g });
+		if (hints.accum_size.b) stack.push_all({ WGL_ACCUM_BLUE_BITS_ARB, hints.accum_size.b });
+		if (hints.accum_size.a) stack.push_all({ WGL_ACCUM_ALPHA_BITS_ARB, hints.accum_size.a });
+		if (hints.stereo) stack.push_all({ WGL_STEREO_ARB, 1 });
+		if (hints.aux_buffers) stack.push_all({ WGL_AUX_BUFFERS_ARB, hints.aux_buffers });
+		if (hints.samples) stack.push_all({ WGL_SAMPLE_BUFFERS_ARB, 1, WGL_SAMPLES_ARB, hints.samples });
 		if (hints.srgb)
 		{
 			if (hints.profile != ES)
@@ -712,30 +717,37 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 				stack.push_all({WGL_COLORSPACE_SRGB_EXT, (int)hints.srgb});
 			}
 		}
-		stack.push_all({ WGL_COVERAGE_SAMPLES_NV, hints.samples, 0, 0 });
-
-		int new_pixel_format;
-		uint num_formats;
-		gfx::wgl_choose_pixel_format_arb_fn(win.src.hdc, stack.array_view(), null, 1, &new_pixel_format, &num_formats);
-		if (!num_formats) return gfx::FAILED_TO_CREATE_WGL_PIXEL_FORMAT~;
-		pixel_format = new_pixel_format;
+		stack.push_all({ WGL_ACCELERATION_ARB, hints.renderer == SOFTWARE ? WGL_NO_ACCELERATION_ARB : WGL_FULL_ACCELERATION_ARB, 0, 0 });
+		pixel_format = _choose_pixel_format_arb(win.src.hdc, stack.array_view());
 	}
-
-	Win32_PIXELFORMATDESCRIPTOR suggested;
-	if (!win32::describePixelFormat(win.src.hdc, pixel_format, Win32_PIXELFORMATDESCRIPTOR::size, &suggested)
-		|| !win32::setPixelFormat(win.src.hdc, pixel_format, &pfd)) return gfx::FAILED_TO_SET_WGL_PIXEL_FORMAT~;
+	if (!pixel_format) pixel_format = _choose_pixel_format(win.src.hdc, &pfd, hints.renderer);
+	if (!pixel_format) return gfx::FAILED_TO_CREATE_WGL_PIXEL_FORMAT~;
+	if (!win32::setPixelFormat(win.src.hdc, pixel_format, &pfd)) return gfx::FAILED_TO_SET_WGL_PIXEL_FORMAT~;
 
 	Win32_HGLRC share = hints.share ? hints.share.ctx : null;
-	if (gfx::wgl_create_context_attribs_arb_fn != null)
-	{
-		FixedList{int, 40} stack;
+	bool legacy_context = hints.major < 3 && hints.profile != ES && hints.profile != FORWARD_COMPATIBILITY
+		&& !hints.debug && !hints.robustness && !hints.no_error;
 
+	if (legacy_context)
+	{
+		ctx.ctx = gfx::wgl_create_context_fn(win.src.hdc);
+		if (!ctx.ctx) return gfx::FAILED_TO_CREATE_WGL_CONTEXT~;
+		if (share && !gfx::wgl_share_lists_fn(share, ctx.ctx))
+		{
+			gfx::wgl_delete_context_fn(ctx.ctx);
+			ctx.ctx = null;
+			return gfx::FAILED_TO_CREATE_WGL_CONTEXT~;
+		}
+	}
+	else
+	{
+		if (!gfx::wgl_create_context_attribs_arb_fn) return gfx::FAILED_TO_CREATE_WGL_CONTEXT~;
+		FixedList{int, 40} stack;
 		int mask = 0;
 		switch (hints.profile)
 		{
 			case ES: mask |= WGL_CONTEXT_ES_PROFILE_BIT_EXT;
 			case COMPATIBILITY: mask |= WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
-			case FORWARD_COMPATIBILITY: mask |= WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB;
 			default: mask |= WGL_CONTEXT_CORE_PROFILE_BIT_ARB;
 		}
 		stack.push_all({ WGL_CONTEXT_PROFILE_MASK_ARB, mask });
@@ -760,27 +772,25 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 
 		int flags = 0;
 		if (hints.debug) flags |= WGL_CONTEXT_DEBUG_BIT_ARB;
+		if (hints.profile == FORWARD_COMPATIBILITY) flags |= WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB;
 		if (hints.robustness && opengl_extension_is_supported_platform("WGL_ARB_create_context_robustness")) flags |= WGL_CONTEXT_ROBUST_ACCESS_BIT_ARB;
 		if (flags) stack.push_all({ WGL_CONTEXT_FLAGS_ARB, flags });
 
 		stack.push_all({ 0, 0 });
-		win.src.ctx.native.ctx = gfx::wgl_create_context_attribs_arb_fn(win.src.hdc, share, stack.array_view());
-	}
-
-	if (gfx::wgl_create_context_attribs_arb_fn == null || win.src.ctx.native.ctx == null)
-	{
-		log::warn("Failed to create accelerated OpenGL context", category: log::CATEGORY_VIDEO);
-		win.src.ctx.native.ctx = gfx::wgl_create_context_fn(win.src.hdc);
-		if (share && win.src.ctx.native.ctx && !gfx::wgl_share_lists_fn(share, win.src.ctx.native.ctx))
-		{
-			log::warn("Failed to share OpenGL contexts", category: log::CATEGORY_VIDEO);
-		}
+		ctx.ctx = gfx::wgl_create_context_attribs_arb_fn(win.src.hdc, share, stack.array_view());
+		if (!ctx.ctx) return gfx::FAILED_TO_CREATE_WGL_CONTEXT~;
 	}
 
 	win32::releaseDC(win.src.window, win.src.hdc);
 	win.src.hdc = win32::getDC(win.src.window);
 
-	gfx::wgl_make_current_fn(win.src.hdc, win.src.ctx.native.ctx);
+	if (!gfx::wgl_make_current_fn(win.src.hdc, ctx.ctx))
+	{
+		gfx::wgl_delete_context_fn(ctx.ctx);
+		return gfx::FAILED_TO_CREATE_WGL_CONTEXT~;
+	}
+	win.src.ctx.native = ctx;
+	win.src.backing = { .opengl };
 	log::info("OpenGL context initialized.", category: log::CATEGORY_VIDEO);
 }
 
@@ -1043,21 +1053,72 @@ fn void init_keycodes_platform()
 	};
 }
 
+struct MappedKeys
+{
+	void* layout;
+	GfxKey[gfx::GFX_KEYS] keys;
+}
+
+const MAPPED_LAYOUTS = 8;
+MappedKeys[MAPPED_LAYOUTS] mapped_layouts;
+int next_mapped_layout;
+
 fn GfxKey physical_to_mapped_key(GfxKey key)
+{
+	void* layout = win32::getKeyboardLayout(0);
+	foreach (&entry : mapped_layouts)
+	{
+		if (entry.layout == layout) return entry.keys[key];
+	}
+	// A layout that is not built yet, see update_mapped_keys.
+	return key;
+}
+
+// Translates the keys of the layout that is in use. Building them clears a dead key that is pending, so it is done at init.
+fn void init_mapped_keys() => update_mapped_keys(win32::getKeyboardLayout(0));
+
+// Translates the keys of the layout, unless that has been done.
+fn void update_mapped_keys(void* layout)
+{
+	foreach (&entry : mapped_layouts)
+	{
+		if (entry.layout == layout) return;
+	}
+	MappedKeys* mapped = &mapped_layouts[next_mapped_layout];
+	next_mapped_layout = (next_mapped_layout + 1) % MAPPED_LAYOUTS;
+	_reset_dead_keys(layout);
+	for (int i = 0; i < gfx::GFX_KEYS; i++) mapped.keys[i] = _map_key((GfxKey)i, layout);
+	mapped.layout = layout;
+}
+
+// Clears a dead key that is pending, by typing a space: it would change the translation of the next key.
+fn void _reset_dead_keys(void* layout)
+{
+	char[256] keyboard_state;
+	uint vsc = win32::mapVirtualKeyW(0x20 /* VK_SPACE */, 0 /* MAPVK_VK_TO_VSC */);
+	ushort[16] buffer;
+	for (int i = 0; i < 5; i++)
+	{
+		if (win32::toUnicodeEx(0x20, vsc, (char*)&keyboard_state, &buffer, buffer.len, 0, layout) > 0) return;
+	}
+}
+
+fn GfxKey _map_key(GfxKey key, void* layout)
 {
 	uint vsc = key.to_api();
 	char[256] keyboard_state;
-	if (win32::getKeyboardState((char*)&keyboard_state) == 0) return key;
 
 	uint vk = win32::mapVirtualKeyW(vsc, 1 /* MAPVK_VSC_TO_VK */);
-	void* layout = win32::getKeyboardLayout(0);
 
 	ushort[4] char_buffer;
-	int result = win32::toUnicodeEx(vk, vsc, (char*)&keyboard_state, &char_buffer, 1, 0, layout);
-	if (result == 1 && char_buffer[0] < 256) return (GfxKey)char_buffer[0];
+	int result = win32::toUnicodeEx(vk, vsc, (char*)&keyboard_state, &char_buffer, char_buffer.len, 1 << 2, layout);
+	if (result < 0) _reset_dead_keys(layout);
+	if (result == 1 && char_buffer[0] >= 32 && char_buffer[0] < 128) return (GfxKey)char_buffer[0];
 
 	switch (vk)
 	{
+		case 0x08: return BACK_SPACE; case 0x09: return TAB; case 0x1B: return ESCAPE; case 0x2E: return DELETE;
+		case 0x0D: return ENTER;
 		case 0x70: return F1; case 0x71: return F2; case 0x72: return F3;
 		case 0x73: return F4; case 0x74: return F5; case 0x75: return F6;
 		case 0x76: return F7; case 0x77: return F8; case 0x78: return F9;
@@ -1074,24 +1135,19 @@ fn GfxKey physical_to_mapped_key(GfxKey key)
 		case 0x26: return UP; case 0x28: return DOWN; case 0x25: return LEFT; case 0x27: return RIGHT;
 		case 0x24: return HOME; case 0x23: return END; case 0x21: return PAGE_UP; case 0x22: return PAGE_DOWN;
 		case 0x2D: return INSERT; case 0x5D: return MENU;
-		case 0x6B: return PAD_PLUS; case 0x6D: return PAD_MINUS; case 0x6A: return PAD_MULTIPLY;
-		case 0x6F: return PAD_SLASH; case 0x0D: return PAD_RETURN; case 0x6E: return PAD_PERIOD;
-		case 0x60: return PAD0; case 0x61: return PAD1; case 0x62: return PAD2;
-		case 0x63: return PAD3; case 0x64: return PAD4; case 0x65: return PAD5;
-		case 0x66: return PAD6; case 0x67: return PAD7; case 0x68: return PAD8; case 0x69: return PAD9;
 		case 0x2C: return PRINT_SCREEN; case 0x13: return PAUSE;
-		default: return NULL;
+		default: return key;
 	}
 }
 
 // ---- WGL pixel-format / context attributes ----
 const int WGL_ACCELERATION_ARB = 0x2003;
+const int WGL_NO_ACCELERATION_ARB = 0x2025;
 const int WGL_FULL_ACCELERATION_ARB = 0x2027;
 const int WGL_DRAW_TO_WINDOW_ARB = 0x2001;
 const int WGL_PIXEL_TYPE_ARB = 0x2013;
 const int WGL_TYPE_RGBA_ARB = 0x202b;
 const int WGL_SUPPORT_OPENGL_ARB = 0x2010;
-const int WGL_COLOR_BITS_ARB = 0x2014;
 const int WGL_DOUBLE_BUFFER_ARB = 0x2011;
 const int WGL_ALPHA_BITS_ARB = 0x201b;
 const int WGL_DEPTH_BITS_ARB = 0x2022;
@@ -1111,7 +1167,8 @@ const int WGL_CONTEXT_RELEASE_BEHAVIOR_ARB = 0x2097;
 const int WGL_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB = 0x0000;
 const int WGL_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB = 0x2098;
 const int WGL_CONTEXT_FLAGS_ARB = 0x2094;
-const int WGL_COVERAGE_SAMPLES_NV = 0x2042;
+const int WGL_SAMPLE_BUFFERS_ARB = 0x2041;
+const int WGL_SAMPLES_ARB = 0x2042;
 const int WGL_CONTEXT_ES_PROFILE_BIT_EXT = 0x00000004;
 const int WGL_CONTEXT_PROFILE_MASK_ARB = 0x9126;
 const int WGL_CONTEXT_CORE_PROFILE_BIT_ARB = 0x00000001;
@@ -1124,6 +1181,48 @@ const int WGL_CONTEXT_DEBUG_BIT_ARB = 0x00000001;
 const int WGL_CONTEXT_ROBUST_ACCESS_BIT_ARB = 0x00000004;
 
 // --- helpers
+
+fn int _choose_pixel_format(Win32_HDC hdc, Win32_PIXELFORMATDESCRIPTOR* target, GfxGlRenderer renderer)
+{
+	Win32_PIXELFORMATDESCRIPTOR pfd;
+	int count = win32::describePixelFormat(hdc, 1, Win32_PIXELFORMATDESCRIPTOR::size, null);
+	int best = 0;
+	uint best_dist = uint::max;
+	int[<12>] want = _pixel_format_bits(target);
+	for (int index = 1; index <= count; index++)
+	{
+		if (!win32::describePixelFormat(hdc, index, Win32_PIXELFORMATDESCRIPTOR::size, &pfd)) continue;
+		if ((pfd.dwFlags & target.dwFlags) != target.dwFlags) continue;
+		if (pfd.iLayerType != target.iLayerType || pfd.iPixelType != target.iPixelType) continue;
+		bool generic = (pfd.dwFlags & win32::PFD_GENERIC_FORMAT) != 0;
+		bool generic_accelerated = (pfd.dwFlags & win32::PFD_GENERIC_ACCELERATED) != 0;
+		if (renderer == ACCELERATED && generic && !generic_accelerated) continue;
+		if (renderer == SOFTWARE && (!generic || generic_accelerated)) continue;
+		int[<12>] diff = _pixel_format_bits(&pfd) - want;
+		if (diff.min() < 0) continue;
+		uint dist = (uint)diff.sum();
+		if (dist < best_dist)
+		{
+			best = index;
+			best_dist = dist;
+		}
+	}
+	return best;
+}
+
+fn int[<12>] _pixel_format_bits(Win32_PIXELFORMATDESCRIPTOR* pfd) => {
+	pfd.cColorBits, pfd.cRedBits, pfd.cGreenBits, pfd.cBlueBits, pfd.cAlphaBits,
+	pfd.cAccumBits, pfd.cAccumRedBits, pfd.cAccumGreenBits, pfd.cAccumBlueBits, pfd.cAccumAlphaBits,
+	pfd.cDepthBits, pfd.cStencilBits
+};
+
+fn int _choose_pixel_format_arb(Win32_HDC hdc, int[] attribs)
+{
+	int pixel_format;
+	uint matching;
+	if (!gfx::wgl_choose_pixel_format_arb_fn(hdc, attribs, null, 1, &pixel_format, &matching) || !matching) return 0;
+	return pixel_format;
+}
 
 fn void _apply_border(GfxWindow* win, bool border)
 {
@@ -1456,12 +1555,15 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 		case win32::WM_MOUSEHWHEEL:
 			float scroll_x = -(float)((short)((wParam >> 16) & 0xffff)) / 120.0f;
 			_mouse_scroll_callback(win, { scroll_x, 0.0f });
+		case win32::WM_INPUTLANGCHANGE:
+			win32::update_mapped_keys((void*)lParam);
 		case win32::WM_DROPFILES:
 			void* drop = (void*)wParam;
 			Win32_POINT pt;
 			win32::dragQueryPoint(drop, &pt);
 			_data_drag_callback(win, FILE, MOVE, { pt.x, pt.y });
-			if (!win.internal.enabled_events.data_drop) return win32::defWindowProcW(hWnd, message, wParam, lParam);
+			defer win32::dragFinish(drop);
+			if (!win.internal.enabled_events.data_drop) return 0;
 			uint count = win32::dragQueryFileW(drop, 0xffffffff, null, 0);
 			for (uint i = 0; i < count; i++) @pool()
 			{
@@ -1477,7 +1579,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 				}
 				_data_drop_callback(win, s, FILE);
 			};
-			win32::dragFinish(drop);
+			return 0;
 		default:
 			break;
 	}

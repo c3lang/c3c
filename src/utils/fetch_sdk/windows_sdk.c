@@ -31,10 +31,8 @@ static int version_compare(const char *v1, const char *v2)
 		int n2 = atoi(v2);
 		if (n1 > n2) return 1;
 		if (n1 < n2) return -1;
-		while (char_is_digit(*v1))
-			v1++;
-		while (char_is_digit(*v2))
-			v2++;
+		while (char_is_digit(*v1))v1++;
+		while (char_is_digit(*v2)) v2++;
 		if (*v1 == '.') v1++;
 		if (*v2 == '.') v2++;
 	}
@@ -57,7 +55,9 @@ static bool my_strcasestr(const char *h, const char *n)
 {
 	size_t nl = strlen(n);
 	for (; *h; h++)
+	{
 		if (STRNCASECMP(h, n, nl) == 0) return true;
+	}
 	return false;
 }
 
@@ -101,7 +101,9 @@ static bool download_with_verification(const char *url, const char *name,
 	{
 		if (verbose_level >= 1) printf(" ... failed.\n");
 		if (verbose_level >= 0)
+		{
 			eprintf("\nWarning: Download failed for %s: %s\n", name, err);
+		}
 		return false;
 	}
 	if (verbose_level >= 1) printf(" ... done.\n");
@@ -120,7 +122,9 @@ static void copy_to_msvc_sdk(const char *src, const char *dst)
 		char *s_path = file_append_path(src, de->d_name);
 		char *low_name = str_dup(de->d_name);
 		for (char *p = low_name; *p; p++)
+		{
 			*p = (char)tolower((unsigned char)*p);
+		}
 		char *d_path = file_append_path(dst, low_name);
 
 		if (file_is_dir(s_path))
@@ -390,11 +394,13 @@ static void get_msi_cab_list(const char *msi_path, const char ***cabs)
 			cab[filename_len] = 0;
 			bool valid = true;
 			for (int j = 0; j < (int)guid_len; j++)
+			{
 				if (!char_is_hex(cab[j]))
 				{
 					valid = false;
 					break;
 				}
+			}
 			if (valid)
 			{
 				bool exists = false;
@@ -483,7 +489,9 @@ static void collect_versions(JSONObject *pkgs, JSONObject **msvc_vers_out,
 			StringSlice slice = slice_from_string(id);
 			const int id_prefix_segments = 4;
 			for (int i = 0; i < id_prefix_segments; i++)
+			{
 				slice_next_token(&slice, '.');
+			}
 			StringSlice v4 = slice_next_token(&slice, '.');
 			if (!v4.len || !char_is_digit(v4.ptr[0])) continue;
 			StringSlice v5 = slice_next_token(&slice, '.');
@@ -496,7 +504,9 @@ static void collect_versions(JSONObject *pkgs, JSONObject **msvc_vers_out,
 		{
 			const char *last_dot = strrchr(id, '.');
 			if (last_dot && char_is_digit(last_dot[1]))
+			{
 				json_map_set(sdk_paths, last_dot + 1, pkg);
+			}
 		}
 	}
 	*msvc_vers_out = msvc_vers;
@@ -902,7 +912,9 @@ void fetch_winsdk(BuildOptions *options)
 	if (!s_ucrt || !s_um || !s_msvc)
 	{
 		if (verbose_level >= 0)
+		{
 			eprintf("UCRT: %s, UM: %s, MSVC: %s\n", s_ucrt ? "OK" : "MISSING", s_um ? "OK" : "MISSING", s_msvc ? "OK" : "MISSING");
+		}
 		error_exit("Missing library components");
 	}
 
@@ -921,9 +933,11 @@ void fetch_winsdk(BuildOptions *options)
 		if (!s_msvc_inc || !s_inc_ucrt || !s_inc_um || !s_inc_shared || !s_inc_winrt || !s_inc_cppwinrt)
 		{
 			if (verbose_level >= 0)
+			{
 				eprintf("MSVC: %s, UCRT: %s, UM: %s, SHARED: %s, WINRT: %s, CPPWINRT: %s\n", s_msvc_inc ? "OK" : "MISSING",
 					s_inc_ucrt ? "OK" : "MISSING", s_inc_um ? "OK" : "MISSING", s_inc_shared ? "OK" : "MISSING",
 					s_inc_winrt ? "OK" : "MISSING", s_inc_cppwinrt ? "OK" : "MISSING");
+			}
 			error_exit("Missing header components");
 		}
 

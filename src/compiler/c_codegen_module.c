@@ -996,7 +996,7 @@ void c_emit_global_decl(GenContext *c, Decl *var)
 	}
 
 	const char *vname = c_get_decl_name(var);
-	if (htable_get(&c->emitted_global_decls, (void *)vname))
+	if (htable_get(c->emitted_global_decls, (void *)vname))
 	{
 		return;
 	}
@@ -1007,7 +1007,7 @@ void c_emit_global_decl(GenContext *c, Decl *var)
 		var_type = type_voidptr;
 	}
 
-	htable_set(&c->emitted_global_decls, (void *)vname, (void *)1);
+	htable_set(c->emitted_global_decls, (void *)vname, (void *)1);
 	c_emit_type_forward_decl(c, var_type);
 	const char *tname     = c_type_name(c, var_type);
 	const char *align_str = c_get_align_attr_str(var, var_type);
@@ -1189,11 +1189,11 @@ void c_emit_dynamic_dispatcher(GenContext *c, Decl *dyn_fn)
 
 	const char *fn_decl_name = c_get_decl_name(dyn_fn);
 	const char *disp_name    = c_intern(str_printf("__c3_dyn_%s", fn_decl_name));
-	if (htable_get(&c->decl_names, (void *)disp_name))
+	if (htable_get(c->decl_names, (void *)disp_name))
 	{
 		return;
 	}
-	htable_set(&c->decl_names, (void *)disp_name, (void *)1);
+	htable_set(c->decl_names, (void *)disp_name, (void *)1);
 
 	Decl **impls             = NULL;
 	DynamicImplSearch search = {.dyn_fn = dyn_fn, .out_impls = &impls};
@@ -1215,7 +1215,7 @@ void c_emit_dynamic_dispatcher(GenContext *c, Decl *dyn_fn)
 	}
 
 	const char *resolve_name = c_intern(str_printf("__c3_dyn_resolve_%s", fn_decl_name));
-	htable_set(&c->decl_names, (void *)resolve_name, (void *)1);
+	htable_set(c->decl_names, (void *)resolve_name, (void *)1);
 
 	PRINTF("static inline void *%s(c3typeid_t ___typeid) {\n", resolve_name);
 	PRINTF("\tif (!___typeid) { return NULL; }\n");
