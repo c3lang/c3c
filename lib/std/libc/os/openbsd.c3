@@ -101,7 +101,7 @@ bitstruct Tc_oflags : CUInt @overlap
 	bool onlret : 7;
 }
 
-bitstruct Tc_cflags : CUInt @overlap
+bitstruct Tc_cflags : CUInt
 {
 	bool cignore  : 0;
 	T_csize csize : 8..9;
