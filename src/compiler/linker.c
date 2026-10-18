@@ -1438,9 +1438,8 @@ const char *cc_compiler(const char *cc, const char *file, const char *out_name, 
 #endif
 
 	const char *output = assemble_linker_command(parts, PLATFORM_WINDOWS);
-	char cmd[8192];
-	snprintf(cmd, sizeof(cmd), "%s", output);
 
+	char *cmd = strdup(output);
 	lock_release();
 
 	if (compiler.build.print_linking)
@@ -1451,8 +1450,9 @@ const char *cc_compiler(const char *cc, const char *file, const char *out_name, 
 	if (system(cmd) != 0)
 	{
 		fprintf(stderr, "Failed to compile c sources using command '%s'.\n", cmd);
-		return NULL;
+		out_name = NULL;
 	}
+	free(cmd);
 	return out_name;
 }
 

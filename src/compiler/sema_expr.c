@@ -11273,7 +11273,9 @@ INLINE bool lambda_parameter_match(Decl **ct_lambda_params, Decl *candidate)
 			case VARDECL_PARAM_CT_TYPE:
 				if (ct_param->var.init_expr->const_expr.typeid->canonical !=
 					param->var.init_expr->const_expr.typeid->canonical)
+				{
 					return false;
+				}
 				break;
 			case VARDECL_LOCAL_CT:
 			case VARDECL_PARAM_CT:
@@ -11303,7 +11305,9 @@ static inline Decl *sema_find_cached_lambda(SemaContext *context, Type *func_typ
 		{
 			if (raw == candidate->type->function.prototype->raw_type &&
 				lambda_parameter_match(ct_lambda_parameters, candidate))
+			{
 				return candidate;
+			}
 		}
 		return NULL;
 	}
@@ -11327,7 +11331,9 @@ static inline Decl *sema_find_cached_lambda(SemaContext *context, Type *func_typ
 	{
 		if (sema_may_reuse_lambda(candidate, types) &&
 			lambda_parameter_match(ct_lambda_parameters, candidate))
+		{
 			return candidate;
+		}
 	}
 	return NULL;
 }

@@ -85,7 +85,7 @@ const char *c_intern(const char *str)
 static inline char c_sanitize_char(char c)
 {
 	if (c == '*') return 'p';
-	if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') return c;
+	if (char_is_alphanum_(c)) return c;
 	return '_';
 }
 

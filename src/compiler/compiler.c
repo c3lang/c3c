@@ -829,7 +829,9 @@ void compiler_compile(void)
 
 	const char *default_cc = (cfiles || cfiles_library) ? find_c_compiler() : NULL;
 	if (default_cc && !file_executable_in_path(default_cc))
+	{
 		error_exit("C compiler '%s' was not found.", default_cc);
+	}
 
 	for (int i = 0; i < output_file_count; i++)
 	{
@@ -843,7 +845,9 @@ void compiler_compile(void)
 	{
 		const char *lib_cc = lib->cc ? lib->cc : default_cc;
 		if (lib->cc && !file_executable_in_path(lib->cc))
+		{
 			error_exit("Library '%s' specifies C compiler '%s' which was not found.", lib->parent->provides, lib->cc);
+		}
 		FOREACH(const char *, lib_src, lib->csources)
 		{
 			compile_data[data_idx] = (CompileData){
@@ -2361,7 +2365,9 @@ const char *find_c_compiler(void)
 	if (compiler.build.cc)
 	{
 		if (!file_executable_in_path(compiler.build.cc))
+		{
 			error_exit("C compiler '%s' (set via --cc) was not found.", compiler.build.cc);
+		}
 		return compiler.build.cc;
 	}
 	static const char *cc = NULL;
@@ -2371,7 +2377,9 @@ const char *find_c_compiler(void)
 	{
 		INFO_LOG("Setting CC to %s from environment variable 'C3C_CC'.", cc_env);
 		if (!file_executable_in_path(cc_env))
+		{
 			error_exit("C compiler '%s' (set via C3C_CC) was not found.", cc_env);
+		}
 		cc = strdup(cc_env);
 		return cc;
 	}
