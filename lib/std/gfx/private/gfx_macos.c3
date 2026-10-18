@@ -915,15 +915,28 @@ fn void init_keycodes_platform()
 		[0x74] = PAGE_UP,       [0x52] = PAD0,          [0x53] = PAD1,
 		[0x54] = PAD2,          [0x55] = PAD3,          [0x56] = PAD4,
 		[0x57] = PAD5,          [0x58] = PAD6,          [0x59] = PAD7,
-		[0x5B] = PAD8,          [0x5C] = PAD9,          [0x45] = PAD_SLASH,
+		[0x5B] = PAD8,          [0x5C] = PAD9,          [0x45] = PAD_PLUS,
 		[0x41] = PAD_PERIOD,    [0x4B] = PAD_SLASH,     [0x4C] = PAD_RETURN,
+		[0x34] = PAD_RETURN, // The Enter key of some laptops.
 		[0x51] = PAD_EQUAL,     [0x43] = PAD_MULTIPLY,  [0x4E] = PAD_MINUS,
 	};
+}
+
+// An ISO keyboard has the keycodes 10 and 50 the other way around, 10 is the key below Escape. The keycode table is the ANSI one.
+fn ushort _osx_iso_keycode(ushort keycode)
+{
+	if ((keycode == 0x0A || keycode == 0x32) && macos::kbGetLayoutType(macos::lmGetKbdType()) == macos::KEYBOARD_ISO) return 0x3C - keycode;
+	return keycode;
 }
 
 fn GfxKey physical_to_mapped_key(GfxKey key)
 {
 	ushort keycode = (ushort)key.to_api();
+
+	// A key without a macOS keycode has 0, which is the keycode of A.
+	if (!keycode && key != A) return key;
+
+	keycode = _osx_iso_keycode(keycode);
 	TISInputSourceRef source = macos::tisCopyCurrentKeyboardLayoutInputSource();
 	if (!source) return key;
 
@@ -937,9 +950,9 @@ fn GfxKey physical_to_mapped_key(GfxKey key)
 	ushort[4] chars;
 	uint len = 0;
 	uint type = macos::lmGetKbdType();
-	int status = macos::ucKeyTranslate(layout, keycode, macos::UC_KEY_ACTION_DOWN, 0, type, macos::UC_KEY_TRANSLATE_NO_DEAD_KEYS_BIT, &dead_key_state, 4, &len, &chars[0]);
+	int status = macos::ucKeyTranslate(layout, keycode, macos::UC_KEY_ACTION_DOWN, 0, type, macos::UC_KEY_TRANSLATE_NO_DEAD_KEYS_MASK, &dead_key_state, 4, &len, &chars[0]);
 
-	if (status == 0 && len == 1 && chars[0] < 256) return (GfxKey)chars[0];
+	if (status == 0 && len == 1 && chars[0] >= 32 && chars[0] < 128) return (GfxKey)chars[0];
 
 	return key;
 }
@@ -1141,6 +1154,7 @@ fn void _osx_key_updown(ObjId self, ObjId event, bool down)
 	if (catch win) return;
 	ushort key_code = event.send(ushort, "keyCode");
 	if (key_code >= 256) return;
+	key_code = _osx_iso_keycode(key_code);
 	GfxKey key = gfx::_gfx.keycodes[(sz)key_code];
 	// Unmapped key
 	if (!key) return;

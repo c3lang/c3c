@@ -4,6 +4,7 @@
 
 ### Changes / improvements
 - `@asmname` allows defining external names like `@cname` but without normal name mangling.
+- Improved GfxKey mappings.
 
 ### Fixes
 - Fixed regression for MacOS loading multiple C3 dylibs. `@finalizer` now correctly works in descending order.

@@ -897,12 +897,23 @@ fn void init_keycodes_platform()
 
 fn GfxKey physical_to_mapped_key(GfxKey key)
 {
-	XkbKeycode kc = key.to_api() + 8;
-	XkbKeysym sym = xkb_state_key_get_one_sym(ctx.xkb_state, kc);
-	if (sym < 256) return (GfxKey)sym;
+	// The api keycode is already an XKB keycode, only the evdev codes of the events need the offset of 8.
+	XkbKeycode kc = key.to_api();
+	// Level 0 is the key without modifiers, in the layout that is active.
+	XkbKeysym* syms;
+	XkbKeysym sym = 0;
+	uint layout = xkb_state_key_get_layout(ctx.xkb_state, kc);
+	if (xkb_keymap_key_get_syms_by_level(ctx.keymap, kc, layout, 0, &syms) == 1) sym = syms[0];
+	// Only printable ASCII is a mapped key: a GfxKey above 127 is a special key.
+	if (sym >= 32 && sym < 128) return (GfxKey)sym;
 
 	switch (sym)
 	{
+		case XKB_KEY_BACK_SPACE:    return BACK_SPACE;
+		case XKB_KEY_TAB:           return TAB;
+		case XKB_KEY_RETURN:        return ENTER;
+		case XKB_KEY_ESCAPE:        return ESCAPE;
+		case XKB_KEY_DELETE:        return DELETE;
 		case XKB_KEY_F1:            return F1;
 		case XKB_KEY_F2:            return F2;
 		case XKB_KEY_F3:            return F3;
@@ -949,28 +960,11 @@ fn GfxKey physical_to_mapped_key(GfxKey key)
 		case XKB_KEY_PAGE_DOWN:     return PAGE_DOWN;
 		case XKB_KEY_INSERT:        return INSERT;
 		case XKB_KEY_MENU:          return MENU;
-		case XKB_KEY_KP_ADD:        return PAD_PLUS;
-		case XKB_KEY_KP_SUBTRACT:   return PAD_MINUS;
-		case XKB_KEY_KP_MULTIPLY:   return PAD_MULTIPLY;
-		case XKB_KEY_KP_DIVIDE:     return PAD_SLASH;
-		case XKB_KEY_KP_EQUAL:      return PAD_EQUAL;
-		case XKB_KEY_KP_ENTER:      return PAD_RETURN;
-		case XKB_KEY_KP_DECIMAL:    return PAD_PERIOD;
-		case XKB_KEY_KP_0:          return PAD0;
-		case XKB_KEY_KP_1:          return PAD1;
-		case XKB_KEY_KP_2:          return PAD2;
-		case XKB_KEY_KP_3:          return PAD3;
-		case XKB_KEY_KP_4:          return PAD4;
-		case XKB_KEY_KP_5:          return PAD5;
-		case XKB_KEY_KP_6:          return PAD6;
-		case XKB_KEY_KP_7:          return PAD7;
-		case XKB_KEY_KP_8:          return PAD8;
-		case XKB_KEY_KP_9:          return PAD9;
 		case XKB_KEY_PRINT:         return PRINT_SCREEN;
 		case XKB_KEY_PAUSE:         return PAUSE;
 		default: break;
 	}
-	return NULL;
+	return key;
 }
 
 

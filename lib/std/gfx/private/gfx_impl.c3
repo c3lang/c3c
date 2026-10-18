@@ -1531,6 +1531,8 @@ fn void _init_keycodes_platform()
 
 fn GfxKey _physical_to_mapped_key(GfxKey key)
 {
+	// The layout doesn't change the keypad keys, and they should not become digits and operators on some platforms.
+	if (key >= PAD_SLASH && key <= PAD_RETURN) return key;
 	$switch:
 		$case $feat(MACOS):
 			return macos::physical_to_mapped_key(key);

@@ -1053,21 +1053,72 @@ fn void init_keycodes_platform()
 	};
 }
 
+struct MappedKeys
+{
+	void* layout;
+	GfxKey[gfx::GFX_KEYS] keys;
+}
+
+const MAPPED_LAYOUTS = 8;
+MappedKeys[MAPPED_LAYOUTS] mapped_layouts;
+int next_mapped_layout;
+
 fn GfxKey physical_to_mapped_key(GfxKey key)
+{
+	void* layout = win32::getKeyboardLayout(0);
+	foreach (&entry : mapped_layouts)
+	{
+		if (entry.layout == layout) return entry.keys[key];
+	}
+	// A layout that is not built yet, see update_mapped_keys.
+	return key;
+}
+
+// Translates the keys of the layout that is in use. Building them clears a dead key that is pending, so it is done at init.
+fn void init_mapped_keys() => update_mapped_keys(win32::getKeyboardLayout(0));
+
+// Translates the keys of the layout, unless that has been done.
+fn void update_mapped_keys(void* layout)
+{
+	foreach (&entry : mapped_layouts)
+	{
+		if (entry.layout == layout) return;
+	}
+	MappedKeys* mapped = &mapped_layouts[next_mapped_layout];
+	next_mapped_layout = (next_mapped_layout + 1) % MAPPED_LAYOUTS;
+	_reset_dead_keys(layout);
+	for (int i = 0; i < gfx::GFX_KEYS; i++) mapped.keys[i] = _map_key((GfxKey)i, layout);
+	mapped.layout = layout;
+}
+
+// Clears a dead key that is pending, by typing a space: it would change the translation of the next key.
+fn void _reset_dead_keys(void* layout)
+{
+	char[256] keyboard_state;
+	uint vsc = win32::mapVirtualKeyW(0x20 /* VK_SPACE */, 0 /* MAPVK_VK_TO_VSC */);
+	ushort[16] buffer;
+	for (int i = 0; i < 5; i++)
+	{
+		if (win32::toUnicodeEx(0x20, vsc, (char*)&keyboard_state, &buffer, buffer.len, 0, layout) > 0) return;
+	}
+}
+
+fn GfxKey _map_key(GfxKey key, void* layout)
 {
 	uint vsc = key.to_api();
 	char[256] keyboard_state;
-	if (win32::getKeyboardState((char*)&keyboard_state) == 0) return key;
 
 	uint vk = win32::mapVirtualKeyW(vsc, 1 /* MAPVK_VSC_TO_VK */);
-	void* layout = win32::getKeyboardLayout(0);
 
 	ushort[4] char_buffer;
-	int result = win32::toUnicodeEx(vk, vsc, (char*)&keyboard_state, &char_buffer, 1, 0, layout);
-	if (result == 1 && char_buffer[0] < 256) return (GfxKey)char_buffer[0];
+	int result = win32::toUnicodeEx(vk, vsc, (char*)&keyboard_state, &char_buffer, char_buffer.len, 1 << 2, layout);
+	if (result < 0) _reset_dead_keys(layout);
+	if (result == 1 && char_buffer[0] >= 32 && char_buffer[0] < 128) return (GfxKey)char_buffer[0];
 
 	switch (vk)
 	{
+		case 0x08: return BACK_SPACE; case 0x09: return TAB; case 0x1B: return ESCAPE; case 0x2E: return DELETE;
+		case 0x0D: return ENTER;
 		case 0x70: return F1; case 0x71: return F2; case 0x72: return F3;
 		case 0x73: return F4; case 0x74: return F5; case 0x75: return F6;
 		case 0x76: return F7; case 0x77: return F8; case 0x78: return F9;
@@ -1084,13 +1135,8 @@ fn GfxKey physical_to_mapped_key(GfxKey key)
 		case 0x26: return UP; case 0x28: return DOWN; case 0x25: return LEFT; case 0x27: return RIGHT;
 		case 0x24: return HOME; case 0x23: return END; case 0x21: return PAGE_UP; case 0x22: return PAGE_DOWN;
 		case 0x2D: return INSERT; case 0x5D: return MENU;
-		case 0x6B: return PAD_PLUS; case 0x6D: return PAD_MINUS; case 0x6A: return PAD_MULTIPLY;
-		case 0x6F: return PAD_SLASH; case 0x0D: return PAD_RETURN; case 0x6E: return PAD_PERIOD;
-		case 0x60: return PAD0; case 0x61: return PAD1; case 0x62: return PAD2;
-		case 0x63: return PAD3; case 0x64: return PAD4; case 0x65: return PAD5;
-		case 0x66: return PAD6; case 0x67: return PAD7; case 0x68: return PAD8; case 0x69: return PAD9;
 		case 0x2C: return PRINT_SCREEN; case 0x13: return PAUSE;
-		default: return NULL;
+		default: return key;
 	}
 }
 
@@ -1509,6 +1555,8 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 		case win32::WM_MOUSEHWHEEL:
 			float scroll_x = -(float)((short)((wParam >> 16) & 0xffff)) / 120.0f;
 			_mouse_scroll_callback(win, { scroll_x, 0.0f });
+		case win32::WM_INPUTLANGCHANGE:
+			win32::update_mapped_keys((void*)lParam);
 		case win32::WM_DROPFILES:
 			void* drop = (void*)wParam;
 			Win32_POINT pt;

@@ -1264,11 +1264,20 @@ fn void init_keycodes_platform()
 fn GfxKey physical_to_mapped_key(GfxKey key)
 {
 	KeyCode keycode = (KeyCode)key.to_api();
-	KeySym sym = xkbKeycodeToKeysym(ctx.display, keycode, 0, 0);
-	if (sym < 256) return (GfxKey)sym;
+	// Level 0 is the key without modifiers, in the keyboard group that is active.
+	XkbStateRec state;
+	int group = xkbGetState(ctx.display, XKB_USE_CORE_KBD, &state) == 0 ? (int)state.group : 0;
+	KeySym sym = xkbKeycodeToKeysym(ctx.display, keycode, group, 0);
+	// Only printable ASCII is a mapped key: a GfxKey above 127 is a special key.
+	if (sym >= 32 && sym < 128) return (GfxKey)sym;
 
 	switch (sym)
 	{
+		case XK_BACK_SPACE: return BACK_SPACE;
+		case XK_TAB: return TAB;
+		case XK_RETURN: return ENTER;
+		case XK_ESCAPE: return ESCAPE;
+		case XK_DELETE: return DELETE;
 		case XK_F1: return F1; case XK_F2: return F2; case XK_F3: return F3;
 		case XK_F4: return F4; case XK_F5: return F5; case XK_F6: return F6;
 		case XK_F7: return F7; case XK_F8: return F8; case XK_F9: return F9;
@@ -1291,24 +1300,12 @@ fn GfxKey physical_to_mapped_key(GfxKey key)
 		case XK_PAGE_UP: return PAGE_UP; case XK_PAGE_DOWN: return PAGE_DOWN;
 		case XK_INSERT: return INSERT;
 		case XK_MENU: return MENU;
-		case XK_KP_ADD: return PAD_PLUS;
-		case XK_KP_SUBTRACT: return PAD_MINUS;
-		case XK_KP_MULTIPLY: return PAD_MULTIPLY;
-		case XK_KP_DIVIDE: return PAD_SLASH;
-		case XK_KP_EQUAL: return PAD_EQUAL;
-		case XK_KP_ENTER: return PAD_RETURN;
-		case XK_KP_DECIMAL: return PAD_PERIOD;
-		case XK_KP_0: return PAD0; case XK_KP_1: return PAD1;
-		case XK_KP_2: return PAD2; case XK_KP_3: return PAD3;
-		case XK_KP_4: return PAD4; case XK_KP_5: return PAD5;
-		case XK_KP_6: return PAD6; case XK_KP_7: return PAD7;
-		case XK_KP_8: return PAD8; case XK_KP_9: return PAD9;
 		case XK_PRINT: return PRINT_SCREEN;
 		case XK_PAUSE: return PAUSE;
 		default: break;
 	}
 
-	return NULL;
+	return key;
 }
 
 const int X_TRUE = 1;
@@ -2195,6 +2192,8 @@ macro void xi_set_mask(char* mask, int event)
 
 macro bool xi_mask_is_set(char* mask, int event) => (mask[event / 8] & (char)(1 << (event % 8))) != 0;
 
+const KeySym XK_BACK_SPACE = 0xff08; const KeySym XK_TAB = 0xff09; const KeySym XK_RETURN = 0xff0d;
+const KeySym XK_ESCAPE = 0xff1b; const KeySym XK_DELETE = 0xffff;
 const KeySym XK_F1 = 0xffbe; const KeySym XK_F2 = 0xffbf; const KeySym XK_F3 = 0xffc0; const KeySym XK_F4 = 0xffc1;
 const KeySym XK_F5 = 0xffc2; const KeySym XK_F6 = 0xffc3; const KeySym XK_F7 = 0xffc4; const KeySym XK_F8 = 0xffc5;
 const KeySym XK_F9 = 0xffc6; const KeySym XK_F10 = 0xffc7; const KeySym XK_F11 = 0xffc8; const KeySym XK_F12 = 0xffc9;

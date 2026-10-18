@@ -1876,8 +1876,10 @@ fn uint GfxKey.to_api(self)
 <*
  Translate a physical key into the key the current keyboard layout produces.
 
- On layouts such as AZERTY or Dvorak this differs from the physical key. Platforms
- without a layout API return the key unchanged.
+ On layouts such as AZERTY or Dvorak this differs from the physical key. The key is the one
+ for the active layout with no modifier applied, and only an ASCII character is mapped. A key
+ without one, such as an arrow, a function key or a letter outside ASCII, is returned unchanged,
+ and so is every key on platforms without a layout API. The keypad keys are never mapped.
 
  @return "The layout-mapped key"
 *>
