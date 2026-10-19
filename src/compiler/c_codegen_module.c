@@ -1351,7 +1351,7 @@ void c_emit_dynamic_dispatcher(GenContext *c, Decl *dyn_fn)
 
 static void c_collect_and_emit_bitstructs(FILE *f, HTable *emitted, Decl *d)
 {
-	if (!d || d->is_template || d->replacement)
+	if (!d || d->is_template || d->replacement || (strip_unused() && !d->is_live))
 	{
 		return;
 	}
@@ -1379,35 +1379,142 @@ static void c_collect_and_emit_bitstructs(FILE *f, HTable *emitted, Decl *d)
 
 #include "c_runtime_header.h"
 
+static void c_get_runtime_type_dependencies(Type *t, Type **out_parent, Type **out_inner)
+{
+	Type *parent = NULL;
+	if (t->type_kind == TYPE_TYPEDEF && t->decl && t->decl->distinct && is_valid_type_ptr(t->decl->distinct->type))
+	{
+		parent = t->decl->distinct->type;
+	}
+	else if (t->type_kind == TYPE_CONSTSET && t->decl && t->decl->is_substruct && t->decl->enums.type_info && is_valid_type_ptr(t->decl->enums.type_info->type))
+	{
+		parent = t->decl->enums.type_info->type;
+	}
+	else if (t->type_kind == TYPE_STRUCT && t->decl && t->decl->is_substruct && t->decl->strukt.members && vec_size(t->decl->strukt.members) > 0)
+	{
+		Decl *first_m = t->decl->strukt.members[0];
+		if (first_m && is_valid_type_ptr(first_m->type))
+		{
+			parent = first_m->type;
+		}
+	}
+
+	Type *inner = NULL;
+	if (t->type_kind == TYPE_POINTER && t->pointer && is_valid_type_ptr(t->pointer))
+	{
+		inner = t->pointer;
+	}
+	else if ((t->type_kind == TYPE_SLICE || c_type_is_vec_or_arr(t)) && t->array.base && is_valid_type_ptr(t->array.base))
+	{
+		inner = t->array.base;
+	}
+	else if ((t->type_kind == TYPE_ENUM || t->type_kind == TYPE_CONSTSET) && t->decl)
+	{
+		Type *it = enum_inner_type(t);
+		if (it && is_valid_type_ptr(it))
+		{
+			inner = it;
+		}
+	}
+	else if (t->type_kind == TYPE_TYPEDEF && t->decl && t->decl->distinct && is_valid_type_ptr(t->decl->distinct->type))
+	{
+		inner = t->decl->distinct->type;
+	}
+	else if (t->type_kind == TYPE_BITSTRUCT && t->decl && t->decl->strukt.container_type && is_valid_type_ptr(t->decl->strukt.container_type->type))
+	{
+		inner = t->decl->strukt.container_type->type;
+	}
+	else if (t->type_kind == TYPE_OPTIONAL && t->optional && is_valid_type_ptr(t->optional))
+	{
+		inner = t->optional;
+	}
+
+	if (out_parent) *out_parent = parent;
+	if (out_inner) *out_inner = inner;
+}
+
+static void c_add_runtime_type_dep(HTable *emitted_types, Type ***all_types, Type *dep)
+{
+	if (!dep || !is_valid_type_ptr(dep)) return;
+	dep = c_unwrap_alias(dep);
+	if (!c_type_needs_emission(dep) || !c_type_is_resolved(dep)) return;
+	const char *sym = c_typeid_name(dep);
+	if (strcmp(sym, "__c3_typeid_void") == 0) return;
+	if (!htable_get(emitted_types, (void *)sym))
+	{
+		htable_set(emitted_types, (void *)sym, (void *)1);
+		vec_add(*all_types, dep);
+	}
+}
+
 static Type **c_collect_runtime_types(HTable *emitted_types)
 {
 	htable_init(emitted_types, 4096);
 	Type **all_types = NULL;
 
-	int type_count = vec_size(compiler.context.type);
-	for (int i = 0; i < type_count; i++)
+	if (strip_unused() && c_needed_typeids_vec)
 	{
-		Type *t = compiler.context.type[i];
-		if (!c_type_needs_emission(t))
+		FOREACH(Type *, t, c_needed_typeids_vec)
 		{
-			continue;
-		}
-		t = c_unwrap_alias(t);
-		if (!c_type_is_resolved(t))
-		{
-			continue;
-		}
-		if (t->type_kind == TYPE_OPTIONAL && (!t->optional || t->optional->type_kind == TYPE_VOID || t->optional->type_kind == TYPE_WILDCARD))
-		{
-			continue;
-		}
-		const char *tsym = c_typeid_name(t);
-		if (!htable_get(emitted_types, (void *)tsym))
-		{
-			htable_set(emitted_types, (void *)tsym, (void *)1);
-			vec_add(all_types, t);
+			if (!c_type_needs_emission(t))
+			{
+				continue;
+			}
+			t = c_unwrap_alias(t);
+			if (!c_type_is_resolved(t))
+			{
+				continue;
+			}
+			const char *tsym = c_typeid_name(t);
+			if (!htable_get(emitted_types, (void *)tsym))
+			{
+				htable_set(emitted_types, (void *)tsym, (void *)1);
+				vec_add(all_types, t);
+			}
 		}
 	}
+	else
+	{
+		int type_count = vec_size(compiler.context.type);
+		for (int i = 0; i < type_count; i++)
+		{
+			Type *t = compiler.context.type[i];
+			if (!c_type_needs_emission(t))
+			{
+				continue;
+			}
+			if (strip_unused() && !t->is_live)
+			{
+				continue;
+			}
+			t = c_unwrap_alias(t);
+			if (!c_type_is_resolved(t))
+			{
+				continue;
+			}
+			if (t->type_kind == TYPE_OPTIONAL && (!t->optional || t->optional->type_kind == TYPE_VOID || t->optional->type_kind == TYPE_WILDCARD))
+			{
+				continue;
+			}
+			const char *tsym = c_typeid_name(t);
+			if (!htable_get(emitted_types, (void *)tsym))
+			{
+				htable_set(emitted_types, (void *)tsym, (void *)1);
+				vec_add(all_types, t);
+			}
+		}
+	}
+
+	for (int i = 0; i < vec_size(all_types); i++)
+	{
+		Type *t = all_types[i];
+		Type *parent = NULL;
+		Type *inner  = NULL;
+		c_get_runtime_type_dependencies(t, &parent, &inner);
+		c_add_runtime_type_dep(emitted_types, &all_types, parent);
+		c_add_runtime_type_dep(emitted_types, &all_types, inner);
+	}
+
 	return all_types;
 }
 
@@ -1448,7 +1555,7 @@ void c_emit_runtime_header(const char *dir)
 			continue;
 		}
 		Decl *d = t->decl;
-		if (d->is_template || d->replacement)
+		if (d->is_template || d->replacement || (strip_unused() && !d->is_live))
 		{
 			continue;
 		}
@@ -1499,7 +1606,7 @@ void c_emit_runtime_header(const char *dir)
 			}
 			FOREACH(Decl *, d, unit->faults)
 			{
-				if (!d || d->decl_kind != DECL_FAULT)
+				if (!d || d->decl_kind != DECL_FAULT || (strip_unused() && !d->is_live))
 				{
 					continue;
 				}
@@ -1552,54 +1659,12 @@ GenContext *c_emit_runtime_c(const char *dir)
 			continue;
 		}
 		int kind               = c_get_type_introspection_kind(t);
-		const char *parent_sym = "NULL";
-		if (t->type_kind == TYPE_TYPEDEF && t->decl && t->decl->distinct && is_valid_type_ptr(t->decl->distinct->type))
-		{
-			parent_sym = str_printf("&%s", c_typeid_name(t->decl->distinct->type));
-		}
-		else if (t->type_kind == TYPE_CONSTSET && t->decl && t->decl->is_substruct && t->decl->enums.type_info && is_valid_type_ptr(t->decl->enums.type_info->type))
-		{
-			parent_sym = str_printf("&%s", c_typeid_name(t->decl->enums.type_info->type));
-		}
-		else if (t->type_kind == TYPE_STRUCT && t->decl && t->decl->is_substruct && t->decl->strukt.members && vec_size(t->decl->strukt.members) > 0)
-		{
-			Decl *first_m = t->decl->strukt.members[0];
-			if (first_m && is_valid_type_ptr(first_m->type))
-			{
-				parent_sym = str_printf("&%s", c_typeid_name(first_m->type));
-			}
-		}
-
-		size_t sz             = c_get_type_size(t);
-		const char *inner_sym = "NULL";
-		if (t->type_kind == TYPE_POINTER && t->pointer && is_valid_type_ptr(t->pointer))
-		{
-			inner_sym = str_printf("&%s", c_typeid_name(t->pointer));
-		}
-		else if ((t->type_kind == TYPE_SLICE || c_type_is_vec_or_arr(t)) && t->array.base && is_valid_type_ptr(t->array.base))
-		{
-			inner_sym = str_printf("&%s", c_typeid_name(t->array.base));
-		}
-		else if ((t->type_kind == TYPE_ENUM || t->type_kind == TYPE_CONSTSET) && t->decl)
-		{
-			Type *it = enum_inner_type(t);
-			if (it && is_valid_type_ptr(it))
-			{
-				inner_sym = str_printf("&%s", c_typeid_name(it));
-			}
-		}
-		else if (t->type_kind == TYPE_TYPEDEF && t->decl && t->decl->distinct && is_valid_type_ptr(t->decl->distinct->type))
-		{
-			inner_sym = str_printf("&%s", c_typeid_name(t->decl->distinct->type));
-		}
-		else if (t->type_kind == TYPE_BITSTRUCT && t->decl && t->decl->strukt.container_type && is_valid_type_ptr(t->decl->strukt.container_type->type))
-		{
-			inner_sym = str_printf("&%s", c_typeid_name(t->decl->strukt.container_type->type));
-		}
-		else if (t->type_kind == TYPE_OPTIONAL && t->optional && is_valid_type_ptr(t->optional))
-		{
-			inner_sym = str_printf("&%s", c_typeid_name(t->optional));
-		}
+		Type *parent_type = NULL;
+		Type *inner_type  = NULL;
+		c_get_runtime_type_dependencies(t, &parent_type, &inner_type);
+		const char *parent_sym = parent_type ? str_printf("&%s", c_typeid_name(parent_type)) : "NULL";
+		const char *inner_sym  = inner_type  ? str_printf("&%s", c_typeid_name(inner_type))  : "NULL";
+		size_t sz              = c_get_type_size(t);
 
 		size_t len = 0;
 		if (c_type_is_vec_or_arr(t))
@@ -1654,7 +1719,7 @@ GenContext *c_emit_runtime_c(const char *dir)
 			}
 			FOREACH(Decl *, d, unit->faults)
 			{
-				if (!d || d->decl_kind != DECL_FAULT)
+				if (!d || d->decl_kind != DECL_FAULT || (strip_unused() && !d->is_live))
 				{
 					continue;
 				}

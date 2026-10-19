@@ -1316,12 +1316,14 @@ void **c_gen(Module **modules, int module_count)
 	htable_init(&c_shared_gen_def, 16384);
 	htable_init(&c_shared_decl_names, 8192);
 	htable_init(&c_shared_emitted_global_decls, 8192);
+	htable_init(&c_needed_typeids, 1024);
+	c_needed_typeids_vec = NULL;
+	c_recording_typeids = true;
 
 	const char *dir = compiler.build.object_file_dir ? compiler.build.object_file_dir : ".";
 	scratch_buffer_clear();
 	scratch_buffer_append(dir);
 	dir_make_recursive(scratch_buffer_to_string());
-	c_emit_runtime_header(dir);
 	c_emit_shared_header(dir);
 
 	bool will_compile = compiler.build.emit_object_files
@@ -1342,11 +1344,6 @@ void **c_gen(Module **modules, int module_count)
 	}
 
 	GenContext **gen_contexts = NULL;
-	GenContext *rt            = c_emit_runtime_c(dir);
-	if (rt)
-	{
-		vec_add(gen_contexts, rt);
-	}
 
 	if (compiler.build.single_module == SINGLE_MODULE_ON)
 	{
@@ -1355,16 +1352,26 @@ void **c_gen(Module **modules, int module_count)
 		{
 			vec_add(gen_contexts, c);
 		}
-		return (void **)gen_contexts;
 	}
-
-	for (int i = 0; i < module_count; i++)
+	else
 	{
-		GenContext *c = c_gen_module(modules[i], i);
-		if (c)
+		for (int i = 0; i < module_count; i++)
 		{
-			vec_add(gen_contexts, c);
+			GenContext *c = c_gen_module(modules[i], i);
+			if (c)
+			{
+				vec_add(gen_contexts, c);
+			}
 		}
 	}
+
+	c_recording_typeids = false;
+	c_emit_runtime_header(dir);
+	GenContext *rt = c_emit_runtime_c(dir);
+	if (rt)
+	{
+		vec_add(gen_contexts, rt);
+	}
+
 	return (void **)gen_contexts;
 }

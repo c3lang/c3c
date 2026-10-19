@@ -409,4 +409,10 @@ void c_emit_ignored_expr(GenContext *c, Expr *expr);
 void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr);
 void c_emit_inc_dec(GenContext *c, CValue *value, Expr *expr, bool is_post);
 
+/* Typeid Tracking */
+extern HTable c_needed_typeids;
+extern Type **c_needed_typeids_vec;
+extern bool c_recording_typeids;
+void c_record_needed_typeid(Type *type, const char *sym);
+
 #endif /* C_CODEGEN_INTERNAL_H */
