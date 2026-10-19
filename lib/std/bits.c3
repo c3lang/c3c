@@ -18,11 +18,11 @@ macro int uint[<*>].ctz(self) => (int)$$ctz(self);
 <* Count Leading Zeroes counts how far right the first (left to right) bit flipped to one is *>
 macro int uint[<*>].clz(self) => (int)$$clz(self);
 <*
- Funnel SHift Left(a, b, s) forms a 2*sizeof(uint[<*>]) value by concatenating a (high half) and b (low half), shifts it left by s bits, and returns the upper sizeof(uint[<*>]) bits.
+ Funnel Shift Left(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it left by *shift* bits, and returns the upper bits.
 *>
 macro uint[<*>] uint[<*>].fshl(hi, uint[<*>] lo, uint[<*>] shift) => $$fshl(hi, lo, shift);
 <* 
- Funnel SHift Right(a, b, s) forms a 2*sizeof(uint[<*>]) value by concatenating a (high half) and b (low half), shifts it right by s bits, and returns the lower sizeof(uint[<*>]) bits.
+ Funnel Shift Right(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it right by *shift* bits, and returns the lower bits.
 *>
 macro uint[<*>] uint[<*>].fshr(hi, uint[<*>] lo, uint[<*>] shift) => $$fshr(hi, lo, shift);
 <* Rotates the bits left, wrapping around so the bits on the high end move to the low end*>
@@ -31,18 +31,18 @@ macro uint[<*>] uint[<*>].rotl(self, uint[<*>] shift) => $$fshl(self, self, shif
 macro uint[<*>] uint[<*>].rotr(self, uint[<*>] shift) => $$fshr(self, self, shift);
 
 
-* This is a popcount instruction, it counts the amount of bits turned to one *>
+<* This is a popcount instruction, it counts the amount of bits turned to one *>
 macro int int[<*>].popcount(self) => (int)$$popcount(self);
 <* Count Trailing Zeroes counts how far left the first (right to left) bit flipped to one is *>
 macro int int[<*>].ctz(self) => (int)$$ctz(self);
 <* Count Leading Zeroes counts how far right the first (left to right) bit flipped to one is *>
 macro int int[<*>].clz(self) => (int)$$clz(self);
 <*
- Funnel SHift Left(a, b, s) forms a 2*sizeof(int[<*>]) value by concatenating a (high half) and b (low half), shifts it left by s bits, and returns the upper sizeof(int[<*>]) bits.
+ Funnel Shift Left(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it left by *shift* bits, and returns the upper bits.
 *>
 macro int[<*>] int[<*>].fshl(hi, int[<*>] lo, int[<*>] shift) => $$fshl(hi, lo, shift);
 <* 
- Funnel SHift Right(a, b, s) forms a 2*sizeof(int[<*>]) value by concatenating a (high half) and b (low half), shifts it right by s bits, and returns the lower sizeof(int[<*>]) bits.
+ Funnel Shift Right(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it right by *shift* bits, and returns the lower bits.
 *>
 macro int[<*>] int[<*>].fshr(hi, int[<*>] lo, int[<*>] shift) => $$fshr(hi, lo, shift);
 <* Rotates the bits left, wrapping around so the bits on the high end move to the low end*>
@@ -58,11 +58,11 @@ macro int ushort[<*>].ctz(self) => (int)$$ctz(self);
 <* Count Leading Zeroes counts how far right the first (left to right) bit flipped to one is *>
 macro int ushort[<*>].clz(self) => (int)$$clz(self);
 <*
- Funnel SHift Left(a, b, s) forms a 2*sizeof(ushort[<*>]) value by concatenating a (high half) and b (low half), shifts it left by s bits, and returns the upper sizeof(ushort[<*>]) bits.
+ Funnel Shift Left(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it left by *shift* bits, and returns the upper bits.
 *>
 macro ushort[<*>] ushort[<*>].fshl(hi, ushort[<*>] lo, ushort[<*>] shift) => $$fshl(hi, lo, shift);
 <* 
- Funnel SHift Right(a, b, s) forms a 2*sizeof(ushort[<*>]) value by concatenating a (high half) and b (low half), shifts it right by s bits, and returns the lower sizeof(ushort[<*>]) bits.
+ Funnel Shift Right(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it right by *shift* bits, and returns the lower bits.
 *>
 macro ushort[<*>] ushort[<*>].fshr(hi, ushort[<*>] lo, ushort[<*>] shift) => $$fshr(hi, lo, shift);
 <* Rotates the bits left, wrapping around so the bits on the high end move to the low end*>
@@ -78,11 +78,11 @@ macro int short[<*>].ctz(self) => (int)$$ctz(self);
 <* Count Leading Zeroes counts how far right the first (left to right) bit flipped to one is *>
 macro int short[<*>].clz(self) => (int)$$clz(self);
 <*
- Funnel SHift Left(a, b, s) forms a 2*sizeof(short[<*>]) value by concatenating a (high half) and b (low half), shifts it left by s bits, and returns the upper sizeof(short[<*>]) bits.
+ Funnel Shift Left(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it left by *shift* bits, and returns the upper bits.
 *>
 macro short[<*>] short[<*>].fshl(hi, short[<*>] lo, short[<*>] shift) => $$fshl(hi, lo, shift);
 <* 
- Funnel SHift Right(a, b, s) forms a 2*sizeof(short[<*>]) value by concatenating a (high half) and b (low half), shifts it right by s bits, and returns the lower sizeof(short[<*>]) bits.
+ Funnel Shift Right(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it right by *shift* bits, and returns the lower bits.
 *>
 macro short[<*>] short[<*>].fshr(hi, short[<*>] lo, short[<*>] shift) => $$fshr(hi, lo, shift);
 <* Rotates the bits left, wrapping around so the bits on the high end move to the low end*>
@@ -98,11 +98,11 @@ macro int char[<*>].ctz(self) => (int)$$ctz(self);
 <* Count Leading Zeroes counts how far right the first (left to right) bit flipped to one is *>
 macro int char[<*>].clz(self) => (int)$$clz(self);
 <*
- Funnel SHift Left(a, b, s) forms a 2*sizeof(char[<*>]) value by concatenating a (high half) and b (low half), shifts it left by s bits, and returns the upper sizeof(char[<*>]) bits.
+ Funnel Shift Left(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it left by *shift* bits, and returns the upper bits.
 *>
 macro char[<*>] char[<*>].fshl(hi, char[<*>] lo, char[<*>] shift) => $$fshl(hi, lo, shift);
 <* 
- Funnel SHift Right(a, b, s) forms a 2*sizeof(char[<*>]) value by concatenating a (high half) and b (low half), shifts it right by s bits, and returns the lower sizeof(char[<*>]) bits.
+ Funnel Shift Right(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it right by *shift* bits, and returns the lower bits.
 *>
 macro char[<*>] char[<*>].fshr(hi, char[<*>] lo, char[<*>] shift) => $$fshr(hi, lo, shift);
 <* Rotates the bits left, wrapping around so the bits on the high end move to the low end*>
@@ -118,11 +118,11 @@ macro int ichar[<*>].ctz(self) => (int)$$ctz(self);
 <* Count Leading Zeroes counts how far right the first (left to right) bit flipped to one is *>
 macro int ichar[<*>].clz(self) => (int)$$clz(self);
 <*
- Funnel SHift Left(a, b, s) forms a 2*sizeof(ichar[<*>]) value by concatenating a (high half) and b (low half), shifts it left by s bits, and returns the upper sizeof(ichar[<*>]) bits.
+ Funnel Shift Left(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it left by *shift* bits, and returns the upper bits.
 *>
 macro ichar[<*>] ichar[<*>].fshl(hi, ichar[<*>] lo, ichar[<*>] shift) => $$fshl(hi, lo, shift);
 <* 
- Funnel SHift Right(a, b, s) forms a 2*sizeof(ichar[<*>]) value by concatenating a (high half) and b (low half), shifts it right by s bits, and returns the lower sizeof(ichar[<*>]) bits.
+ Funnel Shift Right(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it right by *shift* bits, and returns the lower bits.
 *>
 macro ichar[<*>] ichar[<*>].fshr(hi, ichar[<*>] lo, ichar[<*>] shift) => $$fshr(hi, lo, shift);
 <* Rotates the bits left, wrapping around so the bits on the high end move to the low end*>
@@ -138,11 +138,11 @@ macro int ulong[<*>].ctz(self) => (int)$$ctz(self);
 <* Count Leading Zeroes counts how far right the first (left to right) bit flipped to one is *>
 macro int ulong[<*>].clz(self) => (int)$$clz(self);
 <*
- Funnel SHift Left(a, b, s) forms a 2*sizeof(ulong[<*>]) value by concatenating a (high half) and b (low half), shifts it left by s bits, and returns the upper sizeof(ulong[<*>]) bits.
+ Funnel Shift Left(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it left by *shift* bits, and returns the upper bits.
 *>
 macro ulong[<*>] ulong[<*>].fshl(hi, ulong[<*>] lo, ulong[<*>] shift) => $$fshl(hi, lo, shift);
 <* 
- Funnel SHift Right(a, b, s) forms a 2*sizeof(ulong[<*>]) value by concatenating a (high half) and b (low half), shifts it right by s bits, and returns the lower sizeof(ulong[<*>]) bits.
+ Funnel Shift Right(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it right by *shift* bits, and returns the lower bits.
 *>
 macro ulong[<*>] ulong[<*>].fshr(hi, ulong[<*>] lo, ulong[<*>] shift) => $$fshr(hi, lo, shift);
 <* Rotates the bits left, wrapping around so the bits on the high end move to the low end*>
@@ -158,11 +158,11 @@ macro int long[<*>].ctz(self) => (int)$$ctz(self);
 <* Count Leading Zeroes counts how far right the first (left to right) bit flipped to one is *>
 macro int long[<*>].clz(self) => (int)$$clz(self);
 <*
- Funnel SHift Left(a, b, s) forms a 2*sizeof(long[<*>]) value by concatenating a (high half) and b (low half), shifts it left by s bits, and returns the upper sizeof(long[<*>]) bits.
+ Funnel Shift Left(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it left by *shift* bits, and returns the upper bits.
 *>
 macro long[<*>] long[<*>].fshl(hi, long[<*>] lo, long[<*>] shift) => $$fshl(hi, lo, shift);
 <* 
- Funnel SHift Right(a, b, s) forms a 2*sizeof(long[<*>]) value by concatenating a (high half) and b (low half), shifts it right by s bits, and returns the lower sizeof(long[<*>]) bits.
+ Funnel Shift Right(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it right by *shift* bits, and returns the lower bits.
 *>
 macro long[<*>] long[<*>].fshr(hi, long[<*>] lo, long[<*>] shift) => $$fshr(hi, lo, shift);
 <* Rotates the bits left, wrapping around so the bits on the high end move to the low end*>
@@ -178,11 +178,11 @@ macro int uint128[<*>].ctz(self) => (int)$$ctz(self);
 <* Count Leading Zeroes counts how far right the first (left to right) bit flipped to one is *>
 macro int uint128[<*>].clz(self) => (int)$$clz(self);
 <*
- Funnel SHift Left(a, b, s) forms a 2*sizeof(uint128[<*>]) value by concatenating a (high half) and b (low half), shifts it left by s bits, and returns the upper sizeof(uint128[<*>]) bits.
+ Funnel Shift Left(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it left by *shift* bits, and returns the upper bits.
 *>
 macro uint128[<*>] uint128[<*>].fshl(hi, uint128[<*>] lo, uint128[<*>] shift) => $$fshl(hi, lo, shift);
 <* 
- Funnel SHift Right(a, b, s) forms a 2*sizeof(uint128[<*>]) value by concatenating a (high half) and b (low half), shifts it right by s bits, and returns the lower sizeof(uint128[<*>]) bits.
+ Funnel Shift Right(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it right by *shift* bits, and returns the lower bits.
 *>
 macro uint128[<*>] uint128[<*>].fshr(hi, uint128[<*>] lo, uint128[<*>] shift) => $$fshr(hi, lo, shift);
 <* Rotates the bits left, wrapping around so the bits on the high end move to the low end*>
@@ -198,11 +198,11 @@ macro int int128[<*>].ctz(self) => (int)$$ctz(self);
 <* Count Leading Zeroes counts how far right the first (left to right) bit flipped to one is *>
 macro int int128[<*>].clz(self) => (int)$$clz(self);
 <*
- Funnel SHift Left(a, b, s) forms a 2*sizeof(int128[<*>]) value by concatenating a (high half) and b (low half), shifts it left by s bits, and returns the upper sizeof(int128[<*>]) bits.
+ Funnel Shift Left(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it left by *shift* bits, and returns the upper bits.
 *>
 macro int128[<*>] int128[<*>].fshl(hi, int128[<*>] lo, int128[<*>] shift) => $$fshl(hi, lo, shift);
 <* 
-Funnel SHift Right(a, b, s) forms a 2*sizeof(int128[<*>]) value by concatenating a (high half) and b (low half), shifts it right by s bits, and returns the lower sizeof(int128[<*>]) bits.
+Funnel Shift Right(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it right by *shift* bits, and returns the lower bits.
 *>
 macro int128[<*>] int128[<*>].fshr(hi, int128[<*>] lo, int128[<*>] shift) => $$fshr(hi, lo, shift);
 <* Rotates the bits left, wrapping around so the bits on the high end move to the low end*>
@@ -218,11 +218,11 @@ macro int uint.ctz(self) => (int)$$ctz(self);
 <* Count Leading Zeroes counts how far right the first (left to right) bit flipped to one is *>
 macro int uint.clz(self) => (int)$$clz(self);
 <*
- Funnel SHift Left(a, b, s) forms a 2*sizeof(uint) value by concatenating a (high half) and b (low half), shifts it left by s bits, and returns the upper sizeof(uint) bits.
+ Funnel Shift Left(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it left by *shift* bits, and returns the upper bits.
 *>
 macro uint uint.fshl(hi, uint lo, uint shift) => $$fshl(hi, lo, shift);
 <* 
- Funnel SHift Right(a, b, s) forms a 2*sizeof(uint) value by concatenating a (high half) and b (low half), shifts it right by s bits, and returns the lower sizeof(uint) bits.
+ Funnel Shift Right(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it right by *shift* bits, and returns the lower bits.
 *>
 macro uint uint.fshr(hi, uint lo, uint shift) => $$fshr(hi, lo, shift);
 <* Rotates the bits left, wrapping around so the bits on the high end move to the low end*>
@@ -238,11 +238,11 @@ macro int int.ctz(self) => (int)$$ctz(self);
 <* Count Leading Zeroes counts how far right the first (left to right) bit flipped to one is *>
 macro int int.clz(self) => (int)$$clz(self);
 <*
- Funnel SHift Left(a, b, s) forms a 2*sizeof(int) value by concatenating a (high half) and b (low half), shifts it left by s bits, and returns the upper sizeof(int) bits.
+ Funnel Shift Left(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it left by *shift* bits, and returns the upper bits.
 *>
 macro int int.fshl(hi, int lo, int shift) => $$fshl(hi, lo, shift);
 <* 
- Funnel SHift Right(a, b, s) forms a 2*sizeof(int) value by concatenating a (high half) and b (low half), shifts it right by s bits, and returns the lower sizeof(int) bits.
+ Funnel Shift Right(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it right by *shift* bits, and returns the lower bits.
 *>
 macro int int.fshr(hi, int lo, int shift) => $$fshr(hi, lo, shift);
 <* Rotates the bits left, wrapping around so the bits on the high end move to the low end*>
@@ -258,11 +258,11 @@ macro ushort.ctz(self) => $$ctz(self);
 <* Count Leading Zeroes counts how far right the first (left to right) bit flipped to one is *>
 macro ushort.clz(self) => $$clz(self);
 <*
- Funnel SHift Left(a, b, s) forms a 2*sizeof(int) value by concatenating a (high half) and b (low half), shifts it left by s bits, and returns the upper sizeof(int) bits.
+ Funnel Shift Left(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it left by *shift* bits, and returns the upper bits.
 *>
 macro ushort ushort.fshl(hi, ushort lo, ushort shift) => $$fshl(hi, lo, shift);
 <* 
- Funnel SHift Right(a, b, s) forms a 2*sizeof(int) value by concatenating a (high half) and b (low half), shifts it right by s bits, and returns the lower sizeof(int) bits.
+ Funnel Shift Right(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it right by *shift* bits, and returns the lower bits.
 *>
 macro ushort ushort.fshr(hi, ushort lo, ushort shift) => $$fshr(hi, lo, shift);
 <* Rotates the bits left, wrapping around so the bits on the high end move to the low end*>
@@ -277,11 +277,11 @@ macro int short.ctz(self) => (int)$$ctz(self);
 <* Count Leading Zeroes counts how far right the first (left to right) bit flipped to one is *>
 macro int short.clz(self) => (int)$$clz(self);
 <*
- Funnel SHift Left(a, b, s) forms a 2*sizeof(short) value by concatenating a (high half) and b (low half), shifts it left by s bits, and returns the upper sizeof(short) bits.
+ Funnel Shift Left(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it left by *shift* bits, and returns the upper bits.
 *>
 macro short short.fshl(hi, short lo, short shift) => $$fshl(hi, lo, shift);
 <* 
- Funnel SHift Right(a, b, s) forms a 2*sizeof(short) value by concatenating a (high half) and b (low half), shifts it right by s bits, and returns the lower sizeof(short) bits.
+ Funnel Shift Right(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it right by *shift* bits, and returns the lower bits.
 *>
 macro short short.fshr(hi, short lo, short shift) => $$fshr(hi, lo, shift);
 <* Rotates the bits left, wrapping around so the bits on the high end move to the low end*>
@@ -297,11 +297,11 @@ macro int char.ctz(self) => (int)$$ctz(self);
 <* Count Leading Zeroes counts how far right the first (left to right) bit flipped to one is *>
 macro int char.clz(self) => (int)$$clz(self);
 <*
- Funnel SHift Left(a, b, s) forms a 2*sizeof(char) value by concatenating a (high half) and b (low half), shifts it left by s bits, and returns the upper sizeof(char) bits.
+ Funnel Shift Left(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it left by *shift* bits, and returns the upper bits.
 *>
 macro char char.fshl(hi, char lo, char shift) => $$fshl(hi, lo, shift);
 <* 
- Funnel SHift Right(a, b, s) forms a 2*sizeof(char) value by concatenating a (high half) and b (low half), shifts it right by s bits, and returns the lower sizeof(char) bits.
+ Funnel Shift Right(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it right by *shift* bits, and returns the lower bits.
 *>
 macro char char.fshr(hi, char lo, char shift) => $$fshr(hi, lo, shift);
 <* Rotates the bits left, wrapping around so the bits on the high end move to the low end*>
@@ -317,11 +317,11 @@ macro int ichar.ctz(self) => (int)$$ctz(self);
 <* Count Leading Zeroes counts how far right the first (left to right) bit flipped to one is *>
 macro int ichar.clz(self) => (int)$$clz(self);
 <*
- Funnel SHift Left(a, b, s) forms a 2*sizeof(ichar) value by concatenating a (high half) and b (low half), shifts it left by s bits, and returns the upper sizeof(ichar) bits.
+ Funnel Shift Left(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it left by *shift* bits, and returns the upper bits.
 *>
 macro ichar ichar.fshl(hi, ichar lo, ichar shift) => $$fshl(hi, lo, shift);
 <* 
- Funnel SHift Right(a, b, s) forms a 2*sizeof(ichar) value by concatenating a (high half) and b (low half), shifts it right by s bits, and returns the lower sizeof(ichar) bits.
+ Funnel Shift Right(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it right by *shift* bits, and returns the lower bits.
 *>
 macro ichar ichar.fshr(hi, ichar lo, ichar shift) => $$fshr(hi, lo, shift);
 <* Rotates the bits left, wrapping around so the bits on the high end move to the low end*>
@@ -337,11 +337,11 @@ macro int ulong.ctz(self) => (int)$$ctz(self);
 <* Count Leading Zeroes counts how far right the first (left to right) bit flipped to one is *>
  macro int ulong.clz(self) => (int)$$clz(self);
 <*
- Funnel SHift Left(a, b, s) forms a 2*sizeof(ulong) value by concatenating a (high half) and b (low half), shifts it left by s bits, and returns the upper sizeof(ulong) bits.
+ Funnel Shift Left(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it left by *shift* bits, and returns the upper bits.
 *>
 macro ulong ulong.fshl(hi, ulong lo, ulong shift) => $$fshl(hi, lo, shift);
 <* 
- Funnel SHift Right(a, b, s) forms a 2*sizeof(ulong) value by concatenating a (high half) and b (low half), shifts it right by s bits, and returns the lower sizeof(ulong) bits.
+ Funnel Shift Right(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it right by *shift* bits, and returns the lower bits.
 *>
 macro ulong ulong.fshr(hi, ulong lo, ulong shift) => $$fshr(hi, lo, shift);
 <* Rotates the bits left, wrapping around so the bits on the high end move to the low end*>
@@ -357,11 +357,11 @@ macro int long.ctz(self) => (int)$$ctz(self);
 <* Count Leading Zeroes counts how far right the first (left to right) bit flipped to one is *>
 macro int long.clz(self) => (int)$$clz(self);
 <*
- Funnel SHift Left(a, b, s) forms a 2*sizeof(long) value by concatenating a (high half) and b (low half), shifts it left by s bits, and returns the upper sizeof(long) bits.
+ Funnel Shift Left(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it left by *shift* bits, and returns the upper bits.
 *>
 macro long long.fshl(hi, long lo, long shift) => $$fshl(hi, lo, shift);
 <* 
- Funnel SHift Right(a, b, s) forms a 2*sizeof(long) value by concatenating a (high half) and b (low half), shifts it right by s bits, and returns the lower sizeof(long) bits.
+ Funnel Shift Right(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it right by *shift* bits, and returns the lower bits.
 *>
 macro long long.fshr(hi, long lo, long shift) => $$fshr(hi, lo, shift);
 <* Rotates the bits left, wrapping around so the bits on the high end move to the low end*>
@@ -376,11 +376,11 @@ macro int uint128.ctz(self) => (int)$$ctz(self);
  <* Count Leading Zeroes counts how far right the first (left to right) bit flipped to one is *>
 macro int uint128.clz(self) => (int)$$clz(self);
 <*
- Funnel SHift Left(a, b, s) forms a 2*sizeof(uint128) value by concatenating a (high half) and b (low half), shifts it left by s bits, and returns the upper sizeof(uint128) bits.
+ Funnel Shift Left(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it left by *shift* bits, and returns the upper bits.
 *>
 macro uint128 uint128.fshl(hi, uint128 lo, uint128 shift) => $$fshl(hi, lo, shift);
 <* 
- Funnel SHift Right(a, b, s) forms a 2*sizeof(uint128) value by concatenating a (high half) and b (low half), shifts it right by s bits, and returns the lower sizeof(uint128) bits.
+ Funnel Shift Right(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it right by *shift* bits, and returns the lower bits.
 *>
 macro uint128 uint128.fshr(hi, uint128 lo, uint128 shift) => $$fshr(hi, lo, shift);
 <* Rotates the bits left, wrapping around so the bits on the high end move to the low end*>
@@ -396,11 +396,11 @@ macro int int128.ctz(self) => (int)$$ctz(self);
 <* Count Leading Zeroes counts how far right the first (left to right) bit flipped to one is *>
 macro int int128.clz(self) => (int)$$clz(self);
 <*
- Funnel SHift Left(a, b, s) forms a 2*sizeof(int128) value by concatenating a (high half) and b (low half), shifts it left by s bits, and returns the upper sizeof(int128) bits.
+ Funnel Shift Left(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it left by *shift* bits, and returns the upper bits.
 *>
 macro int128 int128.fshl(hi, int128 lo, int128 shift) => $$fshl(hi, lo, shift);
 <* 
- Funnel SHift Right(a, b, s) forms a 2*sizeof(int128) value by concatenating a (high half) and b (low half), shifts it right by s bits, and returns the lower sizeof(int128) bits.
+ Funnel Shift Right(*hi*, *lo*, *shift*) concatenates *hi* (high half) and *lo* (low half), shifts it right by *shift* bits, and returns the lower bits.
 *>
 macro int128 int128.fshr(hi, int128 lo, int128 shift) => $$fshr(hi, lo, shift);
 <* Rotates the bits left, wrapping around so the bits on the high end move to the low end*>
