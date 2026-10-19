@@ -1294,12 +1294,19 @@
 				// Otherwise refresh the current view
 				const hash = decodeURIComponent(location.hash.slice(1));
 				if (hash) {
-					const target = allDecls.find(d => d.uid === hash);
+					const target = findDecl(hash);
 					if (target) renderDetails(target, true);
 				} else {
 					renderModuleOverview();
 				}
 			}
+		}
+
+		function findDecl(id) {
+			if (!id) return null;
+			let d = allDecls.find(x => x.uid === id);
+			if (!d) d = allDecls.find(x => x.uid === 'module:' + id);
+			return d;
 		}
 
 		function isSymbolVisible(d) {
@@ -1365,29 +1372,24 @@
 		};
 
 		function showTooltip(uid, event) {
-			const target = allDecls.find(d => d.uid === uid);
+			const target = findDecl(uid);
 			let docText = target && target.docs && target.docs.text ? target.docs.text : '';
 			if (!docText) return;
 
 			const tooltip = document.getElementById('module-tooltip');
 
-			// Position in opposite corner; edit: now on the upper opposite x axis
 			const x = event.clientX;
-			const y = event.clientY;
 			const vw = window.innerWidth;
-			const vh = window.innerHeight;
 
 			tooltip.className = 'module-tooltip';
 			if (x < vw / 2) {
-				// tooltip.classList.add(y < vh / 2 ? 'bottom-right' : 'top-right');
 				tooltip.classList.add('top-right');
 			} else {
-				// tooltip.classList.add(y < vh / 2 ? 'bottom-left' : 'top-left');
 				tooltip.classList.add('top-left');
 			}
 
 			tooltip.innerHTML = `
-				<div class="module-tooltip-title">${uid}</div>
+				<div class="module-tooltip-title">${target.name || uid}</div>
 				<div class="module-tooltip-content">${formatDocText(docText)}</div>
 			`;
 			tooltip.classList.add('show');
@@ -1402,7 +1404,7 @@
 				addOrMergeDeclaration({
 					name: moduleName,
 					kind: 'module',
-					uid: moduleName,
+					uid: 'module:' + moduleName,
 					visibility: 'public',
 					docs: mod.docs,
 					is_generic: mod.is_generic,
@@ -1465,7 +1467,7 @@
 			window.addEventListener('popstate', (e) => {
 				const uid = (e.state && e.state.uid) || decodeURIComponent(location.hash.slice(1));
 				if (uid) {
-					const target = allDecls.find(d => d.uid === uid);
+					const target = findDecl(uid);
 					if (target) renderDetails(target, true);
 					else renderModuleOverview();
 				} else {
@@ -1535,17 +1537,17 @@
 		}
 
 		function renderModules() {
-			const modules = allDecls.filter(d => d.kind === 'module').sort((a, b) => a.uid.localeCompare(b.uid));
+			const modules = allDecls.filter(d => d.kind === 'module').sort((a, b) => a.name.localeCompare(b.name));
 			const container = document.getElementById('module-list');
-			const realModules = new Set(modules.map(m => m.uid));
+			const realModules = new Set(modules.map(m => m.name));
 
 			const root = {};
 			modules.forEach(m => {
-				const parts = m.uid.split('::');
+				const parts = m.name.split('::');
 				let node = root;
 				for (let i = 0; i < parts.length; i++) {
 					const part = parts[i];
-					if (!node[part]) node[part] = { uid: parts.slice(0, i + 1).join('::'), children: {} };
+					if (!node[part]) node[part] = { name: parts.slice(0, i + 1).join('::'), children: {} };
 					node = node[part].children;
 				}
 			});
@@ -1554,13 +1556,13 @@
 				let html = '';
 				Object.entries(nodeMap).sort(([a], [b]) => a.localeCompare(b)).forEach(([name, node]) => {
 					const hasChildren = Object.keys(node.children).length > 0;
-					const isReal = realModules.has(node.uid);
+					const isReal = realModules.has(node.name);
 
 					if (isReal) {
 						const color = getSubtleColor(name);
-						const nameHtml = formatHierarchicalName(node.uid, '::');
-						html += `<li class="item module-list-item" data-mod="${node.uid}"
-							onclick="closeSearch(); navigateTo('${node.uid}', true)"
+						const nameHtml = formatHierarchicalName(node.name, '::');
+						html += `<li class="item module-list-item" data-mod="${node.name}"
+							onclick="closeSearch(); navigateTo('module:${node.name}', true)"
 							style="cursor: pointer;">
 							<span class="item-name c3-module" style="white-space:nowrap;">${nameHtml}</span>
 						</li>`;
@@ -1617,7 +1619,7 @@
 
 					html += `
 						<div class="module-row"
-							 onclick="hideTooltip(); navigateTo('${m}')"
+							 onclick="hideTooltip(); navigateTo('module:${m}')"
 							 onmouseenter="showTooltip('${m}', event)"
 							 onmouseleave="hideTooltip()">
 							<span class="module-row-name">${displayHtml}</span>
@@ -1660,9 +1662,10 @@
 			else if (d.kind === 'enum') kindClass += ' kind-enum';
 			const vis = d.visibility || 'public';
 			const visLabel = vis !== 'public' ? `<span class="item-visibility">[${vis}]</span>` : '';
+			const displayName = d.kind === 'module' ? d.name : d.uid;
 
 			li.innerHTML = `
-				<span class="item-name c3-${d.kind}">${d.uid} ${visLabel}</span>
+				<span class="item-name c3-${d.kind}">${displayName} ${visLabel}</span>
 				<span class="${kindClass}">${d.kind}</span>
 			`;
 			li.onclick = () => { closeSearch(); navigateTo(d.uid); };
@@ -1913,9 +1916,9 @@
 				renderModuleOverview();
 				return;
 			}
-			const target = allDecls.find(d => d.uid === uid);
+			const target = findDecl(uid);
 			if (target) {
-				history.pushState({ uid: uid }, '', '#' + uid);
+				history.pushState({ uid: target.uid }, '', '#' + target.uid);
 				renderDetails(target, skipSidebarScroll);
 			}
 		}
@@ -1976,7 +1979,8 @@
 			const openInNewTab = (e) => {
 				const el = e.target.closest('[data-uid],[data-mod],[onclick]');
 				if (!el) return;
-				let uid = el.dataset.uid || el.dataset.mod;
+				let uid = el.dataset.uid;
+				if (!uid && el.dataset.mod) uid = 'module:' + el.dataset.mod;
 				if (!uid && el.hasAttribute('onclick')) {
 					const match = el.getAttribute('onclick').match(/navigateTo\('([^']+)'\)/);
 					if (match) uid = match[1];
@@ -2072,7 +2076,7 @@
 				const filtered = allDecls
 					.map(d => {
 						const nameLow = (d.name || '').toLowerCase();
-						const uidLow = d.uid.toLowerCase();
+						const uidLow = (d.kind === 'module' ? d.name : d.uid).toLowerCase();
 						let totalScore = 0, matchedAll = true, keywordMatch = false;
 
 						for (const w of words) {
@@ -2288,7 +2292,7 @@
 		function buildHeaderHtml(d, vd) {
 			let html = `<div class="header-container">`;
 			html += `<span class="module-breadcrumb">Module: `;
-			html += `<a href="#" onclick="navigateTo('${d.moduleName}'); return false;"
+			html += `<a href="#" onclick="navigateTo('module:${d.moduleName}'); return false;"
 						class="module-link"
 						title="Go to module ${d.moduleName}">${d.moduleName}</a>`;
 			if (d.generic_parameters && d.generic_parameters.length > 0) {
@@ -2785,7 +2789,7 @@
 			document.getElementById('content').innerHTML = html;
 
 			// Sync left sidebar
-			const modName = d.kind === 'module' ? d.uid : d.moduleName;
+			const modName = d.moduleName;
 			document.querySelectorAll('.module-list-ul li').forEach(li => {
 				const isMatch = li.getAttribute('data-mod') === modName;
 				li.classList.toggle('selected', isMatch);
