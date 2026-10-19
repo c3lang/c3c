@@ -41,6 +41,7 @@ sat_shl never saturates: int::max.sat_shl(1) gives -2.
 (Fixed)
 
 15. Symbol collisions. Modules net_utils and net::utils both mangle to net_utils__init and hit a duplicate-symbol link error (c_codegen.c:14-33, :126-128).
+(Fixed)
 
 16. An absolute -o breaks single-module builds. static-lib, -Oz and --single-module=yes build <objdir>//abs/path.c and fail (c_codegen.c:823). LLVM is fine here.
 
@@ -98,7 +99,17 @@ const char *c_sanitize_name(const char *name)
 
 	scratch_buffer_push();
 	scratch_buffer_clear();
-	for (p = name; *p; p++) scratch_buffer_append_char(c_sanitize_char(*p));
+	for (p = name; *p; p++)
+	{
+		if (*p == '.')
+		{
+			scratch_buffer_append("__");
+		}
+		else
+		{
+			scratch_buffer_append_char(c_sanitize_char(*p));
+		}
+	}
 	const char *interned = scratch_buffer_interned();
 	scratch_buffer_pop();
 	return interned;
@@ -165,24 +176,6 @@ bool c_decl_needs_asm_label(Decl *decl)
 
 static const char *c_compute_decl_name(Decl *decl)
 {
-	if ((decl == compiler.context.main && !decl->func_decl.type_parent) ||
-	    (decl->is_synthetic && decl->name && strcmp(decl->name, "main") == 0))
-	{
-		if (compiler.platform.os == OS_TYPE_WIN32 && decl->decl_kind == DECL_FUNC && vec_size(decl->func_decl.signature.params) == 4)
-		{
-			Decl *param2 = decl->func_decl.signature.params[2];
-			Type *t2 = c_decl_type(param2);
-			if (t2 && t2->type_kind == TYPE_POINTER && t2->pointer && t2->pointer->type_kind == TYPE_U16)
-			{
-				return "wWinMain";
-			}
-			return "WinMain";
-		}
-		if (!decl->unit || !decl->unit->main_function || !decl->unit->main_function->is_synthetic || decl == decl->unit->main_function)
-		{
-			return "main";
-		}
-	}
 	if (decl->is_extern)
 	{
 		const char *name = NULL;
@@ -215,9 +208,10 @@ static const char *c_compute_decl_name(Decl *decl)
 		return c_check_collision(c_sanitize_name(decl->name));
 	}
 
-	decl->is_export = true;
+	scratch_buffer_push();
 	scratch_buffer_set_extern_decl_name(decl, true);
 	char *str = scratch_buffer_copy();
+	scratch_buffer_pop();
 	return c_check_collision(c_sanitize_name(str));
 }
 
