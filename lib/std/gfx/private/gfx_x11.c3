@@ -98,11 +98,10 @@ fn void? init_platform(String class_name, GfxInitOption flags)
 
 	dload_cursor_xi_ext();
 
-	char[1] no_data = { 0 };
-	Pixmap blank = xCreateBitmapFromData(ctx.display, xDefaultRootWindow(ctx.display), (char*)&no_data, 1, 1);
+	Pixmap blank = xCreateBitmapFromData(ctx.display, xDefaultRootWindow(ctx.display), &&(char[1]){}, 1, 1);
 	if (blank)
 	{
-		XColor dummy = {};
+		XColor dummy;
 		gfx::_gfx.hidden_mouse = (GfxMouse*)xCreatePixmapCursor(ctx.display, blank, blank, &dummy, &dummy, 0, 0);
 		xFreePixmap(ctx.display, blank);
 	}

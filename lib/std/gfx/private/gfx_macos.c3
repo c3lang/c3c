@@ -21,8 +21,7 @@ fn void? init_platform(String class_name, GfxInitOption flags)
 	app.send_void("finishLaunching");
 	_osx_register_classes()!;
 
-	char[4] blk;
-	gfx::_gfx.hidden_mouse = create_mouse(&blk, { 1, 1 }, RGBA8) ?? null;
+	gfx::_gfx.hidden_mouse = create_mouse(&&(char[4]){}, { 1, 1 }, RGBA8) ?? null;
 }
 
 fn void destroy_platform()
