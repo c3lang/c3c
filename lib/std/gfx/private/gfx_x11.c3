@@ -98,8 +98,13 @@ fn void? init_platform(String class_name, GfxInitOption flags)
 
 	dload_cursor_xi_ext();
 
-	char[4] blk;
-	gfx::_gfx.hidden_mouse = gfx::_create_mouse((void*)&blk, { 1, 1 }, RGBA8) ?? null;
+	Pixmap blank = xCreateBitmapFromData(ctx.display, xDefaultRootWindow(ctx.display), &&(char[1]){}, 1, 1);
+	if (blank)
+	{
+		XColor dummy;
+		gfx::_gfx.hidden_mouse = (GfxMouse*)xCreatePixmapCursor(ctx.display, blank, blank, &dummy, &dummy, 0, 0);
+		xFreePixmap(ctx.display, blank);
+	}
 	gfx::_gfx.unix_clipboard = null;
 
 	xSetErrorHandler(&_error_handler);
@@ -969,6 +974,15 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* conte
 
 	_create_window(visual, name, win.internal.flags, win)!;
 	win.set_name(name);
+
+	if (win.internal.flags.hide_mouse)
+	{
+		win.show_mouse(false);
+	}
+	else if (win.internal.mouse)
+	{
+		win.set_mouse(win.internal.mouse);
+	}
 
 	if (show_window) win.show();
 

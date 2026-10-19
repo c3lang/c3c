@@ -7,7 +7,7 @@ fn int main()
 	defer gfx::finalize();
 
 	Canvas c1;
-	c1.init(gfx::create_window("Opaque Window", 100, 100, 640, 480, { .allow_dnd = true })!!, "Opaque Window");
+	c1.init(gfx::create_window("Opaque Window", 100, 100, 640, 480, { .allow_dnd, .hide_mouse })!!, "Opaque Window");
 	defer c1.destroy();
 
 	Canvas c2;
@@ -27,6 +27,11 @@ fn int main()
 					return 0;
 				case KEY_PRESSED:
 					if (e.key.value == ESCAPE) return 0;
+					if (e.key.value == H)
+					{
+						c.win.show_mouse(c.win.is_mouse_hidden());
+						io::printfn("Cursor hidden: %s", c.win.is_mouse_hidden());
+					}
 					if (e.key.mod.control && e.key.value == V)
 					{
 						if (try clip = gfx::read_clipboard(tmem, TEXT))
@@ -106,7 +111,6 @@ fn void Canvas.init(&self, GfxWindow* win, String title)
 	self.win = win;
 	self.title = title;
 	self.win.set_user_ptr(self);
-	self.win.show_mouse(false);
 	self.cursor = { win.width / 2, win.height / 2 };
 	self.radius = 60;
 	self.set_icon();
