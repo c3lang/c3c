@@ -44,6 +44,7 @@ sat_shl never saturates: int::max.sat_shl(1) gives -2.
 (Fixed)
 
 16. An absolute -o breaks single-module builds. static-lib, -Oz and --single-module=yes build <objdir>//abs/path.c and fail (c_codegen.c:823). LLVM is fine here.
+(Fixed)
 
 17. Hello world doesn't compile on this clang. It emits typedef void (*f)(...) (c_codegen_type.c:820-827), which needs C23.
 (Fixed by 71485732d)
@@ -891,7 +892,7 @@ static GenContext *c_gen_module(Module *module, int num)
 	}
 	else
 	{
-		base_name       = build_base_name();
+		base_name       = filename(build_base_name());
 		object_filename = file_append_path(compiler.build.object_file_dir ? compiler.build.object_file_dir : ".", str_printf("%s%s", base_name, get_object_extension()));
 	}
 
