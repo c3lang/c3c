@@ -408,7 +408,14 @@ fn GfxWindow*? _create_window(String name, int x, int y, int w, int h, GfxWindow
 	win.internal.flags = flags;
 	win.internal.enabled_events = ALL_EVENTS;
 	_window_create_platform(win, name, flags, platform_data)!;
-	if (!flags.hide_mouse) win.set_mouse_default();
+	if (flags.hide_mouse)
+	{
+		win.show_mouse(false);
+	}
+	else
+	{
+		win.set_mouse_default();
+	}
 
 	win.set_name(name);
 	switch

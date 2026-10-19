@@ -36,7 +36,7 @@ fn void? init_platform(String class_name, GfxInitOption flags) => @pool()
 	win32::registerClassW(&gfx::_gfx.wnd_class);
 	gfx::_gfx.helper_window = win32::createWindowExW(0, gfx::_gfx.wnd_class.lpszClassName, null, 0, 0, 0, 0, 0, null, null, instance, null);
 
-	char[4] blk;
+	char[4] blk = {};
 	gfx::_gfx.hidden_mouse = win32::create_mouse(&blk, { 1, 1 }, RGBA8) ?? null;
 }
 
@@ -1266,7 +1266,19 @@ fn Win32_HICON _load_handle_image(char* data, int w, int h, GfxFormat format, in
 	gfx::copy_image_data(target, w, h, BGRA8, data, format, null);
 	win32::releaseDC(null, dc);
 
-	Win32_HBITMAP mask = win32::createBitmap(w, h, 1, 1, null);
+	sz row_bytes = (sz)((w + 15) / 16) * 2;
+	char[] mask_data = mem::temp_array(char, row_bytes * (sz)h);
+	for (int y = 0; y < h; y++)
+	{
+		for (int x = 0; x < w; x++)
+		{
+			if (target[((sz)y * w + x) * 4 + 3] == 0)
+			{
+				mask_data[(sz)y * row_bytes + (sz)(x / 8)] |= (char)(0x80 >> (x % 8));
+			}
+		}
+	}
+	Win32_HBITMAP mask = win32::createBitmap(w, h, 1, 1, mask_data.ptr);
 
 	Win32_ICONINFO ii;
 	ii.fIcon = icon;
