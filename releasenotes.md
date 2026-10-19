@@ -21,6 +21,7 @@
 - Doc viewer collision between modules and declarations sharing the same path. #3572
 
 ### Stdlib changes
+- Added termios support for OpenBSD.
 
 ## 0.8.5 Change list
 
