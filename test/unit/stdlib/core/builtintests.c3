@@ -496,3 +496,14 @@ fn void test_builtin_mod() @test
 	int d = 3;
 	assert($$mod(c, d) == -1);
 }
+
+fn void test_builtin_sysclock() @test
+{
+	ulong t1 = $$sysclock();
+	int sum = 0;
+	for (int i = 0; i < 10000; i++) sum += i;
+	(void)sum;
+	ulong t2 = $$sysclock();
+	assert(t1 != 0 || t2 != 0);
+	assert(t2 >= t1);
+}
