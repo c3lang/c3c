@@ -18,6 +18,7 @@
 - Win32 handle would leak on drag-and-drop when dnd was disabled.
 - X11 mode change did not change the stored mode.
 - X11 window name is now kept when recreating a window for opengl init.
+- Doc viewer collision between modules and declarations sharing the same path. #3572
 
 ### Stdlib changes
 
