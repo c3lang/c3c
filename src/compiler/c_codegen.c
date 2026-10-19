@@ -19,6 +19,7 @@ sat_shl never saturates: int::max.sat_shl(1) gives -2.
 (Fixed)
 
 6. $$sysclock is hard-wired to 0, so benchmarks report 0.00 CPU clocks.
+(Fixed)
 
 7. $$breakpoint aborts.
 (Fixed)

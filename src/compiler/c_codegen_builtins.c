@@ -1269,7 +1269,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			c_value_set_void(value);
 			break;
 		case BUILTIN_SYSCLOCK:
-			PRINTF("%s ___var_%d = 0;\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type));
+			PRINTF("%s ___var_%d = __c3_sysclock();\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type));
 			break;
 		case BUILTIN_REDUCE_ADD:
 		case BUILTIN_REDUCE_FADD:

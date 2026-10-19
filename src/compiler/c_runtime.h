@@ -590,5 +590,39 @@ static inline bool __c3_type_matches(c3typeid_t self_type, c3typeid_t target_typ
 	return false;
 }
 
-void __c3_init_runtime(void);
+#if defined(_MSC_VER)
+#include <intrin.h>
+#pragma intrinsic(__rdtsc)
+static inline uint64_t __c3_sysclock(void) {
+	return (uint64_t)__rdtsc();
+}
+#elif defined(__x86_64__) || defined(__i386__)
+static inline uint64_t __c3_sysclock(void) {
+#if defined(__has_builtin)
+#if __has_builtin(__builtin_ia32_rdtsc)
+	return (uint64_t)__builtin_ia32_rdtsc();
+#endif
+#endif
+	uint32_t lo, hi;
+	__asm__ __volatile__ ("rdtsc" : "=a"(lo), "=d"(hi));
+	return ((uint64_t)hi << 32) | lo;
+}
+#elif defined(__aarch64__)
+static inline uint64_t __c3_sysclock(void) {
+	uint64_t val;
+	__asm__ __volatile__("mrs %0, cntvct_el0" : "=r"(val));
+	return val;
+}
+#elif defined(__riscv)
+static inline uint64_t __c3_sysclock(void) {
+	uint64_t val;
+	__asm__ __volatile__("rdcycle %0" : "=r"(val));
+	return val;
+}
+#else
+static inline uint64_t __c3_sysclock(void) {
+	return 0;
+}
+#endif
 
+void __c3_init_runtime(void);
