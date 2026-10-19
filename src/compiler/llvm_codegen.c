@@ -568,6 +568,18 @@ void llvm_set_internal_linkage(LLVMValueRef alloc)
 	LLVMSetVisibility(alloc, LLVMDefaultVisibility);
 }
 
+Expr *llvm_fold_init_expr(Expr *expr)
+{
+	while (expr && expr->expr_kind == EXPR_IDENTIFIER)
+	{
+		Decl *inner_decl = decl_flatten(expr->ident_expr);
+		if (inner_decl->decl_kind != DECL_VAR) break;
+		if (inner_decl->var.kind != VARDECL_CONST) break;
+		expr = inner_decl->var.init_expr;
+	}
+	return expr;
+}
+
 void llvm_set_private_declaration(LLVMValueRef alloc)
 {
 	LLVMSetLinkage(alloc, LLVMPrivateLinkage);
@@ -588,15 +600,8 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 
 	Type *var_type = type_lowering(decl->type);
 
-	Expr *init_expr = decl->var.init_expr;
-	// Fold "source" of the init.
-	while (init_expr && init_expr->expr_kind == EXPR_IDENTIFIER)
-	{
-		Decl *inner_decl = decl_flatten(init_expr->ident_expr);
-		if (inner_decl->decl_kind != DECL_VAR) break;
-		if (inner_decl->var.kind != VARDECL_CONST) break;
-		init_expr = inner_decl->var.init_expr;
-	}
+	Expr *init_expr = llvm_fold_init_expr(decl->var.init_expr);
+
 	if (init_expr && init_expr->expr_kind != EXPR_OPTIONAL)
 	{
 		if (expr_is_const_initializer(init_expr))
