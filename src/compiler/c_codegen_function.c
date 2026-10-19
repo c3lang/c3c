@@ -545,6 +545,8 @@ void c_emit_function(GenContext *c, Decl *fn)
 	const char *ret_type_name = c_type_name(c, rtype);
 
 	c->current_return_type      = rtype;
+	c->cur_func_name            = fn->name;
+	c->cur_func_decl            = fn;
 	c->current_macro_ret_var    = 0;
 	c->current_macro_fault_var  = 0;
 	c->current_macro_ret_type   = NULL;

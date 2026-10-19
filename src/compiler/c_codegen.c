@@ -30,6 +30,7 @@ sat_shl never saturates: int::max.sat_shl(1) gives -2.
 (Tested: LLVM also executes default, 2, 1 via atexit LIFO; behavior matches LLVM)
 
 10. Null handling differs from LLVM. &((Foo*)null).b yields 0 instead of the field offset (c_codegen_lvalue.c:575). Loads through a null address silently return 0 (:1024).
+(Fixed)
 
 11. Compound-assignment evaluation order differs. arr[idx()] += val() evaluates val() first in C but idx() first in LLVM (c_codegen_expr.c:852).
 
@@ -326,6 +327,31 @@ void c_emit_string_literal(GenContext *c, const char *bytes, ArrayIndex len)
 		}
 	}
 	PRINT("\"");
+}
+
+void c_emit_panic(GenContext *c, const char *message, SourceLocId loc)
+{
+	Decl *panic_var = compiler.context.panic_var;
+	if (no_panic() || !panic_var)
+	{
+		PRINT("__c3_abort();\n");
+		return;
+	}
+
+	SourceLoc *location = sourcelocptrzero(loc);
+	File *file = source_file_by_id(location ? location->file_id : 0);
+	const char *filename = file ? file->name : "";
+	const char *funcname = c->cur_func_name ? c->cur_func_name : (c->cur_func_decl ? c->cur_func_decl->name : "");
+	uint32_t line = location ? location->row : 0;
+	const char *panic_name = c_get_decl_name(panic_var);
+
+	PRINTF("if (%s) { ((void (*)(__c3_slice_uint8_t, __c3_slice_uint8_t, __c3_slice_uint8_t, int32_t))%s)((__c3_slice_uint8_t){(uint8_t*)", panic_name, panic_name);
+	c_emit_string_literal(c, message ? message : "", message ? (ArrayIndex)strlen(message) : 0);
+	PRINTF(", %zu}, (__c3_slice_uint8_t){(uint8_t*)", message ? strlen(message) : 0);
+	c_emit_string_literal(c, filename, (ArrayIndex)strlen(filename));
+	PRINTF(", %zu}, (__c3_slice_uint8_t){(uint8_t*)", strlen(filename));
+	c_emit_string_literal(c, funcname, (ArrayIndex)strlen(funcname));
+	PRINTF(", %zu}, %u); } __c3_abort();\n", strlen(funcname), line);
 }
 
 static void c_traverse_decl(GenContext *c, Decl *d, CDeclVisitor visitor, void *userdata)
