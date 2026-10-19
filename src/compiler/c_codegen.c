@@ -552,7 +552,6 @@ static void c_emit_decl_types(GenContext *c, Decl *d, bool forward_decl)
 static void visit_forward_decl(GenContext *c, Decl *d, void *ud)
 {
 	(void)ud;
-	decl_append_links_to_global_during_codegen(d);
 	c_emit_decl_types(c, d, true);
 }
 
@@ -588,6 +587,7 @@ static void visit_fn_prototype(GenContext *c, Decl *d, void *ud)
 	{
 		return;
 	}
+	decl_append_links_to_global_during_codegen(d);
 	bool is_current = (!c->current_module || (d->unit && d->unit->module == c->current_module));
 	c_emit_function_decl(c, d, is_current);
 }
@@ -612,6 +612,7 @@ static void visit_global_forward_decl(GenContext *c, Decl *d, void *ud)
 	{
 		return;
 	}
+	decl_append_links_to_global_during_codegen(d);
 	if (d->decl_kind == DECL_VAR && c_is_file_global(d))
 	{
 		c_emit_global_decl(c, d);
