@@ -20,6 +20,7 @@
 - X11 window name is now kept when recreating a window for opengl init.
 
 ### Stdlib changes
+- Added termios support for OpenBSD.
 
 ## 0.8.5 Change list
 

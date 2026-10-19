@@ -191,7 +191,7 @@ constset Control_Char : inline CInt
 	VMIN     = 16,
 	VTIME    = 17,
 	VSTATUS  = 18,
-	//         20,
+	//         19,
 }
 
 constset Tcactions : CInt
