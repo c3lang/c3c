@@ -215,6 +215,34 @@ fn void test_ct_clz()
 	assert(@clz((char)(0x44 - 0x40)) == 5);
 }
 
+fn void test_runtime_bits() @test
+{
+	int neg_int = -1;
+	short neg_short = -1;
+	ichar neg_char = -1;
+	long neg_long = -1;
+
+	// popcount
+	assert(neg_int.popcount() == 32);
+	assert(neg_short.popcount() == 16);
+	assert(neg_char.popcount() == 8);
+	assert(neg_long.popcount() == 64);
+
+	// clz
+	assert(neg_int.clz() == 0);
+	assert(neg_short.clz() == 0);
+	assert(neg_char.clz() == 0);
+	assert(neg_long.clz() == 0);
+
+	// sat_shl
+	int max_int = int::max;
+	assert(max_int.sat_shl(1) == int::max);
+	short max_short = short::max;
+	assert(max_short.sat_shl(1) == short::max);
+	long max_long = long::max;
+	assert(max_long.sat_shl(1) == long::max);
+}
+
 fn void test_bitsizeof()
 {
 	assert(bitsizeof(uint128) == 128);
