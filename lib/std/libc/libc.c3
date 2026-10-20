@@ -87,7 +87,7 @@ extern fn DivResult div(CInt numer, CInt denom);
 extern fn void exit(CInt status);
 extern fn void _exit(CInt status) @cname("_Exit");
 extern fn CInt fclose(CFile stream);
-extern fn CFile fdopen(CInt fd, ZString mode) @feat(!WIN32);
+extern fn CFile fdopen(Fd fd, ZString mode) @feat(!WIN32);
 extern fn CInt feof(CFile stream);
 extern fn CInt ferror(CFile stream);
 extern fn CInt fflush(CFile stream);

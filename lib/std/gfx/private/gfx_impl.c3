@@ -1232,7 +1232,7 @@ fn void _window_opengl_swap_buffers(GfxWindow* win)
 	$endswitch
 }
 
-fn void _window_set_opengl_swap_interval(GfxWindow* win, int swap_interval)
+fn void? _window_set_opengl_swap_interval(GfxWindow* win, int swap_interval) @maydiscard
 {
 	$switch:
 		$case $feat(MACOS):

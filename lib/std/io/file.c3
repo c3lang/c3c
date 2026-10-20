@@ -19,6 +19,11 @@ fn File? open_path(Path path, String mode)
 	return from_handle(os::native_fopen((String)path, mode));
 }
 
+fn File? open_fd(CInt fd, String mode)
+{
+	return from_handle(os::native_fdopen(fd, mode));
+}
+
 fn bool exists(String file) => @pool()
 {
 	return os::native_file_or_dir_exists(file);

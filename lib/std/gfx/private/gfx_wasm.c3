@@ -292,7 +292,7 @@ fn void window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx
 	win.src.ctx.native.ctx = null;
 }
 
-fn void window_set_opengl_swap_interval(GfxWindow* win, int swap_interval) {}
+fn void? window_set_opengl_swap_interval(GfxWindow* win, int swap_interval) => gfx::OPERATION_NOT_SUPPORTED~;
 
 // Window WGPU
 

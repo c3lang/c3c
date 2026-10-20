@@ -902,6 +902,8 @@ fn void window_show_platform(GfxWindow* win)
 
 fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* context, GfxGlHints* hints) => @pool()
 {
+	// Does nothing if init() already loaded OpenGL.
+	load_opengl()!;
 	win.src.ctx.native = context;
 	win.src.backing = { .opengl };
 
@@ -991,7 +993,6 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* conte
 	switch (hints.profile)
 	{
 		case ES:                    mask |= GLX_CONTEXT_ES_PROFILE_BIT_EXT;
-		case FORWARD_COMPATIBILITY: mask |= GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
 		case COMPATIBILITY:         mask |= GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
 		default:                    mask |= GLX_CONTEXT_CORE_PROFILE_BIT_ARB;
 	}
@@ -1014,6 +1015,7 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* conte
 
 	int gl_flags = 0;
 	if (hints.debug) gl_flags |= GLX_CONTEXT_DEBUG_BIT_ARB;
+	if (hints.profile == FORWARD_COMPATIBILITY) gl_flags |= GLX_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB;
 	if (hints.robustness && opengl_extension_is_supported_platform("GLX_ARB_create_context_robustness")) gl_flags |= GLX_CONTEXT_ROBUST_ACCESS_BIT_ARB;
 	if (gl_flags != 0) stack.push_all({ GLX_CONTEXT_FLAGS_ARB, gl_flags });
 
@@ -1076,16 +1078,57 @@ fn void window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* gl_
 	if (win.src.ctx.native == gl_ctx) win.src.ctx.native = null;
 }
 
-fn void window_set_opengl_swap_interval(GfxWindow* win, int swap_interval)
+fn void? window_set_opengl_swap_interval(GfxWindow* win, int swap_interval)
 {
-	switch
+	if (!win.src.ctx.native)
 	{
-		case _glx_swap_interval_ext_fn != null:
-			_glx_swap_interval_ext_fn(ctx.display, (GLXWindow)win.src.ctx.native.window, swap_interval);
-		case _glx_swap_interval_native_fn != null:
-			_glx_swap_interval_native_fn(swap_interval);
-		default:
-			log::warn("Failed to load swap interval function", category: log::CATEGORY_VIDEO);
+		log::warn("The swap interval can't be set, the window has no OpenGL context.", category: log::CATEGORY_VIDEO);
+		return gfx::GL_CONTEXT_NOT_ACTIVE~;
+	}
+	if (_glx_swap_interval_ext_fn)
+	{
+		// This one takes the drawable, so the context does not have to be current.
+		_glx_swap_interval_ext_fn(ctx.display, (GLXWindow)win.src.ctx.native.window, swap_interval);
+		return;
+	}
+	if (!_glx_swap_interval_mesa_fn && !_glx_swap_interval_sgi_fn)
+	{
+		log::warn("The swap interval can't be set, none of GLX_EXT_swap_control, GLX_MESA_swap_control and GLX_SGI_swap_control is available.", category: log::CATEGORY_VIDEO);
+		return gfx::OPERATION_NOT_SUPPORTED~;
+	}
+	// The other two set the interval of the current context, which has to be the one of this window.
+	GLXContext current = _glx_get_current_context_fn();
+	if (!current)
+	{
+		log::warn("The swap interval can't be set, no OpenGL context is current.", category: log::CATEGORY_VIDEO);
+		return gfx::GL_CONTEXT_NOT_FOUND~;
+	}
+	if (current != win.src.ctx.native.ctx)
+	{
+		log::warn("The swap interval is set for the current context, which is not the one of the window.", category: log::CATEGORY_VIDEO);
+		return gfx::GL_CONTEXT_NOT_ACTIVE~;
+	}
+	if (_glx_swap_interval_mesa_fn)
+	{
+		int error = _glx_swap_interval_mesa_fn(swap_interval);
+		if (error)
+		{
+			log::warn("glXSwapIntervalMESA(%d) failed with %d.", swap_interval, error, category: log::CATEGORY_VIDEO);
+			return gfx::GENERAL_ERROR~;
+		}
+		return;
+	}
+	// SGI doesn't accept an interval below 1, so with only this one vsync can't be disabled.
+	if (swap_interval < 1)
+	{
+		log::warn("GLX_SGI_swap_control can't disable vsync, the swap interval has to be 1 or more.", category: log::CATEGORY_VIDEO);
+		return gfx::OPERATION_NOT_SUPPORTED~;
+	}
+	int error = _glx_swap_interval_sgi_fn(swap_interval);
+	if (error)
+	{
+		log::warn("glXSwapIntervalSGI(%d) failed with %d.", swap_interval, error, category: log::CATEGORY_VIDEO);
+		return gfx::GENERAL_ERROR~;
 	}
 }
 
@@ -1249,16 +1292,22 @@ fn void? load_opengl()
 	_glx_create_window_fn                = os::dlsym(gfx::_gfx.gl.native_handle, "glXCreateWindow");
 	_glx_destroy_window_fn               = os::dlsym(gfx::_gfx.gl.native_handle, "glXDestroyWindow");
 	_glx_query_extensions_string_fn      = os::dlsym(gfx::_gfx.gl.native_handle, "glXQueryExtensionsString");
-	_glx_create_context_attribs_arb_fn   = os::dlsym(gfx::_gfx.gl.native_handle, "glXCreateContextAttribsARB");
-	_glx_swap_interval_ext_fn            = os::dlsym(gfx::_gfx.gl.native_handle, "glXSwapIntervalEXT");
-	if (!_glx_swap_interval_ext_fn)
+	// The extension functions are not symbols of libGLX: libglvnd only exports the core ones, so they have to be asked for.
+	if (opengl_extension_is_supported_platform("GLX_ARB_create_context"))
 	{
-		ZString[2] array = {"GLX_MESA_swap_control", "GLX_SGI_swap_control"};
-		foreach (name : array)
-		{
-			_glx_swap_interval_native_fn = os::dlsym(gfx::_gfx.gl.native_handle, name);
-			if (_glx_swap_interval_native_fn) break;
-		}
+		_glx_create_context_attribs_arb_fn = get_opengl_proc("glXCreateContextAttribsARB");
+	}
+	if (opengl_extension_is_supported_platform("GLX_EXT_swap_control"))
+	{
+		_glx_swap_interval_ext_fn = (GlxSwapIntervalEXTProc)get_opengl_proc("glXSwapIntervalEXT");
+	}
+	if (opengl_extension_is_supported_platform("GLX_MESA_swap_control"))
+	{
+		_glx_swap_interval_mesa_fn = (GlxSwapIntervalNativeProc)get_opengl_proc("glXSwapIntervalMESA");
+	}
+	if (opengl_extension_is_supported_platform("GLX_SGI_swap_control"))
+	{
+		_glx_swap_interval_sgi_fn = (GlxSwapIntervalNativeProc)get_opengl_proc("glXSwapIntervalSGI");
 	}
 }
 
@@ -2196,7 +2245,8 @@ GlxChooseFBConfigProc _glx_choose_fb_config_fn;
 GlxDestroyContextProc _glx_destroy_context_fn;
 GlxCreateWindowProc _glx_create_window_fn;
 GlxDestroyWindowProc _glx_destroy_window_fn;
-GlxSwapIntervalNativeProc _glx_swap_interval_native_fn;
+GlxSwapIntervalNativeProc _glx_swap_interval_mesa_fn;
+GlxSwapIntervalNativeProc _glx_swap_interval_sgi_fn;
 
 
 macro void xi_set_mask(char* mask, int event)
