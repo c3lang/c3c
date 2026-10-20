@@ -659,6 +659,8 @@ fn void window_show_platform(GfxWindow* win)
 
 fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
 {
+	// Does nothing if init() already loaded OpenGL.
+	load_opengl()!;
 	Win32_PIXELFORMATDESCRIPTOR pfd = {
 		.nSize           = Win32_PIXELFORMATDESCRIPTOR::size,
 		.nVersion        = 1,
@@ -814,11 +816,34 @@ fn void window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx
 	win.src.ctx.native.ctx = null;
 }
 
-fn void window_set_opengl_swap_interval(GfxWindow* win, int swap_interval)
+fn void? window_set_opengl_swap_interval(GfxWindow* win, int swap_interval)
 {
-	if (!gfx::wgl_swap_interval_ext_fn || !gfx::wgl_swap_interval_ext_fn(swap_interval))
+	if (!win.src.ctx.native)
 	{
-		log::error("Failed to set OpenGL swap interval", category: log::CATEGORY_VIDEO);
+		log::warn("The swap interval can't be set, the window has no OpenGL context.", category: log::CATEGORY_VIDEO);
+		return gfx::GL_CONTEXT_NOT_ACTIVE~;
+	}
+	if (!gfx::wgl_swap_interval_ext_fn)
+	{
+		log::warn("The swap interval can't be set, WGL_EXT_swap_control is not available.", category: log::CATEGORY_VIDEO);
+		return gfx::OPERATION_NOT_SUPPORTED~;
+	}
+	// wglSwapIntervalEXT sets the interval of the current context, which has to be the one of this window.
+	void* current = get_current_opengl_context();
+	if (!current)
+	{
+		log::warn("The swap interval can't be set, no OpenGL context is current.", category: log::CATEGORY_VIDEO);
+		return gfx::GL_CONTEXT_NOT_FOUND~;
+	}
+	if (current != win.src.ctx.native.ctx)
+	{
+		log::warn("The swap interval is set for the current context, which is not the one of the window.", category: log::CATEGORY_VIDEO);
+		return gfx::GL_CONTEXT_NOT_ACTIVE~;
+	}
+	if (!gfx::wgl_swap_interval_ext_fn(swap_interval))
+	{
+		log::warn("wglSwapIntervalEXT(%d) failed with error %d.", swap_interval, win32::getLastError(), category: log::CATEGORY_VIDEO);
+		return gfx::GENERAL_ERROR~;
 	}
 }
 

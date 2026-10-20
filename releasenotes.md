@@ -21,6 +21,7 @@
 - Doc viewer collision between modules and declarations sharing the same path. #3572
 - Fixes to transparent mouse pointer.
 - Compiler crashes when using a value derived from a const as an initializer elsewhere. #3574
+- Improve OpenGL-handling of vsync.
 
 ### Stdlib changes
 - Added termios support for OpenBSD.

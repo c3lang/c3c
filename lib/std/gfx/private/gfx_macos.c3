@@ -619,6 +619,8 @@ fn void window_show_platform(GfxWindow* win)
 
 fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
 {
+	// Does nothing if init() already loaded OpenGL.
+	load_opengl()!;
 	FixedList{int, 40} stack;
 	int color_bits = hints.rgba_size.sum();
 	stack.push_all({
@@ -709,12 +711,15 @@ fn void window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx
 	win.src.ctx.native = null;
 }
 
-fn void window_set_opengl_swap_interval(GfxWindow* win, int swap_interval)
+fn void? window_set_opengl_swap_interval(GfxWindow* win, int swap_interval) @maydiscard
 {
-	if (win.src.ctx.native && win.src.ctx.native.ctx)
+	if (!win.src.ctx.native || !win.src.ctx.native.ctx)
 	{
-		_opengl_context_set_values((ObjId)win.src.ctx.native.ctx, &swap_interval, NSOpenGLContextParameter.SWAP_INTERVAL);
+		log::warn("The swap interval can't be set, the window has no OpenGL context.", category: log::CATEGORY_VIDEO);
+		return gfx::GL_CONTEXT_NOT_ACTIVE~;
 	}
+	// The NSOpenGLContext is set directly, so it does not have to be current.
+	_opengl_context_set_values((ObjId)win.src.ctx.native.ctx, &swap_interval, NSOpenGLContextParameter.SWAP_INTERVAL);
 }
 
 // Vulkan

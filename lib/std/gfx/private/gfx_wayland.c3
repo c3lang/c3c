@@ -743,9 +743,9 @@ fn void window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx
 	win.src.ctx.native = null;
 }
 
-fn void window_set_opengl_swap_interval(GfxWindow* win, int swap_interval)
+fn void? window_set_opengl_swap_interval(GfxWindow* win, int swap_interval)
 {
-	egl::set_swap_interval(win, swap_interval);
+	return egl::set_swap_interval(win, swap_interval);
 }
 
 // Vulkan
