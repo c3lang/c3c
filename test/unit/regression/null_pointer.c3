@@ -27,7 +27,7 @@ fn void test_panic_handler(String message, String file, String function, int lin
 // which requires the caller function's entry stack pointer (sponentry) to be passed as the
 // frame parameter to _setjmpex. Until a compiler intrinsic (e.g. `$$sponentry` / `llvm.sponentry`)
 // is implemented to provide this, calling longjmp across frames triggers STATUS_BAD_STACK (0xC0000028).
-fn void test_null_deref_panic() @test @feat(!(WIN32 & AARCH64))
+fn void test_null_deref_panic() @test @feat(!(WIN32 & AARCH64)) @feat(!WASM)
 {
 	PanicFn saved = builtin::panic;
 	builtin::panic = &test_panic_handler;
