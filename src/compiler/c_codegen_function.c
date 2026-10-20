@@ -48,8 +48,36 @@ void c_register_function_local(GenContext *c, VariableId id, Type *type, bool is
 	{
 		lowered = type_int;
 	}
-	CLocalVar lv = {.id = id, .type = lowered, .is_static = is_static, .decl = decl};
+	CLocalVar lv = {.id = id, .type = lowered, .is_static = is_static, .is_alloca = false, .alloca_count = 0, .decl = decl};
 	vec_add(c->function_locals, lv);
+}
+
+VariableId c_emit_alloca(GenContext *c, Type *type)
+{
+	Type *lowered = (type && is_valid_type_ptr(type)) ? c_safe_type_lower(type) : type_int;
+	if (lowered->type_kind == TYPE_VOID)
+	{
+		lowered = type_int;
+	}
+	c_emit_type_forward_decl(c, lowered);
+	VariableId id = c_create_variable(c);
+	CLocalVar lv = {.id = id, .type = lowered, .is_static = false, .is_alloca = true, .alloca_count = 0, .decl = NULL};
+	vec_add(c->function_locals, lv);
+	return id;
+}
+
+VariableId c_emit_alloca_array(GenContext *c, Type *base_type, int count)
+{
+	Type *lowered = (base_type && is_valid_type_ptr(base_type)) ? c_safe_type_lower(base_type) : type_int;
+	if (lowered->type_kind == TYPE_VOID)
+	{
+		lowered = type_int;
+	}
+	c_emit_type_forward_decl(c, lowered);
+	VariableId id = c_create_variable(c);
+	CLocalVar lv = {.id = id, .type = lowered, .is_static = false, .is_alloca = true, .alloca_count = count, .decl = NULL};
+	vec_add(c->function_locals, lv);
+	return id;
 }
 
 VariableId c_emit_temp_var(GenContext *c, CValue *value, Type *type)
@@ -217,13 +245,8 @@ void c_value_addr(GenContext *c, CValue *val)
 		t = type_int;
 	}
 
-	Type *ptr_type = type_get_ptr(t);
-	c_emit_type_forward_decl(c, ptr_type);
-	const char *ptname = c_type_name(c, ptr_type);
-	int temp           = c_create_variable(c);
-	c_register_function_local(c, temp, ptr_type, false, NULL);
-
-	PRINTF("%s ___var_%d = (%s)&___var_%d;\n", ptname, temp, ptname, val->var);
+	VariableId temp = c_emit_alloca(c, t);
+	c_emit_assign_var(c, temp, t, val);
 	val->var  = temp;
 	val->kind = CV_ADDRESS;
 }
@@ -287,16 +310,12 @@ void c_emit_assign_to_any(GenContext *c, const char *dst_expr, CValue *src)
 		return;
 	}
 
-	if (src->kind == CV_ADDRESS)
+	if (src->kind != CV_ADDRESS)
 	{
-		PRINTF("%s = (__c3_any__){ .ptr = (void*)___var_%d, .typeid = (c3typeid_t)&%s };\n",
-		       dst_expr, src->var, c_typeid_name(src_type));
+		c_value_addr(c, src);
 	}
-	else
-	{
-		PRINTF("%s = (__c3_any__){ .ptr = (void*)&___var_%d, .typeid = (c3typeid_t)&%s };\n",
-		       dst_expr, src->var, c_typeid_name(src_type));
-	}
+	PRINTF("%s = (__c3_any__){ .ptr = (void*)___var_%d, .typeid = (c3typeid_t)&%s };\n",
+	       dst_expr, src->var, c_typeid_name(src_type));
 }
 
 void c_emit_assign_var(GenContext *c, VariableId dst_var, Type *dst_type, CValue *src_val)
@@ -490,7 +509,7 @@ void c_emit_local_var_declarations(GenContext *c)
 {
 	FOREACH(CLocalVar, lv, c->function_locals)
 	{
-		if (!lv.decl)
+		if (!lv.decl && !lv.is_alloca)
 		{
 			continue;
 		}
@@ -508,7 +527,11 @@ void c_emit_local_var_declarations(GenContext *c)
 		const char *tname     = c_type_name(c, vt);
 		const char *align_str = c_local_align_str(lv.decl, vt);
 
-		if (c_type_is_aggregate(vt))
+		if (lv.alloca_count > 0)
+		{
+			PRINTF("\t%s%s ___var_%d[%d] = {0};\n", align_str, tname, lv.id, lv.alloca_count);
+		}
+		else if (c_type_is_aggregate(vt))
 		{
 			PRINTF("\t%s%s ___var_%d = {0};\n", align_str, tname, lv.id);
 		}

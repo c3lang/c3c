@@ -84,6 +84,8 @@ typedef struct
 	VariableId id;
 	Type *type;
 	bool is_static;
+	bool is_alloca;
+	int alloca_count;
 	Decl *decl;
 } CLocalVar;
 
@@ -121,6 +123,9 @@ typedef struct GenContext
 	HTable *emitted_global_decls;
 	HTable emitted_global_defs;
 } GenContext;
+
+VariableId c_emit_alloca(GenContext *c, Type *type);
+VariableId c_emit_alloca_array(GenContext *c, Type *base_type, int count);
 
 typedef void (*CDeclVisitor)(GenContext *c, Decl *d, void *userdata);
 

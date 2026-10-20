@@ -836,6 +836,7 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 		}
 		else
 		{
+			c_value_addr(c, &inner_val);
 			PRINTF("%s ___var_%d = (%s)&___var_%d;\n", tname, temp, tname, inner_val.var);
 		}
 	}
