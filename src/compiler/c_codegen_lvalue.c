@@ -1023,10 +1023,26 @@ void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target
 
 	CValue addr_val = {0};
 	c_emit_lvalue_addr(c, expr, &addr_val, type_get_ptr(target_type));
+
+	PRINTF("%s ___var_%d;\n", tname, temp);
+	bool is_opt = (expr && expr->type && is_valid_type_ptr(expr->type) && type_is_optional(expr->type));
+	if (is_opt)
+	{
+		PRINTF("if (__c3_current_fault != NULL) {\n");
+		if (c_type_is_aggregate(target_type))
+		{
+			PRINTF("\t__c3_memset(&___var_%d, 0, sizeof(%s));\n", temp, tname);
+		}
+		else
+		{
+			PRINTF("\t___var_%d = 0;\n", temp);
+		}
+		PRINT("} else {\n");
+	}
+
 	c_emit_null_deref_check(c, expr, addr_val.var);
 	if (c_type_is_aggregate(target_type))
 	{
-		PRINTF("%s ___var_%d;\n", tname, temp);
 		if (addr_val.var != 0)
 		{
 			PRINTF("__c3_memcpy(&___var_%d, (void*)___var_%d, sizeof(%s));\n",
@@ -1043,18 +1059,23 @@ void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target
 		{
 			if (type_size(target_type) == 16 && (target_type->type_kind == TYPE_I128 || target_type->type_kind == TYPE_U128))
 			{
-				PRINTF("%s ___var_%d = 0;\n", tname, temp);
+				PRINTF("___var_%d = 0;\n", temp);
 				PRINTF("__c3_memcpy(&___var_%d, (void*)___var_%d, sizeof(%s));\n", temp, addr_val.var, tname);
 			}
 			else
 			{
-				PRINTF("%s ___var_%d = *(%s*)___var_%d;\n", tname, temp, tname, addr_val.var);
+				PRINTF("___var_%d = *(%s*)___var_%d;\n", temp, tname, addr_val.var);
 			}
 		}
 		else
 		{
-			PRINTF("%s ___var_%d = 0;\n", tname, temp);
+			PRINTF("___var_%d = 0;\n", temp);
 		}
+	}
+
+	if (is_opt)
+	{
+		PRINT("}\n");
 	}
 }
 
