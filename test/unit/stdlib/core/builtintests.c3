@@ -497,7 +497,7 @@ fn void test_builtin_mod() @test
 	assert($$mod(c, d) == -1);
 }
 
-fn void test_builtin_sysclock() @test
+fn void test_builtin_sysclock() @test @feat(!WASM)
 {
 	ulong t1 = $$sysclock();
 	int sum = 0;
