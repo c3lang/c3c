@@ -75,7 +75,7 @@
           "type": {
             "type": "string",
             "description": "Executable or library type for the target.",
-            "enum": ["executable", "static-lib", "dynamic-lib", "benchmark", "test", "object-files", "prepare"]
+            "enum": ["executable", "static-lib", "dynamic-lib", "benchmark", "test", "object-files", "prepare", "source-lib"]
           },
           "name": {
             "type": "string",
@@ -85,6 +85,10 @@
             "type": "string",
             "description": "Override the default file extension for the build output. Must start with '.'.",
             "pattern": "^\\..*"
+          },
+          "compress": {
+            "type": "boolean",
+            "description": "Pack a 'source-lib' target into a single compressed .c3l file, otherwise output an uncompressed directory (default: true)."
           },
           "template": {
             "type": "string",

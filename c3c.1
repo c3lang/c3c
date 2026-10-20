@@ -110,6 +110,12 @@ Compile files without a project into a static library.
 Compile files without a project into a dynamic library.
 .RE
 .PP
+.B c3c source-lib
+\fIfile1\fR [\fIfile2\fR ...]
+.RS
+Pack files without a project into a source library (.c3l), use -o to set the library name.
+.RE
+.PP
 .B c3c vendor-fetch
 \fIlibrary\fR ...
 .RS
@@ -397,6 +403,11 @@ Do not output object files; this is only valid for `compile-only`.
 .B --no-headers
 .RS
 Do not generate C headers when building a library.
+.RE
+.PP
+.B --no-compress
+.RS
+Output a source library as an uncompressed directory instead of a compressed .c3l file.
 .RE
 .PP
 .B --target

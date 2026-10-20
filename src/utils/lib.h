@@ -809,3 +809,14 @@ const char *zip_dir_iterator(FILE *zip, ZipDirIterator *iterator);
 const char *zip_dir_iterator_next(ZipDirIterator *iterator, ZipFile *file);
 const char *zip_file_read(FILE *zip, ZipFile *file, void **buffer_ptr);
 const char *zip_file_write(FILE *zip, ZipFile *file, const char *dir, bool overwrite);
+
+typedef struct
+{
+	const char *name;
+	// Read the contents from this file, otherwise use 'data' and 'size'.
+	const char *file_path;
+	const char *data;
+	size_t size;
+} ZipEntry;
+
+const char *zip_create(const char *zip_path, const ZipEntry *entries, size_t count);
