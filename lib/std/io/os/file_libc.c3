@@ -15,6 +15,16 @@ fn void*? native_fopen(String filename, String mode) @inline => @stack_mem(256; 
 	return file ?: file_open_errno()~;
 }
 
+<*
+ @require mode.len > 0
+*>
+fn void*? native_fdopen(Fd fd, String mode) @inline => @stack_mem(256; Allocator smem)
+{
+	void* file = libc::fdopen(fd, mode.zstr_copy(smem));
+	return file ?: file_open_errno()~;
+}
+
+
 fn void? native_remove(String filename) => @stack_mem(256; Allocator smem)
 {
 	$if env::WIN32:

@@ -24,6 +24,7 @@
 
 ### Stdlib changes
 - Added termios support for OpenBSD.
+- Add `file::open_fd` to open files directly from file descriptors.
 
 ## 0.8.5 Change list
 
