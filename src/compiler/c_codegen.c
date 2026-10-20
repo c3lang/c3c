@@ -14,6 +14,7 @@ The C backend has some known issues / potential problems:
 
 4. popcount and clz sign-extend narrow negative ints: popcount((int)-1) gives 64 and clz gives -32.
 sat_shl never saturates: int::max.sat_shl(1) gives -2.
+(Fixed)
 
 5. roundeven is mapped to round (c_codegen_builtins.c:29).
 (Fixed)
