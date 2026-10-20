@@ -357,12 +357,16 @@ void c_emit_panic(GenContext *c, const char *message, SourceLocId loc)
 
 static void c_traverse_decl(GenContext *c, Decl *d, CDeclVisitor visitor, void *userdata)
 {
-	if (!d || d->decl_kind == DECL_POISONED || d->decl_kind == DECL_ERASED || d->replacement)
+	if (!d)
 	{
 		return;
 	}
-	if (d->decl_kind == DECL_MACRO || d->decl_kind == DECL_IMPORT || d->decl_kind == DECL_ATTRIBUTE || d->decl_kind == DECL_CONTRACT)
+	if (d->decl_kind == DECL_GROUP)
 	{
+		FOREACH(Decl *, gd, d->decl_list)
+		{
+			c_traverse_decl(c, gd, visitor, userdata);
+		}
 		return;
 	}
 	if (d->decl_kind == DECL_GENERIC)
@@ -381,24 +385,16 @@ static void c_traverse_decl(GenContext *c, Decl *d, CDeclVisitor visitor, void *
 		}
 		return;
 	}
-	if (d->decl_kind == DECL_ALIAS)
+	d = c_decl_unwrap(d);
+	if (!d || d->decl_kind == DECL_POISONED || d->decl_kind == DECL_ERASED || d->replacement)
 	{
-		Decl *raw = c_decl_unwrap(d);
-		if (raw && raw != d)
-		{
-			c_traverse_decl(c, raw, visitor, userdata);
-		}
 		return;
 	}
-	if (d->decl_kind == DECL_GROUP)
+	if (d->decl_kind == DECL_MACRO || d->decl_kind == DECL_IMPORT || d->decl_kind == DECL_ATTRIBUTE || d->decl_kind == DECL_CONTRACT)
 	{
-		FOREACH(Decl *, gd, d->decl_list)
-		{
-			c_traverse_decl(c, gd, visitor, userdata);
-		}
 		return;
 	}
-	if (d->is_template)
+	if (d->is_template || !c_decl_is_live(d))
 	{
 		return;
 	}
@@ -594,26 +590,7 @@ static void visit_type_decl(GenContext *c, Decl *d, void *ud)
 static void visit_fn_prototype(GenContext *c, Decl *d, void *ud)
 {
 	(void)ud;
-	d = c_decl_unwrap(d);
-	if (!d || d->decl_kind != DECL_FUNC)
-	{
-		return;
-	}
-	if (d->func_decl.attr_test)
-	{
-		if (!compiler.build.build_test)
-		{
-			return;
-		}
-	}
-	else if (d->func_decl.attr_benchmark)
-	{
-		if (!compiler.build.build_benchmark)
-		{
-			return;
-		}
-	}
-	else if (strip_unused() && !d->is_live)
+	if (d->decl_kind != DECL_FUNC)
 	{
 		return;
 	}
@@ -637,11 +614,6 @@ static void visit_dynamic_dispatcher(GenContext *c, Decl *d, void *ud)
 static void visit_global_forward_decl(GenContext *c, Decl *d, void *ud)
 {
 	(void)ud;
-	d = c_decl_unwrap(d);
-	if (!d || (strip_unused() && !d->is_live))
-	{
-		return;
-	}
 	decl_append_links_to_global_during_codegen(d);
 	if (d->decl_kind == DECL_VAR && c_is_file_global(d))
 	{
@@ -677,11 +649,6 @@ static void visit_global_forward_decl(GenContext *c, Decl *d, void *ud)
 static void visit_global_def(GenContext *c, Decl *d, void *ud)
 {
 	(void)ud;
-	d = c_decl_unwrap(d);
-	if (!d || (strip_unused() && !d->is_live))
-	{
-		return;
-	}
 	bool is_current = (!c->current_module || (d->unit && d->unit->module == c->current_module));
 	if (!is_current)
 	{

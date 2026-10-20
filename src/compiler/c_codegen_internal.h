@@ -368,6 +368,18 @@ static inline Decl *c_type_get_decl(Type *t)
 	}
 }
 
+static inline bool c_decl_is_live(Decl *d)
+{
+	if (!d) return false;
+	if (d->decl_kind == DECL_FUNC)
+	{
+		if (d->func_decl.attr_test && !compiler.build.build_test) return false;
+		if (d->func_decl.attr_benchmark && !compiler.build.build_benchmark) return false;
+	}
+	if (strip_unused() && !d->is_live) return false;
+	return true;
+}
+
 static inline bool c_type_needs_emission(Type *t)
 {
 	if (!is_valid_type_ptr(t) || t == poisoned_type ||
@@ -381,6 +393,10 @@ static inline bool c_type_needs_emission(Type *t)
 	}
 	Decl *d = c_type_get_decl(t);
 	if (d && (!d->unit || !d->unit->module))
+	{
+		return false;
+	}
+	if (strip_unused() && !t->is_live)
 	{
 		return false;
 	}
