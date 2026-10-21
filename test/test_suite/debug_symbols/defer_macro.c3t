@@ -759,7 +759,7 @@ attributes #0 = { nounwind ssp uwtable "no-trapping-math"="true" "stack-protecto
 !106 = !DICompositeType(tag: DW_TAG_structure_type, name: "File", scope: !7, file: !7, line: 4, size: 64, align: 64, elements: !107, identifier: "std.io.File")
 !107 = !{!108}
 !108 = !DIDerivedType(tag: DW_TAG_member, name: "file", scope: !106, file: !7, line: 6, baseType: !109, size: 64, align: 64)
-!109 = !DIDerivedType(tag: DW_TAG_typedef, name: "CFile", scope: !7, file: !7, line: 395, baseType: !14, align: 64)
+!109 = !DIDerivedType(tag: DW_TAG_typedef, name: "CFile", scope: !7, file: !7, line:
 !110 = !DILocation
 !111 = !DILocation
 !112 = !DILocalVariable(name: "x", arg: 2
