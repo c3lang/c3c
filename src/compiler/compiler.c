@@ -1020,9 +1020,33 @@ void compile_clean(BuildOptions *options)
 	init_build_target(&compiler.build, options);
 	clean_obj_files();
 }
+
+// Build the 'depends-on' targets in order, each by a separate invocation of the compiler.
+static void build_dependency_targets(BuildOptions *options)
+{
+	if (!vec_size(compiler.build.depends_on)) return;
+	const char **args = options->dependency_args;
+	if (compiler.build.silent) vec_add(args, "-q");
+	vec_add(args, "--no-deps");
+	vec_add(args, "build");
+	FOREACH(const char *, dependency, compiler.build.depends_on)
+	{
+		OUTF("Building dependency target '%s'.\n", dependency);
+		vec_add(args, dependency);
+		// The output of the build should come after what has been printed so far.
+		fflush(stdout);
+		if (run_subprocess(find_executable_file(), args) != 0)
+		{
+			error_exit("Failed to build the dependency target '%s'.", dependency);
+		}
+		vec_pop(args);
+	}
+}
+
 void compile_file_list(BuildOptions *options)
 {
 	init_build_target(&compiler.build, options);
+	build_dependency_targets(options);
 	if (compiler.build.type == TARGET_TYPE_PREPARE)
 	{
 		if (options->command != COMMAND_BUILD)

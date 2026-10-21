@@ -10,6 +10,7 @@
 - Fetching dependencies also fetches dependencies in the targets.
 - `fetch`, `vendor-fetch` and `project fetch` now unpack libraries into a `<name>.c3l` directory by default. Use `--decompress=no` to keep them compressed.
 - An `else if` now requires `{ }` around a single statement, like `else` does. `else if (x) foo();` is an error. #3473
+- Add `depends-on` to project targets, allowing them to depend on other targets.
 
 ### Fixes
 - Compressed `.c3l` libraries were not unpacked again when only files other than `manifest.json` had changed.

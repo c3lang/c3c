@@ -102,6 +102,13 @@
               "type": "string"
             }
           },
+          "depends-on": {
+            "type": "array",
+            "description": "Targets that are built before this target, in the order listed. Targets they depend on are built first, and each target is only built once.",
+            "items": {
+              "type": "string"
+            }
+          },
           "sources": {
             "type": "array",
             "description": "Additional sources for this target.",

@@ -119,6 +119,7 @@ const char* project_target_keys[][2] = {
 		{"dependencies-override", "C3 library dependencies for this target, overriding global settings."},
 		{"dependency-search-paths", "Additional C3 library search paths for the target."},
 		{"dependency-search-paths-override", "C3 library search paths for this target, overriding global settings."},
+		{"depends-on", "Targets that are built before this target, in the order listed."},
 		{"exec", "Additional scripts to run for the target."},
 		{"exec-override", "Scripts to run for this target, overriding global settings."},
 		{"extension", "Override the default file extension for the build output."},
@@ -265,6 +266,9 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 		{
 			error_exit("Error reading %s: output extension '%s' must start with a '.'", context.file, target->extension);
 		}
+
+		// Targets to build first
+		append_strings_to_strings(&target->depends_on, get_optional_string_array(context, json, "depends-on"));
 	}
 	else
 	{
@@ -792,6 +796,15 @@ static void project_add_target(BuildParseContext context, Project *project, Buil
 	load_into_build_target(target_context, json, target);
 }
 
+static BuildTarget *project_find_target(Project *project, const char *name)
+{
+	FOREACH(BuildTarget *, target, project->targets)
+	{
+		if (str_eq(target->name, name)) return target;
+	}
+	return NULL;
+}
+
 static void project_add_targets(const char *filename, Project *project, JSONObject *project_data)
 {
 	ASSERT(project_data->type == J_OBJECT);
@@ -819,6 +832,59 @@ static void project_add_targets(const char *filename, Project *project, JSONObje
 		if (type < 0) error_exit("Target %s did not contain 'type' key.", key);
 		project_add_target(context, project, &default_target, object, target_desc[type], type);
 	}
+	FOREACH(BuildTarget *, target, project->targets)
+	{
+		FOREACH(const char *, dependency, target->depends_on)
+		{
+			if (!project_find_target(project, dependency))
+			{
+				error_exit("Error reading %s: target '%s' depends on target '%s', which does not exist.", filename, target->name, dependency);
+			}
+		}
+	}
+}
+
+static bool is_listed(const char **list, const char *name)
+{
+	return str_findlist(name, vec_size(list), list) >= 0;
+}
+
+static void add_dependency_order(const char *filename, Project *project, BuildTarget *target, const char ***path_ref, const char ***order_ref)
+{
+	FOREACH(const char *, name, target->depends_on)
+	{
+		if (is_listed(*path_ref, name))
+		{
+			scratch_buffer_clear();
+			FOREACH(const char *, path_name, *path_ref)
+			{
+				scratch_buffer_printf("%s -> ", path_name);
+			}
+			scratch_buffer_append(name);
+			error_exit("Error reading %s: circular 'depends-on': %s.", filename, scratch_buffer_to_string());
+		}
+		if (is_listed(*order_ref, name)) continue;
+		vec_add(*path_ref, name);
+		add_dependency_order(filename, project, project_find_target(project, name), path_ref, order_ref);
+		vec_pop(*path_ref);
+		vec_add(*order_ref, name);
+	}
+}
+
+/**
+ * The targets that must be built before the target, in the order they should be built.
+ * Targets are built in the order they are listed in 'depends-on', after their own 'depends-on' targets,
+ * and each target is only listed once.
+ *
+ * @return the names of the targets, not including the target itself.
+ */
+const char **project_dependency_order(const char *filename, Project *project, BuildTarget *target)
+{
+	const char **path = NULL;
+	const char **order = NULL;
+	vec_add(path, target->name);
+	add_dependency_order(filename, project, target, &path, &order);
+	return order;
 }
 
 
@@ -871,10 +937,8 @@ BuildTarget *project_select_target(const char *filename, Project *project, const
 		}
 		return best ? best : project->targets[0];
 	}
-	FOREACH(BuildTarget *, target, project->targets)
-	{
-		if (str_eq(target->name, optional_target)) return target;
-	}
+	BuildTarget *found = project_find_target(project, optional_target);
+	if (found) return found;
 	error_exit("No build target named '%s' was found in %s. Was it misspelled?", optional_target, filename);
 	UNREACHABLE
 }

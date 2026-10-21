@@ -968,7 +968,11 @@ void init_build_target(BuildTarget *target, BuildOptions *options)
 	}
 
 
-	*target = *project_select_target(filename, project, options->target_select, options->command);
+	BuildTarget *selected = project_select_target(filename, project, options->target_select, options->command);
+	*target = *selected;
+	// The dependencies are built by separate invocations, which must not build them again, and 'clean' leaves them alone.
+	bool build_dependencies = !options->no_deps && options->command != COMMAND_CLEAN;
+	target->depends_on = build_dependencies ? project_dependency_order(filename, project, selected) : NULL;
 
 	if (project_path) target->project_dir = str_dup(project_path);
 	update_build_target_from_options(target, options);

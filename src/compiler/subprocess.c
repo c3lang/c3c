@@ -50,7 +50,10 @@ int run_subprocess(const char *name, const char **args)
 	ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
 
 	scratch_buffer_clear();
-	scratch_buffer_printf("%s", name);
+	bool name_needs_quoting = strpbrk(name, "\t\v ") != NULL;
+	if (name_needs_quoting) scratch_buffer_append_char('"');
+	scratch_buffer_append(name);
+	if (name_needs_quoting) scratch_buffer_append_char('"');
 	for (int i = 0; i < vec_size(args); i++)
 	{
 		scratch_buffer_append_char(' ');

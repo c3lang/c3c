@@ -211,6 +211,7 @@ static void view_target(BuildParseContext context, JSONObject *target, bool verb
 	TARGET_VIEW_STRING("CPU flags", "cpu-flags");
 	TARGET_VIEW_STRING("CPU flags (override)", "cpu-flags-override");
 	TARGET_VIEW_SETTING("Debug level", "debug-info", debug_levels);
+	TARGET_VIEW_STRING_ARRAY("Targets built first", "depends-on", ", ");
 	TARGET_VIEW_STRING_ARRAY("Additional scripts to run", "exec", ", ");
 	TARGET_VIEW_STRING_ARRAY("Scripts to run (override)", "exec", ", ");
 	TARGET_VIEW_STRING_ARRAY("Enabled features", "features", ", ");

@@ -216,6 +216,7 @@ typedef struct BuildOptions_
 	const char **files;
 	const char *test_filter;
 	const char **args;
+	const char **dependency_args;
 	const char **feature_names;
 	const char **removed_feature_names;
 	const char *output_name;
@@ -288,6 +289,7 @@ typedef struct BuildOptions_
 	bool print_input;
 	bool run_once;
 	bool suppress_run;
+	bool no_deps;
 	bool docgen_json_out;
 	bool docgen_append;
 	bool fetch_accept_license;
@@ -509,6 +511,7 @@ typedef struct
 	const char **csources;
 	const char **cinclude_dirs;
 	const char **exec;
+	const char **depends_on;
 	AuthorEntry *authors;
 	const char **feature_list;
 	const char *custom_linker_path;

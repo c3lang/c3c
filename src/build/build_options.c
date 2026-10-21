@@ -117,6 +117,7 @@ static void usage(bool full)
 		print_opt("--max-mem <value>", "Set the maximum memory size (in MB).");
 		print_opt("--run-once", "After running the output file, delete it immediately.");
 		print_opt("--suppress-run", "Build but do not run on test/benchmark options.");
+		print_opt("--no-deps", "Do not first build the targets listed in 'depends-on'.");
 		print_opt("--trust=<option>", "Trust level: none (default), include ($include allowed), full ($exec / exec allowed).");
 		print_opt("--output-dir <dir>", "Override general output directory.");
 		print_opt("--build-dir <dir>", "Override build output directory.");
@@ -1944,6 +1945,11 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->suppress_run = true;
 				return;
 			}
+			if (match_longopt("no-deps"))
+			{
+				options->no_deps = true;
+				return;
+			}
 			if (match_longopt("help"))
 			{
 				if (options->command == COMMAND_DOCGEN)
@@ -1960,6 +1966,14 @@ static void parse_option(BuildOptions *options) // NOLINT
 
 	}
 	FAIL_WITH_ERR_LONG("Cannot process the unknown option \"%s\".", current_arg);
+}
+
+// Is this option target specific, or passed on to targets it depends on?
+static bool is_target_specific_option(const char *arg)
+{
+	return str_eq(arg, "-o") || str_eq(arg, "--path") || str_eq(arg, "--sources") || str_eq(arg, "--build-env")
+	       || str_eq(arg, "--run-dir") || str_eq(arg, "--run-once") || str_eq(arg, "--suppress-run")
+	       || str_start_with(arg, "--test-") || str_start_with(arg, "--benchmark-");
 }
 
 BuildOptions parse_arguments(int argc, const char *argv[])
@@ -2056,7 +2070,11 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		}
 		if (current_arg[0] == '-')
 		{
+			int first_index = arg_index;
 			parse_option(&build_options);
+			if (is_target_specific_option(args[first_index])) continue;
+			// The option and the values it consumed are also passed on to the builds of 'depends-on' targets.
+			for (int i = first_index; i <= arg_index; i++) vec_add(build_options.dependency_args, args[i]);
 			continue;
 		}
 		if (build_options.command == COMMAND_MISSING)
