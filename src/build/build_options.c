@@ -69,6 +69,7 @@ static void usage(bool full)
 	print_cmd("compile-test <file1> [<file2> ...]", "Compile files into a benchmark-executable and run unit tests.");
 	print_cmd("static-lib <file1> [<file2> ...]", "Compile files without a project into a static library.");
 	print_cmd("dynamic-lib <file1> [<file2> ...]", "Compile files without a project into a dynamic library.");
+	print_cmd("source-lib <file1> [<file2> ...]", "Pack files without a project into a source library (.c3l), use -o to set the library name.");
 	print_cmd("vendor-fetch <library> ...", "Fetches one or more libraries from the vendor collection.");
 	print_cmd("fetch <library> ...", "Fetches one or more libraries.");
 	print_cmd("fetch-list", "Prints all available libraries");
@@ -131,6 +132,7 @@ static void usage(bool full)
 		print_opt("--no-obj", "Do not output object files, this is only valid for `compile-only`.");
 		print_opt("--keep-obj", "Do not delete object files after linking.");
 		print_opt("--no-headers", "Do not generate C headers when building a library.");
+		print_opt("--no-compress", "Output a source library as an uncompressed directory instead of a compressed .c3l file.");
 		print_opt("--target <target>", "Compile for a particular architecture + OS target.");
 		print_opt("--threads <number>", "Set the number of threads to use for compilation.");
 		print_opt("--safe=<yes|no>", "Turn safety (contracts, runtime bounds checking, null pointer checks etc) on or off.");
@@ -586,6 +588,11 @@ static void parse_command(BuildOptions *options)
 	if (arg_match("dynamic-lib"))
 	{
 		options->command = COMMAND_DYNAMIC_LIB;
+		return;
+	}
+	if (arg_match("source-lib"))
+	{
+		options->command = COMMAND_SOURCE_LIB;
 		return;
 	}
 	if (arg_match("build"))
@@ -1512,6 +1519,11 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->no_headers = true;
 				return;
 			}
+			if (match_longopt("no-compress"))
+			{
+				options->no_compress = true;
+				return;
+			}
 			if (match_longopt("print-linking"))
 			{
 				options->print_linking = true;
@@ -2075,6 +2087,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		case COMMAND_COMPILE_RUN:
 		case COMMAND_STATIC_LIB:
 		case COMMAND_DYNAMIC_LIB:
+		case COMMAND_SOURCE_LIB:
 		case COMMAND_VENDOR_FETCH:
 		case COMMAND_FETCH:
 		case COMMAND_FETCH_INFO:

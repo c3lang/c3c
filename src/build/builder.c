@@ -117,6 +117,7 @@ bool command_accepts_files(CompilerCommand command)
 		case COMMAND_COMPILE_RUN:
 		case COMMAND_DYNAMIC_LIB:
 		case COMMAND_STATIC_LIB:
+		case COMMAND_SOURCE_LIB:
 		case COMMAND_COMPILE_BENCHMARK:
 		case COMMAND_COMPILE_TEST:
 		case COMMAND_UNIT_TEST:
@@ -158,6 +159,7 @@ bool command_passes_args(CompilerCommand command)
 		case COMMAND_COMPILE_ONLY:
 		case COMMAND_DYNAMIC_LIB:
 		case COMMAND_STATIC_LIB:
+		case COMMAND_SOURCE_LIB:
 		case COMMAND_COMPILE_BENCHMARK:
 		case COMMAND_COMPILE_TEST:
 		case COMMAND_UNIT_TEST:
@@ -380,6 +382,8 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 					error_exit("The '%s' target is a test target and not compatible with the benchmark command.", target->name);
 				case TARGET_TYPE_PREPARE:
 					error_exit("The '%s' target is a prepare target and not compatible with the benchmark command.", target->name);
+				case TARGET_TYPE_SOURCE_LIB:
+					error_exit("The '%s' target is a source library target and not compatible with the benchmark command.", target->name);
 			}
 BENCHMARK:
 		case COMMAND_COMPILE_BENCHMARK:
@@ -416,6 +420,8 @@ BENCHMARK:
 					error_exit("The '%s' target is a benchmark target and not compatible with the test command.", target->name);
 				case TARGET_TYPE_PREPARE:
 					error_exit("The '%s' target is a prepare target and not compatible with the test command.", target->name);
+				case TARGET_TYPE_SOURCE_LIB:
+					error_exit("The '%s' target is a source library target and not compatible with the test command.", target->name);
 			}
 		case COMMAND_COMPILE_TEST:
 TEST:
@@ -458,6 +464,7 @@ TEST:
 					break;
 				case TARGET_TYPE_STATIC_LIB:
 				case TARGET_TYPE_DYNAMIC_LIB:
+				case TARGET_TYPE_SOURCE_LIB:
 					error_exit("'%s' is a library target and cannot be run.", target->name);
 				case TARGET_TYPE_OBJECT_FILES:
 					error_exit("'%s' is an object file target and cannot be run.", target->name);
@@ -484,6 +491,9 @@ TEST:
 			break;
 		case COMMAND_STATIC_LIB:
 			target->type = TARGET_TYPE_STATIC_LIB;
+			break;
+		case COMMAND_SOURCE_LIB:
+			target->type = TARGET_TYPE_SOURCE_LIB;
 			break;
 		case COMMAND_BUILD:
 		case COMMAND_DIST:
@@ -601,6 +611,7 @@ BUILD:
 	set_if_updated(target->stack_protector, options->stack_protector);
 
 	OVERRIDE_IF_SET(output_dir);
+	OVERRIDE_IF_SET(no_compress);
 	OVERRIDE_IF_SET(panicfn);
 	OVERRIDE_IF_SET(testfn);
 	OVERRIDE_IF_SET(benchfn);

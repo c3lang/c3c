@@ -33,6 +33,7 @@ typedef enum
 	COMMAND_COMPILE_RUN,
 	COMMAND_STATIC_LIB,
 	COMMAND_DYNAMIC_LIB,
+	COMMAND_SOURCE_LIB,
 	COMMAND_RUN,
 	COMMAND_CLEAN_RUN,
 	COMMAND_CLEAN,
@@ -94,6 +95,7 @@ typedef enum
 	TARGET_TYPE_BENCHMARK,
 	TARGET_TYPE_TEST,
 	TARGET_TYPE_PREPARE,
+	TARGET_TYPE_SOURCE_LIB,
 } TargetType;
 
 typedef struct
@@ -136,7 +138,7 @@ static const char *project_view_flags[PROJECT_VIEW_TYPE_MAX + 1] = {
 	[PROJECT_VIEW_TYPE_TARGETS] = "targets",
 };
 
-static const char *targets[7] = {
+static const char *targets[8] = {
 	[TARGET_TYPE_EXECUTABLE] = "executable",
 	[TARGET_TYPE_STATIC_LIB] = "static-lib",
 	[TARGET_TYPE_DYNAMIC_LIB] = "dynamic-lib",
@@ -144,16 +146,17 @@ static const char *targets[7] = {
 	[TARGET_TYPE_TEST] = "test",
 	[TARGET_TYPE_OBJECT_FILES] = "object-files",
 	[TARGET_TYPE_PREPARE] = "prepare",
+	[TARGET_TYPE_SOURCE_LIB] = "source-lib",
 };
-static const char *target_desc[7] = {
+static const char *target_desc[8] = {
 	[TARGET_TYPE_EXECUTABLE] = "Executable",
 	[TARGET_TYPE_STATIC_LIB] = "Static library",
 	[TARGET_TYPE_DYNAMIC_LIB] = "Dynamic library",
 	[TARGET_TYPE_BENCHMARK] = "benchmark suite",
 	[TARGET_TYPE_TEST] = "test suite",
 	[TARGET_TYPE_OBJECT_FILES] = "object files",
-	[TARGET_TYPE_PREPARE] = "prepare"
-
+	[TARGET_TYPE_PREPARE] = "prepare",
+	[TARGET_TYPE_SOURCE_LIB] = "Source library",
 };
 
 
@@ -279,6 +282,7 @@ typedef struct BuildOptions_
 	bool no_obj;
 	bool keep_object_files;
 	bool no_headers;
+	bool no_compress;
 	bool read_stdin;
 	bool print_output;
 	bool print_input;
@@ -437,6 +441,7 @@ typedef struct
 	bool docgen_json_out;
 	bool docgen_append;
 	bool output_headers;
+	bool no_compress;
 	bool output_ast;
 	bool lex_only;
 	bool parse_only;
@@ -663,6 +668,7 @@ const char *check_dir(const char *path);
 void create_project(BuildOptions *build_options);
 void create_library(BuildOptions *build_options);
 void resolve_libraries(BuildTarget *build_target);
+void build_source_library(BuildTarget *target);
 void view_project(BuildOptions *build_options);
 void add_target_project(BuildOptions *build_options);
 void fetch_project(BuildOptions* options);

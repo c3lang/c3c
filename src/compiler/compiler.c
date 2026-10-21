@@ -2062,6 +2062,11 @@ INLINE void update_feature_flags(void)
 
 void compile(void)
 {
+	if (compiler.build.type == TARGET_TYPE_SOURCE_LIB)
+	{
+		build_source_library(&compiler.build);
+		return;
+	}
 	symtab_init(compiler.build.symtab_size);
 	compiler.build.sources = target_expand_source_names(NULL, compiler.build.source_dirs, c3_suffix_list, &compiler.build.object_files, 3, true);
 	if (compiler.build.build_test && compiler.build.test_source_dirs)

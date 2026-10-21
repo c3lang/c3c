@@ -17,6 +17,7 @@ const char *project_default_keys[][2] = {
 		{"c-sources", "Set the C sources to be compiled."},
 		{"cc", "Set C compiler."},
 		{"cflags", "C compiler flags."},
+		{"compress", "Compress a 'source-lib' target into a single .c3l file, otherwise output an uncompressed directory (default: true)."},
 		{"cpu", "CPU name, used for optimizations in the compiler backend."},
 		{"cpu-flags", "Set the cpu flags to add or remove with the format '+avx,-sse'."},
 		{"data-sections", "Place each global variable in its own section, so the linker can discard unused ones (no effect on Mach-O)."},
@@ -108,6 +109,7 @@ const char* project_target_keys[][2] = {
 		{"cc", "Set C compiler."},
 		{"cflags", "Additional C compiler flags for the target."},
 		{"cflags-override", "C compiler flags for the target, overriding global settings."},
+		{"compress", "Compress a 'source-lib' target into a single .c3l file, otherwise output an uncompressed directory (default: true)."},
 		{"cpu", "CPU name, used for optimizations in the compiler backend."},
 		{"cpu-flags", "Additional cpu flags to add or remove with the format '+avx,-sse'."},
 		{"cpu-flags-override", "Additional cpu flags to add or remove with the format '+avx,-sse', overriding global settings."},
@@ -178,7 +180,7 @@ const char* project_target_keys[][2] = {
 		{"test-sources-override", "Paths to project test sources for this target, overriding global settings."},
 		{"testfn", "Override the test function."},
 		{"trap-on-wrap", "Make signed and unsigned integer overflow generate a panic rather than wrapping."},
-		{"type", "Type of output, one of 'executable', 'static-lib', 'dynamic-lib', 'benchmark', 'test', 'object-files' and 'prepare'." },
+		{"type", "Type of output, one of 'executable', 'static-lib', 'dynamic-lib', 'benchmark', 'test', 'object-files', 'prepare' and 'source-lib'." },
 		{"unroll-loops", "Force enable/disable loop unrolling optimization."},
 		{"use-stdlib", "Include the standard library (default: true)."},
 		{"vendor", "Vendor specific extensions, ignored by c3c."},
@@ -353,6 +355,7 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	target->merge_functions = (MergeFunctions)get_valid_bool(context, json, "merge-functions", target->merge_functions);
 	target->data_sections = (SectionsSetting)get_valid_bool(context, json, "data-sections", target->data_sections);
 	target->function_sections = (SectionsSetting)get_valid_bool(context, json, "function-sections", target->function_sections);
+	target->no_compress = !get_valid_bool(context, json, "compress", !target->no_compress);
 
 	static const char *opt_settings[8] = {
 			[OPT_SETTING_O0] = "O0",
@@ -857,6 +860,9 @@ BuildTarget *project_select_target(const char *filename, Project *project, const
 				case TARGET_TYPE_PREPARE:
 					if (compiler_command == COMMAND_BUILD || compiler_command == COMMAND_DIST) break;
 					if (compiler_command == COMMAND_RUN) break; // Can be used but isn't the default
+					continue; // Only compatible with build and dist
+				case TARGET_TYPE_SOURCE_LIB:
+					if (compiler_command == COMMAND_BUILD || compiler_command == COMMAND_DIST) return target;
 					continue; // Only compatible with build and dist
 				case TARGET_TYPE_EXECUTABLE:
 					return target;

@@ -4,6 +4,9 @@
 #define MANIFEST_FILE "manifest.json"
 
 const char *manifest_default_keys[][2] = {
+		{"authors", "Authors of the library."},
+		{"langrev", "Version of the C3 language used."},
+		{"version", "Version of the library."},
 		{"sources", "Paths to library sources for targets, such as interface files."},
 		{"c-sources", "Set the C sources to be compiled."},
 		{"c-include-dirs", "Set the include directories for C sources."},
@@ -14,7 +17,7 @@ const char *manifest_default_keys[][2] = {
 		{"linklib-dir", "Set the directory where to find linked libraries."},
 		{"templates", "Predefined target configurations for users of this library."},
 		{"provides", "The library name"},
-		{"targets", "The map of supported platforms"},
+		{"targets", "The map of supported platforms, if missing the library supports all platforms."},
 		{"vendor", "Vendor specific extensions, ignored by c3c."},
 		{"wincrt", "Windows CRT linking: none, static, dynamic."}
 };
@@ -124,7 +127,25 @@ static Library *add_library(JSONObject *json, const char *dir, const char **libs
 	APPEND_STRING_LIST(&library->source_dirs, "sources");
 	APPEND_STRING_LIST(&library->csource_dirs, "c-sources");
 	APPEND_STRING_LIST(&library->cinclude_dirs, "c-include-dirs");
-	parse_library_type(library, &library->targets, json_map_get(json, "targets"));
+	JSONObject *lib_targets = json_map_get(json, "targets");
+	if (lib_targets)
+	{
+		parse_library_type(library, &library->targets, lib_targets);
+	}
+	else
+	{
+		// Without any targets the library works for all platforms, e.g. a source library.
+		LibraryTarget *library_target = CALLOCS(LibraryTarget);
+		library_target->parent = library;
+		library_target->arch_os = ARCH_OS_TARGET_DEFAULT;
+		library_target->cc = library->cc;
+		library_target->cflags = library->cflags;
+		library_target->win_crt = library->win_crt;
+		library_target->source_dirs = library->source_dirs;
+		library_target->csource_dirs = library->csource_dirs;
+		library_target->cinclude_dirs = library->cinclude_dirs;
+		vec_add(library->targets, library_target);
+	}
 	return library;
 }
 
@@ -144,7 +165,7 @@ static void add_library_dependency(BuildTarget *build_target, Library *library, 
 	LibraryTarget *target_found = NULL;
 	FOREACH(LibraryTarget *, target, library->targets)
 	{
-		if (target->arch_os == build_target->arch_os_target)
+		if (target->arch_os == build_target->arch_os_target || target->arch_os == ARCH_OS_TARGET_DEFAULT)
 		{
 			target_found = target;
 			break;
@@ -236,19 +257,25 @@ static inline JSONObject *resolve_zip_library(BuildTarget *build_target, const c
 	if (!f) error_exit("Failed to open library '%s' for reading.", lib);
 	ZipDirIterator iterator;
 
-	// Find the manifest.
+	// Find the manifest and checksum all the files, so that changed sources invalidate the unpacked copy.
 	ZipFile file;
+	ZipFile manifest_file = { 0 };
+	bool manifest_found = false;
+	uint32_t crc = 0;
 	zip_check_err(lib, zip_dir_iterator(f, &iterator));
-	do
+	while (iterator.current_file < iterator.files)
 	{
-		if (iterator.current_file >= iterator.files) error_exit("Missing manifest in '%s'.", lib);
 		zip_check_err(lib, zip_dir_iterator_next(&iterator, &file));
-		if (strcmp(file.name, MANIFEST_FILE) == 0) break;
-	} while (1);
+		crc = crc * 31 + file.file_crc32;
+		if (strcmp(file.name, MANIFEST_FILE) != 0) continue;
+		manifest_file = file;
+		manifest_found = true;
+	}
+	if (!manifest_found) error_exit("Missing manifest in '%s'.", lib);
 
 	// Read the manifest.
 	char *manifest_data;
-	zip_check_err(lib, zip_file_read(f, &file, (void**)&manifest_data));
+	zip_check_err(lib, zip_file_read(f, &manifest_file, (void**)&manifest_data));
 
 	// Parse the JSON
 	JSONObject *json = read_manifest(lib, manifest_data);
@@ -263,7 +290,6 @@ static inline JSONObject *resolve_zip_library(BuildTarget *build_target, const c
 	char *lib_dir_copy = scratch_buffer_copy();
 	scratch_buffer_append("checksum.txt");
 	const char *checksum_file = scratch_buffer_to_string();
-	uint32_t crc = file.file_crc32;
 	if (file_is_dir(lib_dir))
 	{
 		size_t len;
@@ -413,4 +439,187 @@ void resolve_libraries(BuildTarget *build_target)
 			puts(execute_cmd(exec, false, NULL, 2048));
 		}
 	}
+}
+
+static const char *c_suffix_list[2] = { ".c", ".m" };
+static const char *header_suffix_list[5] = { ".h", ".hh", ".hpp", ".hxx", ".inc" };
+static const char *source_lib_doc_files[4] = { "LICENSE", "LICENSE.md", "LICENSE.txt", "README.md" };
+
+// The name inside the library for a path, which must be relative to and inside the project.
+static const char *source_lib_path(const char *path)
+{
+	char *name = str_dup(path);
+	for (char *c = name; *c; c++)
+	{
+		if (*c == '\\') *c = '/';
+	}
+	while (name[0] == '.' && name[1] == '/') name += 2;
+	bool valid = name[0] && name[0] != '/' && name[1] != ':' && strlen(name) < ZIP_MAX_NAME;
+	for (const char *part = name; valid && part; part = strchr(part, '/'))
+	{
+		if (*part == '/') part++;
+		if (part[0] == '.' && part[1] == '.' && (part[2] == '/' || !part[2])) valid = false;
+	}
+	if (!valid)
+	{
+		error_exit("'%s' cannot be added to a source library, paths must be inside the project directory.", path);
+	}
+	return name;
+}
+
+static const char **source_lib_paths(const char **paths)
+{
+	const char **result = NULL;
+	FOREACH(const char *, path, paths) vec_add(result, source_lib_path(path));
+	return result;
+}
+
+static void source_lib_add_files(ZipEntry **entries, const char **files)
+{
+	FOREACH(const char *, file, files)
+	{
+		ZipEntry entry = { .name = source_lib_path(file), .file_path = file };
+		vec_add(*entries, entry);
+	}
+}
+
+static void manifest_add_string(const char *key, const char *value)
+{
+	if (!value) return;
+	scratch_buffer_printf(",\n  \"%s\": \"", key);
+	scratch_buffer_append_in_quote(value);
+	scratch_buffer_append_char('"');
+}
+
+static void manifest_add_list(const char *key, const char **values)
+{
+	if (!vec_size(values)) return;
+	scratch_buffer_printf(",\n  \"%s\": [", key);
+	FOREACH_IDX(i, const char *, value, values)
+	{
+		scratch_buffer_append(i ? ", \"" : " \"");
+		scratch_buffer_append_in_quote(value);
+		scratch_buffer_append_char('"');
+	}
+	scratch_buffer_append(" ]");
+}
+
+static int source_lib_entry_compare(const void *a, const void *b)
+{
+	return strcmp(((const ZipEntry *)a)->name, ((const ZipEntry *)b)->name);
+}
+
+void build_source_library(BuildTarget *target)
+{
+	const char *name = target->output_name ? target->output_name : target->name;
+	if (!name) error_exit("A source library needs a name, use '-o <name>' to set it.");
+	if (!str_is_valid_lowercase_name(name))
+	{
+		error_exit("Invalid source library name '%s', the name should only contain lowercase alphanumerical letters and '_'.", name);
+	}
+	ZipEntry *entries = NULL;
+
+	// The C3 sources.
+	const char **sources = target_expand_source_names(NULL, target->source_dirs, c3_suffix_list, NULL, 3, true);
+	if (!vec_size(sources)) error_exit("No sources were found for the source library '%s'.", name);
+	source_lib_add_files(&entries, sources);
+
+	// The C sources, with the headers next to them and in the include dirs.
+	const char **csources = target_expand_source_names(NULL, target->csource_dirs, c_suffix_list, NULL, 2, false);
+	source_lib_add_files(&entries, csources);
+	const char **header_dirs = NULL;
+	FOREACH(const char *, csource, csources)
+	{
+		char *dir;
+		if (!file_namesplit(csource, NULL, &dir) || str_findlist(dir, vec_size(header_dirs), header_dirs) != -1) continue;
+		vec_add(header_dirs, dir);
+		const char **headers = NULL;
+		file_add_wildcard_files(&headers, dir, false, header_suffix_list, ELEMENTLEN(header_suffix_list));
+		source_lib_add_files(&entries, headers);
+	}
+	FOREACH(const char *, include_dir, target->cinclude_dirs)
+	{
+		const char **headers = NULL;
+		file_add_wildcard_files(&headers, include_dir, true, header_suffix_list, ELEMENTLEN(header_suffix_list));
+		source_lib_add_files(&entries, headers);
+	}
+	for (size_t i = 0; target->project_dir && i < ELEMENTLEN(source_lib_doc_files); i++)
+	{
+		const char *doc_file = source_lib_doc_files[i];
+		if (!file_exists(doc_file) || file_is_dir(doc_file)) continue;
+		ZipEntry entry = { .name = doc_file, .file_path = doc_file };
+		vec_add(entries, entry);
+	}
+	if (vec_size(target->linker_libs) || vec_size(target->link_args))
+	{
+		WARNING("'linked-libraries' and 'link-args' are not stored in source libraries, prefer using `@link` instead.");
+	}
+
+	// Strings must be prepared before the manifest, which uses the scratch buffer.
+	const char **authors = NULL;
+	if (target->project_dir)
+	{
+		FOREACH(AuthorEntry, author, target->authors)
+		{
+			vec_add(authors, author.email ? str_printf("%s <%s>", author.author, author.email) : author.author); // NOLINT
+		}
+	}
+	const char **source_patterns = source_lib_paths(target->source_dirs);
+	const char **csource_patterns = source_lib_paths(target->csource_dirs);
+	const char **include_patterns = source_lib_paths(target->cinclude_dirs);
+	scratch_buffer_clear();
+	scratch_buffer_printf("{\n  \"provides\": \"%s\"", name);
+	if (target->project_dir)
+	{
+		manifest_add_string("version", target->version);
+		manifest_add_list("authors", authors);
+		manifest_add_string("langrev", target->langrev);
+	}
+	manifest_add_list("dependencies", target->libs);
+	manifest_add_list("sources", source_patterns);
+	manifest_add_list("c-sources", csource_patterns);
+	manifest_add_list("c-include-dirs", include_patterns);
+	manifest_add_string("cc", target->cc);
+	manifest_add_string("cflags", target->cflags);
+	scratch_buffer_append("\n}\n");
+	size_t manifest_size = scratch_buffer_len();
+	ZipEntry manifest = { .name = MANIFEST_FILE, .data = scratch_buffer_copy(), .size = manifest_size };
+	vec_add(entries, manifest);
+
+	// Sort for a stable order, and remove files which were found more than once.
+	int total = vec_size(entries);
+	qsort(entries, total, sizeof(ZipEntry), source_lib_entry_compare);
+	int count = 0;
+	for (int i = 0; i < total; i++)
+	{
+		if (count && str_eq(entries[i].name, entries[count - 1].name)) continue;
+		entries[count++] = entries[i];
+	}
+	vec_resize(entries, count);
+	const char *output = file_append_path(target->output_dir, str_cat(name, ".c3l"));
+	if (file_exists(output))
+	{
+		if (file_is_dir(output)) file_delete_dir(output); else file_delete_file(output);
+	}
+	file_create_folders(output);
+	if (target->no_compress)
+	{
+		for (int i = 0; i < count; i++)
+		{
+			const char *path = file_append_path(output, entries[i].name);
+			file_create_folders(path);
+			if (entries[i].file_path)
+			{
+				file_copy_file(entries[i].file_path, path, true);
+				continue;
+			}
+			if (!file_write_all(path, entries[i].data, entries[i].size)) error_exit("Failed to write '%s'.", path);
+		}
+	}
+	else
+	{
+		const char *error = zip_create(output, entries, count);
+		if (error) error_exit("Failed to create the source library '%s': %s.", output, error);
+	}
+	OUTF("Source library '%s' created.\n", output);
 }
