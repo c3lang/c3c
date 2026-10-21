@@ -2036,6 +2036,16 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 						   "An 'else' must use '{ }' even around a single statement.");
 				success = false;
 			}
+			if (success && else_body->ast_kind == AST_IF_STMT)
+			{
+				// Without an 'else' of its own the inner if-statement would accept a single statement.
+				Ast *else_then = astptr(else_body->if_stmt.then_body);
+				if (ast_ok(else_then) && else_then->ast_kind != AST_COMPOUND_STMT)
+				{
+					SEMA_ERROR(else_then, "An 'else if' must use '{ }' even around a single statement.");
+					success = false;
+				}
+			}
 		}
 		if (!sema_check_for_dead_code(context, then))
 		{
