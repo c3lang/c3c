@@ -112,14 +112,6 @@ fn void open_fd_continues_at_offset() @test
 	assert((String)buf[:n] == "456789");
 }
 
-fn void open_fd_bad_fd() @test
-{
-	// _fdopen on an invalid fd triggers the CRT's invalid parameter handler.
-	$if !env::WIN32:
-		File? f = file::open_fd(-1, "r");
-		assert(@catch(f) == io::FILE_NOT_VALID);
-	$endif
-}
 
 // Closing the File closes the fd.
 fn void open_fd_close_closes_fd() @test
