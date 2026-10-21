@@ -236,7 +236,6 @@ fn void siglongjmp(SigJmpBuf* ptr, CInt i) => os::exit(i);
 
 
 module libc @feat(NETBSD, OPENBSD);
-extern fn int fcntl(CInt socket, int cmd, ...);
 extern fn usz malloc_size(void* ptr);
 extern fn void* aligned_alloc(usz align, usz size);
 extern fn Tm* gmtime_r(Time_t* timer, Tm* buf) @cname("__gmtime_r50") @feat(NETBSD);

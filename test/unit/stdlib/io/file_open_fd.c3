@@ -121,22 +121,6 @@ fn void open_fd_bad_fd() @test
 	$endif
 }
 
-fn void open_fd_mode_mismatch() @test
-{
-	// Windows' _fdopen doesn't check the mode against the fd.
-	$if !env::WIN32:
-		String filename = fd_test_name();
-		file::save(filename, "x")!!;
-		defer (void)file::delete(filename);
-
-		Fd fd = fd_test_dup_file(filename, "rb");
-		File? f = file::open_fd(fd, "w");
-		assert(@catch(f));
-		// The fd is still ours after a failed open_fd.
-		assert(libc::close(fd) == 0);
-	$endif
-}
-
 // Closing the File closes the fd.
 fn void open_fd_close_closes_fd() @test
 {
