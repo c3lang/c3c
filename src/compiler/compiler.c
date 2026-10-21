@@ -1186,15 +1186,12 @@ INLINE void fetch_lib(BuildOptions *options, bool is_vendor, const char **librar
 				   "Please ensure libcurl is installed on your system.", is_vendor ? "vendor-fetch" : "fetch");
 	}
 	bool ansi = use_ansi();
-	if (str_eq(options->path, DEFAULT_PATH))
+	// check if there is a project JSON file (--path has already been applied)
+	if (file_exists(PROJECT_JSON5) || file_exists(PROJECT_JSON))
 	{
-		// check if there is a project JSON file
-		if (file_exists(PROJECT_JSON5) || file_exists(PROJECT_JSON))
-		{
-			const char** deps_dirs =  get_project_dependency_directories();
-			int num_lib = (int)vec_size(deps_dirs);
-			if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
-		}
+		const char** deps_dirs =  get_project_dependency_directories();
+		int num_lib = (int)vec_size(deps_dirs);
+		if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
 	}
 	int count = 0;
 	const char** fetched_libraries = NULL;
@@ -1256,7 +1253,7 @@ INLINE void fetch_lib(BuildOptions *options, bool is_vendor, const char **librar
 	if (ansi && total_libraries > 1) printf("\033[2K");
 
 	// add fetched library to the dependency list
-	add_libraries_to_project_file(fetched_libraries, options->project_options.target_name);
+	add_libraries_to_project_file(fetched_libraries);
 
 	if (!count)	error_exit("Error: Failed to download any libraries.");
 	if (count < vec_size(libraries_to_fetch)) error_exit("Error: Only some libraries were downloaded.");
