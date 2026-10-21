@@ -251,6 +251,23 @@ JSONObject *read_library_manifest_for_path(const char *lib_path, const char **ma
 	return NULL;
 }
 
+// Unpack the library files into `dir`, skipping empty entries and dotfiles. Returns an error string or NULL.
+static const char *unpack_zip(FILE *f, const char *dir)
+{
+	ZipDirIterator iterator;
+	ZipFile file;
+	const char *error = zip_dir_iterator(f, &iterator);
+	while (!error && iterator.current_file < iterator.files)
+	{
+		error = zip_dir_iterator_next(&iterator, &file);
+		if (error) break;
+		if (!file.uncompressed_size || file.name[0] == '.') continue;
+		if (strstr(file.name, "..")) return "the library contains an invalid file path";
+		error = zip_file_write(f, &file, dir, false);
+	}
+	return error;
+}
+
 static inline JSONObject *resolve_zip_library(BuildTarget *build_target, const char *lib, const char **resulting_library)
 {
 	FILE *f = fopen(lib, "rb");
@@ -299,15 +316,7 @@ static inline JSONObject *resolve_zip_library(BuildTarget *build_target, const c
 	}
 	dir_make_recursive(lib_dir_copy);
 
-	// Iterate through all files.
-	zip_check_err(lib, zip_dir_iterator(f, &iterator));
-	while (iterator.current_file < iterator.files)
-	{
-		zip_check_err(lib, zip_dir_iterator_next(&iterator, &file));
-		if (file.uncompressed_size == 0 || file.name[0] == '.') continue;
-		// Copy file.
-		zip_check_err(lib, zip_file_write(f, &file, lib_dir, false));
-	}
+	zip_check_err(lib, unpack_zip(f, lib_dir));
 DONE:
 	fclose(f);
 	char buf[64];
@@ -317,6 +326,18 @@ DONE:
 	return json;
 
 }
+
+const char *unpack_c3l(const char *zip_path, const char *dest_dir)
+{
+	FILE *f = fopen(zip_path, "rb");
+	if (!f) return "Failed to open the downloaded library";
+	dir_make(dest_dir);
+	const char *error = unpack_zip(f, dest_dir);
+	fclose(f);
+	if (error) return error;
+	return file_exists(file_append_path(dest_dir, MANIFEST_FILE)) ? NULL : "the library has no manifest";
+}
+
 void resolve_libraries(BuildTarget *build_target)
 {
 	DEBUG_LOG("Resolve libraries");

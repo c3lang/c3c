@@ -8,6 +8,7 @@
 - Add the `source-lib` target type (and `c3c source-lib` command) to pack the C3 sources, C sources and headers of a project into a `.c3l` library.
 - `.c3l` manifests without `targets` now work for all platforms, and may contain `version`, `authors` and `langrev`.
 - Fetching dependencies also fetches dependencies in the targets.
+- `fetch`, `vendor-fetch` and `project fetch` now unpack libraries into a `<name>.c3l` directory by default. Use `--decompress=no` to keep them compressed.
 
 ### Fixes
 - Compressed `.c3l` libraries were not unpacked again when only files other than `manifest.json` had changed.

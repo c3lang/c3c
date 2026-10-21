@@ -68,6 +68,8 @@ char *win_utf16to8(const uint16_t *name);
 bool dir_make(const char *path);
 bool dir_make_recursive(char *path);
 const char *dir_make_temp_dir(void);
+// Same, but creates the directory inside `base`.
+const char *dir_make_temp_dir_in(const char *base);
 // Delete the directory (recursively) in dir_delete_registered(), which runs on every exit path.
 void dir_delete_on_cleanup(const char *path);
 void dir_delete_registered(void);
@@ -83,6 +85,7 @@ void file_copy_file(const char *src_path, const char *dst_path, bool overwrite);
 void file_copy_dir(const char *src_path, const char *dst_path);
 void file_delete_all_files_in_dir_with_suffix(const char *dir, const char *suffix);
 bool file_delete_file(const char *path);
+bool file_replace(const char *src_path, const char *dst_path);
 void file_delete_dir(const char *path);
 bool file_is_dir(const char *file);
 bool file_exists(const char *path);

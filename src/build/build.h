@@ -291,6 +291,7 @@ typedef struct BuildOptions_
 	bool docgen_json_out;
 	bool docgen_append;
 	bool fetch_accept_license;
+	bool fetch_compressed;
 	bool msvc_show_versions;
 	bool msvc_fetch_headers;
 	ImplicitFloat implicit_float;
@@ -668,6 +669,7 @@ const char *check_dir(const char *path);
 void create_project(BuildOptions *build_options);
 void create_library(BuildOptions *build_options);
 void resolve_libraries(BuildTarget *build_target);
+const char *unpack_c3l(const char *zip_path, const char *dest_dir);
 void build_source_library(BuildTarget *target);
 void view_project(BuildOptions *build_options);
 void add_target_project(BuildOptions *build_options);

@@ -274,7 +274,7 @@ static const char **get_list(const char *file, JSONObject *project, const char *
 }
 
 // Fetch the dependencies of the target (or of the project if target is NULL) missing from its search paths.
-static void fetch_missing_dependencies(const char *file, JSONObject *project, const char *target)
+static void fetch_missing_dependencies(const char *file, JSONObject *project, const char *target, bool decompress)
 {
 	const char **deps = get_list(file, project, target, "dependencies", "dependencies-override");
 	if (!vec_size(deps)) return;
@@ -297,7 +297,7 @@ static void fetch_missing_dependencies(const char *file, JSONObject *project, co
 		file_create_folders(file_append_path(dirs[0], lib_file));
 		printf("Fetching missing library '%s'...\n", dep);
 		fflush(stdout);
-		const char *error = vendor_fetch_single(dep, dirs[0], use_ansi());
+		const char *error = vendor_fetch_single(dep, dirs[0], use_ansi(), decompress);
 		if (error) printf("Failed: '%s'\n", error);
 	}
 }
@@ -317,13 +317,13 @@ void fetch_project(BuildOptions* options)
 	// First the dependencies of the project itself, then those of each target.
 	const char *filename;
 	JSONObject *project = project_json_load(&filename);
-	fetch_missing_dependencies(filename, project, NULL);
+	fetch_missing_dependencies(filename, project, NULL, !options->fetch_compressed);
 	JSONObject *project_targets = json_map_get(project, "targets");
 	if (!project_targets || project_targets->type != J_OBJECT) return;
 	FOREACH_IDX(i, JSONObject *, target, project_targets->members)
 	{
 		if (target->type != J_OBJECT) error_exit("Invalid data in target '%s'", project_targets->keys[i]);
-		fetch_missing_dependencies(filename, project, project_targets->keys[i]);
+		fetch_missing_dependencies(filename, project, project_targets->keys[i], !options->fetch_compressed);
 	}
 }
 

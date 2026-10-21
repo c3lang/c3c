@@ -1098,12 +1098,34 @@ bool use_ansi(void)
 #endif
 }
 
-const char *vendor_fetch_single(const char* lib, const char* path, bool progress)
+// Download a library to `destination`, unpacking it into a directory of that name unless `decompress` is false.
+static const char *download_library(const char *url, const char *resource, const char *destination, bool progress, bool decompress)
+{
+	// Work in a unique directory next to the destination: the final move stays on one filesystem,
+	// and a failure leaves any existing copy alone.
+	char *parent;
+	if (!file_namesplit(destination, NULL, &parent)) return "Invalid library destination";
+	dir_make_recursive(parent);
+	const char *stage_dir = dir_make_temp_dir_in(parent);
+	if (!stage_dir) return "Failed to create a temporary directory for the library";
+	const char *result = file_append_path(stage_dir, "library.c3l");
+	const char *error = download_file(url, resource, result, progress);
+	if (!error && decompress)
+	{
+		const char *zip_file = result;
+		result = file_append_path(stage_dir, "library");
+		error = unpack_c3l(zip_file, result);
+	}
+	if (!error && !file_replace(result, destination)) error = "Failed to replace the existing library";
+	file_delete_dir(stage_dir);
+	return error;
+}
+
+const char *vendor_fetch_single(const char* lib, const char* path, bool progress, bool decompress)
 {
 	const char *resource = str_printf("/c3lang/vendor/releases/download/latest/%s.c3l", lib);
 	const char *destination = file_append_path(path, str_printf("%s.c3l", lib));
-	const char *error = download_file("https://github.com", resource, destination, progress);
-	return error;	
+	return download_library("https://github.com", resource, destination, progress, decompress);
 }
 
 
@@ -1167,7 +1189,7 @@ static const char *registry_fetch_single(BuildOptions *options, const char *lib_
 	// 3. Download exactly that version.
 	const char *destination = file_append_path(path, str_printf("%s.c3l", provides));
 	const char *base = options->fetch_url;
-	return download_file(base, str_printf("/download/%s@%s", lib_id, version), destination, false);
+	return download_library(base, str_printf("/download/%s@%s", lib_id, version), destination, false, !options->fetch_compressed);
 }
 
 INLINE void fetch_lib(BuildOptions *options, bool is_vendor, const char **libraries_to_fetch)
@@ -1198,7 +1220,7 @@ INLINE void fetch_lib(BuildOptions *options, bool is_vendor, const char **librar
 		{
 			printf("Fetching library '%s'...\n", lib);
 			(void)fflush(stdout);
-			error = vendor_fetch_single(lib, options->vendor_download_path, ansi);
+			error = vendor_fetch_single(lib, options->vendor_download_path, ansi, !options->fetch_compressed);
 		}
 		else
 		{

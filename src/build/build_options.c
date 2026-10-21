@@ -159,6 +159,7 @@ static void usage(bool full)
 		print_opt("--warn-unusedlocal=<yes|no|error>", "Print warning when a local is not used after compile-time folding: yes, no, error.");
 		PRINTF("");
 		print_opt("--fetch-url <url>", "Use this URL for fetching libraries.");
+		print_opt("--decompress=<yes|no>", "Unpack fetched libraries into directories (default: yes), no keeps them as compressed .c3l files.");
 	}
 	PRINTF("");
 	print_opt("-g", "Emit debug info.");
@@ -1095,6 +1096,11 @@ static void parse_option(BuildOptions *options) // NOLINT
 			{
 				if (at_end() || next_is_opt()) FAIL_WITH_ERR_LONG("'--fetch-url' expected a URL.");
 				options->fetch_url = next_arg();
+				return;
+			}
+			if ((argopt = match_argopt("decompress"))) // NOLINT
+			{
+				options->fetch_compressed = !parse_opt_select(bool, argopt, on_off);
 				return;
 			}
 			if (match_longopt("max-mem"))
