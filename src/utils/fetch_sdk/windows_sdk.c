@@ -615,7 +615,6 @@ void fetch_winsdk(BuildOptions *options)
 
 	const char *tmp_dir_base = dir_make_temp_dir();
 	if (!tmp_dir_base) error_exit("Failed to create temp directory");
-	if (verbose_level >= 1) printf("Temp dir: %s\n", tmp_dir_base);
 
 	const char *m1_path = file_append_path(tmp_dir_base, "vschannel.json");
 	JSONObject *rj1 = load_manifest(MANIFEST_URL, m1_path, "channel");
@@ -993,6 +992,4 @@ void fetch_winsdk(BuildOptions *options)
 	}
 
 	if (verbose_level >= 0) printf("The 'msvc_sdk' directory was successfully generated at %s.\n", sdk_output);
-
-	if (verbose_level == 0) file_delete_dir(tmp_dir_base);
 }

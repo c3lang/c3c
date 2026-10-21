@@ -68,6 +68,9 @@ char *win_utf16to8(const uint16_t *name);
 bool dir_make(const char *path);
 bool dir_make_recursive(char *path);
 const char *dir_make_temp_dir(void);
+// Delete the directory (recursively) in dir_delete_registered(), which runs on every exit path.
+void dir_delete_on_cleanup(const char *path);
+void dir_delete_registered(void);
 // Use as if it was chdir(...) == 0
 bool dir_change(const char *path);
 const char *filename(const char *path);

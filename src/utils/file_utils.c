@@ -104,6 +104,8 @@ const char *find_temp_dir(void)
 }
 #endif
 
+static const char **dirs_to_delete;
+
 const char *dir_make_temp_dir(void)
 {
 	char buffer[PATH_MAX];
@@ -121,7 +123,6 @@ const char *dir_make_temp_dir(void)
 	{
 		return NULL;
 	}
-	return str_copy(buffer, strlen(buffer));
 #else
 	const char *temp_dir = find_temp_dir();
 	const char *format = str_has_suffix(temp_dir, "/") ? "%sc3cXXXXXXX" : "%s/c3cXXXXXXX";
@@ -129,8 +130,24 @@ const char *dir_make_temp_dir(void)
 	if (result < 0 || result >= PATH_MAX) return NULL;
 	const char *out = mkdtemp(buffer);
 	if (out == NULL) return NULL;
-	return str_copy(buffer, strlen(buffer));
 #endif
+	const char *copy = str_dup(buffer);
+	dir_delete_on_cleanup(copy);
+	return copy;
+}
+
+void dir_delete_on_cleanup(const char *path)
+{
+	vec_add(dirs_to_delete, path);
+}
+
+void dir_delete_registered(void)
+{
+	FOREACH(const char *, dir, dirs_to_delete)
+	{
+		file_delete_dir(dir);
+	}
+	dirs_to_delete = NULL;
 }
 
 bool dir_make_recursive(char *path)

@@ -1119,24 +1119,16 @@ static const char *load_fetch_info(BuildOptions *options, const char *name, Libr
 {
 	const char *base = options->fetch_url;
 	const char *tmp_dir = dir_make_temp_dir();
+	if (!tmp_dir) error_exit("Failed to create temp directory");
 	const char *tmp_file = file_append_path(tmp_dir, "info.json");
 	scratch_buffer_clear();
 	scratch_buffer_printf("/info/%s", name);
 	const char *error = download_file(base, scratch_buffer_to_string(), tmp_file, false);
 	JSONObject *json = NULL;
-	if (error)
-	{
-		file_delete_file(tmp_file);
-		file_delete_dir(tmp_dir);
-		return error;
-	}
+	if (error) return error;
 
 	size_t size;
 	char *json_str = file_read_all(tmp_file, &size);
-
-	// Cleanup
-	file_delete_file(tmp_file);
-	file_delete_dir(tmp_dir);
 
 	JsonParser parser;
 	json_init_string(&parser, json_str);
@@ -1267,6 +1259,7 @@ void vendor_fetch(BuildOptions *options)
 	if (!vec_size(options->vendor_libraries_to_fetch))
 	{
 		const char *tmp_dir = dir_make_temp_dir();
+		if (!tmp_dir) error_exit("Failed to create temp directory");
 		const char *tmp_file = file_append_path(tmp_dir, "vendor_list.json");
 		const char *error = download_file("https://api.github.com", "/repos/c3lang/vendor/contents/libraries/", tmp_file, false);
 		if (error)
@@ -1303,8 +1296,6 @@ void vendor_fetch(BuildOptions *options)
 				}
 			}
 		}
-		file_delete_file(tmp_file);
-		file_delete_dir(tmp_dir);
 		return;
 	}
 
@@ -1421,6 +1412,7 @@ void fetch_list(BuildOptions *options)
 	const char *name_filter = options->search_name;
 	const char *tag_filter = options->search_tag;
 	const char *tmp_dir = dir_make_temp_dir();
+	if (!tmp_dir) error_exit("Failed to create temp directory");
 	const char *tmp_file = file_append_path(tmp_dir, "index.json");
 	const char *error = download_file(base, "/index.json", tmp_file, false);
 	if (error) error_exit("Failed to fetch the library list from '%s': %s", base, error);
@@ -1451,8 +1443,6 @@ void fetch_list(BuildOptions *options)
 				printf("  %s\n", info.name);
 			}
 		}
-		file_delete_file(tmp_file);
-		file_delete_dir(tmp_dir);
 		return;
 	}
 
@@ -1482,8 +1472,6 @@ void fetch_list(BuildOptions *options)
 		puts("");
 	}
 	if (!found) puts(empty);
-	file_delete_file(tmp_file);
-	file_delete_dir(tmp_dir);
 }
 
 void print_syntax(BuildOptions *options)

@@ -27,6 +27,8 @@ NORETURN void exit_compiler(int exit_value)
 
 static void cleanup(void)
 {
+	// Must run before the memory is released: the paths live in the arena.
+	dir_delete_registered();
 	symtab_destroy();
 	memory_release();
 }
@@ -166,8 +168,7 @@ int main_real(int argc, const char *argv[])
 			UNREACHABLE
 	}
 
-	symtab_destroy();
-	memory_release();
+	cleanup();
 	return 0;
 }
 
