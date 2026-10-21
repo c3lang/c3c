@@ -26,6 +26,7 @@
 - Compiler crashes when using a value derived from a const as an initializer elsewhere. #3574
 - Improve OpenGL-handling of vsync.
 - Regression for emscripten, accidentally retainin unused panic functions. #3575.
+- Compiler hangs on c3c project fetch #3562
 
 ### Stdlib changes
 - Added termios support for OpenBSD.

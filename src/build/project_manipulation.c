@@ -290,16 +290,6 @@ void fetch_project(BuildOptions* options)
 		error_exit("Failed: no project file found.");
 	}
 
-	if (str_eq(options->path, DEFAULT_PATH))
-	{
-		{
-			const char** deps_dirs =  get_project_dependency_directories();
-			int num_lib = vec_size(deps_dirs);
-			if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
-		}
-	}
-
-	const char **libdirs = get_project_dependency_directories();
 	const char **deps = get_project_dependencies();
 	const char *filename;
 	JSONObject *project_json = project_json_load(&filename);
@@ -308,7 +298,6 @@ void fetch_project(BuildOptions* options)
 
 	if (targets_json && targets_json->type == J_OBJECT)
 	{
-
 		FOREACH_IDX(i, JSONObject *, target, targets_json->members)
 		{
 			const char *key = targets_json->keys[i];
@@ -326,30 +315,37 @@ void fetch_project(BuildOptions* options)
 		}
 	}
 
-	// dependency check tree
-	while (vec_size(deps) > 0)
+	if (!vec_size(deps)) return;
+
+	const char **libdirs = get_project_dependency_directories();
+	if (!vec_size(libdirs))
 	{
+		error_exit("Failed: no 'dependency-search-paths' in the project file.\n"
+				   "Add e.g. \"dependency-search-paths\": [ \"lib\" ] to choose where libraries are fetched.");
+	}
+	if (str_eq(options->path, DEFAULT_PATH)) options->vendor_download_path = libdirs[0];
+
+	// dependency check tree
+	FOREACH (const char *, dependency, deps)
+	{
+		bool found = false;
 		FOREACH(const char*, dir, libdirs)
 		{
-			const char *dep = VECLAST(deps);
-			if (file_exists(file_append_path(dir, str_printf("%s.c3l", dep))))
+			if (file_exists(file_append_path(dir, str_printf("%s.c3l", dependency))))
 			{
-				vec_pop(deps);
+				found = true;
 				break;
 			}
-
-			printf("Fetching missing library '%s'...\n", dep);
+		}
+		if (!found)
+		{
+			const char *download_dir = options->vendor_download_path;
+			if (!file_is_dir(download_dir)) dir_make_recursive(str_copy(download_dir, strlen(download_dir)));
+			if (!file_is_dir(download_dir)) error_exit("Failed to create directory '%s'.", download_dir);
+			printf("Fetching missing library '%s'...\n", dependency);
 			fflush(stdout);
-
-			const char *error = vendor_fetch_single(dep, options->vendor_download_path, use_ansi());
-
-			if (error)
-			{
-				printf("Failed: '%s'\n", error);
-			}
-
-			vec_pop(deps);
-			break;
+			const char *error = vendor_fetch_single(dependency, options->vendor_download_path, use_ansi());
+			if (error) printf("Failed: '%s'\n", error);
 		}
 	}
 }
