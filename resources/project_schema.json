@@ -109,6 +109,22 @@
               "type": "string"
             }
           },
+          "env": {
+            "type": "array",
+            "description": "Additional environment variables for the 'exec' scripts of this target, as 'NAME=value'.",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*="
+            }
+          },
+          "env-override": {
+            "type": "array",
+            "description": "Environment variables for the 'exec' scripts of this target, as 'NAME=value', replacing the global 'env'.",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*="
+            }
+          },
           "sources": {
             "type": "array",
             "description": "Additional sources for this target.",
@@ -296,6 +312,14 @@
       "type": "boolean",
       "description": "Do not generate or require a main function.",
       "default": false
+    },
+    "env": {
+      "type": "array",
+      "description": "Environment variables for the 'exec' scripts of all targets, as 'NAME=value'.",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*="
+      }
     },
     "use-stdlib": {
       "type": "boolean",
