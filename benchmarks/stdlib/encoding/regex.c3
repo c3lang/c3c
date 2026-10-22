@@ -126,14 +126,14 @@ fn void bench_setup() @init
 
 	if (catch err = re_complex.texec(input_small))
 	{
-		assert(err == regex::NOMATCH);
+		assert(err == regex::NO_MATCH);
 	}
 	int rx = regexec(&glibc_re_complex, input_small, 0, null);
 	assert(rx == REG_NOMATCH);
 
 	if (catch err = re_unicode.texec(input_unicode))
 	{
-		assert(err == regex::NOMATCH);
+		assert(err == regex::NO_MATCH);
 	}
 	rx = regexec(&glibc_re_unicode, input_unicode, 0, null);
 	assert(rx == REG_NOMATCH);

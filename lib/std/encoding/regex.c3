@@ -62,19 +62,44 @@ constset ExecFlags
 
 excuse
 {
-	NOMATCH,
-	BADPAT,
-	ECOLLATE,
-	ECTYPE,
-	EESCAPE,
-	ESUBREG,
-	EBRACK,
-	EPAREN,
-	EBRACE,
-	BADBR,
-	ERANGE,
-	OUT_OF_MEMORY,
-	BADRPT
+	<* The pattern did not match anywhere in the input. *>
+	NO_MATCH,
+
+	<* The Regex instance is uninitialized or has already been freed. *>
+	UNINITIALIZED_REGEX,
+
+	<* POSIX collation elements [[.col.]] and equivalence classes [[=eq=]] are not supported. *>
+	UNSUPPORTED_COLLATION,
+
+	<* Unknown or malformed character class name inside `[:...:]`. *>
+	INVALID_CHAR_CLASS,
+
+	<* Pattern ends with a trailing unescaped backslash. *>
+	TRAILING_BACKSLASH,
+
+	<* Invalid backreference index or reference to undefined subexpression. *>
+	INVALID_BACKREF,
+
+	<* Missing closing bracket `]` in bracket expression. *>
+	UNCLOSED_BRACKET,
+
+	<* Unbalanced parentheses: missing closing `)` or unmatched `)`. *>
+	UNBALANCED_PAREN,
+
+	<* Missing closing brace `}` in hex escape sequence `\x{...}`. *>
+	UNCLOSED_HEX_ESCAPE,
+
+	<* Invalid or unterminated interval quantifier in `{m,n}` (e.g. m > n, value > 255, or missing `}`). *>
+	INVALID_INTERVAL,
+
+	<* Invalid character range in bracket expression (e.g. `[z-a]`). *>
+	INVALID_CHAR_RANGE,
+
+	<* Repetition operator without a preceding valid expression, or invalid repetition token in BRE. *>
+	INVALID_REPETITION,
+
+	<* Pattern exceeds engine complexity limits (length, bracket size, nesting depth, state count, or transitions). *>
+	PATTERN_TOO_COMPLEX
 }
 
 struct Regex
@@ -94,8 +119,9 @@ fn void Regex.free(&self) => re_free(self);
  @param allocator : "Allocator used to persist the compiled regex."
  @param pattern   : "The regex pattern string."
  @param cflags    : "Compile flags: EXTENDED | ICASE | NOSUB | NEWLINE."
- @return? BADPAT, ECOLLATE, ECTYPE, EESCAPE, ESUBREG, EBRACK, EPAREN, EBRACE, BADBR, ERANGE, BADRPT : "Invalid pattern syntax"
- @return? OUT_OF_MEMORY : "Allocation failure or pattern complexity limit exceeded"
+ @return? UNSUPPORTED_COLLATION, INVALID_CHAR_CLASS, TRAILING_BACKSLASH, INVALID_BACKREF, UNCLOSED_BRACKET, UNBALANCED_PAREN, UNCLOSED_HEX_ESCAPE, INVALID_INTERVAL, INVALID_CHAR_RANGE, INVALID_REPETITION : "Invalid pattern syntax"
+ @return? PATTERN_TOO_COMPLEX : "Pattern complexity limit exceeded"
+ @return? mem::OUT_OF_MEMORY : "Allocation failure"
  @return "The compiled `Regex`."
 *>
 fn Regex? compile(Allocator allocator, String pattern, CompileFlags cflags = {})
@@ -115,9 +141,9 @@ fn Regex? compile(Allocator allocator, String pattern, CompileFlags cflags = {})
  @param str           : "The input string to search."
  @param max_captures  : "The maximum number of match slots to return (including the full match at index 0)."
  @param eflags        : "Execute flags: NOTBOL and NOTEOL."
- @return? NOMATCH     : "No match found"
- @return? BADPAT      : "Uninitialized or invalid regex handle"
- @return? OUT_OF_MEMORY : "Allocation failure during execution"
+ @return? NO_MATCH    : "No match found"
+ @return? UNINITIALIZED_REGEX : "Uninitialized or freed regex instance"
+ @return? mem::OUT_OF_MEMORY : "Allocation failure during execution"
  @return "A slice of matches."
 *>
 fn Match[]? Regex.exec(&self, Allocator allocator, String str, sz max_captures = 0, ExecFlags eflags = {})
@@ -148,6 +174,8 @@ fn Match[]? Regex.texec(&self, String str, sz max_captures = 0, ExecFlags eflags
 <*
  Check if the regex pattern matches the string anywhere.
 
+ Returns false if no match is found or if the regex is uninitialized or freed.
+
  @param str    : "The input string to search."
  @param eflags : "Execute flags."
  @return "True if a match is found, false otherwise."
@@ -161,14 +189,14 @@ fn bool Regex.matches(&self, String str, ExecFlags eflags = {}) =>
  @param allocator : "Allocator used to persist the returned matches."
  @param str       : "The input string to search."
  @param eflags    : "Execute flags."
- @return? BADPAT  : "Uninitialized or invalid regex handle"
- @return? OUT_OF_MEMORY : "Allocation failure"
+ @return? UNINITIALIZED_REGEX : "Uninitialized or freed regex instance"
+ @return? mem::OUT_OF_MEMORY : "Allocation failure"
  @return "A slice of matches."
 *>
 fn Match[]? Regex.find_all(&self, Allocator allocator, String str, ExecFlags eflags = {})
 {
 	Tnfa* tnfa = self.__tnfa;
-	if (!tnfa) return BADPAT~;
+	if (!tnfa) return UNINITIALIZED_REGEX~;
 
 	List{Match} list;
 	list.init(allocator);
@@ -184,7 +212,7 @@ fn Match[]? Regex.find_all(&self, Allocator allocator, String str, ExecFlags efl
 		RegMatch match;
 		if (catch err = re_exec(self, sub, 1, &match, current_flags, &scratch))
 		{
-			if (err == NOMATCH) break;
+			if (err == NO_MATCH) break;
 			list.free();
 			return err~;
 		}
@@ -266,7 +294,17 @@ macro String? @_replace_impl(self, Allocator allocator, String str, #repl, bool 
 	return res;
 }
 
-<* Replace matches of the pattern in the string with the replacement string. *>
+<*
+ Replace matches of the pattern in the string with the replacement string.
+
+ @param allocator   : "Allocator used to persist the resulting string."
+ @param str         : "The input string to search and modify."
+ @param replacement : "The replacement string."
+ @param replace_all : "If true (default), replaces all matches. If false, replaces only the first match."
+ @param eflags      : "Execute flags."
+ @return? Regex.find_all!
+ @return "The modified string."
+*>
 fn String? Regex.replace(&self, Allocator allocator, String str, String replacement, bool replace_all = true, ExecFlags eflags = {}) =>
 	@_replace_impl(self, allocator, str, replacement, replace_all, eflags);
 
@@ -284,6 +322,7 @@ alias ReplaceFn = fn String(Match match);
  @param func        : "Callback function called for each match to return the replacement String."
  @param replace_all : "If true (default), replaces all matches. If false, replaces only the first match."
  @param eflags      : "Execute flags."
+ @return? Regex.find_all!
  @return "The modified string."
 *>
 fn String? Regex.replace_fn(&self, Allocator allocator, String str, ReplaceFn func, bool replace_all = true, ExecFlags eflags = {}) =>
@@ -300,16 +339,16 @@ fn String? Regex.treplace_fn(&self, String str, ReplaceFn func, bool replace_all
 
  @param str    : "The input string to search."
  @param eflags : "Execute flags."
- @return? NOMATCH : "No match found"
- @return? BADPAT  : "Uninitialized or invalid regex handle"
- @return? OUT_OF_MEMORY : "Allocation failure"
+ @return? NO_MATCH : "No match found"
+ @return? UNINITIALIZED_REGEX : "Uninitialized or freed regex instance"
+ @return? mem::OUT_OF_MEMORY : "Allocation failure"
  @return "A single `Match` struct for the top-level match."
 *>
 fn Match? Regex.first_match(&self, String str, ExecFlags eflags = {})
 {
 	RegMatch match;
 	re_exec(self, str, 1, &match, eflags, null)!;
-	if (match.rm_so == -1 || match.rm_eo == -1) return NOMATCH~;
+	if (match.rm_so == -1 || match.rm_eo == -1) return NO_MATCH~;
 	return _build_match(str, match);
 }
 
@@ -353,8 +392,7 @@ fn String tescape(String pattern) @inline => escape(tmem, pattern);
  @param max        : "Maximum number of parts (0 means unlimited)."
  @param skip_empty : "If true, empty string parts are omitted."
  @param eflags     : "Execute flags."
- @return? BADPAT   : "Uninitialized or invalid regex handle"
- @return? OUT_OF_MEMORY : "Allocation failure"
+ @return? Regex.find_all!
  @return "An array of split string parts."
 *>
 fn String[]? Regex.split(&self, Allocator allocator, String str, sz max = 0, bool skip_empty = false, ExecFlags eflags = {})
@@ -422,20 +460,21 @@ fn String error_string(fault err)
 {
 	switch (err)
 	{
-		case NOMATCH:        return "No match";
-		case BADPAT:         return "Invalid regexp";
-		case ECOLLATE:       return "Unknown collating element";
-		case ECTYPE:         return "Unknown character class name";
-		case EESCAPE:        return "Trailing backslash";
-		case ESUBREG:        return "Invalid back reference";
-		case EBRACK:         return "Missing ']'";
-		case EPAREN:         return "Missing ')'";
-		case EBRACE:         return "Missing '}'";
-		case BADBR:          return "Invalid contents of {}";
-		case ERANGE:         return "Invalid character range";
-		case OUT_OF_MEMORY:  return "Out of memory";
-		case BADRPT:         return "Repetition not preceded by valid expression";
-		default:             return "Unknown error";
+		case NO_MATCH:              return "No match";
+		case UNINITIALIZED_REGEX:   return "Uninitialized regex instance";
+		case UNSUPPORTED_COLLATION: return "Unsupported collation sequence";
+		case INVALID_CHAR_CLASS:    return "Invalid character class name";
+		case TRAILING_BACKSLASH:    return "Trailing backslash";
+		case INVALID_BACKREF:       return "Invalid back reference";
+		case UNCLOSED_BRACKET:      return "Missing ']'";
+		case UNBALANCED_PAREN:      return "Unbalanced parenthesis";
+		case UNCLOSED_HEX_ESCAPE:   return "Missing '}' in hex escape";
+		case INVALID_INTERVAL:      return "Invalid contents of {}";
+		case INVALID_CHAR_RANGE:    return "Invalid character range";
+		case INVALID_REPETITION:    return "Repetition not preceded by valid expression";
+		case PATTERN_TOO_COMPLEX:   return "Pattern complexity limit exceeded";
+		case mem::OUT_OF_MEMORY:    return "Out of memory";
+		default:                    return "Unknown error";
 	}
 }
 
@@ -734,7 +773,7 @@ fn void? stack_push(Stack* s, StackItem value) @local
 	}
 	else
 	{
-		if (s.size >= s.max_size) return OUT_OF_MEMORY~;
+		if (s.size >= s.max_size) return PATTERN_TOO_COMPLEX~;
 		int new_size = s.size.overflow_add(s.increment) ?? s.max_size;
 		if (new_size > s.max_size) new_size = s.max_size;
 		StackItem[] nb = alloc::realloc_array_try(s.allocator, s.stack, StackItem, new_size)!;
@@ -780,7 +819,7 @@ fn void* stack_pop_ptr(Stack* s) @local => s.stack[--s.count].ptr;
 
 fn AstNode*? ast_new_node(Allocator arena, int type, void* obj) @local
 {
-	if (!obj) return OUT_OF_MEMORY~;
+	if (!obj) return mem::OUT_OF_MEMORY~;
 	return alloc::new_try(arena, AstNode, { .type = type, .obj = obj, .nullable = false, .submatch_id = -1 });
 }
 
@@ -994,13 +1033,13 @@ fn void? parse_bracket(ParseCtx* ctx, char* s) @local
 
 	for (;;)
 	{
-		if (!*s) return EBRACK~;
+		if (!*s) return UNCLOSED_BRACKET~;
 		if (*s == ']' && s != contents_start)
 		{
 			ctx.cursor = s + 1;
 			break;
 		}
-		if (*s == '[' && (s[1] == '.' || s[1] == '=')) return ECOLLATE~;
+		if (*s == '[' && (s[1] == '.' || s[1] == '=')) return UNSUPPORTED_COLLATION~;
 
 		int len = 0;
 		int min = decode_utf8(s, &len);
@@ -1013,10 +1052,10 @@ fn void? parse_bracket(ParseCtx* ctx, char* s) @local
 			char[32] tmp;
 			int len_name = 0;
 			while (*s && *s != ':' && len_name < 30) { tmp[len_name++] = *s++; }
-			if (*s != ':' || s[1] != ']') return ECTYPE~;
+			if (*s != ':' || s[1] != ']') return INVALID_CHAR_CLASS~;
 			tmp[len_name] = 0;
 			class = tre_ctype((ZString)&tmp[0]);
-			if (!class) return ECTYPE~;
+			if (!class) return INVALID_CHAR_CLASS~;
 			s += 2;
 			min = 0;
 			max = CHAR_MAX_CODEPOINT;
@@ -1027,22 +1066,22 @@ fn void? parse_bracket(ParseCtx* ctx, char* s) @local
 			if (*s == '-' && s[1] != ']')
 			{
 				s++;
-				if (!*s) return EBRACK~;
+				if (!*s) return UNCLOSED_BRACKET~;
 				int len_max = 0;
 				max = decode_utf8(s, &len_max);
-				if (min > max) return ERANGE~;
+				if (min > max) return INVALID_CHAR_RANGE~;
 				s += len_max;
 			}
 		}
 
 		if (class != 0 && negate)
 		{
-			if (neg_len >= 64) return OUT_OF_MEMORY~;
+			if (neg_len >= 64) return PATTERN_TOO_COMPLEX~;
 			neg_classes[neg_len++] = class;
 		}
 		else
 		{
-			if (ls_len >= 256) return OUT_OF_MEMORY~;
+			if (ls_len >= 256) return PATTERN_TOO_COMPLEX~;
 			ls[ls_len] = {
 				.code_min = min,
 				.code_max = max,
@@ -1054,7 +1093,7 @@ fn void? parse_bracket(ParseCtx* ctx, char* s) @local
 
 			if ((ctx.cflags & ICASE) && class == 0)
 			{
-				if (add_icase_literals(&ls[0], &ls_len, min, max) < 0) return OUT_OF_MEMORY~;
+				if (add_icase_literals(&ls[0], &ls_len, min, max) < 0) return PATTERN_TOO_COMPLEX~;
 			}
 		}
 	}
@@ -1064,7 +1103,7 @@ fn void? parse_bracket(ParseCtx* ctx, char* s) @local
 	{
 		if (ctx.cflags & NEWLINE)
 		{
-			if (ls_len >= 256) return OUT_OF_MEMORY~;
+			if (ls_len >= 256) return PATTERN_TOO_COMPLEX~;
 			ls[ls_len] = {
 				.code_min = '\n',
 				.code_max = '\n',
@@ -1086,7 +1125,7 @@ fn void? parse_bracket(ParseCtx* ctx, char* s) @local
 				}
 			}
 		}
-		if (ls_len >= 256) return OUT_OF_MEMORY~;
+		if (ls_len >= 256) return PATTERN_TOO_COMPLEX~;
 		ls[ls_len] = {
 			.code_min = CHAR_MAX_CODEPOINT + 1,
 			.code_max = CHAR_MAX_CODEPOINT + 1,
@@ -1179,7 +1218,7 @@ fn void? parse_atom(ParseCtx* ctx, char* s) @local
 				return;
 			}
 			char* nx = s + 1;
-			if (!*nx) return EESCAPE~;
+			if (!*nx) return TRAILING_BACKSLASH~;
 
 			switch (*nx)
 			{
@@ -1210,7 +1249,7 @@ fn void? parse_atom(ParseCtx* ctx, char* s) @local
 					}
 					if (len == 8)
 					{
-						if (*p2 != '}') return EBRACE~;
+						if (*p2 != '}') return UNCLOSED_HEX_ESCAPE~;
 						p2++;
 					}
 					node = ast_new_literal(ctx.mem, v, v, ctx.position++)!;
@@ -1221,7 +1260,7 @@ fn void? parse_atom(ParseCtx* ctx, char* s) @local
 				case '?':
 					if (!ere)
 					{
-						return BADRPT~;
+						return INVALID_REPETITION~;
 					}
 					node = make_literal(ctx, *nx)!;
 					ctx.position++;
@@ -1242,7 +1281,7 @@ fn void? parse_atom(ParseCtx* ctx, char* s) @local
 					if (!ere && *nx >= '1' && *nx <= '9')
 					{
 						int val = *nx - '0';
-						if (!(ctx.backref_ok & (1 << val))) return ESUBREG~;
+						if (!(ctx.backref_ok & (1 << val))) return INVALID_BACKREF~;
 						node = ast_new_literal(ctx.mem, BACKREF, val, ctx.position++)!;
 						if (val > ctx.max_backref) ctx.max_backref = val;
 						ctx.cursor = nx + 1;
@@ -1299,7 +1338,7 @@ fn void? parse_atom(ParseCtx* ctx, char* s) @local
 		case '{':
 		case '+':
 		case '?':
-			if (ere) return BADRPT~;
+			if (ere) return INVALID_REPETITION~;
 			node = make_literal(ctx, *s)!;
 			ctx.position++;
 			ctx.cursor = s + 1;
@@ -1375,9 +1414,9 @@ fn char*? parse_dup(char* s, bool ere, int* pmin, int* pmax) @local
 		max = min;
 	}
 
-	if ((max < min && max >= 0) || max > RE_DUP_MAX || min > RE_DUP_MAX || min < 0) return BADBR~;
-	if (!ere) { if (*s++ != '\\') return BADBR~; }
-	if (*s++ != '}') return BADBR~;
+	if ((max < min && max >= 0) || max > RE_DUP_MAX || min > RE_DUP_MAX || min < 0) return INVALID_INTERVAL~;
+	if (!ere) { if (*s++ != '\\') return INVALID_INTERVAL~; }
+	if (*s++ != '}') return INVALID_INTERVAL~;
 	*pmin = min;
 	*pmax = max;
 	return s;
@@ -1490,7 +1529,7 @@ fn void? tre_parse(ParseCtx* ctx) @local
 				switch (c)
 				{
 					case '\\':
-						if (depth == 0) return EPAREN~;
+						if (depth == 0) return UNBALANCED_PAREN~;
 						s += 2;
 					case ')':
 						s++;
@@ -1505,7 +1544,7 @@ fn void? tre_parse(ParseCtx* ctx) @local
 					ctx.cursor = s;
 					return;
 				}
-				if (!c || depth < 0) return EPAREN~;
+				if (!c || depth < 0) return UNBALANCED_PAREN~;
 
 				nbranch = stack_pop_ptr(stack);
 				nunion = stack_pop_ptr(stack);
@@ -2288,7 +2327,7 @@ fn void? tre_make_trans(Allocator allocator, PosAndTags* p1, PosAndTags* p2, Tnf
 
 		while (p1.position >= 0)
 		{
-			counts[p1.position] = counts[p1.position].overflow_add(p2_count) ?? OUT_OF_MEMORY~!;
+			counts[p1.position] = counts[p1.position].overflow_add(p2_count) ?? PATTERN_TOO_COMPLEX~!;
 			p1++;
 		}
 	}
@@ -2374,7 +2413,7 @@ fn void? tre_copy_ast(Allocator allocator, Stack* stack, AstNode* ast, int flags
 						int max = lit.code_max;
 						if (!is_special(lit) || is_backref(lit))
 						{
-							pos = (StateId)(pos.overflow_add(*pos_add) ?? OUT_OF_MEMORY~!);
+							pos = (StateId)(pos.overflow_add(*pos_add) ?? PATTERN_TOO_COMPLEX~!);
 							num_copied++;
 						}
 						else if (is_tag(lit) && (flags & COPY_REMOVE_TAGS) != 0)
@@ -2401,7 +2440,7 @@ fn void? tre_copy_ast(Allocator allocator, Stack* stack, AstNode* ast, int flags
 						*result = ast_new_union(allocator, uni.left, uni.right)!;
 						if (*result == null)
 						{
-							return OUT_OF_MEMORY~;
+							return mem::OUT_OF_MEMORY~;
 						}
 						Union* tmp = (*result).obj;
 						result = &tmp.left;
@@ -2419,7 +2458,7 @@ fn void? tre_copy_ast(Allocator allocator, Stack* stack, AstNode* ast, int flags
 						*result = ast_new_catenation(allocator, cat.left, cat.right)!;
 						if (*result == null)
 						{
-							return OUT_OF_MEMORY~;
+							return mem::OUT_OF_MEMORY~;
 						}
 						Catenation* tmp = (*result).obj;
 						tmp.left = null;
@@ -2446,7 +2485,7 @@ fn void? tre_copy_ast(Allocator allocator, Stack* stack, AstNode* ast, int flags
 				}
 		}
 	}
-	*pos_add = (StateId)((*pos_add).overflow_add(num_copied) ?? OUT_OF_MEMORY~!);
+	*pos_add = (StateId)((*pos_add).overflow_add(num_copied) ?? PATTERN_TOO_COMPLEX~!);
 }
 
 fn void? tre_expand_ast(Allocator allocator, Stack* stack, AstNode* ast, StateId* position, int* tag_directions) @local
@@ -2475,7 +2514,7 @@ fn void? tre_expand_ast(Allocator allocator, Stack* stack, AstNode* ast, StateId
 						Literal* lit = node.obj;
 						if (!is_special(lit) || is_backref(lit))
 						{
-							lit.position = (StateId)(lit.position.overflow_add(pos_add) ?? OUT_OF_MEMORY~!);
+							lit.position = (StateId)(lit.position.overflow_add(pos_add) ?? PATTERN_TOO_COMPLEX~!);
 							if (lit.position > max_pos) max_pos = lit.position;
 						}
 					}
@@ -2536,7 +2575,7 @@ fn void? tre_expand_ast(Allocator allocator, Stack* stack, AstNode* ast, StateId
 						{
 							checked_capacity = true;
 							long step = (long)(pos_add - pos_add_save);
-							if (step > 0 && (step * (total_copies - 1) + (long)pos_add) > (long)int::max) return OUT_OF_MEMORY~;
+							if (step > 0 && (step * (total_copies - 1) + (long)pos_add) > (long)int::max) return PATTERN_TOO_COMPLEX~;
 						}
 					}
 
@@ -2562,7 +2601,7 @@ fn void? tre_expand_ast(Allocator allocator, Stack* stack, AstNode* ast, StateId
 							{
 								checked_capacity = true;
 								long step = (long)(pos_add - pos_add_save);
-								if (step > 0 && (step * (total_copies - 1) + (long)pos_add) > (long)int::max) return OUT_OF_MEMORY~;
+								if (step > 0 && (step * (total_copies - 1) + (long)pos_add) > (long)int::max) return PATTERN_TOO_COMPLEX~;
 							}
 						}
 					}
@@ -2576,19 +2615,19 @@ fn void? tre_expand_ast(Allocator allocator, Stack* stack, AstNode* ast, StateId
 					{
 						seq1 = ast_new_catenation(allocator, seq1, seq2)!;
 					}
-					if (seq1 == null) return OUT_OF_MEMORY~;
+					if (seq1 == null) return mem::OUT_OF_MEMORY~;
 
 					node.obj = seq1.obj;
 					node.type = seq1.type;
 				}
 
 				iter_depth--;
-				pos_add_total = (StateId)(pos_add_total.overflow_add(pos_add - pos_add_last) ?? OUT_OF_MEMORY~!);
+				pos_add_total = (StateId)(pos_add_total.overflow_add(pos_add - pos_add_last) ?? PATTERN_TOO_COMPLEX~!);
 				if (iter_depth == 0) pos_add = pos_add_total;
 			}
 		}
 	}
-	*position = (StateId)((*position).overflow_add(pos_add_total) ?? OUT_OF_MEMORY~!);
+	*position = (StateId)((*position).overflow_add(pos_add_total) ?? PATTERN_TOO_COMPLEX~!);
 	if (max_pos > *position) *position = max_pos;
 }
 
@@ -2600,12 +2639,12 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 	@pool()
 	{
 		const int INPUT_LIMIT = 1024000;
-		if (regex.len >= INPUT_LIMIT) return OUT_OF_MEMORY~;
+		if (regex.len >= INPUT_LIMIT) return PATTERN_TOO_COMPLEX~;
 
 		ZString regex_nt = regex.zstr_copy(tmem);
 
 		Stack* stack = stack_new(tmem, 512, 8 * INPUT_LIMIT, 128);
-		if (!stack) return OUT_OF_MEMORY~;
+		if (!stack) return mem::OUT_OF_MEMORY~;
 		defer catch stack_destroy(stack);
 
 		ParseCtx ctx = {
@@ -2648,7 +2687,7 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 
 		Literal* empty_lit = alloc::new_try(tmem, Literal, { .code_min = 0, .code_max = 0, .position = ctx.position })!;
 		AstNode* final_node = ast_new_node(tmem, LITERAL, empty_lit)!;
-		ctx.position = (StateId)(ctx.position.overflow_add(1) ?? OUT_OF_MEMORY~!);
+		ctx.position = (StateId)(ctx.position.overflow_add(1) ?? PATTERN_TOO_COMPLEX~!);
 		ctx.node = ast_new_catenation(tmem, ctx.node, final_node)!;
 
 		tre_compute_nfl(tmem, stack, ctx.node)!;
@@ -2663,7 +2702,7 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 		for (int i = 0; i < num_states; i++)
 		{
 			offs[i] = total_trans;
-			total_trans = total_trans.overflow_add(counts[i] + 1) ?? OUT_OF_MEMORY~!;
+			total_trans = total_trans.overflow_add(counts[i] + 1) ?? PATTERN_TOO_COMPLEX~!;
 			counts[i] = 0;
 		}
 
@@ -3199,7 +3238,7 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, Ex
 	}
 
 	*match_end_ofs = match_eo;
-	if (match_eo < 0) return NOMATCH~;
+	if (match_eo < 0) return NO_MATCH~;
 }
 
 fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, TagId* match_tags, ExecFlags eflags, RegOff* match_end_ofs, RegexScratchpad* scratch) @local
@@ -3434,7 +3473,7 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, TagId* match_tags, Exe
 	}
 
 	*match_end_ofs = match_eo;
-	if (match_eo < 0) return NOMATCH~;
+	if (match_eo < 0) return NO_MATCH~;
 }
 
 fn void? re_exec(Regex* preg, String string, sz nmatch, RegMatch* pmatch, ExecFlags eflags, RegexScratchpad* scratch) @private
@@ -3442,7 +3481,7 @@ fn void? re_exec(Regex* preg, String string, sz nmatch, RegMatch* pmatch, ExecFl
 	@pool()
 	{
 		Tnfa* tnfa = preg.__tnfa;
-		if (!tnfa) return BADPAT~;
+		if (!tnfa) return UNINITIALIZED_REGEX~;
 
 		TagId* match_tags = null;
 		if (tnfa.num_tags > 0)

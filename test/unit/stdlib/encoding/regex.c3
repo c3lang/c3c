@@ -8,12 +8,12 @@ fn void test_idiomatic_api() @test
 	// --- compile: invalid pattern throws a fault ---------------------
 	if (catch err = regex::compile(mem, "(unclosed", regex::CompileFlags.EXTENDED))
 	{
-		test::eq(err, regex::EPAREN);
-		test::eq(regex::error_string(err), "Missing ')'");
+		test::eq(err, regex::UNBALANCED_PAREN);
+		test::eq(regex::error_string(err), "Unbalanced parenthesis");
 	}
 	else
 	{
-		unreachable("compile should have failed with fault regex::EPAREN");
+		unreachable("compile should have failed with fault regex::UNBALANCED_PAREN");
 	}
 
 	// compile: simple literal 
@@ -28,14 +28,14 @@ fn void test_idiomatic_api() @test
 
 	test::eq(string::tformat("%s", m[0]), "hello");
 
-	// exec: no match returns NOMATCH fault
+	// exec: no match returns NO_MATCH fault
 	if (catch err = re.texec("goodbye"))
 	{
-		test::eq(err, regex::NOMATCH);
+		test::eq(err, regex::NO_MATCH);
 	}
 	else
 	{
-		unreachable("exec should have returned NOMATCH");
+		unreachable("exec should have returned NO_MATCH");
 	}
 
 	// compile + exec: capture groups
@@ -315,7 +315,7 @@ fn void test_escape_word_boundary() @test
 	defer re.free();
 
 	test::@check(!@catch(re.texec("foo")));
-	test::eq(@catch(re.texec("foobar")), regex::NOMATCH);
+	test::eq(@catch(re.texec("foobar")), regex::NO_MATCH);
 	test::@check(!@catch(re.texec(" foo ")));
 }
 
@@ -325,7 +325,7 @@ fn void test_escape_w() @test
 	defer re.free();
 
 	test::@check(!@catch(re.texec("hello_world")));
-	test::eq(@catch(re.texec("---")), regex::NOMATCH);
+	test::eq(@catch(re.texec("---")), regex::NO_MATCH);
 }
 
 fn void test_escape_W() @test
@@ -335,7 +335,7 @@ fn void test_escape_W() @test
 
 	test::@check(!@catch(re.texec(" ")));
 	test::@check(!@catch(re.texec("!")));
-	test::eq(@catch(re.texec("a")), regex::NOMATCH);
+	test::eq(@catch(re.texec("a")), regex::NO_MATCH);
 }
 
 fn void test_escape_s() @test
@@ -345,7 +345,7 @@ fn void test_escape_s() @test
 
 	test::@check(!@catch(re.texec("   ")));
 	test::@check(!@catch(re.texec("\t\n")));
-	test::eq(@catch(re.texec("abc")), regex::NOMATCH);
+	test::eq(@catch(re.texec("abc")), regex::NO_MATCH);
 }
 
 fn void test_escape_S() @test
@@ -354,7 +354,7 @@ fn void test_escape_S() @test
 	defer re.free();
 
 	test::@check(!@catch(re.texec("abc")));
-	test::eq(@catch(re.texec("   ")), regex::NOMATCH);
+	test::eq(@catch(re.texec("   ")), regex::NO_MATCH);
 }
 
 fn void test_escape_d() @test
@@ -363,7 +363,7 @@ fn void test_escape_d() @test
 	defer re.free();
 
 	test::@check(!@catch(re.texec("123")));
-	test::eq(@catch(re.texec("abc")), regex::NOMATCH);
+	test::eq(@catch(re.texec("abc")), regex::NO_MATCH);
 }
 
 fn void test_escape_D() @test
@@ -372,7 +372,7 @@ fn void test_escape_D() @test
 	defer re.free();
 
 	test::@check(!@catch(re.texec("abc")));
-	test::eq(@catch(re.texec("123")), regex::NOMATCH);
+	test::eq(@catch(re.texec("123")), regex::NO_MATCH);
 }
 
 //  GAP: BRE backreferences \1
@@ -382,7 +382,7 @@ fn void test_backref() @test
 	defer re.free();
 
 	test::@check(!@catch(re.texec("aa")));
-	test::eq(@catch(re.texec("aaa")), regex::NOMATCH); // "aaa" is odd-length, so it doesn't match ^\(a*\)\1$
+	test::eq(@catch(re.texec("aaa")), regex::NO_MATCH); // "aaa" is odd-length, so it doesn't match ^\(a*\)\1$
 }
 
 //  GAP: tre_fill_pmatch, parent-bounds reset
@@ -411,7 +411,7 @@ fn void test_bre_alternation() @test
 
 	test::@check(!@catch(re.texec("cat")));
 	test::@check(!@catch(re.texec("dog")));
-	test::eq(@catch(re.texec("bird")), regex::NOMATCH);
+	test::eq(@catch(re.texec("bird")), regex::NO_MATCH);
 }
 
 //  GAP: eflags REG_NOTBOL / REG_NOTEOL
@@ -423,7 +423,7 @@ fn void test_eflags_notbol() @test
 	// Without flag: matches at start
 	test::@check(!@catch(re.texec("abc")));
 	// With REG_NOTBOL: ^ should not match at position 0
-	test::eq(@catch(re.texec("abc", 1, regex::ExecFlags.NOTBOL)), regex::NOMATCH);
+	test::eq(@catch(re.texec("abc", 1, regex::ExecFlags.NOTBOL)), regex::NO_MATCH);
 }
 
 fn void test_eflags_noteol() @test
@@ -434,7 +434,7 @@ fn void test_eflags_noteol() @test
 	// Without flag: matches at end
 	test::@check(!@catch(re.texec("abc")));
 	// With REG_NOTEOL: $ should not match at end
-	test::eq(@catch(re.texec("abc", 1, regex::ExecFlags.NOTEOL)), regex::NOMATCH);
+	test::eq(@catch(re.texec("abc", 1, regex::ExecFlags.NOTEOL)), regex::NO_MATCH);
 }
 
 //  GAP: \x hex escape sequences
@@ -445,7 +445,7 @@ fn void test_hex_escape() @test
 		Regex re = regex::compile(mem, "\\x41", regex::CompileFlags.EXTENDED)!!;
 		defer re.free();
 		test::@check(!@catch(re.texec("A")));
-		test::eq(@catch(re.texec("B")), regex::NOMATCH);
+		test::eq(@catch(re.texec("B")), regex::NO_MATCH);
 	}
 
 	{
@@ -453,7 +453,7 @@ fn void test_hex_escape() @test
 		Regex re = regex::compile(mem, "\\x6e", regex::CompileFlags.EXTENDED)!!;
 		defer re.free();
 		test::@check(!@catch(re.texec("n")));
-		test::eq(@catch(re.texec("m")), regex::NOMATCH);
+		test::eq(@catch(re.texec("m")), regex::NO_MATCH);
 	}
 
 	{
@@ -462,7 +462,7 @@ fn void test_hex_escape() @test
 		Regex re = regex::compile(mem, "\\x4B", regex::CompileFlags.EXTENDED)!!;
 		defer re.free();
 		test::@check(!@catch(re.texec("K")));
-		test::eq(@catch(re.texec("k")), regex::NOMATCH);
+		test::eq(@catch(re.texec("k")), regex::NO_MATCH);
 	}
 }
 
@@ -578,7 +578,7 @@ fn void test_bracket_multibyte_literals() @test
 	
 	test::@check(!@catch(re.texec("é")));
 	test::@check(!@catch(re.texec("ü")));
-	test::eq(@catch(re.texec("a")), regex::NOMATCH);
+	test::eq(@catch(re.texec("a")), regex::NO_MATCH);
 }
 
 /* ==========================================================
@@ -594,7 +594,7 @@ fn void test_posix_compliance_go_testdata_333_cases() @test
 {
 	foreach (tc : RegexTestCase::values)
 	{
-		if (tc.expected_fault != NO_ERR && tc.expected_fault != regex::NOMATCH)
+		if (tc.expected_fault != NO_ERR && tc.expected_fault != regex::NO_MATCH)
 		{
 			test::@error(regex::compile(mem, tc.pattern.tcopy(), tc.cflags), tc.expected_fault);
 			continue;
@@ -603,9 +603,9 @@ fn void test_posix_compliance_go_testdata_333_cases() @test
 		Regex re = regex::compile(mem, tc.pattern.tcopy(), tc.cflags)!!;
 		defer re.free();
 
-		if (tc.expected_fault == regex::NOMATCH)
+		if (tc.expected_fault == regex::NO_MATCH)
 		{
-			test::@error(re.texec(decode_input_escapes(tc.input).tcopy(), 32), regex::NOMATCH);
+			test::@error(re.texec(decode_input_escapes(tc.input).tcopy(), 32), regex::NO_MATCH);
 			continue;
 		}
 
@@ -679,7 +679,7 @@ enum RegexTestCase : int (
 	CASE_25 { EXTENDED, "a{0}b", "ab", NO_ERR, {{ 1, 2 }} },
 	CASE_26 { EXTENDED, "(a*)(b?)(b+)b{3}", "aaabbbbbbb", NO_ERR, {{ 0, 10 }, { 0, 3 }, { 3, 4 }, { 4, 7 }} },
 	CASE_27 { EXTENDED, "(a*)(b{0,1})(b{1,})b{3}", "aaabbbbbbb", NO_ERR, {{ 0, 10 }, { 0, 3 }, { 3, 4 }, { 4, 7 }} },
-	CASE_28 { EXTENDED, "a{9876543210}", "", regex::BADBR, {} },
+	CASE_28 { EXTENDED, "a{9876543210}", "", regex::INVALID_INTERVAL, {} },
 	CASE_29 { EXTENDED, "((a|a)|a)", "a", NO_ERR, {{ 0, 1 }, { 0, 1 }, { 0, 1 }} },
 	CASE_30 { EXTENDED, "(a*)(a|aa)", "aaaa", NO_ERR, {{ 0, 4 }, { 0, 3 }, { 3, 4 }} },
 	CASE_31 { EXTENDED, "a*(a.|aa)", "aaaa", NO_ERR, {{ 0, 4 }, { 2, 4 }} },
@@ -858,25 +858,25 @@ enum RegexTestCase : int (
 	CASE_204 { EXTENDED, ".*(/000).*", "/000", NO_ERR, {{ 0, 4 }, { 0, 4 }} },
 	CASE_205 { EXTENDED, ".*(\\\\000).*", "\\000", NO_ERR, {{ 0, 4 }, { 0, 4 }} },
 	CASE_206 { EXTENDED, "\\\\000", "\\000", NO_ERR, {{ 0, 4 }} },
-	CASE_207 { EXTENDED, "((..)|(.))", "", regex::NOMATCH, {} },
-	CASE_208 { EXTENDED, "((..)|(.))((..)|(.))", "", regex::NOMATCH, {} },
-	CASE_209 { EXTENDED, "((..)|(.))((..)|(.))((..)|(.))", "", regex::NOMATCH, {} },
-	CASE_210 { EXTENDED, "((..)|(.)){1}", "", regex::NOMATCH, {} },
-	CASE_211 { EXTENDED, "((..)|(.)){2}", "", regex::NOMATCH, {} },
-	CASE_212 { EXTENDED, "((..)|(.)){3}", "", regex::NOMATCH, {} },
+	CASE_207 { EXTENDED, "((..)|(.))", "", regex::NO_MATCH, {} },
+	CASE_208 { EXTENDED, "((..)|(.))((..)|(.))", "", regex::NO_MATCH, {} },
+	CASE_209 { EXTENDED, "((..)|(.))((..)|(.))((..)|(.))", "", regex::NO_MATCH, {} },
+	CASE_210 { EXTENDED, "((..)|(.)){1}", "", regex::NO_MATCH, {} },
+	CASE_211 { EXTENDED, "((..)|(.)){2}", "", regex::NO_MATCH, {} },
+	CASE_212 { EXTENDED, "((..)|(.)){3}", "", regex::NO_MATCH, {} },
 	CASE_213 { EXTENDED, "((..)|(.))*", "", NO_ERR, {{ 0, 0 }} },
 	CASE_214 { EXTENDED, "((..)|(.))", "a", NO_ERR, {{ 0, 1 }, { 0, 1 }, { -1, -1 }, { 0, 1 }} },
-	CASE_215 { EXTENDED, "((..)|(.))((..)|(.))", "a", regex::NOMATCH, {} },
-	CASE_216 { EXTENDED, "((..)|(.))((..)|(.))((..)|(.))", "a", regex::NOMATCH, {} },
+	CASE_215 { EXTENDED, "((..)|(.))((..)|(.))", "a", regex::NO_MATCH, {} },
+	CASE_216 { EXTENDED, "((..)|(.))((..)|(.))((..)|(.))", "a", regex::NO_MATCH, {} },
 	CASE_217 { EXTENDED, "((..)|(.)){1}", "a", NO_ERR, {{ 0, 1 }, { 0, 1 }, { -1, -1 }, { 0, 1 }} },
-	CASE_218 { EXTENDED, "((..)|(.)){2}", "a", regex::NOMATCH, {} },
-	CASE_219 { EXTENDED, "((..)|(.)){3}", "a", regex::NOMATCH, {} },
+	CASE_218 { EXTENDED, "((..)|(.)){2}", "a", regex::NO_MATCH, {} },
+	CASE_219 { EXTENDED, "((..)|(.)){3}", "a", regex::NO_MATCH, {} },
 	CASE_220 { EXTENDED, "((..)|(.))*", "a", NO_ERR, {{ 0, 1 }, { 0, 1 }, { -1, -1 }, { 0, 1 }} },
 	CASE_221 { EXTENDED, "((..)|(.))", "aa", NO_ERR, {{ 0, 2 }, { 0, 2 }, { 0, 2 }, { -1, -1 }} },
 	CASE_222 { EXTENDED, "((..)|(.))((..)|(.))", "aa", NO_ERR, {{ 0, 2 }, { 0, 1 }, { -1, -1 }, { 0, 1 }, { 1, 2 }, { -1, -1 }, { 1, 2 }} },
-	CASE_223 { EXTENDED, "((..)|(.))((..)|(.))((..)|(.))", "aa", regex::NOMATCH, {} },
+	CASE_223 { EXTENDED, "((..)|(.))((..)|(.))((..)|(.))", "aa", regex::NO_MATCH, {} },
 	CASE_224 { EXTENDED, "((..)|(.)){1}", "aa", NO_ERR, {{ 0, 2 }, { 0, 2 }, { 0, 2 }, { -1, -1 }} },
-	CASE_225 { EXTENDED, "((..)|(.)){3}", "aa", regex::NOMATCH, {} },
+	CASE_225 { EXTENDED, "((..)|(.)){3}", "aa", regex::NO_MATCH, {} },
 	CASE_226 { EXTENDED, "((..)|(.))*", "aa", NO_ERR, {{ 0, 2 }, { 0, 2 }, { 0, 2 }, { -1, -1 }} },
 	CASE_227 { EXTENDED, "((..)|(.))", "aaa", NO_ERR, {{ 0, 2 }, { 0, 2 }, { 0, 2 }, { -1, -1 }} },
 	CASE_228 { EXTENDED, "((..)|(.))((..)|(.))", "aaa", NO_ERR, {{ 0, 3 }, { 0, 2 }, { 0, 2 }, { -1, -1 }, { 2, 3 }, { -1, -1 }, { 2, 3 }} },
@@ -917,18 +917,18 @@ enum RegexTestCase : int (
 	CASE_263 { EXTENDED, "X(.?){6,8}Y", "X1234567Y", NO_ERR, {{ 0, 9 }, { 7, 8 }} },
 	CASE_264 { EXTENDED, "X(.?){7,8}Y", "X1234567Y", NO_ERR, {{ 0, 9 }, { 7, 8 }} },
 	CASE_265 { EXTENDED, "X(.?){8,8}Y", "X1234567Y", NO_ERR, {{ 0, 9 }, { 8, 8 }} },
-	CASE_266 { EXTENDED, "(a|ab|c|bcd){4,}(d*)", "ababcd", regex::NOMATCH, {} },
-	CASE_267 { EXTENDED, "(a|ab|c|bcd){4,10}(d*)", "ababcd", regex::NOMATCH, {} },
+	CASE_266 { EXTENDED, "(a|ab|c|bcd){4,}(d*)", "ababcd", regex::NO_MATCH, {} },
+	CASE_267 { EXTENDED, "(a|ab|c|bcd){4,10}(d*)", "ababcd", regex::NO_MATCH, {} },
 	CASE_268 { EXTENDED, "(ab|a|c|bcd){0,}(d*)", "ababcd", NO_ERR, {{ 0, 6 }, { 3, 6 }, { 6, 6 }} },
 	CASE_269 { EXTENDED, "(ab|a|c|bcd){1,}(d*)", "ababcd", NO_ERR, {{ 0, 6 }, { 3, 6 }, { 6, 6 }} },
 	CASE_270 { EXTENDED, "(ab|a|c|bcd){2,}(d*)", "ababcd", NO_ERR, {{ 0, 6 }, { 3, 6 }, { 6, 6 }} },
 	CASE_271 { EXTENDED, "(ab|a|c|bcd){3,}(d*)", "ababcd", NO_ERR, {{ 0, 6 }, { 3, 6 }, { 6, 6 }} },
-	CASE_272 { EXTENDED, "(ab|a|c|bcd){4,}(d*)", "ababcd", regex::NOMATCH, {} },
+	CASE_272 { EXTENDED, "(ab|a|c|bcd){4,}(d*)", "ababcd", regex::NO_MATCH, {} },
 	CASE_273 { EXTENDED, "(ab|a|c|bcd){0,10}(d*)", "ababcd", NO_ERR, {{ 0, 6 }, { 3, 6 }, { 6, 6 }} },
 	CASE_274 { EXTENDED, "(ab|a|c|bcd){1,10}(d*)", "ababcd", NO_ERR, {{ 0, 6 }, { 3, 6 }, { 6, 6 }} },
 	CASE_275 { EXTENDED, "(ab|a|c|bcd){2,10}(d*)", "ababcd", NO_ERR, {{ 0, 6 }, { 3, 6 }, { 6, 6 }} },
 	CASE_276 { EXTENDED, "(ab|a|c|bcd){3,10}(d*)", "ababcd", NO_ERR, {{ 0, 6 }, { 3, 6 }, { 6, 6 }} },
-	CASE_277 { EXTENDED, "(ab|a|c|bcd){4,10}(d*)", "ababcd", regex::NOMATCH, {} },
+	CASE_277 { EXTENDED, "(ab|a|c|bcd){4,10}(d*)", "ababcd", regex::NO_MATCH, {} },
 	CASE_278 { EXTENDED, "(ab|a|c|bcd)*(d*)", "ababcd", NO_ERR, {{ 0, 6 }, { 3, 6 }, { 6, 6 }} },
 	CASE_279 { EXTENDED, "(ab|a|c|bcd)+(d*)", "ababcd", NO_ERR, {{ 0, 6 }, { 3, 6 }, { 6, 6 }} },
 	CASE_280 { EXTENDED, "(a*)*", "a", NO_ERR, {{ 0, 1 }, { 0, 1 }} },
@@ -944,7 +944,7 @@ enum RegexTestCase : int (
 	CASE_290 { EXTENDED, "(a+)*", "aaaaaa", NO_ERR, {{ 0, 6 }, { 0, 6 }} },
 	CASE_291 { EXTENDED, "(a+)*", "aaaaaax", NO_ERR, {{ 0, 6 }, { 0, 6 }} },
 	CASE_292 { EXTENDED, "(a+)+", "a", NO_ERR, {{ 0, 1 }, { 0, 1 }} },
-	CASE_293 { EXTENDED, "(a+)+", "x", regex::NOMATCH, {} },
+	CASE_293 { EXTENDED, "(a+)+", "x", regex::NO_MATCH, {} },
 	CASE_294 { EXTENDED, "(a+)+", "aaaaaa", NO_ERR, {{ 0, 6 }, { 0, 6 }} },
 	CASE_295 { EXTENDED, "(a+)+", "aaaaaax", NO_ERR, {{ 0, 6 }, { 0, 6 }} },
 	CASE_296 { EXTENDED, "([a]*)*", "a", NO_ERR, {{ 0, 1 }, { 0, 1 }} },
@@ -1018,11 +1018,11 @@ fn void test_first_match() @test
 
 	if (catch err = re.first_match("no numbers here"))
 	{
-		test::eq(err, regex::NOMATCH);
+		test::eq(err, regex::NO_MATCH);
 	}
 	else
 	{
-		unreachable("Expected NOMATCH");
+		unreachable("Expected NO_MATCH");
 	}
 }
 
@@ -1098,15 +1098,15 @@ fn void test_regex_memory_and_allocations() @test
 fn void test_cve_transition_overflow() @test @feat(SLOW_TESTS)
 {
 	// Strictly crosses int::max (2,162,389,970 transitions) with half the AST nodes.
-	test::@error(regex::compile(mem, "((a|b*){130,}){250,}", EXTENDED), regex::OUT_OF_MEMORY);
+	test::@error(regex::compile(mem, "((a|b*){130,}){250,}", EXTENDED), regex::PATTERN_TOO_COMPLEX);
 }
 
 fn void test_cve_input_limit() @test
 {
-	// Verifies that patterns >= 1,024,000 bytes reject with OUT_OF_MEMORY.
+	// Verifies that patterns >= 1,024,000 bytes reject with PATTERN_TOO_COMPLEX.
 	char[] big_pat = mem::temp_array(char, 1024000);
 	big_pat[..] = 'a';
-	test::@error(regex::compile(mem, (String)big_pat, EXTENDED), regex::OUT_OF_MEMORY);
+	test::@error(regex::compile(mem, (String)big_pat, EXTENDED), regex::PATTERN_TOO_COMPLEX);
 }
 
 fn void test_cve_dense_alternations() @test
@@ -1125,4 +1125,22 @@ fn void test_cve_dense_alternations() @test
 	Regex? r = regex::compile(mem, ds.str_view(), EXTENDED);
 	test::@check(@ok(r));
 	if (@ok(r)) r!!.free();
+}
+
+fn void test_fault_triggers() @test
+{
+	{
+		Regex re = {};
+		test::@error(re.texec("a"), regex::UNINITIALIZED_REGEX);
+	}
+	test::@error(regex::compile(mem, "[[.ch.]]", EXTENDED), regex::UNSUPPORTED_COLLATION);
+	test::@error(regex::compile(mem, "[[:invalid_class:]]", EXTENDED), regex::INVALID_CHAR_CLASS);
+	test::@error(regex::compile(mem, "abc\\", EXTENDED), regex::TRAILING_BACKSLASH);
+	test::@error(regex::compile(mem, "\\1"), regex::INVALID_BACKREF);
+	test::@error(regex::compile(mem, "[abc", EXTENDED), regex::UNCLOSED_BRACKET);
+	test::@error(regex::compile(mem, "(abc", EXTENDED), regex::UNBALANCED_PAREN);
+	test::@error(regex::compile(mem, "\\x{1234", EXTENDED), regex::UNCLOSED_HEX_ESCAPE);
+	test::@error(regex::compile(mem, "a{5,2}", EXTENDED), regex::INVALID_INTERVAL);
+	test::@error(regex::compile(mem, "[z-a]", EXTENDED), regex::INVALID_CHAR_RANGE);
+	test::@error(regex::compile(mem, "+", EXTENDED), regex::INVALID_REPETITION);
 }
