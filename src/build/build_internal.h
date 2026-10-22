@@ -181,11 +181,12 @@ static const char *reloc_models[5] = {
 	[RELOC_BIG_PIE] = "PIE",
 };
 
-static const char *sanitize_modes[4] = {
+static const char *sanitize_modes[5] = {
 	[SANITIZE_NONE] = "none",
 	[SANITIZE_ADDRESS] = "address",
 	[SANITIZE_MEMORY] = "memory",
 	[SANITIZE_THREAD] = "thread",
+	[SANITIZE_FUZZER] = "fuzzer",
 };
 
 JSONObject *project_json_load(const char **filename_ref);
