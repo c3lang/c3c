@@ -48,16 +48,29 @@ import std::math;
 
 constset CompileFlags
 {
-	EXTENDED = 1 << 0,
-	ICASE    = 1 << 1,
-	NOSUB    = 1 << 2,
-	NEWLINE  = 1 << 3,
+	<* Enable POSIX Extended Regular Expression (ERE) syntax. Defaults to Basic (BRE). *>
+	EXTENDED    = 1 << 0,
+
+	<* Perform case-insensitive matching. *>
+	IGNORE_CASE = 1 << 1,
+
+	<*
+	 Newline-sensitive matching:
+	 - `.` does not match `\n`.
+	 - `[^...]` does not match `\n`.
+	 - `^` matches at string start and after each `\n`.
+	 - `$` matches at string end and before each `\n`.
+	*>
+	NEWLINE     = 1 << 2,
 }
 
 constset ExecFlags
 {
-	NOTBOL = 1 << 0,
-	NOTEOL = 1 << 1,
+	<* Do not treat the start of the string as the beginning of a line (`^` will not match at offset 0). *>
+	NOT_BOL = 1 << 0,
+
+	<* Do not treat the end of the string as the end of a line (`$` will not match at the final offset). *>
+	NOT_EOL = 1 << 1,
 }
 
 excuse
@@ -118,7 +131,7 @@ fn void Regex.free(&self) => re_free(self);
 
  @param allocator : "Allocator used to persist the compiled regex."
  @param pattern   : "The regex pattern string."
- @param cflags    : "Compile flags: EXTENDED | ICASE | NOSUB | NEWLINE."
+ @param cflags    : "Compile flags: EXTENDED | IGNORE_CASE | NEWLINE."
  @return? UNSUPPORTED_COLLATION, INVALID_CHAR_CLASS, TRAILING_BACKSLASH, INVALID_BACKREF, UNCLOSED_BRACKET, UNBALANCED_PAREN, UNCLOSED_HEX_ESCAPE, INVALID_INTERVAL, INVALID_CHAR_RANGE, INVALID_REPETITION : "Invalid pattern syntax"
  @return? PATTERN_TOO_COMPLEX : "Pattern complexity limit exceeded"
  @return? mem::OUT_OF_MEMORY : "Allocation failure"
@@ -140,7 +153,7 @@ fn Regex? compile(Allocator allocator, String pattern, CompileFlags cflags = {})
  @param allocator     : "Allocator used to persist the returned matches."
  @param str           : "The input string to search."
  @param max_captures  : "The maximum number of match slots to return (including the full match at index 0)."
- @param eflags        : "Execute flags: NOTBOL and NOTEOL."
+ @param eflags        : "Execute flags: NOT_BOL and NOT_EOL."
  @return? NO_MATCH    : "No match found"
  @return? UNINITIALIZED_REGEX : "Uninitialized or freed regex instance"
  @return? mem::OUT_OF_MEMORY : "Allocation failure during execution"
@@ -208,9 +221,21 @@ fn Match[]? Regex.find_all(&self, Allocator allocator, String str, ExecFlags efl
 	ExecFlags current_flags = eflags;
 	while (offset <= str.len)
 	{
+		int prev_c = 0;
+		if (offset > 0)
+		{
+			sz back = 1;
+			while (back < 4 && offset > back && (str[offset - back] & 0xC0) == 0x80)
+			{
+				back++;
+			}
+			int char_len = 0;
+			prev_c = decode_utf8_slice(str, offset - back, &char_len);
+		}
+
 		String sub = str[offset ..];
 		RegMatch match;
-		if (catch err = re_exec(self, sub, 1, &match, current_flags, &scratch))
+		if (catch err = re_exec(self, sub, 1, &match, current_flags, &scratch, prev_c))
 		{
 			if (err == NO_MATCH) break;
 			list.free();
@@ -232,7 +257,7 @@ fn Match[]? Regex.find_all(&self, Allocator allocator, String str, ExecFlags efl
 			step = (len > 0) ? len : 1;
 		}
 		offset += step;
-		current_flags |= NOTBOL;
+		current_flags |= NOT_BOL;
 	}
 
 	Match[] slice = list.to_aligned_array(allocator);
@@ -1091,7 +1116,7 @@ fn void? parse_bracket(ParseCtx* ctx, char* s) @local
 			};
 			ls_len++;
 
-			if ((ctx.cflags & ICASE) && class == 0)
+			if ((ctx.cflags & IGNORE_CASE) && class == 0)
 			{
 				if (add_icase_literals(&ls[0], &ls_len, min, max) < 0) return PATTERN_TOO_COMPLEX~;
 			}
@@ -1185,7 +1210,7 @@ fn AstNode*? make_literal(ParseCtx* ctx, int wc) @local
 {
 	char c = (char)wc;
 
-	if ((ctx.cflags & ICASE) && (ascii::@is_lower(c) || ascii::@is_upper(c)))
+	if ((ctx.cflags & IGNORE_CASE) && (ascii::@is_lower(c) || ascii::@is_upper(c)))
 	{
 		int u = ascii::@to_upper(c);
 		int l = ascii::@to_lower(c);
@@ -2745,7 +2770,7 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 
 		// Literal Prefix Optimization (only ASCII byte literals in range 1..127)
 		tnfa.first_char = -1;
-		if (!(cflags & ICASE) && tnfa.initial != null)
+		if (!(cflags & IGNORE_CASE) && tnfa.initial != null)
 		{
 			int candidate = -1;
 			bool valid = true;
@@ -2804,7 +2829,7 @@ fn bool check_assertions(int assertions, CompileFlags cflags, int prev_c, int ne
 
 fn bool check_char_classes(TnfaTransition* trans, Tnfa* tnfa, int prev_c) @local
 {
-	bool icase = (bool)(tnfa.cflags & ICASE);
+	bool icase = (bool)(tnfa.cflags & IGNORE_CASE);
 	if ((trans.assertions & ASSERT_CHAR_CLASS) != 0)
 	{
 		int class = trans.u_class_or_backref;
@@ -2870,10 +2895,10 @@ fn int decode_utf8_slice(String str, sz offset, int* len) @local @inline
 	return (int)cp_opt;
 }
 
-fn void tre_fill_pmatch(sz nmatch, RegMatch* pmatch, CompileFlags cflags, Tnfa* tnfa, TagId* tags, RegOff match_eo) @local
+fn void tre_fill_pmatch(sz nmatch, RegMatch* pmatch, Tnfa* tnfa, TagId* tags, RegOff match_eo) @local
 {
 	sz limit = 0;
-	if (match_eo >= 0 && !(cflags & NOSUB))
+	if (match_eo >= 0)
 	{
 		limit = (tnfa.num_submatches < nmatch) ? tnfa.num_submatches : nmatch;
 		SubmatchData* submatch_data = tnfa.submatch_data;
@@ -2988,10 +3013,11 @@ fn void get_next_wchar_slice(String str, int* prev_c, int* next_c, RegOff* pos, 
 	}
 }
 
-fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, ExecFlags eflags, RegOff* match_end_ofs) @local
+fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, ExecFlags eflags, RegOff* match_end_ofs, int initial_prev_c = 0) @local
 {
 	int prev_c = 0;
-	int next_c = 0;
+	// Shifted into prev_c on the first get_next_wchar_slice call.
+	int next_c = initial_prev_c;
 	RegOff pos = 0;
 	RegOff pos_add_next = 1;
 
@@ -3057,7 +3083,7 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, Ex
 				for (TnfaTransition* trans_i = tnfa.initial; trans_i.state; trans_i++)
 				{
 					if (trans_i.assertions != 0 &&
-						check_assertions(trans_i.assertions, tnfa.cflags, prev_c, next_c, pos, (bool)(eflags & NOTBOL), (bool)(eflags & NOTEOL)))
+						check_assertions(trans_i.assertions, tnfa.cflags, prev_c, next_c, pos, (bool)(eflags & NOT_BOL), (bool)(eflags & NOT_EOL)))
 					{
 						continue;
 					}
@@ -3112,7 +3138,7 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, Ex
 					RegOff bt_len;
 					int result;
 
-					tre_fill_pmatch((sz)(bt + 1), pmatch, tnfa.cflags & ~NOSUB, tnfa, tags, pos);
+					tre_fill_pmatch((sz)(bt + 1), pmatch, tnfa, tags, pos);
 					so = pmatch[bt].rm_so;
 					eo = pmatch[bt].rm_eo;
 					bt_len = eo - so;
@@ -3164,7 +3190,7 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, Ex
 					if (prev_c >= trans_i.code_min && prev_c <= trans_i.code_max)
 					{
 						if (trans_i.assertions != 0 &&
-							(check_assertions(trans_i.assertions, tnfa.cflags, prev_c, next_c, pos, (bool)(eflags & NOTBOL), (bool)(eflags & NOTEOL)) || check_char_classes(trans_i, tnfa, prev_c)))
+							(check_assertions(trans_i.assertions, tnfa.cflags, prev_c, next_c, pos, (bool)(eflags & NOT_BOL), (bool)(eflags & NOT_EOL)) || check_char_classes(trans_i, tnfa, prev_c)))
 						{
 							continue;
 						}
@@ -3241,9 +3267,9 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, Ex
 	if (match_eo < 0) return NO_MATCH~;
 }
 
-fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, TagId* match_tags, ExecFlags eflags, RegOff* match_end_ofs, RegexScratchpad* scratch) @local
+fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, TagId* match_tags, ExecFlags eflags, RegOff* match_end_ofs, RegexScratchpad* scratch, int initial_prev_c = 0) @local
 {
-	int prev_c = 0;
+	int prev_c = initial_prev_c;
 	int next_c = 0;
 	int next_len = 0;
 
@@ -3251,8 +3277,8 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, TagId* match_tags, Exe
 
 	RegOff pos = 0;
 	sz str_len = string.len;
-	bool notbol = (bool)(eflags & NOTBOL);
-	bool noteol = (bool)(eflags & NOTEOL);
+	bool notbol = (bool)(eflags & NOT_BOL);
+	bool noteol = (bool)(eflags & NOT_EOL);
 	int num_tags = (match_tags != null) ? tnfa.num_tags : 0;
 	int num_states = tnfa.num_states;
 
@@ -3476,7 +3502,7 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, TagId* match_tags, Exe
 	if (match_eo < 0) return NO_MATCH~;
 }
 
-fn void? re_exec(Regex* preg, String string, sz nmatch, RegMatch* pmatch, ExecFlags eflags, RegexScratchpad* scratch) @private
+fn void? re_exec(Regex* preg, String string, sz nmatch, RegMatch* pmatch, ExecFlags eflags, RegexScratchpad* scratch, int initial_prev_c = 0) @private
 {
 	@pool()
 	{
@@ -3501,16 +3527,16 @@ fn void? re_exec(Regex* preg, String string, sz nmatch, RegMatch* pmatch, ExecFl
 
 		if (tnfa.have_backrefs)
 		{
-			tre_tnfa_run_backtrack(tnfa, string, match_tags, eflags, &match_end_ofs)!;
+			tre_tnfa_run_backtrack(tnfa, string, match_tags, eflags, &match_end_ofs, initial_prev_c)!;
 		}
 		else
 		{
-			tre_tnfa_run_parallel(tnfa, string, match_tags, eflags, &match_end_ofs, scratch)!;
+			tre_tnfa_run_parallel(tnfa, string, match_tags, eflags, &match_end_ofs, scratch, initial_prev_c)!;
 		}
 
 		if (pmatch && nmatch > 0)
 		{
-			tre_fill_pmatch(nmatch, pmatch, tnfa.cflags, tnfa, match_tags, match_end_ofs);
+			tre_fill_pmatch(nmatch, pmatch, tnfa, match_tags, match_end_ofs);
 		}
 	};
 }

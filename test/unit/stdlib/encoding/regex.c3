@@ -422,8 +422,8 @@ fn void test_eflags_notbol() @test
 
 	// Without flag: matches at start
 	test::@check(!@catch(re.texec("abc")));
-	// With REG_NOTBOL: ^ should not match at position 0
-	test::eq(@catch(re.texec("abc", 1, regex::ExecFlags.NOTBOL)), regex::NO_MATCH);
+	// With NOT_BOL: ^ should not match at position 0
+	test::eq(@catch(re.texec("abc", 1, regex::ExecFlags.NOT_BOL)), regex::NO_MATCH);
 }
 
 fn void test_eflags_noteol() @test
@@ -433,8 +433,81 @@ fn void test_eflags_noteol() @test
 
 	// Without flag: matches at end
 	test::@check(!@catch(re.texec("abc")));
-	// With REG_NOTEOL: $ should not match at end
-	test::eq(@catch(re.texec("abc", 1, regex::ExecFlags.NOTEOL)), regex::NO_MATCH);
+	// With NOT_EOL: $ should not match at end
+	test::eq(@catch(re.texec("abc", 1, regex::ExecFlags.NOT_EOL)), regex::NO_MATCH);
+}
+
+fn void test_find_all_word_boundary_slicing() @test
+{
+	// 1. Parallel engine (ERE word boundary)
+	{
+		Regex re = regex::compile(mem, "\\ba", EXTENDED)!!;
+		defer re.free();
+		Match[] matches = re.tfind_all("aa")!!;
+		test::eq(matches.len, 1);
+	}
+
+	// 2. Non-word boundary \B across slice boundary
+	// Index 0: preceded by non-word (start of string) -> fails \B
+	// Index 1: preceded by 'a' (word char) -> matches \B
+	// Index 2: preceded by 'a' across slice boundary -> matches \B only if prev_c == 'a'
+	{
+		Regex re = regex::compile(mem, "\\Ba", EXTENDED)!!;
+		defer re.free();
+		Match[] matches = re.tfind_all("aaa")!!;
+		test::eq(matches.len, 2);
+		test::eq(matches[0].start, 1);
+		test::eq(matches[1].start, 2);
+	}
+
+	// 3. Backtracking engine (BRE backreference forcing backtrack runner)
+	{
+		Regex re = regex::compile(mem, "\\b\\(a\\)\\1")!!;
+		defer re.free();
+		Match[] matches = re.tfind_all("aaaa")!!;
+		test::eq(matches.len, 1);
+	}
+
+	// 4. Anchor ^ with NEWLINE after slice boundary
+	{
+		Regex re_nl = regex::compile(mem, "^a", EXTENDED | NEWLINE)!!;
+		defer re_nl.free();
+		test::eq(re_nl.tfind_all("a\na")!!.len, 2);
+
+		Regex re_no_nl = regex::compile(mem, "^a", EXTENDED)!!;
+		defer re_no_nl.free();
+		test::eq(re_no_nl.tfind_all("a\na")!!.len, 1);
+	}
+
+	// 5. Multibyte predecessor UTF-8 back-scan (2, 3, and 4 bytes)
+	{
+		Regex re_wb = regex::compile(mem, "\\ba", EXTENDED)!!;
+		defer re_wb.free();
+
+		// 'é' (2 bytes): non-word -> 'a' at offset 2 matches \b, 'a' at offset 3 fails \b
+		Match[] m2 = re_wb.tfind_all("éaa")!!;
+		test::eq(m2.len, 1);
+		test::eq(m2[0].start, 2);
+
+		// '日' (3 bytes): non-word -> 'a' at offset 3 matches \b
+		Match[] m3 = re_wb.tfind_all("日a")!!;
+		test::eq(m3.len, 1);
+		test::eq(m3[0].start, 3);
+
+		// '𐍈' (4 bytes: 0xF0 0x90 0x8D 0x88): non-word -> exercises full back < 4 loop
+		Match[] m4 = re_wb.tfind_all("𐍈aa")!!;
+		test::eq(m4.len, 1);
+		test::eq(m4[0].start, 4);
+
+		// \B after 4-byte UTF-8:
+		// Index 4 ('a'): preceded by '𐍈' (non-word) -> fails \B
+		// Index 5 ('a'): preceded by 'a' (word) -> matches \B
+		Regex re_nwb = regex::compile(mem, "\\Ba", EXTENDED)!!;
+		defer re_nwb.free();
+		Match[] m5 = re_nwb.tfind_all("𐍈aa")!!;
+		test::eq(m5.len, 1);
+		test::eq(m5[0].start, 5);
+	}
 }
 
 //  GAP: \x hex escape sequences
@@ -699,7 +772,7 @@ enum RegexTestCase : int (
 	CASE_45 { EXTENDED, "(a.|.a.)*|(a|.a...)", "aa", NO_ERR, {{ 0, 2 }, { 0, 2 }} },
 	CASE_46 { EXTENDED, "ab|a", "xabc", NO_ERR, {{ 1, 3 }} },
 	CASE_47 { EXTENDED, "ab|a", "xxabc", NO_ERR, {{ 2, 4 }} },
-	CASE_48 { EXTENDED | ICASE, "(Ab|cD)*", "aBcD", NO_ERR, {{ 0, 4 }, { 2, 4 }} },
+	CASE_48 { EXTENDED | IGNORE_CASE, "(Ab|cD)*", "aBcD", NO_ERR, {{ 0, 4 }, { 2, 4 }} },
 	CASE_49 { {}, "[^-]", "--a", NO_ERR, {{ 2, 3 }} },
 	CASE_50 { {}, "[a-]*", "--a", NO_ERR, {{ 0, 3 }} },
 	CASE_51 { {}, "[a-m-]*", "--amoma--", NO_ERR, {{ 0, 4 }} },
