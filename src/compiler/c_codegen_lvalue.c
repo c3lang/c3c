@@ -574,13 +574,13 @@ static void c_emit_struct_member_addr(GenContext *c, const char *tname, int temp
 		PRINTF("%s ___var_%d = (%s)___var_%d;\n", tname, temp, tname, ptr_var);
 		return;
 	}
-	PRINTF("%s ___var_%d = (___var_%d != NULL) ? ((%s)&((*((%s*)___var_%d))",
-	       tname, temp, ptr_var, tname, c_type_name(c, struct_type), ptr_var);
+	PRINTF("%s ___var_%d = (%s)&((*((%s*)___var_%d))",
+	       tname, temp, tname, c_type_name(c, struct_type), ptr_var);
 	for (int i = 0; i < depth; i++)
 	{
 		PRINTF(".m%d", indices[i]);
 	}
-	PRINT(")) : NULL;\n");
+	PRINT(");\n");
 }
 
 static void c_emit_enum_assoc_access(GenContext *c, Decl *enum_decl, Decl *member, Expr *parent_expr, bool parent_is_ptr, int temp, const char *tname, Type *target_type, bool is_addr)
@@ -726,7 +726,7 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 					return;
 				}
 				const char *fname = (member && member->name && (strcmp(member->name, "typeid") == 0 || strcmp(member->name, "type") == 0)) ? "typeid" : "ptr";
-				PRINTF("%s ___var_%d = (___var_%d != NULL) ? ((%s)&(((__c3_any__*)___var_%d)->%s)) : NULL;\n", tname, temp, parent_val.var, tname, parent_val.var, fname);
+				PRINTF("%s ___var_%d = (%s)&(((__c3_any__*)___var_%d)->%s);\n", tname, temp, tname, parent_val.var, fname);
 				return;
 			}
 			c_emit_struct_member_addr(c, tname, temp, base_struct_type, parent_val.var, member);
@@ -836,6 +836,7 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 		}
 		else
 		{
+			c_value_addr(c, &inner_val);
 			PRINTF("%s ___var_%d = (%s)&___var_%d;\n", tname, temp, tname, inner_val.var);
 		}
 	}
@@ -843,6 +844,21 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 	{
 		PRINTF("%s ___var_%d = NULL;\n", tname, temp);
 	}
+}
+
+static void c_emit_null_deref_check(GenContext *c, Expr *expr, VariableId addr_var)
+{
+	if (!safe_mode_enabled() || addr_var == 0) return;
+	if (expr->expr_kind != EXPR_UNARY || expr->unary_expr.operator != UNARYOP_DEREF) return;
+	if (expr_is_const(expr->unary_expr.expr)) return;
+
+	PRINTF("if (___var_%d == NULL) { ", addr_var);
+	scratch_buffer_clear();
+	scratch_buffer_append("Dereference of null pointer, '");
+	loc_to_scratch(expr->unary_expr.expr->loc);
+	scratch_buffer_append("' was null.");
+	c_emit_panic(c, scratch_buffer_to_string(), expr->loc);
+	PRINT("}\n");
 }
 
 void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target_type)
@@ -1008,13 +1024,30 @@ void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target
 
 	CValue addr_val = {0};
 	c_emit_lvalue_addr(c, expr, &addr_val, type_get_ptr(target_type));
+
+	PRINTF("%s ___var_%d;\n", tname, temp);
+	bool is_opt = (expr && expr->type && is_valid_type_ptr(expr->type) && type_is_optional(expr->type));
+	if (is_opt)
+	{
+		PRINTF("if (__c3_current_fault != NULL) {\n");
+		if (c_type_is_aggregate(target_type))
+		{
+			PRINTF("\t__c3_memset(&___var_%d, 0, sizeof(%s));\n", temp, tname);
+		}
+		else
+		{
+			PRINTF("\t___var_%d = 0;\n", temp);
+		}
+		PRINT("} else {\n");
+	}
+
+	c_emit_null_deref_check(c, expr, addr_val.var);
 	if (c_type_is_aggregate(target_type))
 	{
-		PRINTF("%s ___var_%d;\n", tname, temp);
 		if (addr_val.var != 0)
 		{
-			PRINTF("if (___var_%d != NULL) { __c3_memcpy(&___var_%d, (void*)___var_%d, sizeof(%s)); } else { __c3_memset(&___var_%d, 0, sizeof(%s)); }\n",
-			       addr_val.var, temp, addr_val.var, tname, temp, tname);
+			PRINTF("__c3_memcpy(&___var_%d, (void*)___var_%d, sizeof(%s));\n",
+			       temp, addr_val.var, tname);
 		}
 		else
 		{
@@ -1027,18 +1060,23 @@ void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target
 		{
 			if (type_size(target_type) == 16 && (target_type->type_kind == TYPE_I128 || target_type->type_kind == TYPE_U128))
 			{
-				PRINTF("%s ___var_%d = 0;\n", tname, temp);
-				PRINTF("if (___var_%d != NULL) { __c3_memcpy(&___var_%d, (void*)___var_%d, sizeof(%s)); }\n", addr_val.var, temp, addr_val.var, tname);
+				PRINTF("___var_%d = 0;\n", temp);
+				PRINTF("__c3_memcpy(&___var_%d, (void*)___var_%d, sizeof(%s));\n", temp, addr_val.var, tname);
 			}
 			else
 			{
-				PRINTF("%s ___var_%d = (___var_%d != NULL) ? *(%s*)___var_%d : 0;\n", tname, temp, addr_val.var, tname, addr_val.var);
+				PRINTF("___var_%d = *(%s*)___var_%d;\n", temp, tname, addr_val.var);
 			}
 		}
 		else
 		{
-			PRINTF("%s ___var_%d = 0;\n", tname, temp);
+			PRINTF("___var_%d = 0;\n", temp);
 		}
+	}
+
+	if (is_opt)
+	{
+		PRINT("}\n");
 	}
 }
 
@@ -1323,6 +1361,7 @@ void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *right_val, const ch
 	}
 	CValue addr_val = {0};
 	c_emit_lvalue_addr(c, left, &addr_val, type_get_ptr(target_type));
+	c_emit_null_deref_check(c, left, addr_val.var);
 	const char *tname = c_type_name(c, target_type);
 	if (!right_val || right_val->var == 0)
 	{

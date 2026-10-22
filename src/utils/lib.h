@@ -68,6 +68,11 @@ char *win_utf16to8(const uint16_t *name);
 bool dir_make(const char *path);
 bool dir_make_recursive(char *path);
 const char *dir_make_temp_dir(void);
+// Same, but creates the directory inside `base`.
+const char *dir_make_temp_dir_in(const char *base);
+// Delete the directory (recursively) in dir_delete_registered(), which runs on every exit path.
+void dir_delete_on_cleanup(const char *path);
+void dir_delete_registered(void);
 // Use as if it was chdir(...) == 0
 bool dir_change(const char *path);
 const char *filename(const char *path);
@@ -80,6 +85,7 @@ void file_copy_file(const char *src_path, const char *dst_path, bool overwrite);
 void file_copy_dir(const char *src_path, const char *dst_path);
 void file_delete_all_files_in_dir_with_suffix(const char *dir, const char *suffix);
 bool file_delete_file(const char *path);
+bool file_replace(const char *src_path, const char *dst_path);
 void file_delete_dir(const char *path);
 bool file_is_dir(const char *file);
 bool file_exists(const char *path);
@@ -100,7 +106,7 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 char *file_append_path(const char *path, const char *name);
 const char *file_append_path_temp(const char *path, const char *name);
 
-const char **target_expand_source_names(const char *base_dir, const char** dirs, const char **suffix_list, const char ***object_list_ref, int suffix_count, bool error_on_mismatch);
+const char **target_expand_source_names(const char *base_dir, const char** dirs, const char **suffix_list, const char ***object_list_ref, const char ***llvm_ir_list_ref, int suffix_count, bool error_on_mismatch);
 
 char * execute_cmd(const char *cmd, bool ignore_failure, const char *stdin_string, size_t limit);
 
@@ -809,3 +815,14 @@ const char *zip_dir_iterator(FILE *zip, ZipDirIterator *iterator);
 const char *zip_dir_iterator_next(ZipDirIterator *iterator, ZipFile *file);
 const char *zip_file_read(FILE *zip, ZipFile *file, void **buffer_ptr);
 const char *zip_file_write(FILE *zip, ZipFile *file, const char *dir, bool overwrite);
+
+typedef struct
+{
+	const char *name;
+	// Read the contents from this file, otherwise use 'data' and 'size'.
+	const char *file_path;
+	const char *data;
+	size_t size;
+} ZipEntry;
+
+const char *zip_create(const char *zip_path, const ZipEntry *entries, size_t count);

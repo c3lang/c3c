@@ -6,6 +6,7 @@
 #include "compiler_tests/benchmark.h"
 #include "c3_llvm.h"
 #include <llvm-c/Comdat.h>
+#include <llvm-c/IRReader.h>
 #include <llvm-c/Linker.h>
 #include <llvm-c/Transforms/PassBuilder.h>
 const char *varargslots_name = "varargslots";
@@ -568,6 +569,18 @@ void llvm_set_internal_linkage(LLVMValueRef alloc)
 	LLVMSetVisibility(alloc, LLVMDefaultVisibility);
 }
 
+Expr *llvm_fold_init_expr(Expr *expr)
+{
+	while (expr && expr->expr_kind == EXPR_IDENTIFIER)
+	{
+		Decl *inner_decl = decl_flatten(expr->ident_expr);
+		if (inner_decl->decl_kind != DECL_VAR) break;
+		if (inner_decl->var.kind != VARDECL_CONST) break;
+		expr = inner_decl->var.init_expr;
+	}
+	return expr;
+}
+
 void llvm_set_private_declaration(LLVMValueRef alloc)
 {
 	LLVMSetLinkage(alloc, LLVMPrivateLinkage);
@@ -588,15 +601,8 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 
 	Type *var_type = type_lowering(decl->type);
 
-	Expr *init_expr = decl->var.init_expr;
-	// Fold "source" of the init.
-	while (init_expr && init_expr->expr_kind == EXPR_IDENTIFIER)
-	{
-		Decl *inner_decl = decl_flatten(init_expr->ident_expr);
-		if (inner_decl->decl_kind != DECL_VAR) break;
-		if (inner_decl->var.kind != VARDECL_CONST) break;
-		init_expr = inner_decl->var.init_expr;
-	}
+	Expr *init_expr = llvm_fold_init_expr(decl->var.init_expr);
+
 	if (init_expr && init_expr->expr_kind != EXPR_OPTIONAL)
 	{
 		if (expr_is_const_initializer(init_expr))
@@ -1170,6 +1176,56 @@ const char *llvm_codegen(void *context)
 	gencontext_end_module(c);
 	gencontext_destroy(c);
 
+	return object_name;
+}
+
+/**
+ * Load an external LLVM IR (.ll) or bitcode (.bc) file. Like llvm_gen this runs on the main thread, leaving only optimizing and emitting to the tasks.
+ * The module is retargeted to the compilation target, just as for the modules generated from C3.
+ */
+void *llvm_load_ir_file(const char *filename, const char *object_filename)
+{
+	char *err = NULL;
+	LLVMContextRef context = LLVMContextCreate();
+	LLVMMemoryBufferRef buffer = NULL;
+	if (LLVMCreateMemoryBufferWithContentsOfFile(filename, &buffer, &err))
+	{
+		error_exit("Could not read '%s': %s", filename, err);
+	}
+	// This accepts both textual IR and bitcode, and takes ownership of the buffer.
+	LLVMModuleRef module = NULL;
+	if (LLVMParseIRInContext(context, buffer, &module, &err))
+	{
+		error_exit("Could not parse '%s': %s", filename, err);
+	}
+	if (LLVMVerifyModule(module, LLVMReturnStatusAction, &err))
+	{
+		error_exit("Invalid LLVM IR in '%s': %s", filename, err);
+	}
+	LLVMDisposeMessage(err);
+	GenContext *c = ccalloc(sizeof(GenContext), 1);
+	c->context = context;
+	c->module = module;
+	c->object_filename = object_filename;
+	c->machine = llvm_target_machine_create();
+	c->target_data = LLVMCreateTargetDataLayout(c->machine);
+	// Retarget before optimizing, so the passes see the layout of the target and not the one of the file.
+	LLVMSetModuleDataLayout(c->module, c->target_data);
+	LLVMSetTarget(c->module, compiler.platform.target_triple);
+	return c;
+}
+
+const char *llvm_codegen_ir_file(void *context)
+{
+	GenContext *c = context;
+	const char *object_name = c->object_filename;
+	llvm_optimize(c);
+	llvm_emit_file(c, c->object_filename, LLVMObjectFile, false);
+	LLVMDisposeTargetData(c->target_data);
+	LLVMDisposeTargetMachine(c->machine);
+	LLVMDisposeModule(c->module);
+	LLVMContextDispose(c->context);
+	free(c);
 	return object_name;
 }
 

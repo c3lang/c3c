@@ -10,7 +10,7 @@
   "sources": [
     "./**"
   ],
-  "dependency-search-paths": [],
+  "dependency-search-paths": [ "lib" ],
   "dependencies": [],
   "cc": "cc",
   "c-sources": [],

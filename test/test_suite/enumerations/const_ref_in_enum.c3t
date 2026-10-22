@@ -1,0 +1,24 @@
+// #target: macos-x64
+module test;
+
+const String STRING_NULL = (String)null[0..0];
+const String FOO = STRING_NULL;
+String foo = STRING_NULL;
+enum Token_Type : (String symbol)
+{
+	INVALID {STRING_NULL},
+}
+fn void main ()
+{
+	Token_Type t = INVALID;
+	foo = FOO;
+}
+
+/* #expect: test.ll
+
+@.enum.INVALID = internal constant [8 x i8] c"INVALID\00", align 1
+@"test.Token_Type$symbol" = linkonce constant [1 x %"char[]"] [%"char[]" { ptr null, i64 1 }], align 8
+@test.STRING_NULL = local_unnamed_addr constant %"char[]" { ptr null, i64 1 }, align 8
+@test.FOO = local_unnamed_addr constant %"char[]" { ptr null, i64 1 }, align 8
+@test.foo = local_unnamed_addr global %"char[]" { ptr null, i64 1 }, align 8
+

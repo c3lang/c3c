@@ -180,6 +180,12 @@ void thread_compile_task_llvm(void *compile_data)
 	CompileData *data = compile_data;
 	data->object_name = llvm_codegen(data->context);
 }
+
+static void thread_compile_task_llvm_ir(void *compile_data)
+{
+	CompileData *data = compile_data;
+	data->object_name = llvm_codegen_ir_file(data->context);
+}
 #else 
 void thread_compile_task_llvm(void *compile_data)
 {
@@ -655,7 +661,7 @@ void compiler_compile(void)
 	{
 		error_exit("Too many modules.");
 	}
-	if (module_count < 1 && !compiler.build.object_files)
+	if (module_count < 1 && !compiler.build.object_files && !compiler.build.llvm_ir_files)
 	{
 		error_exit("No module to compile.");
 	}
@@ -798,12 +804,13 @@ void compiler_compile(void)
 	int output_file_count = vec_size(gen_contexts);
 	int external_objfile_count = vec_size(compiler.build.object_files);
 	int cfiles = vec_size(compiler.build.csources);
+	int irfiles = compiler.build.emit_object_files ? vec_size(compiler.build.llvm_ir_files) : 0;
 	int cfiles_library = 0;
 	FOREACH(LibraryTarget *, lib, compiler.build.ccompiling_libraries)
 	{
 		cfiles_library += vec_size(lib->csources);
 	}
-	int total_output = output_file_count + cfiles + cfiles_library + external_objfile_count;
+	int total_output = output_file_count + cfiles + irfiles + cfiles_library + external_objfile_count;
 
 	if (total_output > MAX_OUTPUT_FILES)
 	{
@@ -820,7 +827,7 @@ void compiler_compile(void)
 				   "and all the other code was optimized away.");
 	}
 
-	int task_total = output_file_count + cfiles + cfiles_library;
+	int task_total = output_file_count + cfiles + irfiles + cfiles_library;
 	CompileData *compile_data = ccalloc(sizeof(CompileData), task_total);
 	const char **obj_files = cmalloc(sizeof(char*) * total_output);
 
@@ -876,6 +883,25 @@ void compiler_compile(void)
 		vec_add(tasks, &compile_data[data_idx].task);
 		data_idx++;
 	}
+
+#if LLVM_AVAILABLE
+	if (irfiles)
+	{
+		const char *ir_dir = file_append_path(compiler.build.object_file_dir, "tmp_ir_compile");
+		create_output_dir(ir_dir);
+		FOREACH_IDX(i, const char *, ir_src, compiler.build.llvm_ir_files)
+		{
+			char *filename = NULL;
+			if (!file_namesplit(ir_src, &filename, NULL)) error_exit("Cannot compile '%s'", ir_src);
+			// The index keeps the objects of files with the same name apart.
+			const char *object_name = file_append_path(ir_dir, str_printf("%d_%s%s", i, filename, get_object_extension()));
+			compile_data[data_idx] = (CompileData){ .context = llvm_load_ir_file(ir_src, object_name) };
+			compile_data[data_idx].task = (Task){ &thread_compile_task_llvm_ir, &compile_data[data_idx] };
+			vec_add(tasks, &compile_data[data_idx].task);
+			data_idx++;
+		}
+	}
+#endif
 
 	output_file_count = task_total;
 
@@ -988,7 +1014,7 @@ INLINE void expand_csources(const char *base_dir, const char **source_dirs, cons
 	if (source_dirs)
 	{
 		static const char* c_suffix_list[3] = { ".c", ".m" };
-		*sources_ref = target_expand_source_names(base_dir, source_dirs, c_suffix_list, NULL, 2, false);
+		*sources_ref = target_expand_source_names(base_dir, source_dirs, c_suffix_list, NULL, NULL, 2, false);
 	}
 }
 
@@ -1020,9 +1046,33 @@ void compile_clean(BuildOptions *options)
 	init_build_target(&compiler.build, options);
 	clean_obj_files();
 }
+
+// Build the 'depends-on' targets in order, each by a separate invocation of the compiler.
+static void build_dependency_targets(BuildOptions *options)
+{
+	if (!vec_size(compiler.build.depends_on)) return;
+	const char **args = options->dependency_args;
+	if (compiler.build.silent) vec_add(args, "-q");
+	vec_add(args, "--no-deps");
+	vec_add(args, "build");
+	FOREACH(const char *, dependency, compiler.build.depends_on)
+	{
+		OUTF("Building dependency target '%s'.\n", dependency);
+		vec_add(args, dependency);
+		// The output of the build should come after what has been printed so far.
+		fflush(stdout);
+		if (run_subprocess(find_executable_file(), args) != 0)
+		{
+			error_exit("Failed to build the dependency target '%s'.", dependency);
+		}
+		vec_pop(args);
+	}
+}
+
 void compile_file_list(BuildOptions *options)
 {
 	init_build_target(&compiler.build, options);
+	build_dependency_targets(options);
 	if (compiler.build.type == TARGET_TYPE_PREPARE)
 	{
 		if (options->command != COMMAND_BUILD)
@@ -1098,12 +1148,34 @@ bool use_ansi(void)
 #endif
 }
 
-const char *vendor_fetch_single(const char* lib, const char* path, bool progress)
+// Download a library to `destination`, unpacking it into a directory of that name unless `decompress` is false.
+static const char *download_library(const char *url, const char *resource, const char *destination, bool progress, bool decompress)
+{
+	// Work in a unique directory next to the destination: the final move stays on one filesystem,
+	// and a failure leaves any existing copy alone.
+	char *parent;
+	if (!file_namesplit(destination, NULL, &parent)) return "Invalid library destination";
+	dir_make_recursive(parent);
+	const char *stage_dir = dir_make_temp_dir_in(parent);
+	if (!stage_dir) return "Failed to create a temporary directory for the library";
+	const char *result = file_append_path(stage_dir, "library.c3l");
+	const char *error = download_file(url, resource, result, progress);
+	if (!error && decompress)
+	{
+		const char *zip_file = result;
+		result = file_append_path(stage_dir, "library");
+		error = unpack_c3l(zip_file, result);
+	}
+	if (!error && !file_replace(result, destination)) error = "Failed to replace the existing library";
+	file_delete_dir(stage_dir);
+	return error;
+}
+
+const char *vendor_fetch_single(const char* lib, const char* path, bool progress, bool decompress)
 {
 	const char *resource = str_printf("/c3lang/vendor/releases/download/latest/%s.c3l", lib);
 	const char *destination = file_append_path(path, str_printf("%s.c3l", lib));
-	const char *error = download_file("https://github.com", resource, destination, progress);
-	return error;	
+	return download_library("https://github.com", resource, destination, progress, decompress);
 }
 
 
@@ -1119,24 +1191,16 @@ static const char *load_fetch_info(BuildOptions *options, const char *name, Libr
 {
 	const char *base = options->fetch_url;
 	const char *tmp_dir = dir_make_temp_dir();
+	if (!tmp_dir) error_exit("Failed to create temp directory");
 	const char *tmp_file = file_append_path(tmp_dir, "info.json");
 	scratch_buffer_clear();
 	scratch_buffer_printf("/info/%s", name);
 	const char *error = download_file(base, scratch_buffer_to_string(), tmp_file, false);
 	JSONObject *json = NULL;
-	if (error)
-	{
-		file_delete_file(tmp_file);
-		file_delete_dir(tmp_dir);
-		return error;
-	}
+	if (error) return error;
 
 	size_t size;
 	char *json_str = file_read_all(tmp_file, &size);
-
-	// Cleanup
-	file_delete_file(tmp_file);
-	file_delete_dir(tmp_dir);
 
 	JsonParser parser;
 	json_init_string(&parser, json_str);
@@ -1175,7 +1239,7 @@ static const char *registry_fetch_single(BuildOptions *options, const char *lib_
 	// 3. Download exactly that version.
 	const char *destination = file_append_path(path, str_printf("%s.c3l", provides));
 	const char *base = options->fetch_url;
-	return download_file(base, str_printf("/download/%s@%s", lib_id, version), destination, false);
+	return download_library(base, str_printf("/download/%s@%s", lib_id, version), destination, false, !options->fetch_compressed);
 }
 
 INLINE void fetch_lib(BuildOptions *options, bool is_vendor, const char **libraries_to_fetch)
@@ -1186,15 +1250,12 @@ INLINE void fetch_lib(BuildOptions *options, bool is_vendor, const char **librar
 				   "Please ensure libcurl is installed on your system.", is_vendor ? "vendor-fetch" : "fetch");
 	}
 	bool ansi = use_ansi();
-	if (str_eq(options->path, DEFAULT_PATH))
+	// check if there is a project JSON file (--path has already been applied)
+	if (file_exists(PROJECT_JSON5) || file_exists(PROJECT_JSON))
 	{
-		// check if there is a project JSON file
-		if (file_exists(PROJECT_JSON5) || file_exists(PROJECT_JSON))
-		{
-			const char** deps_dirs =  get_project_dependency_directories();
-			int num_lib = (int)vec_size(deps_dirs);
-			if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
-		}
+		const char** deps_dirs =  get_project_dependency_directories();
+		int num_lib = (int)vec_size(deps_dirs);
+		if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
 	}
 	int count = 0;
 	const char** fetched_libraries = NULL;
@@ -1209,7 +1270,7 @@ INLINE void fetch_lib(BuildOptions *options, bool is_vendor, const char **librar
 		{
 			printf("Fetching library '%s'...\n", lib);
 			(void)fflush(stdout);
-			error = vendor_fetch_single(lib, options->vendor_download_path, ansi);
+			error = vendor_fetch_single(lib, options->vendor_download_path, ansi, !options->fetch_compressed);
 		}
 		else
 		{
@@ -1256,7 +1317,7 @@ INLINE void fetch_lib(BuildOptions *options, bool is_vendor, const char **librar
 	if (ansi && total_libraries > 1) printf("\033[2K");
 
 	// add fetched library to the dependency list
-	add_libraries_to_project_file(fetched_libraries, options->project_options.target_name);
+	add_libraries_to_project_file(fetched_libraries);
 
 	if (!count)	error_exit("Error: Failed to download any libraries.");
 	if (count < vec_size(libraries_to_fetch)) error_exit("Error: Only some libraries were downloaded.");
@@ -1270,6 +1331,7 @@ void vendor_fetch(BuildOptions *options)
 	if (!vec_size(options->vendor_libraries_to_fetch))
 	{
 		const char *tmp_dir = dir_make_temp_dir();
+		if (!tmp_dir) error_exit("Failed to create temp directory");
 		const char *tmp_file = file_append_path(tmp_dir, "vendor_list.json");
 		const char *error = download_file("https://api.github.com", "/repos/c3lang/vendor/contents/libraries/", tmp_file, false);
 		if (error)
@@ -1306,8 +1368,6 @@ void vendor_fetch(BuildOptions *options)
 				}
 			}
 		}
-		file_delete_file(tmp_file);
-		file_delete_dir(tmp_dir);
 		return;
 	}
 
@@ -1424,6 +1484,7 @@ void fetch_list(BuildOptions *options)
 	const char *name_filter = options->search_name;
 	const char *tag_filter = options->search_tag;
 	const char *tmp_dir = dir_make_temp_dir();
+	if (!tmp_dir) error_exit("Failed to create temp directory");
 	const char *tmp_file = file_append_path(tmp_dir, "index.json");
 	const char *error = download_file(base, "/index.json", tmp_file, false);
 	if (error) error_exit("Failed to fetch the library list from '%s': %s", base, error);
@@ -1454,8 +1515,6 @@ void fetch_list(BuildOptions *options)
 				printf("  %s\n", info.name);
 			}
 		}
-		file_delete_file(tmp_file);
-		file_delete_dir(tmp_dir);
 		return;
 	}
 
@@ -1485,8 +1544,6 @@ void fetch_list(BuildOptions *options)
 		puts("");
 	}
 	if (!found) puts(empty);
-	file_delete_file(tmp_file);
-	file_delete_dir(tmp_dir);
 }
 
 void print_syntax(BuildOptions *options)
@@ -2062,11 +2119,16 @@ INLINE void update_feature_flags(void)
 
 void compile(void)
 {
+	if (compiler.build.type == TARGET_TYPE_SOURCE_LIB)
+	{
+		build_source_library(&compiler.build);
+		return;
+	}
 	symtab_init(compiler.build.symtab_size);
-	compiler.build.sources = target_expand_source_names(NULL, compiler.build.source_dirs, c3_suffix_list, &compiler.build.object_files, 3, true);
+	compiler.build.sources = target_expand_source_names(NULL, compiler.build.source_dirs, c3_suffix_list, &compiler.build.object_files, &compiler.build.llvm_ir_files, 3, true);
 	if (compiler.build.build_test && compiler.build.test_source_dirs)
 	{
-		const char **test_sources = target_expand_source_names(NULL, compiler.build.test_source_dirs, c3_suffix_list, &compiler.build.object_files, 3, true);
+		const char **test_sources = target_expand_source_names(NULL, compiler.build.test_source_dirs, c3_suffix_list, &compiler.build.object_files, &compiler.build.llvm_ir_files, 3, true);
 		FOREACH(const char *, file, test_sources) vec_add(compiler.build.sources, file);
 	}
 	expand_csources(NULL, compiler.build.csource_dirs, &compiler.build.csources);
@@ -2152,7 +2214,11 @@ void compile(void)
 	type_init_cint();
 	compiler_init_time = bench_mark();
 
-	if (!vec_size((compiler.build.object_files)) && !vec_size(compiler.build.sources) && !compiler.build.read_stdin) error_exit("No files to compile.");
+	if (!vec_size((compiler.build.object_files)) && !vec_size(compiler.build.llvm_ir_files) && !vec_size(compiler.build.sources) && !compiler.build.read_stdin) error_exit("No files to compile.");
+	if (vec_size(compiler.build.llvm_ir_files) && compiler.build.backend != BACKEND_LLVM)
+	{
+		error_exit("LLVM IR and bitcode files (.ll, .bc) can only be compiled with the LLVM backend, '%s' cannot be used.", compiler.build.llvm_ir_files[0]);
+	}
 
 	if (compiler.build.lex_only)
 	{

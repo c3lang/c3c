@@ -57,6 +57,10 @@ excuse
 	EGL_FAILED_TO_INIT_DISPLAY,
 	EGL_DISPLAY_NOT_FOUND,
 	EGL_CONFIG_NOT_FOUND,
+	GL_CONTEXT_NOT_ACTIVE,
+	GL_CONTEXT_NOT_FOUND,
+	OPERATION_NOT_SUPPORTED,
+	GENERAL_ERROR,
 }
 
 const Duration WAIT_FOREVER = Duration::max;
@@ -1121,23 +1125,35 @@ fn void*? GfxWindow.create_metal_layer(&self)
 <*
  Set the OpenGL buffer swap interval for the window.
 
- Requires an OpenGL context to be current. Not every platform honours this.
+ Requires the window's OpenGL context to be current on the calling thread. X11 (except with
+ GLX_EXT_swap_control), Win32 and EGL check that and log a warning if it is not. Not every platform honours this,
+ and GLX_SGI_swap_control, which only an old X11 driver has alone, can't disable vsync.
 
  @param swap_interval : "0 to disable vsync, 1 to sync to the display refresh"
+ @return? gfx::GL_CONTEXT_NOT_ACTIVE : "If it requires an active context and this isn't active, or the window has none"
+ @return? gfx::GL_CONTEXT_NOT_FOUND : "No active context was found"
+ @return? gfx::OPERATION_NOT_SUPPORTED : "The operation was not supported"
+ @return? gfx::GENERAL_ERROR : "If the operation failed for some other reason"
 *>
-fn void GfxWindow.set_opengl_swap_interval(&self, int swap_interval)
+fn void? GfxWindow.set_opengl_swap_interval(&self, int swap_interval) @maydiscard
 {
-	_window_set_opengl_swap_interval(self, swap_interval);
+	return _window_set_opengl_swap_interval(self, swap_interval);
 }
 
 <*
  Set the EGL buffer swap interval for the window.
 
+ The window's EGL context has to be current on the calling thread, otherwise a warning is logged.
+
  @param swap_interval : "0 to disable vsync, 1 to sync to the display refresh"
+ @return? gfx::GL_CONTEXT_NOT_ACTIVE : "If it requires an active context and this isn't active, or the window has none"
+ @return? gfx::GL_CONTEXT_NOT_FOUND : "No active context was found"
+ @return? gfx::OPERATION_NOT_SUPPORTED : "The operation was not supported"
+ @return? gfx::GENERAL_ERROR : "If the operation failed for some other reason"
 *>
-fn void GfxWindow.set_egl_swap_interval(&self, int swap_interval)
+fn void? GfxWindow.set_egl_swap_interval(&self, int swap_interval) @maydiscard
 {
-	egl::set_swap_interval(self, swap_interval);
+	return egl::set_swap_interval(self, swap_interval);
 }
 
 <*
@@ -2781,7 +2797,7 @@ fn void GfxWindow.set_dnd(&self, bool allow)
 <*
  Look up an OpenGL function by name.
 
- Requires OpenGL to have been loaded, normally via init() with .init_opengl set.
+ Requires OpenGL to have been loaded, by init() with .init_opengl set or by creating an OpenGL context.
 
  @param [in] s : "The function name"
  @return "The function pointer, or null if it is unavailable"

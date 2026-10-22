@@ -2425,6 +2425,8 @@ bool cast_to_index_len(SemaContext *context, Expr *index, bool is_len);
 
 const char *c_codegen(void *context);
 const char *llvm_codegen(void *context);
+void *llvm_load_ir_file(const char *filename, const char *object_filename);
+const char *llvm_codegen_ir_file(void *context);
 const char *tilde_codegen(void *context);
 void **c_gen(Module** modules, int module_count);
 void **llvm_gen(Module** modules, int module_count);

@@ -84,6 +84,8 @@ typedef struct
 	VariableId id;
 	Type *type;
 	bool is_static;
+	bool is_alloca;
+	int alloca_count;
 	Decl *decl;
 } CLocalVar;
 
@@ -108,6 +110,8 @@ typedef struct GenContext
 	CValue retval;
 
 	CLocalVar *function_locals;
+	const char *cur_func_name;
+	Decl *cur_func_decl;
 
 	HTable *gen_decl;
 	HTable *gen_def;
@@ -119,6 +123,9 @@ typedef struct GenContext
 	HTable *emitted_global_decls;
 	HTable emitted_global_defs;
 } GenContext;
+
+VariableId c_emit_alloca(GenContext *c, Type *type);
+VariableId c_emit_alloca_array(GenContext *c, Type *base_type, int count);
 
 typedef void (*CDeclVisitor)(GenContext *c, Decl *d, void *userdata);
 
@@ -137,6 +144,7 @@ bool c_decl_needs_asm_label(Decl *decl);
 const char *c_get_enum_assoc_name(Decl *enum_decl, Decl *param);
 void c_emit_string_literal(GenContext *c, const char *bytes, ArrayIndex len);
 void c_traverse_all_modules(GenContext *c, CDeclVisitor visitor, void *userdata);
+void c_emit_panic(GenContext *c, const char *message, SourceLocId loc);
 
 /* Function & Variable Management */
 int c_create_label(GenContext *c);
@@ -365,6 +373,18 @@ static inline Decl *c_type_get_decl(Type *t)
 	}
 }
 
+static inline bool c_decl_is_live(Decl *d)
+{
+	if (!d) return false;
+	if (d->decl_kind == DECL_FUNC)
+	{
+		if (d->func_decl.attr_test && !compiler.build.build_test) return false;
+		if (d->func_decl.attr_benchmark && !compiler.build.build_benchmark) return false;
+	}
+	if (strip_unused() && !d->is_live) return false;
+	return true;
+}
+
 static inline bool c_type_needs_emission(Type *t)
 {
 	if (!is_valid_type_ptr(t) || t == poisoned_type ||
@@ -378,6 +398,10 @@ static inline bool c_type_needs_emission(Type *t)
 	}
 	Decl *d = c_type_get_decl(t);
 	if (d && (!d->unit || !d->unit->module))
+	{
+		return false;
+	}
+	if (strip_unused() && !t->is_live)
 	{
 		return false;
 	}
@@ -408,5 +432,11 @@ void c_emit_expr(GenContext *c, CValue *value, Expr *expr);
 void c_emit_ignored_expr(GenContext *c, Expr *expr);
 void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr);
 void c_emit_inc_dec(GenContext *c, CValue *value, Expr *expr, bool is_post);
+
+/* Typeid Tracking */
+extern HTable c_needed_typeids;
+extern Type **c_needed_typeids_vec;
+extern bool c_recording_typeids;
+void c_record_needed_typeid(Type *type, const char *sym);
 
 #endif /* C_CODEGEN_INTERNAL_H */

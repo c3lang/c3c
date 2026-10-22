@@ -75,7 +75,7 @@
           "type": {
             "type": "string",
             "description": "Executable or library type for the target.",
-            "enum": ["executable", "static-lib", "dynamic-lib", "benchmark", "test", "object-files", "prepare"]
+            "enum": ["executable", "static-lib", "dynamic-lib", "benchmark", "test", "object-files", "prepare", "source-lib"]
           },
           "name": {
             "type": "string",
@@ -86,6 +86,10 @@
             "description": "Override the default file extension for the build output. Must start with '.'.",
             "pattern": "^\\..*"
           },
+          "compress": {
+            "type": "boolean",
+            "description": "Pack a 'source-lib' target into a single compressed .c3l file, otherwise output an uncompressed directory (default: true)."
+          },
           "template": {
             "type": "string",
             "description": "Reference a template configuration from a library dependency, format: 'library/template'.",
@@ -94,6 +98,13 @@
           "dependencies": {
             "type": "array",
             "description": "Additional libraries for this target.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "depends-on": {
+            "type": "array",
+            "description": "Targets that are built before this target, in the order listed. Targets they depend on are built first, and each target is only built once.",
             "items": {
               "type": "string"
             }

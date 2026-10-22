@@ -69,6 +69,7 @@ static void usage(bool full)
 	print_cmd("compile-test <file1> [<file2> ...]", "Compile files into a benchmark-executable and run unit tests.");
 	print_cmd("static-lib <file1> [<file2> ...]", "Compile files without a project into a static library.");
 	print_cmd("dynamic-lib <file1> [<file2> ...]", "Compile files without a project into a dynamic library.");
+	print_cmd("source-lib <file1> [<file2> ...]", "Pack files without a project into a source library (.c3l), use -o to set the library name.");
 	print_cmd("vendor-fetch <library> ...", "Fetches one or more libraries from the vendor collection.");
 	print_cmd("fetch <library> ...", "Fetches one or more libraries.");
 	print_cmd("fetch-list", "Prints all available libraries");
@@ -116,6 +117,7 @@ static void usage(bool full)
 		print_opt("--max-mem <value>", "Set the maximum memory size (in MB).");
 		print_opt("--run-once", "After running the output file, delete it immediately.");
 		print_opt("--suppress-run", "Build but do not run on test/benchmark options.");
+		print_opt("--no-deps", "Do not first build the targets listed in 'depends-on'.");
 		print_opt("--trust=<option>", "Trust level: none (default), include ($include allowed), full ($exec / exec allowed).");
 		print_opt("--output-dir <dir>", "Override general output directory.");
 		print_opt("--build-dir <dir>", "Override build output directory.");
@@ -131,6 +133,7 @@ static void usage(bool full)
 		print_opt("--no-obj", "Do not output object files, this is only valid for `compile-only`.");
 		print_opt("--keep-obj", "Do not delete object files after linking.");
 		print_opt("--no-headers", "Do not generate C headers when building a library.");
+		print_opt("--no-compress", "Output a source library as an uncompressed directory instead of a compressed .c3l file.");
 		print_opt("--target <target>", "Compile for a particular architecture + OS target.");
 		print_opt("--threads <number>", "Set the number of threads to use for compilation.");
 		print_opt("--safe=<yes|no>", "Turn safety (contracts, runtime bounds checking, null pointer checks etc) on or off.");
@@ -157,6 +160,7 @@ static void usage(bool full)
 		print_opt("--warn-unusedlocal=<yes|no|error>", "Print warning when a local is not used after compile-time folding: yes, no, error.");
 		PRINTF("");
 		print_opt("--fetch-url <url>", "Use this URL for fetching libraries.");
+		print_opt("--decompress=<yes|no>", "Unpack fetched libraries into directories (default: yes), no keeps them as compressed .c3l files.");
 	}
 	PRINTF("");
 	print_opt("-g", "Emit debug info.");
@@ -586,6 +590,11 @@ static void parse_command(BuildOptions *options)
 	if (arg_match("dynamic-lib"))
 	{
 		options->command = COMMAND_DYNAMIC_LIB;
+		return;
+	}
+	if (arg_match("source-lib"))
+	{
+		options->command = COMMAND_SOURCE_LIB;
 		return;
 	}
 	if (arg_match("build"))
@@ -1090,6 +1099,11 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->fetch_url = next_arg();
 				return;
 			}
+			if ((argopt = match_argopt("decompress"))) // NOLINT
+			{
+				options->fetch_compressed = !parse_opt_select(bool, argopt, on_off);
+				return;
+			}
 			if (match_longopt("max-mem"))
 			{
 				if (at_end() || next_is_opt())
@@ -1512,6 +1526,11 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->no_headers = true;
 				return;
 			}
+			if (match_longopt("no-compress"))
+			{
+				options->no_compress = true;
+				return;
+			}
 			if (match_longopt("print-linking"))
 			{
 				options->print_linking = true;
@@ -1926,6 +1945,11 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->suppress_run = true;
 				return;
 			}
+			if (match_longopt("no-deps"))
+			{
+				options->no_deps = true;
+				return;
+			}
 			if (match_longopt("help"))
 			{
 				if (options->command == COMMAND_DOCGEN)
@@ -1942,6 +1966,14 @@ static void parse_option(BuildOptions *options) // NOLINT
 
 	}
 	FAIL_WITH_ERR_LONG("Cannot process the unknown option \"%s\".", current_arg);
+}
+
+// Is this option target specific, or passed on to targets it depends on?
+static bool is_target_specific_option(const char *arg)
+{
+	return str_eq(arg, "-o") || str_eq(arg, "--path") || str_eq(arg, "--sources") || str_eq(arg, "--build-env")
+	       || str_eq(arg, "--run-dir") || str_eq(arg, "--run-once") || str_eq(arg, "--suppress-run")
+	       || str_start_with(arg, "--test-") || str_start_with(arg, "--benchmark-");
 }
 
 BuildOptions parse_arguments(int argc, const char *argv[])
@@ -2038,7 +2070,11 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		}
 		if (current_arg[0] == '-')
 		{
+			int first_index = arg_index;
 			parse_option(&build_options);
+			if (is_target_specific_option(args[first_index])) continue;
+			// The option and the values it consumed are also passed on to the builds of 'depends-on' targets.
+			for (int i = first_index; i <= arg_index; i++) vec_add(build_options.dependency_args, args[i]);
 			continue;
 		}
 		if (build_options.command == COMMAND_MISSING)
@@ -2075,6 +2111,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		case COMMAND_COMPILE_RUN:
 		case COMMAND_STATIC_LIB:
 		case COMMAND_DYNAMIC_LIB:
+		case COMMAND_SOURCE_LIB:
 		case COMMAND_VENDOR_FETCH:
 		case COMMAND_FETCH:
 		case COMMAND_FETCH_INFO:

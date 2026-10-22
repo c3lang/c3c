@@ -488,14 +488,14 @@ fn XmlEvent? XmlReader.next_event(&self)
 			case ATTRSTART:
 				String name = self.parser.attr_view();
 				self.buffer.clear();
-				while (true)
+				while OUTER: (true)
 				{
-					Ret next_res = self.low_level_next()!;
-					if (next_res == ATTRVAL)
+					switch (self.low_level_next()!)
 					{
-						self.buffer.append(self.parser.data_view());
+						case ATTRVAL: self.buffer.append(self.parser.data_view());
+						case ATTREND: break OUTER;
+						default:      break;
 					}
-					else if (next_res == ATTREND) break;
 				}
 				return { .kind = ATTRIBUTE, .name = name, .value = self.buffer.str_view() };
 			case CONTENT:
@@ -524,14 +524,14 @@ fn XmlEvent? XmlReader.next_event(&self)
 			case PISTART:
 				String name = self.parser.pi_view();
 				self.buffer.clear();
-				while (true)
+				while OUTER: (true)
 				{
-					Ret next_res = self.low_level_next()!;
-					if (next_res == PICONTENT)
+					switch (self.low_level_next()!)
 					{
-						self.buffer.append(self.parser.data_view());
+						case PICONTENT: self.buffer.append(self.parser.data_view());
+						case PIEND:     break OUTER;
+						default:        break;
 					}
-					else if (next_res == PIEND) break;
 				}
 				return { .kind = PI, .name = name, .value = self.buffer.str_view() };
 			default:

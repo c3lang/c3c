@@ -105,7 +105,10 @@ fn String? String.unescape(String s, Allocator allocator, bool allow_unquoted = 
 		// Remove quotes.
 		s = s[1:^2];
 	}
-	else if (!allow_unquoted) return UNTERMINATED_STRING~;
+	else if (!allow_unquoted)
+	{
+		return UNTERMINATED_STRING~;
+	}
 
 	// Handle empty string case
 	if (!s.len)

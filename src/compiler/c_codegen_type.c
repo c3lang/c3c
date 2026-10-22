@@ -973,6 +973,19 @@ static const char *c_typeid_mangled(Type *type)
 	}
 }
 
+HTable c_needed_typeids;
+Type **c_needed_typeids_vec = NULL;
+bool c_recording_typeids = false;
+
+void c_record_needed_typeid(Type *type, const char *sym)
+{
+	if (!c_recording_typeids || !type || !sym) return;
+	if (strcmp(sym, "__c3_typeid_void") == 0) return;
+	if (htable_get(&c_needed_typeids, (void *)sym)) return;
+	htable_set(&c_needed_typeids, (void *)sym, (void *)1);
+	vec_add(c_needed_typeids_vec, type);
+}
+
 const char *c_typeid_name(Type *type)
 {
 	type = c_unwrap_alias(type);
@@ -981,7 +994,9 @@ const char *c_typeid_name(Type *type)
 		return "__c3_typeid_void";
 	}
 	const char *mangled = c_typeid_mangled(type);
-	return c_intern(str_printf("__c3_typeid_%s", c_sanitize_name(mangled)));
+	const char *sym = c_intern(str_printf("__c3_typeid_%s", c_sanitize_name(mangled)));
+	c_record_needed_typeid(type, sym);
+	return sym;
 }
 
 const char *c_fault_symbol_name(Decl *decl)

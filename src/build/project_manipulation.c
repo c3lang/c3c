@@ -38,24 +38,6 @@ static void print_vec(const char *header, const char **vec, bool opt, const char
 	PRINTFN("");
 }
 
-const char** get_project_dependencies(void)
-{
-	const char *filename;
-	const char** dependencies = NULL;
-
-	JSONObject *project_json = project_json_load(&filename);
-	JSONObject *dependencies_json = json_map_get(project_json, "dependencies");
-
-	if (dependencies_json)
-	{
-		FOREACH(JSONObject *, element, dependencies_json->elements)
-		{
-			vec_add(dependencies, element->str);
-		}
-	}
-	return dependencies;
-}
-
 static void print_opt_str(const char *header, const char *str)
 {
 	if (!str) return;
@@ -229,6 +211,7 @@ static void view_target(BuildParseContext context, JSONObject *target, bool verb
 	TARGET_VIEW_STRING("CPU flags", "cpu-flags");
 	TARGET_VIEW_STRING("CPU flags (override)", "cpu-flags-override");
 	TARGET_VIEW_SETTING("Debug level", "debug-info", debug_levels);
+	TARGET_VIEW_STRING_ARRAY("Targets built first", "depends-on", ", ");
 	TARGET_VIEW_STRING_ARRAY("Additional scripts to run", "exec", ", ");
 	TARGET_VIEW_STRING_ARRAY("Scripts to run (override)", "exec", ", ");
 	TARGET_VIEW_STRING_ARRAY("Enabled features", "features", ", ");
@@ -278,6 +261,48 @@ static void view_target(BuildParseContext context, JSONObject *target, bool verb
 	TARGET_VIEW_BOOL("Data sections", "data-sections");
 }
 
+// A list of the project, or of the target if there is one: as when building, the target's own
+// entries go first and "<key>-override" replaces the project's.
+static const char **get_list(const char *file, JSONObject *project, const char *target, const char *key, const char *override_key)
+{
+	const char **list = NULL;
+	BuildParseContext context = { file, NULL, false };
+	get_list_append_strings(context, project, &list, key, override_key);
+	if (!target) return list;
+	context.target = target;
+	get_list_append_strings(context, json_map_get(json_map_get(project, "targets"), target), &list, key, override_key);
+	return list;
+}
+
+// Fetch the dependencies of the target (or of the project if target is NULL) missing from its search paths.
+static void fetch_missing_dependencies(const char *file, JSONObject *project, const char *target, bool decompress)
+{
+	const char **deps = get_list(file, project, target, "dependencies", "dependencies-override");
+	if (!vec_size(deps)) return;
+	const char **dirs = get_list(file, project, target, "dependency-search-paths", "dependency-search-paths-override");
+	if (!vec_size(dirs))
+	{
+		error_exit("Failed: no 'dependency-search-paths' to fetch '%s' into.\n"
+				   "Add e.g. \"dependency-search-paths\": [ \"lib\" ] to the project file.", deps[0]);
+	}
+	FOREACH(const char *, dep, deps)
+	{
+		const char *lib_file = str_printf("%s.c3l", dep);
+		bool found = false;
+		FOREACH(const char *, dir, dirs)
+		{
+			found = found || file_exists(file_append_path(dir, lib_file));
+		}
+		if (found) continue;
+		// New libraries go into the first search path.
+		file_create_folders(file_append_path(dirs[0], lib_file));
+		printf("Fetching missing library '%s'...\n", dep);
+		fflush(stdout);
+		const char *error = vendor_fetch_single(dep, dirs[0], use_ansi(), decompress);
+		if (error) printf("Failed: '%s'\n", error);
+	}
+}
+
 void fetch_project(BuildOptions* options)
 {
 	if (!download_available())
@@ -290,81 +315,29 @@ void fetch_project(BuildOptions* options)
 		error_exit("Failed: no project file found.");
 	}
 
-	if (str_eq(options->path, DEFAULT_PATH))
-	{
-		{
-			const char** deps_dirs =  get_project_dependency_directories();
-			int num_lib = vec_size(deps_dirs);
-			if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
-		}
-	}
-
-	const char **libdirs = get_project_dependency_directories();
-	const char **deps = get_project_dependencies();
+	// First the dependencies of the project itself, then those of each target.
 	const char *filename;
-	JSONObject *project_json = project_json_load(&filename);
-
-	JSONObject *targets_json = json_map_get(project_json, "targets");
-
-	if (targets_json && targets_json->type == J_OBJECT)
+	JSONObject *project = project_json_load(&filename);
+	fetch_missing_dependencies(filename, project, NULL, !options->fetch_compressed);
+	JSONObject *project_targets = json_map_get(project, "targets");
+	if (!project_targets || project_targets->type != J_OBJECT) return;
+	FOREACH_IDX(i, JSONObject *, target, project_targets->members)
 	{
-
-		FOREACH_IDX(i, JSONObject *, target, targets_json->members)
-		{
-			const char *key = targets_json->keys[i];
-			if (target->type != J_OBJECT)
-			{
-				error_exit("Invalid data in target '%s'", key);
-			}
-
-			const char **target_deps = get_optional_string_array((BuildParseContext) { filename, key, false }, target, "dependencies");
-
-			FOREACH(const char*, dep, target_deps)
-			{
-				vec_add(deps, dep);
-			}
-		}
-	}
-
-	// dependency check tree
-	while (vec_size(deps) > 0)
-	{
-		FOREACH(const char*, dir, libdirs)
-		{
-			const char *dep = VECLAST(deps);
-			if (file_exists(file_append_path(dir, str_printf("%s.c3l", dep))))
-			{
-				vec_pop(deps);
-				break;
-			}
-
-			printf("Fetching missing library '%s'...\n", dep);
-			fflush(stdout);
-
-			const char *error = vendor_fetch_single(dep, options->vendor_download_path, use_ansi());
-
-			if (error)
-			{
-				printf("Failed: '%s'\n", error);
-			}
-
-			vec_pop(deps);
-			break;
-		}
+		if (target->type != J_OBJECT) error_exit("Invalid data in target '%s'", project_targets->keys[i]);
+		fetch_missing_dependencies(filename, project, project_targets->keys[i], !options->fetch_compressed);
 	}
 }
 
 
 
-void add_libraries_to_project_file(const char** libs, const char* target_name) {
+void add_libraries_to_project_file(const char** libs) {
 
+	if (!vec_size(libs)) return;
 	if (!file_exists(PROJECT_JSON5) && !file_exists(PROJECT_JSON)) return;
-	//TODO! Target name option not implemented
 
 	const char *filename;
 	JSONObject *project_json = project_json_load(&filename);
 
-	// TODO! check if target is specified and exists (NULL at the moment)
 	JSONObject *libraries_json = json_map_get(project_json, "dependencies");
 	if (!libraries_json)
 	{

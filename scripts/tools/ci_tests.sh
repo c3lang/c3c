@@ -265,6 +265,27 @@ run_staticlib_tests() {
     fi
 }
 
+run_sourcelib_tests() {
+    local MY_WORK_DIR="$WORK_DIR/sourcelib"
+    mkdir -p "$MY_WORK_DIR"
+
+    echo "--- Running Source Lib Tests ---"
+    cd "$ROOT_DIR/resources/examples/sourcelib-test"
+
+    # Build the library from a project target, first compressed, then as a directory replacing the file.
+    for flags in "" "--no-compress"; do
+        run_c3c build sourcelib $flags
+        if [[ "$OS_MODE" == "ios" ]]; then
+            sim_run "$ROOT_DIR/resources/examples/sourcelib-test/test.c3" --libdir "$MY_WORK_DIR" --lib sourcelib
+        else
+            run_c3c compile-run "$ROOT_DIR/resources/examples/sourcelib-test/test.c3" --libdir "$MY_WORK_DIR" --lib sourcelib
+        fi
+    done
+
+    # Build the library without a project.
+    run_c3c source-lib src/sourcelib.c3 src/extra/double.c3 -o standalone
+}
+
 run_testproject() {
     local MY_WORK_DIR="$WORK_DIR/testproject"
     mkdir -p "$MY_WORK_DIR"
@@ -543,6 +564,7 @@ run_parallel cli run_cli_tests
 run_parallel dynlib run_dynlib_tests
 run_parallel staticlib run_staticlib_tests
 run_parallel testproject run_testproject
+run_parallel sourcelib run_sourcelib_tests
 run_parallel wasm run_wasm_compile
 run_parallel bsd_cross run_bsd_cross_compile
 run_parallel http run_http_server_tests

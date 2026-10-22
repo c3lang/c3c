@@ -33,6 +33,7 @@ typedef enum
 	COMMAND_COMPILE_RUN,
 	COMMAND_STATIC_LIB,
 	COMMAND_DYNAMIC_LIB,
+	COMMAND_SOURCE_LIB,
 	COMMAND_RUN,
 	COMMAND_CLEAN_RUN,
 	COMMAND_CLEAN,
@@ -94,6 +95,7 @@ typedef enum
 	TARGET_TYPE_BENCHMARK,
 	TARGET_TYPE_TEST,
 	TARGET_TYPE_PREPARE,
+	TARGET_TYPE_SOURCE_LIB,
 } TargetType;
 
 typedef struct
@@ -136,7 +138,7 @@ static const char *project_view_flags[PROJECT_VIEW_TYPE_MAX + 1] = {
 	[PROJECT_VIEW_TYPE_TARGETS] = "targets",
 };
 
-static const char *targets[7] = {
+static const char *targets[8] = {
 	[TARGET_TYPE_EXECUTABLE] = "executable",
 	[TARGET_TYPE_STATIC_LIB] = "static-lib",
 	[TARGET_TYPE_DYNAMIC_LIB] = "dynamic-lib",
@@ -144,16 +146,17 @@ static const char *targets[7] = {
 	[TARGET_TYPE_TEST] = "test",
 	[TARGET_TYPE_OBJECT_FILES] = "object-files",
 	[TARGET_TYPE_PREPARE] = "prepare",
+	[TARGET_TYPE_SOURCE_LIB] = "source-lib",
 };
-static const char *target_desc[7] = {
+static const char *target_desc[8] = {
 	[TARGET_TYPE_EXECUTABLE] = "Executable",
 	[TARGET_TYPE_STATIC_LIB] = "Static library",
 	[TARGET_TYPE_DYNAMIC_LIB] = "Dynamic library",
 	[TARGET_TYPE_BENCHMARK] = "benchmark suite",
 	[TARGET_TYPE_TEST] = "test suite",
 	[TARGET_TYPE_OBJECT_FILES] = "object files",
-	[TARGET_TYPE_PREPARE] = "prepare"
-
+	[TARGET_TYPE_PREPARE] = "prepare",
+	[TARGET_TYPE_SOURCE_LIB] = "Source library",
 };
 
 
@@ -213,6 +216,7 @@ typedef struct BuildOptions_
 	const char **files;
 	const char *test_filter;
 	const char **args;
+	const char **dependency_args;
 	const char **feature_names;
 	const char **removed_feature_names;
 	const char *output_name;
@@ -279,14 +283,17 @@ typedef struct BuildOptions_
 	bool no_obj;
 	bool keep_object_files;
 	bool no_headers;
+	bool no_compress;
 	bool read_stdin;
 	bool print_output;
 	bool print_input;
 	bool run_once;
 	bool suppress_run;
+	bool no_deps;
 	bool docgen_json_out;
 	bool docgen_append;
 	bool fetch_accept_license;
+	bool fetch_compressed;
 	bool msvc_show_versions;
 	bool msvc_fetch_headers;
 	ImplicitFloat implicit_float;
@@ -407,6 +414,7 @@ typedef struct
 	const char **test_source_dirs;
 	const char **sources;
 	const char **object_files;
+	const char **llvm_ir_files;
 	const char **libdirs;
 	const char **libs;
 	const char **linker_libdirs;
@@ -437,6 +445,7 @@ typedef struct
 	bool docgen_json_out;
 	bool docgen_append;
 	bool output_headers;
+	bool no_compress;
 	bool output_ast;
 	bool lex_only;
 	bool parse_only;
@@ -503,6 +512,7 @@ typedef struct
 	const char **csources;
 	const char **cinclude_dirs;
 	const char **exec;
+	const char **depends_on;
 	AuthorEntry *authors;
 	const char **feature_list;
 	const char *custom_linker_path;
@@ -663,6 +673,8 @@ const char *check_dir(const char *path);
 void create_project(BuildOptions *build_options);
 void create_library(BuildOptions *build_options);
 void resolve_libraries(BuildTarget *build_target);
+const char *unpack_c3l(const char *zip_path, const char *dest_dir);
+void build_source_library(BuildTarget *target);
 void view_project(BuildOptions *build_options);
 void add_target_project(BuildOptions *build_options);
 void fetch_project(BuildOptions* options);

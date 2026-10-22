@@ -1463,12 +1463,14 @@ fn void? tre_parse(ParseCtx* ctx) @local
 			else
 			{
 				// Group close or end of pattern.
-				if (c == '\\')
+				switch (c)
 				{
-					if (depth == 0) return EPAREN~;
-					s += 2;
+					case '\\':
+						if (depth == 0) return EPAREN~;
+						s += 2;
+					case ')':
+						s++;
 				}
-				else if (c == ')') s++;
 				depth--;
 
 				marksub(ctx, nunion, stack_pop_int(stack))!;
