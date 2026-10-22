@@ -2274,17 +2274,21 @@ fn void? tre_make_trans(Allocator allocator, PosAndTags* p1, PosAndTags* p2, Tnf
 	}
 	else
 	{
+		int p2_count = 0;
+		int prev_p2_pos = -1;
+		while (p2.position >= 0)
+		{
+			if (p2.position != prev_p2_pos)
+			{
+				prev_p2_pos = p2.position;
+				p2_count++;
+			}
+			p2++;
+		}
+
 		while (p1.position >= 0)
 		{
-			p2 = orig_p2;
-			int prev_p2_pos = -1;
-			while (p2.position >= 0)
-			{
-				if (p2.position == prev_p2_pos) { p2++; continue; }
-				prev_p2_pos = p2.position;
-				counts[p1.position]++;
-				p2++;
-			}
+			counts[p1.position] = counts[p1.position].overflow_add(p2_count) ?? OUT_OF_MEMORY~!;
 			p1++;
 		}
 	}
