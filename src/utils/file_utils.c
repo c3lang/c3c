@@ -865,7 +865,7 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 
 #endif
 
-const char **target_expand_source_names(const char *base_dir, const char** dirs, const char **suffix_list, const char ***object_list_ref, int suffix_count, bool error_on_mismatch)
+const char **target_expand_source_names(const char *base_dir, const char** dirs, const char **suffix_list, const char ***object_list_ref, const char ***llvm_ir_list_ref, int suffix_count, bool error_on_mismatch)
 {
 	const char **files = NULL;
 	FOREACH(const char *, name, dirs)
@@ -874,14 +874,25 @@ const char **target_expand_source_names(const char *base_dir, const char** dirs,
 		INFO_LOG("Searching for sources in %s", name);
 		size_t name_len = strlen(name);
 		if (name_len < 1) goto INVALID_NAME;
+		const char ***extra_list_ref = NULL;
+		const char *extra_kind = "object file";
 		if (object_list_ref && (str_has_suffix(name, ".o") || str_has_suffix(name, ".obj")))
+		{
+			extra_list_ref = object_list_ref;
+		}
+		else if (llvm_ir_list_ref && (str_has_suffix(name, ".ll") || str_has_suffix(name, ".bc")))
+		{
+			extra_list_ref = llvm_ir_list_ref;
+			extra_kind = "LLVM IR file";
+		}
+		if (extra_list_ref)
 		{
 			if (!file_exists(name))
 			{
 				if (!error_on_mismatch) continue;
-				error_exit("The object file '%s' could not be found.", name);
+				error_exit("The %s '%s' could not be found.", extra_kind, name);
 			}
-			vec_add(*object_list_ref, name);
+			vec_add(*extra_list_ref, name);
 			continue;
 		}
 		if (name[name_len - 1] == '*')

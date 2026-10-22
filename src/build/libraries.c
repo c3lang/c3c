@@ -410,7 +410,7 @@ void resolve_libraries(BuildTarget *build_target)
 		}
 		if (target->source_dirs)
 		{
-			const char **files = target_expand_source_names(library->dir, target->source_dirs, c3_suffix_list, &build_target->object_files, 3, true);
+			const char **files = target_expand_source_names(library->dir, target->source_dirs, c3_suffix_list, &build_target->object_files, &build_target->llvm_ir_files, 3, true);
 			FOREACH(const char *, file, files)
 			{
 				vec_add(build_target->sources, file);
@@ -541,12 +541,12 @@ void build_source_library(BuildTarget *target)
 	ZipEntry *entries = NULL;
 
 	// The C3 sources.
-	const char **sources = target_expand_source_names(NULL, target->source_dirs, c3_suffix_list, NULL, 3, true);
+	const char **sources = target_expand_source_names(NULL, target->source_dirs, c3_suffix_list, NULL, NULL, 3, true);
 	if (!vec_size(sources)) error_exit("No sources were found for the source library '%s'.", name);
 	source_lib_add_files(&entries, sources);
 
 	// The C sources, with the headers next to them and in the include dirs.
-	const char **csources = target_expand_source_names(NULL, target->csource_dirs, c_suffix_list, NULL, 2, false);
+	const char **csources = target_expand_source_names(NULL, target->csource_dirs, c_suffix_list, NULL, NULL, 2, false);
 	source_lib_add_files(&entries, csources);
 	const char **header_dirs = NULL;
 	FOREACH(const char *, csource, csources)

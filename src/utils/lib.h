@@ -106,7 +106,7 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 char *file_append_path(const char *path, const char *name);
 const char *file_append_path_temp(const char *path, const char *name);
 
-const char **target_expand_source_names(const char *base_dir, const char** dirs, const char **suffix_list, const char ***object_list_ref, int suffix_count, bool error_on_mismatch);
+const char **target_expand_source_names(const char *base_dir, const char** dirs, const char **suffix_list, const char ***object_list_ref, const char ***llvm_ir_list_ref, int suffix_count, bool error_on_mismatch);
 
 char * execute_cmd(const char *cmd, bool ignore_failure, const char *stdin_string, size_t limit);
 

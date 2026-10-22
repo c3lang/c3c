@@ -414,6 +414,7 @@ typedef struct
 	const char **test_source_dirs;
 	const char **sources;
 	const char **object_files;
+	const char **llvm_ir_files;
 	const char **libdirs;
 	const char **libs;
 	const char **linker_libdirs;

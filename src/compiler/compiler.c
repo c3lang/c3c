@@ -180,6 +180,12 @@ void thread_compile_task_llvm(void *compile_data)
 	CompileData *data = compile_data;
 	data->object_name = llvm_codegen(data->context);
 }
+
+static void thread_compile_task_llvm_ir(void *compile_data)
+{
+	CompileData *data = compile_data;
+	data->object_name = llvm_codegen_ir_file(data->context);
+}
 #else 
 void thread_compile_task_llvm(void *compile_data)
 {
@@ -655,7 +661,7 @@ void compiler_compile(void)
 	{
 		error_exit("Too many modules.");
 	}
-	if (module_count < 1 && !compiler.build.object_files)
+	if (module_count < 1 && !compiler.build.object_files && !compiler.build.llvm_ir_files)
 	{
 		error_exit("No module to compile.");
 	}
@@ -798,12 +804,13 @@ void compiler_compile(void)
 	int output_file_count = vec_size(gen_contexts);
 	int external_objfile_count = vec_size(compiler.build.object_files);
 	int cfiles = vec_size(compiler.build.csources);
+	int irfiles = compiler.build.emit_object_files ? vec_size(compiler.build.llvm_ir_files) : 0;
 	int cfiles_library = 0;
 	FOREACH(LibraryTarget *, lib, compiler.build.ccompiling_libraries)
 	{
 		cfiles_library += vec_size(lib->csources);
 	}
-	int total_output = output_file_count + cfiles + cfiles_library + external_objfile_count;
+	int total_output = output_file_count + cfiles + irfiles + cfiles_library + external_objfile_count;
 
 	if (total_output > MAX_OUTPUT_FILES)
 	{
@@ -820,7 +827,7 @@ void compiler_compile(void)
 				   "and all the other code was optimized away.");
 	}
 
-	int task_total = output_file_count + cfiles + cfiles_library;
+	int task_total = output_file_count + cfiles + irfiles + cfiles_library;
 	CompileData *compile_data = ccalloc(sizeof(CompileData), task_total);
 	const char **obj_files = cmalloc(sizeof(char*) * total_output);
 
@@ -876,6 +883,25 @@ void compiler_compile(void)
 		vec_add(tasks, &compile_data[data_idx].task);
 		data_idx++;
 	}
+
+#if LLVM_AVAILABLE
+	if (irfiles)
+	{
+		const char *ir_dir = file_append_path(compiler.build.object_file_dir, "tmp_ir_compile");
+		create_output_dir(ir_dir);
+		FOREACH_IDX(i, const char *, ir_src, compiler.build.llvm_ir_files)
+		{
+			char *filename = NULL;
+			if (!file_namesplit(ir_src, &filename, NULL)) error_exit("Cannot compile '%s'", ir_src);
+			// The index keeps the objects of files with the same name apart.
+			const char *object_name = file_append_path(ir_dir, str_printf("%d_%s%s", i, filename, get_object_extension()));
+			compile_data[data_idx] = (CompileData){ .context = llvm_load_ir_file(ir_src, object_name) };
+			compile_data[data_idx].task = (Task){ &thread_compile_task_llvm_ir, &compile_data[data_idx] };
+			vec_add(tasks, &compile_data[data_idx].task);
+			data_idx++;
+		}
+	}
+#endif
 
 	output_file_count = task_total;
 
@@ -988,7 +1014,7 @@ INLINE void expand_csources(const char *base_dir, const char **source_dirs, cons
 	if (source_dirs)
 	{
 		static const char* c_suffix_list[3] = { ".c", ".m" };
-		*sources_ref = target_expand_source_names(base_dir, source_dirs, c_suffix_list, NULL, 2, false);
+		*sources_ref = target_expand_source_names(base_dir, source_dirs, c_suffix_list, NULL, NULL, 2, false);
 	}
 }
 
@@ -2099,10 +2125,10 @@ void compile(void)
 		return;
 	}
 	symtab_init(compiler.build.symtab_size);
-	compiler.build.sources = target_expand_source_names(NULL, compiler.build.source_dirs, c3_suffix_list, &compiler.build.object_files, 3, true);
+	compiler.build.sources = target_expand_source_names(NULL, compiler.build.source_dirs, c3_suffix_list, &compiler.build.object_files, &compiler.build.llvm_ir_files, 3, true);
 	if (compiler.build.build_test && compiler.build.test_source_dirs)
 	{
-		const char **test_sources = target_expand_source_names(NULL, compiler.build.test_source_dirs, c3_suffix_list, &compiler.build.object_files, 3, true);
+		const char **test_sources = target_expand_source_names(NULL, compiler.build.test_source_dirs, c3_suffix_list, &compiler.build.object_files, &compiler.build.llvm_ir_files, 3, true);
 		FOREACH(const char *, file, test_sources) vec_add(compiler.build.sources, file);
 	}
 	expand_csources(NULL, compiler.build.csource_dirs, &compiler.build.csources);
@@ -2188,7 +2214,11 @@ void compile(void)
 	type_init_cint();
 	compiler_init_time = bench_mark();
 
-	if (!vec_size((compiler.build.object_files)) && !vec_size(compiler.build.sources) && !compiler.build.read_stdin) error_exit("No files to compile.");
+	if (!vec_size((compiler.build.object_files)) && !vec_size(compiler.build.llvm_ir_files) && !vec_size(compiler.build.sources) && !compiler.build.read_stdin) error_exit("No files to compile.");
+	if (vec_size(compiler.build.llvm_ir_files) && compiler.build.backend != BACKEND_LLVM)
+	{
+		error_exit("LLVM IR and bitcode files (.ll, .bc) can only be compiled with the LLVM backend, '%s' cannot be used.", compiler.build.llvm_ir_files[0]);
+	}
 
 	if (compiler.build.lex_only)
 	{
