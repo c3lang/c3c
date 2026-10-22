@@ -929,7 +929,7 @@ static void parse_option(BuildOptions *options) // NOLINT
 			if (match_shortopt("gline-tables-only"))
 			{
 				options->debug_info_override = DEBUG_INFO_LINE_TABLES;
-				FATAL_ERROR("Line tables only are currently not available");
+				return;
 			}
 			if (match_shortopt("g") || match_shortopt("g1"))
 			{

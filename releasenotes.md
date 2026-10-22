@@ -33,6 +33,7 @@
 - Regression for emscripten, accidentally retainin unused panic functions. #3575.
 - Compiler hangs on c3c project fetch #3562
 - Temp dirs were left behind by `c3c compile` (including unpacked `.c3l` libraries), `fetch-list`, `vendor-fetch` and the SDK fetch commands, in particular after errors. #3553
+- Compiler crashes when emitting line-tables debug info. #3581
 
 ### Stdlib changes
 - Added termios support for OpenBSD.
