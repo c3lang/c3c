@@ -38,15 +38,15 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 		int el_count = (init->kind == CONST_INIT_ARRAY_FULL) ? count : (elements ? vec_size(elements) : 0);
 		for (int i = 0; i < el_count; i++)
 		{
-			PRINTF("___var_%d[%d] = (%s)", arr_var, i, c_type_name(c, elem_t));
-			if (init->kind == CONST_INIT_ARRAY && elements[i]->kind == CONST_INIT_ARRAY_VALUE)
+			int index = i;
+			ConstInitializer *el = elements[i];
+			if (init->kind == CONST_INIT_ARRAY && el->kind == CONST_INIT_ARRAY_VALUE)
 			{
-				c_emit_const_initializer_rec(c, elements[i]->init_array_value.element);
+				index = el->init_array_value.index;
+				el = el->init_array_value.element;
 			}
-			else
-			{
-				c_emit_const_initializer_rec(c, elements[i]);
-			}
+			PRINTF("___var_%d[%d] = (%s)", arr_var, index, c_type_name(c, elem_t));
+			c_emit_const_initializer_rec(c, el);
 			PRINT(";\n");
 		}
 		PRINTF("%s ___var_%d = (%s){ .ptr = ___var_%d, .len = %d };\n", tname, temp, tname, arr_var, count);
