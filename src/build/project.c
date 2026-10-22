@@ -24,6 +24,7 @@ const char *project_default_keys[][2] = {
 		{"debug-info", "Debug level: none, line-tables, full."},
 		{"dependencies", "C3 library dependencies for all targets."},
 		{"dependency-search-paths", "The C3 library search paths."},
+		{"env", "Environment variables (NAME=value) set for the 'exec' scripts of all targets."},
 		{"exec", "Scripts run for all targets."},
 		{"features", "Features enabled for all targets."},
 		{"fp-math", "Set math behaviour: `strict`, `relaxed` or `fast`."},
@@ -120,6 +121,8 @@ const char* project_target_keys[][2] = {
 		{"dependency-search-paths", "Additional C3 library search paths for the target."},
 		{"dependency-search-paths-override", "C3 library search paths for this target, overriding global settings."},
 		{"depends-on", "Targets that are built before this target, in the order listed."},
+		{"env", "Additional environment variables (NAME=value) set for the 'exec' scripts of the target."},
+		{"env-override", "Environment variables (NAME=value) set for the 'exec' scripts of the target, overriding global settings."},
 		{"exec", "Additional scripts to run for the target."},
 		{"exec-override", "Scripts to run for this target, overriding global settings."},
 		{"extension", "Override the default file extension for the build output."},
@@ -295,6 +298,27 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	}
 	// "Before compilation" execution
 	APPEND_STRING_LIST(&target->exec, "exec");
+
+	if (context.target)
+	{
+		const char **env_override = get_optional_string_array(context, json, "env-override");
+		if (env_override) target->env = env_override;
+	}
+	append_strings_to_strings(&target->env, get_optional_string_array(context, json, "env"));
+	FOREACH(const char *, env, target->env)
+	{
+		const char *eq = strchr(env, '=');
+		bool valid = eq && eq != env && !char_is_digit(env[0]);
+		for (const char *c = env; valid && c < eq; c++) valid = char_is_alphanum_(*c);
+		if (!valid)
+		{
+			scratch_buffer_clear();
+			scratch_buffer_append(env);
+			char *env_copy = scratch_buffer_to_string();
+			str_elide_in_place(env_copy, 32);
+			error_exit("Error reading %s: invalid 'env' entry '%s', expected 'NAME=value' where NAME contains only letters, digits and '_'.", context.file, env_copy);
+		}
+	}
 
 	// CFlags
 	target->cflags = get_cflags(context, json, target->cflags);
@@ -743,6 +767,125 @@ static JSONObject* resolve_template(BuildTarget *target, const char *template_re
 	return template;
 }
 
+// These keys are not expanded
+static const char *env_unexpanded_keys[] = { "$schema", "exec", "exec-override", "targets", "type", "vendor" };
+
+// Expand ${NAME}, while `$${` is a literal '${'. Any other '$' is kept as is.
+// On failure NULL is returned and the problem is described in `problem_ref`.
+static const char *expand_env_string(const char *str, const char **problem_ref)
+{
+	*problem_ref = NULL;
+	if (!strstr(str, "${")) return str;
+	scratch_buffer_clear();
+	for (const char *p = str; *p; p++)
+	{
+		// No `$`
+		if (p[0] != '$')
+		{
+			scratch_buffer_append_char(*p);
+			continue;
+		}
+
+		// "$${" -> copy as "${"
+		if (p[1] == '$' && p[2] == '{')
+		{
+			scratch_buffer_append("${");
+			p += 2;
+			continue;
+		}
+
+		// $X -> $X
+		if (p[1] != '{')
+		{
+			scratch_buffer_append_char('$');
+			continue;
+		}
+
+		// Actual replacement
+		const char *name = p + 2;
+
+		if (!char_is_letter_(*name))
+		{
+			*problem_ref = "contains '${' without a valid environment variable name";
+			return NULL;
+		}
+
+		const char *end = name;
+
+		// Move forward to find the end
+		while (char_is_alphanum_(*end)) end++;
+
+		if (*end != '}')
+		{
+			*problem_ref = str_printf("contains '${%.*s' without a closing '}'", (int)(end - name), name);
+			return NULL;
+		}
+
+		int len = (int)(end - name);
+		scratch_buffer_push();
+		scratch_buffer_clear();
+		scratch_buffer_append_len(name, len);
+		const char *value = getenv(scratch_buffer_to_string());
+		scratch_buffer_pop();
+
+		if (!value)
+		{
+			*problem_ref = str_printf("uses the undefined environment variable '%.*s'", len, name);
+			return NULL;
+		}
+
+		scratch_buffer_append(value);
+		p = end;
+	}
+
+	return scratch_buffer_copy();
+}
+
+// Expand the string in place.
+static bool expand_env_json_string(JSONObject *string, const char **problem_ref)
+{
+	const char *problem = NULL;
+	const char *expanded = expand_env_string(string->str, &problem);
+	if (expanded) string->str = expanded;
+	if (problem) *problem_ref = problem;
+	return !problem;
+}
+
+/**
+ * Expand environment variables in the strings of a project or target object, which is changed in place.
+ *
+ * @param target the target name, NULL for the project.
+ */
+static bool expand_env_in_object(const char *file, const char *target, JSONObject *json, const char **problem_ref)
+{
+	FOREACH_IDX(i, JSONObject *, member, json->members)
+	{
+		const char *key = json->keys[i];
+		if (str_findlist(key, ELEMENTLEN(env_unexpanded_keys), env_unexpanded_keys) >= 0) continue;
+		const char *problem = NULL;
+		if (member->type == J_STRING)
+		{
+			expand_env_json_string(member, &problem);
+		}
+		else if (member->type == J_ARRAY)
+		{
+			FOREACH(JSONObject *, element, member->elements)
+			{
+				if (element->type != J_STRING) continue;
+				if (!expand_env_json_string(element, &problem)) break;
+			}
+		}
+		if (problem)
+		{
+			*problem_ref = target
+				? str_printf("Error reading %s: '%s' in '%s' %s.", file, key, target, problem)
+				: str_printf("Error reading %s: '%s' %s.", file, key, problem);
+			return false;
+		}
+	}
+	return true;
+}
+
 static void project_add_target(BuildParseContext context, Project *project, BuildTarget *default_target, JSONObject *json,
                                const char *type, TargetType target_type)
 {
@@ -754,6 +897,7 @@ static void project_add_target(BuildParseContext context, Project *project, Buil
 	duplicate_prop(&target->csources);
 	duplicate_prop(&target->cinclude_dirs);
 	duplicate_prop(&target->exec);
+	duplicate_prop(&target->env);
 	duplicate_prop(&target->feature_list);
 	duplicate_prop(&target->sources);
 	duplicate_prop(&target->source_dirs);
@@ -765,6 +909,10 @@ static void project_add_target(BuildParseContext context, Project *project, Buil
 	duplicate_prop(&target->link_args);
 
 	BuildParseContext target_context = { context.file, str_printf("%s %s", type, context.target), false };
+	// An undefined variable is only an error if the target is used, so loading the target is skipped.
+	target->env_expand_error = NULL;
+	bool valid_expansion = expand_env_in_object(context.file, context.target, json, &target->env_expand_error);
+	if (!valid_expansion) goto ADD;
 	const char *template_ref = get_optional_string(target_context, json, "template");
 	if (template_ref)
 	{
@@ -781,7 +929,7 @@ static void project_add_target(BuildParseContext context, Project *project, Buil
 		BuildParseContext template_context = { manifest_path, str_printf("template '%s'", template_ref), true };
 		load_into_build_target(template_context, template_json, target);
 	}
-
+ADD:;
 	vec_add(project->targets, target);
 	target->name = context.target;
 	target->type = target_type;
@@ -793,7 +941,7 @@ static void project_add_target(BuildParseContext context, Project *project, Buil
 			error_exit("More %s contained more than one target with the name %s. Please make all target names unique.", context.file, target->name);
 		}
 	}
-	load_into_build_target(target_context, json, target);
+	if (valid_expansion) load_into_build_target(target_context, json, target);
 }
 
 static BuildTarget *project_find_target(Project *project, const char *name)
@@ -810,6 +958,8 @@ static void project_add_targets(const char *filename, Project *project, JSONObje
 	ASSERT(project_data->type == J_OBJECT);
 
 	BuildTarget default_target = default_build_target;
+	const char *problem = NULL;
+	if (!expand_env_in_object(filename, NULL, project_data, &problem)) error_exit("%s", problem);
 	load_into_build_target((BuildParseContext) { .file = filename }, project_data, &default_target);
 	JSONObject *targets_json = json_map_get(project_data, "targets");
 	if (!targets_json)

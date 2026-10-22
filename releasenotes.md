@@ -12,6 +12,8 @@
 - An `else if` now requires `{ }` around a single statement, like `else` does. `else if (x) foo();` is an error. #3473
 - Add `depends-on` to project targets, allowing them to depend on other targets.
 - LLVM IR (`.ll`) and bitcode (`.bc`) files can be added to the compilation, just like .o files #3339
+- `project.json` strings (except `exec` and `type`) expand environment variables written as `${NAME}`. #3580
+- Add `env` and `env-override` to `project.json`, setting environment variables (`"NAME=value"`) for the `exec` scripts. #3580
 - Add `-gline-tables-only` to emit line tables debug info only.
 
 ### Fixes

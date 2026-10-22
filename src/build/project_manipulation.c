@@ -212,6 +212,8 @@ static void view_target(BuildParseContext context, JSONObject *target, bool verb
 	TARGET_VIEW_STRING("CPU flags (override)", "cpu-flags-override");
 	TARGET_VIEW_SETTING("Debug level", "debug-info", debug_levels);
 	TARGET_VIEW_STRING_ARRAY("Targets built first", "depends-on", ", ");
+	TARGET_VIEW_STRING_ARRAY("Additional environment variables for scripts", "env", ", ");
+	TARGET_VIEW_STRING_ARRAY("Environment variables for scripts (override)", "env-override", ", ");
 	TARGET_VIEW_STRING_ARRAY("Additional scripts to run", "exec", ", ");
 	TARGET_VIEW_STRING_ARRAY("Scripts to run (override)", "exec", ", ");
 	TARGET_VIEW_STRING_ARRAY("Enabled features", "features", ", ");
@@ -537,6 +539,7 @@ void view_project(BuildOptions *build_options)
 	VIEW_STRING("CPU name", "cpu");
 	VIEW_STRING("CPU flags", "cpu-flags");
 	VIEW_SETTING("Debug level", "debug-info", debug_levels);
+	VIEW_STRING_ARRAY("Environment variables for scripts", "env", ", ");
 	VIEW_STRING_ARRAY("Scripts to run", "exec", ", ");
 	VIEW_STRING_ARRAY("Enabled features", "features", ", ");
 	VIEW_SETTING("Floating point behaviour", "fp-math", fp_math);

@@ -969,6 +969,7 @@ void init_build_target(BuildTarget *target, BuildOptions *options)
 
 
 	BuildTarget *selected = project_select_target(filename, project, options->target_select, options->command);
+	if (selected->env_expand_error) error_exit("%s", selected->env_expand_error);
 	*target = *selected;
 	// The dependencies are built by separate invocations, which must not build them again, and 'clean' leaves them alone.
 	bool build_dependencies = !options->no_deps && options->command != COMMAND_CLEAN;
