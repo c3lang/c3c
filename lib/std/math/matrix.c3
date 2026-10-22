@@ -667,12 +667,10 @@ fn Real[<3>] Matrix4x4.position(&self) => { self.m03, self.m13, self.m23 };
 // Per-axis scale factors: the lengths of the first three basis columns.
 fn Real[<3>] Matrix4x4.get_scale(&self)
 {
-	Real[<16>] m = self.m;
-	return {
-		math::sqrt(m[0] * m[0] + m[1] * m[1] + m[2] * m[2]),
-		math::sqrt(m[4] * m[4] + m[5] * m[5] + m[6] * m[6]),
-		math::sqrt(m[8] * m[8] + m[9] * m[9] + m[10] * m[10]),
-	};
+  	Real[<3>] x = $$swizzle(self.m, 0, 4, 8);
+    Real[<3>] y = $$swizzle(self.m, 1, 5, 9);
+    Real[<3>] z = $$swizzle(self.m, 2, 6, 10);
+	return math::sqrt(x * x + y * y + z * z);
 }
 
 const Matrix2x2 IDENTITY2 ={ .m = { 1, 0, 0, 1 } };
