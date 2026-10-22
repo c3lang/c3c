@@ -44,6 +44,7 @@ module std::encoding::experimental::regex;
 
 import std::io;
 import std::collections::list;
+import std::math;
 
 constset CompileFlags
 {
@@ -91,9 +92,11 @@ fn void Regex.free(&self) => re_free(self);
  Compile a POSIX regex pattern into a `Regex`.
 
  @param allocator : "Allocator used to persist the compiled regex."
- @param pattern  : "The regex pattern string."
- @param cflags   : "Compile flags: EXTENDED | ICASE | NOSUB | NEWLINE."
- @return "The compiled `Regex`, or a compile-error fault (BADPAT, ECOLLATE, ECTYPE, EESCAPE, ESUBREG, EBRACK, EPAREN, EBRACE, BADBR, ERANGE, OUT_OF_MEMORY, BADRPT)."
+ @param pattern   : "The regex pattern string."
+ @param cflags    : "Compile flags: EXTENDED | ICASE | NOSUB | NEWLINE."
+ @return? BADPAT, ECOLLATE, ECTYPE, EESCAPE, ESUBREG, EBRACK, EPAREN, EBRACE, BADBR, ERANGE, BADRPT : "Invalid pattern syntax"
+ @return? OUT_OF_MEMORY : "Allocation failure or pattern complexity limit exceeded"
+ @return "The compiled `Regex`."
 *>
 fn Regex? compile(Allocator allocator, String pattern, CompileFlags cflags = {})
 {
@@ -108,13 +111,13 @@ fn Regex? compile(Allocator allocator, String pattern, CompileFlags cflags = {})
  Returns a slice of `Match` structures. By default, it automatically detects and
  returns exactly the number of capture groups defined in the pattern (plus group 0).
 
- Throws `NOMATCH` if the pattern does not match anywhere in the string, or
- `OUT_OF_MEMORY` on allocation failure.
-
  @param allocator     : "Allocator used to persist the returned matches."
  @param str           : "The input string to search."
- @param max_captures  : "The maximum number of match slots to return (including the full match at index 0). If 0 (the default), it automatically returns all groups defined in the pattern."
+ @param max_captures  : "The maximum number of match slots to return (including the full match at index 0)."
  @param eflags        : "Execute flags: NOTBOL and NOTEOL."
+ @return? NOMATCH     : "No match found"
+ @return? BADPAT      : "Uninitialized or invalid regex handle"
+ @return? OUT_OF_MEMORY : "Allocation failure during execution"
  @return "A slice of matches."
 *>
 fn Match[]? Regex.exec(&self, Allocator allocator, String str, sz max_captures = 0, ExecFlags eflags = {})
@@ -125,7 +128,7 @@ fn Match[]? Regex.exec(&self, Allocator allocator, String str, sz max_captures =
 	}
 
 	RegMatch[] matches = mem::talloc_array(RegMatch, max_captures);
-	re_exec(self, str, max_captures, matches, eflags)!;
+	re_exec(self, str, max_captures, matches, eflags, null)!;
 
 	Match[] res = alloc::new_array_try(allocator, Match, max_captures)!;
 
@@ -150,14 +153,28 @@ fn Match[]? Regex.texec(&self, String str, sz max_captures = 0, ExecFlags eflags
  @return "True if a match is found, false otherwise."
 *>
 fn bool Regex.matches(&self, String str, ExecFlags eflags = {}) =>
-	@ok(re_exec(self, str, 0, null, eflags));
+	@ok(re_exec(self, str, 0, null, eflags, null));
 
+<*
+ Find all non-overlapping matches of the regex in the string.
 
-<* Find all non-overlapping matches of the regex in the string. *>
+ @param allocator : "Allocator used to persist the returned matches."
+ @param str       : "The input string to search."
+ @param eflags    : "Execute flags."
+ @return? BADPAT  : "Uninitialized or invalid regex handle"
+ @return? OUT_OF_MEMORY : "Allocation failure"
+ @return "A slice of matches."
+*>
 fn Match[]? Regex.find_all(&self, Allocator allocator, String str, ExecFlags eflags = {})
 {
+	Tnfa* tnfa = self.__tnfa;
+	if (!tnfa) return BADPAT~;
+
 	List{Match} list;
 	list.init(allocator);
+
+	RegexScratchpad scratch;
+	scratch_init(&scratch, (sz)tnfa.num_states, (sz)tnfa.num_tags);
 
 	int offset = 0;
 	ExecFlags current_flags = eflags;
@@ -165,7 +182,7 @@ fn Match[]? Regex.find_all(&self, Allocator allocator, String str, ExecFlags efl
 	{
 		String sub = str[offset ..];
 		RegMatch match;
-		if (catch err = re_exec(self, sub, 1, &match, current_flags))
+		if (catch err = re_exec(self, sub, 1, &match, current_flags, &scratch))
 		{
 			if (err == NOMATCH) break;
 			list.free();
@@ -182,7 +199,7 @@ fn Match[]? Regex.find_all(&self, Allocator allocator, String str, ExecFlags efl
 			int len = 0;
 			if (offset < str.len)
 			{
-				decode_utf8(&str[offset], &len);
+				decode_utf8_slice(str, (sz)offset, &len);
 			}
 			step = (len > 0) ? len : 1;
 		}
@@ -264,7 +281,7 @@ alias ReplaceFn = fn String(Match match);
 
  @param allocator   : "Allocator used to persist the resulting string."
  @param str         : "The input string to search and modify."
- @param func        : "Callback function of type `fn String(Match)` called for each match to return the replacement `String`."
+ @param func        : "Callback function called for each match to return the replacement String."
  @param replace_all : "If true (default), replaces all matches. If false, replaces only the first match."
  @param eflags      : "Execute flags."
  @return "The modified string."
@@ -280,16 +297,18 @@ fn String? Regex.treplace_fn(&self, String str, ReplaceFn func, bool replace_all
  Find the first match of the pattern in the string.
 
  Returns a single `Match` struct for the top-level match.
- Throws `NOMATCH` if no match is found.
 
  @param str    : "The input string to search."
  @param eflags : "Execute flags."
- @return "A single `Match` struct for the top-level match, or `NOMATCH` if no match is found."
+ @return? NOMATCH : "No match found"
+ @return? BADPAT  : "Uninitialized or invalid regex handle"
+ @return? OUT_OF_MEMORY : "Allocation failure"
+ @return "A single `Match` struct for the top-level match."
 *>
 fn Match? Regex.first_match(&self, String str, ExecFlags eflags = {})
 {
 	RegMatch match;
-	re_exec(self, str, 1, &match, eflags)!;
+	re_exec(self, str, 1, &match, eflags, null)!;
 	if (match.rm_so == -1 || match.rm_eo == -1) return NOMATCH~;
 	return _build_match(str, match);
 }
@@ -326,7 +345,18 @@ fn String escape(Allocator allocator, String pattern)
 <* Temporary-allocating variant of `escape`. *>
 fn String tescape(String pattern) @inline => escape(tmem, pattern);
 
-<* Split the string around matches of the pattern. *>
+<*
+ Split the string around matches of the pattern.
+
+ @param allocator  : "Allocator used to allocate the result array."
+ @param str        : "The input string to split."
+ @param max        : "Maximum number of parts (0 means unlimited)."
+ @param skip_empty : "If true, empty string parts are omitted."
+ @param eflags     : "Execute flags."
+ @return? BADPAT   : "Uninitialized or invalid regex handle"
+ @return? OUT_OF_MEMORY : "Allocation failure"
+ @return "An array of split string parts."
+*>
 fn String[]? Regex.split(&self, Allocator allocator, String str, sz max = 0, bool skip_empty = false, ExecFlags eflags = {})
 {
 	Match[] matches = self.find_all(allocator, str, eflags)!;
@@ -414,7 +444,7 @@ fn Match _build_match(String str, RegMatch match, RegOff offset = 0) @private @i
 	String view = "";
 	RegOff so = match.rm_so;
 	RegOff eo = match.rm_eo;
-	if (so >= 0 && eo >= 0)
+	if (so >= 0 && eo >= 0 && so <= eo && (sz)eo <= str.len)
 	{
 		view = str[so : (eo - so)];
 	}
@@ -468,9 +498,47 @@ const int ASSERT_BACKREF        @private = 256;
 const int TRE_TAG_MINIMIZE @private = 0;
 const int TRE_TAG_MAXIMIZE @private = 1;
 
+const int COPY_REMOVE_TAGS        @private = 1;
+const int COPY_MAXIMIZE_FIRST_TAG @private = 2;
+
 // ============================================================
-//  Internal: TNFA structures
+//  Internal: Scratchpad & TNFA structures
 // ============================================================
+
+struct RegexScratchpad @local
+{
+	TreTnfaReach[] reach;
+	TreTnfaReach[] reach_next;
+	TreReachPos[]  reach_pos;
+	TagId[]        tags_block;
+	TagId[]        tmp_tags;
+	TagId[]        match_tags;
+	sz             capacity_states;
+	sz             capacity_tags;
+}
+
+fn void scratch_init(RegexScratchpad* scratch, sz num_states, sz num_tags) @local
+{
+	scratch.capacity_states = num_states;
+	scratch.capacity_tags = num_tags;
+
+	scratch.reach = alloc::new_array(tmem, TreTnfaReach, num_states + 1);
+	scratch.reach_next = alloc::new_array(tmem, TreTnfaReach, num_states + 1);
+	scratch.reach_pos = alloc::alloc_array(tmem, TreReachPos, num_states);
+
+	if (num_tags > 0)
+	{
+		scratch.tmp_tags = alloc::new_array(tmem, TagId, num_tags);
+		scratch.match_tags = alloc::new_array(tmem, TagId, num_tags);
+		scratch.tags_block = alloc::new_array(tmem, TagId, num_states * 2 * num_tags);
+	}
+	else
+	{
+		scratch.tmp_tags = {};
+		scratch.match_tags = {};
+		scratch.tags_block = {};
+	}
+}
 
 typedef StateId @local @constinit = inline int;
 typedef TagId @local @constinit = inline int;
@@ -483,7 +551,7 @@ struct TnfaTransition @local
 	StateId          state_id;
 	TagId*           tags;
 	int              assertions;
-	int              u_class_or_backref;  // wctype_t or backref index
+	int              u_class_or_backref;
 	int*             neg_classes;
 }
 
@@ -512,7 +580,7 @@ struct Tnfa @local
 	int             num_states;
 	CompileFlags    cflags;
 	bool            have_backrefs;
-	Allocator       allocator;     // The allocator used to persist the compiled TNFA structures
+	Allocator       allocator;
 }
 
 // ============================================================
@@ -546,7 +614,6 @@ struct TreReachPos @local
 struct TreBacktrackItem @local
 {
 	RegOff          pos;
-	char*           str_byte;
 	TnfaTransition* state;
 	StateId         state_id;
 	int             next_c;
@@ -614,7 +681,6 @@ struct Iteration @local
 }
 
 typedef Union @local = Catenation;
-
 
 // ============================================================
 //  Internal: Stack
@@ -781,7 +847,7 @@ struct ParseCtx @local
 }
 
 // ============================================================
-//  Character class helpers (portable, ASCII-only for now)
+//  Character class helpers
 // ============================================================
 
 fn bool is_word_char(int c) @local => c == '_' || (c >= 0 && c <= 255 && ascii::@is_alnum(c));
@@ -810,7 +876,6 @@ fn int tre_ctype(ZString name) @local
 	if (name.eq("xdigit")) return 12;
 	return 0;
 }
-
 
 fn bool tre_isctype(int c, int class) @local
 {
@@ -853,7 +918,7 @@ fn bool tre_neg_char_classes_match(int* classes, int wc, bool icase) @local
 }
 
 // ============================================================
-//  Macro expansions: \w \s \d etc. (matches musl)
+//  Macro expansions: \w \s \d etc.
 // ============================================================
 
 fn ZString tre_expand_macro(char c) @local
@@ -882,7 +947,6 @@ fn ZString tre_expand_macro(char c) @local
 
 fn int add_icase_literals(Literal* ls, int* ls_len, int min, int max) @local
 {
-	// Overlap with lowercase alphabet ['a', 'z'] --> map to uppercase
 	int start_lower = (min > 'a') ? min : 'a';
 	int end_lower = (max < 'z') ? max : 'z';
 	if (start_lower <= end_lower)
@@ -898,7 +962,6 @@ fn int add_icase_literals(Literal* ls, int* ls_len, int min, int max) @local
 		(*ls_len)++;
 	}
 
-	// Overlap with uppercase alphabet ['A', 'Z'] --> map to lowercase
 	int start_upper = (min > 'A') ? min : 'A';
 	int end_upper = (max < 'Z') ? max : 'Z';
 	if (start_upper <= end_upper)
@@ -917,11 +980,9 @@ fn int add_icase_literals(Literal* ls, int* ls_len, int min, int max) @local
 	return 0;
 }
 
-// parse_bracket: s points to the char AFTER '['.
-// Uses a fixed-size local buffer for class name lookup (matching musl).
+// s points to the first character after opening '['.
 fn void? parse_bracket(ParseCtx* ctx, char* s) @local
 {
-	char* start = s;
 	bool negate = (*s == '^');
 	if (negate) { s++; }
 	char* contents_start = s;
@@ -948,7 +1009,6 @@ fn void? parse_bracket(ParseCtx* ctx, char* s) @local
 
 		if (*s == '[' && s[1] == ':')
 		{
-			// Character class [[:name:]], copy name to null-terminated buffer like musl.
 			s += 2;
 			char[32] tmp;
 			int len_name = 0;
@@ -957,7 +1017,7 @@ fn void? parse_bracket(ParseCtx* ctx, char* s) @local
 			tmp[len_name] = 0;
 			class = tre_ctype((ZString)&tmp[0]);
 			if (!class) return ECTYPE~;
-			s += 2; // skip :]
+			s += 2;
 			min = 0;
 			max = CHAR_MAX_CODEPOINT;
 		}
@@ -1002,7 +1062,6 @@ fn void? parse_bracket(ParseCtx* ctx, char* s) @local
 	int[] nc = {};
 	if (negate)
 	{
-		// With REG_NEWLINE, newlines are excluded from negated brackets.
 		if (ctx.cflags & NEWLINE)
 		{
 			if (ls_len >= 256) return OUT_OF_MEMORY~;
@@ -1015,7 +1074,6 @@ fn void? parse_bracket(ParseCtx* ctx, char* s) @local
 			};
 			ls_len++;
 		}
-		// Sort by code_min.
 		for (int i = 0; i < ls_len - 1; i++)
 		{
 			for (int j = i + 1; j < ls_len; j++)
@@ -1028,7 +1086,6 @@ fn void? parse_bracket(ParseCtx* ctx, char* s) @local
 				}
 			}
 		}
-		// Sentinel.
 		if (ls_len >= 256) return OUT_OF_MEMORY~;
 		ls[ls_len] = {
 			.code_min = CHAR_MAX_CODEPOINT + 1,
@@ -1038,7 +1095,6 @@ fn void? parse_bracket(ParseCtx* ctx, char* s) @local
 			.position = -1
 		};
 		ls_len++;
-		// Negated classes array.
 		if (neg_len > 0)
 		{
 			nc = alloc::new_array_try(ctx.mem, int, (sz)(neg_len + 1))!;
@@ -1086,7 +1142,6 @@ fn void? parse_bracket(ParseCtx* ctx, char* s) @local
 	ctx.node = node;
 }
 
-// Helper: create a literal node with REG_ICASE handling (musl parse_literal: label).
 fn AstNode*? make_literal(ParseCtx* ctx, int wc) @local
 {
 	char c = (char)wc;
@@ -1103,9 +1158,7 @@ fn AstNode*? make_literal(ParseCtx* ctx, int wc) @local
 	return ast_new_literal(ctx.mem, wc, wc, ctx.position);
 }
 
-// parse_atom: s is the current position in the pattern.
-// Updates ctx.cursor to point after the atom on success.
-// musl's parse_atom.
+// s is current position in pattern; updates ctx.cursor after consuming an atom.
 fn void? parse_atom(ParseCtx* ctx, char* s) @local
 {
 	bool ere = (bool)(ctx.cflags & EXTENDED);
@@ -1144,7 +1197,6 @@ fn void? parse_atom(ParseCtx* ctx, char* s) @local
 					ctx.cursor = nx + 1;
 				case 'x':
 				{
-					// \xHH or \x{HHHH}
 					char* p2 = nx + 1;
 					int v = 0;
 					int len = 2;
@@ -1169,7 +1221,6 @@ fn void? parse_atom(ParseCtx* ctx, char* s) @local
 				case '?':
 					if (!ere)
 					{
-						// \{, \+, \? in BRE after an empty expression is an error.
 						return BADRPT~;
 					}
 					node = make_literal(ctx, *nx)!;
@@ -1178,8 +1229,6 @@ fn void? parse_atom(ParseCtx* ctx, char* s) @local
 				case '|':
 					if (!ere)
 					{
-						// \| in BRE: emit EMPTY and leave ctx.cursor pointing at '\' so
-						// tre_parse's alternation check sees \| and handles it.
 						node = ast_new_literal(ctx.mem, EMPTY, -1, -1)!;
 						ctx.cursor = s;
 					}
@@ -1192,7 +1241,6 @@ fn void? parse_atom(ParseCtx* ctx, char* s) @local
 				default:
 					if (!ere && *nx >= '1' && *nx <= '9')
 					{
-						// BRE back reference \1-\9.
 						int val = *nx - '0';
 						if (!(ctx.backref_ok & (1 << val))) return ESUBREG~;
 						node = ast_new_literal(ctx.mem, BACKREF, val, ctx.position++)!;
@@ -1201,8 +1249,6 @@ fn void? parse_atom(ParseCtx* ctx, char* s) @local
 					}
 					else
 					{
-						// Unknown escape, treat as literal (\| in ERE, \( in BRE opening a group
-						// is handled by tre_parse, so we'd never see it here).
 						int len = 0;
 						int wc = decode_utf8(nx, &len);
 						node = make_literal(ctx, wc)!;
@@ -1215,7 +1261,6 @@ fn void? parse_atom(ParseCtx* ctx, char* s) @local
 		case '.':
 			if (ctx.cflags & NEWLINE)
 			{
-				// REG_NEWLINE: '.' matches anything except '\n'.
 				AstNode* t1 = ast_new_literal(ctx.mem, 0, '\n' - 1, ctx.position++)!;
 				AstNode* t2 = ast_new_literal(ctx.mem, '\n' + 1, CHAR_MAX_CODEPOINT, ctx.position++)!;
 				node = ast_new_union(ctx.mem, t1, t2)!;
@@ -1227,7 +1272,6 @@ fn void? parse_atom(ParseCtx* ctx, char* s) @local
 			ctx.cursor = s + 1;
 
 		case '^':
-			// In BRE, '^' is only special at the very start of the expression/branch.
 			if (!ere && s != ctx.start)
 			{
 				node = make_literal(ctx, '^')!;
@@ -1240,7 +1284,6 @@ fn void? parse_atom(ParseCtx* ctx, char* s) @local
 			ctx.cursor = s + 1;
 
 		case '$':
-			// In BRE, '$' is only special at end of subexpr (before \) or \| or end).
 			if (!ere && s[1] && (s[1] != '\\' || (s[2] != ')' && s[2] != '|')))
 			{
 				node = make_literal(ctx, '$')!;
@@ -1252,8 +1295,6 @@ fn void? parse_atom(ParseCtx* ctx, char* s) @local
 			}
 			ctx.cursor = s + 1;
 
-		// *, {, +, ? in ERE at start of expression: error.
-		// In BRE: not repetition operators at atom level, treat as literal.
 		case '*':
 		case '{':
 		case '+':
@@ -1263,7 +1304,6 @@ fn void? parse_atom(ParseCtx* ctx, char* s) @local
 			ctx.position++;
 			ctx.cursor = s + 1;
 
-		// '|' in BRE: literal. '|' in ERE or NUL: EMPTY (tre_parse handles alternation).
 		case '|':
 			if (!ere)
 			{
@@ -1282,7 +1322,6 @@ fn void? parse_atom(ParseCtx* ctx, char* s) @local
 			ctx.cursor = s;
 
 		default:
-			// Default: normal literal character.
 			int len = 0;
 			int wc = decode_utf8(s, &len);
 			node = make_literal(ctx, wc)!;
@@ -1305,8 +1344,7 @@ fn void? marksub(ParseCtx* ctx, AstNode* node, int subid) @local
 	node.submatch_id = subid;
 	node.num_submatches++;
 	ctx.node = node;
-	// POSIX BRE backreferences are \1–\9 only, so only groups 1–9 can ever be
-	// referenced; tracking groups >= 10 in backref_ok would never be checked.
+	// POSIX BRE backreferences only support \1-\9; tracking >= 10 is unnecessary.
 	if (subid < 10) ctx.backref_ok |= 1 << subid;
 }
 
@@ -1345,8 +1383,7 @@ fn char*? parse_dup(char* s, bool ere, int* pmin, int* pmax) @local
 	return s;
 }
 
-// tre_parse: flat iterative main parse loop, matching musl's tre_parse exactly.
-// Uses ctx.stack for group state. No depth parameter, depth is tracked locally.
+// Iterative main parse loop; depth tracks group nesting via ctx.stack.
 fn void? tre_parse(ParseCtx* ctx) @local
 {
 	bool ere = (bool)(ctx.cflags & EXTENDED);
@@ -1357,38 +1394,31 @@ fn void? tre_parse(ParseCtx* ctx) @local
 	int depth = 0;
 	Stack* stack = ctx.stack;
 
-	// Push the initial subid=0 for the implicit outermost submatch.
 	stack_push_int(stack, subid++)!;
-
-	// have_atom: skip parse_atom and go straight to quantifiers.
-	// Used after closing a group (equivalent to musl's goto parse_iter).
+	// have_atom skips parse_atom to enter quantifier parsing directly after a closed group.
 	bool have_atom = false;
 
 	for (;;)
 	{
 		if (!have_atom)
 		{
-			// Group open: ( in ERE or \( in BRE.
 			if ((!ere && *s == '\\' && s[1] == '(') || (ere && *s == '('))
 			{
 				stack_push_ptr(stack, nunion)!;
 				stack_push_ptr(stack, nbranch)!;
 				stack_push_int(stack, subid++)!;
 				s++;
-				if (!ere) s++; // skip second char of \(
+				if (!ere) s++;
 				depth++;
 				nbranch = nunion = null;
 				ctx.start = s;
 				continue;
 			}
 
-			// Group close: ) in ERE (depth > 0) or \) in BRE.
-			// Emit EMPTY so the closing delimiter is handled below.
 			if ((!ere && *s == '\\' && s[1] == ')') || (ere && *s == ')' && depth > 0))
 			{
 				ctx.node = ast_new_literal(ctx.mem, EMPTY, -1, -1)!;
-				// s is NOT advanced; the closing delimiter is consumed in the
-				// alternation section below.
+				// Closing delimiter is not advanced here; consumed in alternation/closing below.
 			}
 			else
 			{
@@ -1398,7 +1428,6 @@ fn void? tre_parse(ParseCtx* ctx) @local
 		}
 		have_atom = false;
 
-		// Quantifier loop: apply *, +, ?, {m,n} to ctx.node.
 		for (;;)
 		{
 			int min, max;
@@ -1410,7 +1439,6 @@ fn void? tre_parse(ParseCtx* ctx) @local
 			if (*s == '\\' && ere) break;
 			if (*s == '\\' && s[1] != '+' && s[1] != '?' && s[1] != '{') break;
 			if (*s == '\\') s++;
-			// Handle ^* at start of BRE.
 			if (!ere && s == ctx.start + 1 && s[-1] == '^') break;
 
 			if (*s == '{')
@@ -1434,10 +1462,8 @@ fn void? tre_parse(ParseCtx* ctx) @local
 			}
 		}
 
-		// Catenate the atom/iteration onto the current branch.
 		nbranch = ast_new_catenation(ctx.mem, nbranch, ctx.node)!;
 
-		// Check for alternation, group close, or end of pattern.
 		if ((ere && *s == '|') ||
 			(ere && *s == ')' && depth > 0) ||
 			(!ere && *s == '\\' && s[1] == ')') ||
@@ -1450,13 +1476,11 @@ fn void? tre_parse(ParseCtx* ctx) @local
 
 			if (c == '\\' && s[1] == '|')
 			{
-				// BRE \| extension: alternation.
 				s += 2;
 				ctx.start = s;
 			}
 			else if (c == '|')
 			{
-				// ERE alternation.
 				s++;
 				ctx.start = s;
 			}
@@ -1477,17 +1501,14 @@ fn void? tre_parse(ParseCtx* ctx) @local
 
 				if (!c && depth < 0)
 				{
-					// End of pattern at outermost level: success.
 					ctx.submatch_id = subid;
 					ctx.cursor = s;
 					return;
 				}
 				if (!c || depth < 0) return EPAREN~;
 
-				// Restore outer group state.
 				nbranch = stack_pop_ptr(stack);
 				nunion = stack_pop_ptr(stack);
-				// Apply quantifiers to the closed group (musl: goto parse_iter).
 				have_atom = true;
 			}
 		}
@@ -1533,7 +1554,7 @@ fn void tre_purge_regset(int* regset, Tnfa* tnfa, TagId tag) @local
 	regset[0] = -1;
 }
 
-constset AddTagsSymbol : inline int @local
+constdef AddTagsSymbol : inline int @local
 {
 	RECURSE,
 	AFTER_ITERATION,
@@ -1542,12 +1563,6 @@ constset AddTagsSymbol : inline int @local
 	AFTER_CAT_LEFT,
 	AFTER_CAT_RIGHT,
 	SET_SUBMATCH_END
-}
-
-struct TreTagStates @local
-{
-	TagId tag;
-	TagId next_tag;
 }
 
 fn void tre_add_minimal_tag(Tnfa* tnfa, TagId tag, int* minimal_tag, int* num_minimals) @local
@@ -1970,8 +1985,7 @@ fn PosAndTags*? tre_set_union(Allocator arena, PosAndTags* set1, PosAndTags* set
 	return new_set;
 }
 
-
-constset NflSymbol : inline int @local
+constdef NflSymbol : inline int @local
 {
 	RECURSE,
 	POST_UNION,
@@ -2216,7 +2230,6 @@ fn void? tre_make_trans(Allocator allocator, PosAndTags* p1, PosAndTags* p2, Tnf
 					trans.assertions |= ASSERT_CHAR_CLASS_NEG;
 				}
 
-				// Tag merging
 				int num_p1_tags = 0;
 				if (p1.tags) while (p1.tags[num_p1_tags] >= 0) num_p1_tags++;
 				int num_p2_tags = 0;
@@ -2275,7 +2288,6 @@ fn void? tre_make_trans(Allocator allocator, PosAndTags* p1, PosAndTags* p2, Tnf
 			p1++;
 		}
 	}
-
 }
 
 fn void? tre_ast_to_tnfa(Allocator allocator, AstNode* node, TnfaTransition* transitions, int* counts, int* offs) @local
@@ -2308,12 +2320,9 @@ fn void? tre_ast_to_tnfa(Allocator allocator, AstNode* node, TnfaTransition* tra
 		}
 
 		case LITERAL:
-			// do nothing, matching musl regcomp.c
+			break;
 	}
 }
-
-const int COPY_REMOVE_TAGS        @private = 1;
-const int COPY_MAXIMIZE_FIRST_TAG @private = 2;
 
 enum CopyastSymbol @local
 {
@@ -2326,6 +2335,7 @@ enum ExpandAstSymbol @local
 	EXPAND_RECURSE,
 	EXPAND_AFTER_ITER
 }
+
 fn bool is_special(Literal* lit) @local => lit.code_min < 0;
 fn bool is_backref(Literal* lit) @local => lit.code_min == BACKREF;
 fn bool is_tag(Literal* lit) @local => lit.code_min == TAG;
@@ -2506,7 +2516,7 @@ fn void? tre_expand_ast(Allocator allocator, Stack* stack, AstNode* ast, StateId
 					AstNode* seq2 = null;
 					StateId pos_add_save = pos_add;
 
-					// Build the mandatory sequence (copies of the iteration argument)
+					// Mandatory sequence copies for repetitions with min > 1.
 					for (int j = 0; j < iter.min; j++)
 					{
 						AstNode* copy = null;
@@ -2516,7 +2526,7 @@ fn void? tre_expand_ast(Allocator allocator, Stack* stack, AstNode* ast, StateId
 						seq1 = seq1 ? ast_new_catenation(allocator, seq1, copy)! : copy;
 					}
 
-					// Build the optional / trailing sequence
+					// Optional/trailing sequence copies for repetitions with max > min.
 					if (iter.max == -1)
 					{
 						pos_add_save = pos_add;
@@ -2561,9 +2571,8 @@ fn void? tre_expand_ast(Allocator allocator, Stack* stack, AstNode* ast, StateId
 	if (max_pos > *position) *position = max_pos;
 }
 
-
 <*
- @require !regex.contains_char('\0') : "Regex pattern must not contain embedded null bytes; the pattern compiler is null-terminated internally"
+ @require !regex.contains_char('\0') : "Regex pattern must not contain embedded null bytes"
 *>
 fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator allocator = mem) @private
 {
@@ -2580,20 +2589,17 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 			.stack    = stack,
 			.start    = regex_nt,
 			.cflags   = cflags,
-			.max_backref = -1, // sentinel: -1 = no backrefs found; used by have_backrefs check
+			.max_backref = -1,
 		};
 
 		tre_parse(&ctx)!;
 
-		// Tagging Pass 1: Count
 		tre_add_tags(tmem, stack, ctx.node, null)!;
 
 		Tnfa* tnfa = alloc::new_try(allocator, Tnfa)!;
 		tnfa.allocator = allocator;
-		tnfa.num_submatches = ctx.submatch_id; // subid is total groups including group 0
+		tnfa.num_submatches = ctx.submatch_id;
 
-		// ON FAILURE CLEANUP If compilation fails
-		// If successful, we set success = true at the end to skip cleanup.
 		bool success = false;
 		defer {
 			if (!success) {
@@ -2603,7 +2609,6 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 		}
 
 		tnfa.submatch_data = alloc::new_array_try(allocator, SubmatchData, tnfa.num_submatches)!;
-
 		tnfa.num_tags = ctx.node.num_tags;
 		tnfa.minimal_tags = alloc::new_array_try(allocator, int, (sz)(tnfa.num_tags * 2 + 1))!;
 
@@ -2614,22 +2619,15 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 		}
 		tnfa.end_tag = tnfa.num_tags;
 
-		// Tagging Pass 2: Set submatch tags and directions
 		tre_add_tags(tmem, stack, ctx.node, tnfa)!;
-
-		// Expand iteration/quantifier nodes.
 		tre_expand_ast(tmem, stack, ctx.node, &ctx.position, tnfa.tag_directions)!;
 
-		// Add dummy NUL literal for the final state (as in Musl regcomp.c:2804)
 		Literal* empty_lit = alloc::new_try(tmem, Literal, { .code_min = 0, .code_max = 0, .position = ctx.position++ })!;
-
 		AstNode* final_node = ast_new_node(tmem, LITERAL, empty_lit)!;
 		ctx.node = ast_new_catenation(tmem, ctx.node, final_node)!;
 
-		// Compute NFL (nullable, firstpos, lastpos)
 		tre_compute_nfl(tmem, stack, ctx.node)!;
 
-		// Build transition table
 		int num_states = ctx.position;
 		int[] counts = mem::temp_array(int, num_states);
 		int[] offs   = mem::temp_array(int, num_states);
@@ -2641,7 +2639,7 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 		{
 			offs[i] = total_trans;
 			total_trans += counts[i] + 1;
-			counts[i] = 0;  // reset for second pass
+			counts[i] = 0;
 		}
 
 		tnfa.transitions = alloc::new_array_try(allocator, TnfaTransition, total_trans)!;
@@ -2681,14 +2679,49 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 			tnfa.final = &tnfa.transitions[offs[ctx.node.lastpos[0].position]];
 		}
 
+		// Literal Prefix Optimization (only ASCII byte literals in range 1..127)
+		tnfa.first_char = -1;
+		if (!(cflags & ICASE) && tnfa.initial != null)
+		{
+			int candidate = -1;
+			bool valid = true;
+			for (TnfaTransition* ini = tnfa.initial; ini.state != null; ini++)
+			{
+				if (ini.assertions != 0) { valid = false; break; }
+				TnfaTransition* tr = ini.state;
+				if (tr == null || tr.state == null) { valid = false; break; }
+				for (TnfaTransition* t = tr; t.state != null; t++)
+				{
+					if (t.code_min != t.code_max || t.code_min <= 0 || t.code_min >= 128 || t.assertions != 0)
+					{
+						valid = false;
+						break;
+					}
+					if (candidate == -1)
+					{
+						candidate = t.code_min;
+					}
+					else if (candidate != t.code_min)
+					{
+						valid = false;
+						break;
+					}
+				}
+				if (!valid) break;
+			}
+			if (valid && candidate >= 0)
+			{
+				tnfa.first_char = candidate;
+			}
+		}
+
 		preg.re_nsub = ctx.submatch_id - 1;
 		preg.__tnfa = tnfa;
 
-		success = true; // Safely keeps the compiled TNFA alive on exit
+		success = true;
 		stack_destroy(stack);
 	};
 }
-
 
 fn bool check_assertions(int assertions, CompileFlags cflags, int prev_c, int next_c, RegOff pos, bool notbol, bool noteol) @local
 {
@@ -2739,15 +2772,34 @@ fn int decode_utf8(char* s, int* len) @private
 		return 0;
 	}
 	sz width = 4;
-
 	Char32? cp_opt = conv::utf8_to_char32(s, &width);
 
 	if (catch cp_opt)
 	{
-		// Fallback for invalid UTF-8 (e.g. raw Latin-1 bytes in POSIX tests or binary payloads)
-		// to match as raw bytes.
 		*len = 1;
-		return *s & 0xFF;
+		return (int)(*s & 0xFF);
+	}
+
+	*len = (int)width;
+	return (int)cp_opt;
+}
+
+fn int decode_utf8_slice(String str, sz offset, int* len) @local @inline
+{
+	if (offset >= str.len)
+	{
+		*len = 0;
+		return 0;
+	}
+	sz remain = str.len - offset;
+	sz width = (remain < 4) ? remain : 4;
+
+	Char32? cp_opt = conv::utf8_to_char32(&str[offset], &width);
+
+	if (catch cp_opt)
+	{
+		*len = 1;
+		return (int)str[offset];
 	}
 
 	*len = (int)width;
@@ -2816,7 +2868,7 @@ fn void tre_fill_pmatch(sz nmatch, RegMatch* pmatch, CompileFlags cflags, Tnfa* 
 	}
 }
 
-fn void? bt_stack_push(TreBacktrack** pstack, Tnfa* tnfa, RegOff pos, char* str_byte, TnfaTransition* trans, int next_c, TagId* tags) @local @inline
+fn void? bt_stack_push(TreBacktrack** pstack, Tnfa* tnfa, RegOff pos, TnfaTransition* trans, int next_c, TagId* tags) @local @inline
 {
 	TreBacktrack* stack = *pstack;
 	if (!stack.next)
@@ -2836,7 +2888,6 @@ fn void? bt_stack_push(TreBacktrack** pstack, Tnfa* tnfa, RegOff pos, char* str_
 
 	TreBacktrack* active = *pstack;
 	active.item.pos = pos;
-	active.item.str_byte = str_byte;
 	active.item.state = trans.state;
 	active.item.state_id = trans.state_id;
 	active.item.next_c = next_c;
@@ -2857,28 +2908,30 @@ fn void? bt_stack_push(TreBacktrack** pstack, Tnfa* tnfa, RegOff pos, char* str_
 	}
 }
 
-fn void get_next_wchar(int* prev_c, int* next_c, RegOff* pos, RegOff* pos_add_next, char** str_byte) @local @inline
+fn void get_next_wchar_slice(String str, int* prev_c, int* next_c, RegOff* pos, RegOff* pos_add_next) @local @inline
 {
 	*prev_c = *next_c;
 	*pos += *pos_add_next;
 	int len = 0;
-	*next_c = decode_utf8(*str_byte, &len);
-	if (len <= 0) { *pos_add_next = 1; }
-	else { *pos_add_next = len; }
-	*str_byte += *pos_add_next;
+	*next_c = decode_utf8_slice(str, (sz)*pos, &len);
+	if (len <= 0)
+	{
+		*pos_add_next = 1;
+	}
+	else
+	{
+		*pos_add_next = len;
+	}
 }
 
-fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, ZString string, TagId* match_tags, ExecFlags eflags, RegOff* match_end_ofs) @local
+fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, ExecFlags eflags, RegOff* match_end_ofs) @local
 {
 	int prev_c = 0;
 	int next_c = 0;
-	char* str_byte = string;
 	RegOff pos = 0;
 	RegOff pos_add_next = 1;
 
-
 	int next_c_start = 0;
-	char* str_byte_start = null;
 	RegOff pos_start = -1;
 
 	RegOff match_eo = -1;
@@ -2931,12 +2984,10 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, ZString string, TagId* match_tags, E
 				state = null;
 				pos = pos_start;
 
-				// Read next char and advance
-				get_next_wchar(&prev_c, &next_c, &pos, &pos_add_next, &str_byte);
+				get_next_wchar_slice(string, &prev_c, &next_c, &pos, &pos_add_next);
 
 				pos_start = pos;
 				next_c_start = next_c;
-				str_byte_start = str_byte;
 
 				TagId* next_tags = null;
 				for (TnfaTransition* trans_i = tnfa.initial; trans_i.state; trans_i++)
@@ -2953,7 +3004,7 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, ZString string, TagId* match_tags, E
 					}
 					else
 					{
-						bt_stack_push(&stack, tnfa, pos, str_byte, trans_i, next_c, tags)!;
+						bt_stack_push(&stack, tnfa, pos, trans_i, next_c, tags)!;
 					}
 				}
 
@@ -3002,9 +3053,9 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, ZString string, TagId* match_tags, E
 					eo = pmatch[bt].rm_eo;
 					bt_len = eo - so;
 
-					if (so >= 0 && eo >= 0)
+					if (so >= 0 && eo >= 0 && (sz)(pos + bt_len) <= string.len)
 					{
-						result = mem::equals(string + so, string + pos, bt_len) ? 0 : 1;
+						result = mem::equals(&string[so], &string[pos], (sz)bt_len) ? 0 : 1;
 					}
 					else
 					{
@@ -3021,13 +3072,10 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, ZString string, TagId* match_tags, E
 						}
 						states_seen[trans_i.state_id] = empty_br_match;
 
-						// Advance position cleanly past backreference and decode the next character
 						pos += bt_len;
 						pos_add_next = 0;
-						str_byte = string + pos;
 
-						// Read next char and advance
-						get_next_wchar(&prev_c, &next_c, &pos, &pos_add_next, &str_byte);
+						get_next_wchar_slice(string, &prev_c, &next_c, &pos, &pos_add_next);
 					}
 					else
 					{
@@ -3037,13 +3085,12 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, ZString string, TagId* match_tags, E
 				}
 				else
 				{
-					if (next_c == 0)
+					if (next_c == 0 && (sz)pos >= string.len)
 					{
 						mstate = M_BACKTRACK;
 						break;
 					}
-					// Read next char and advance
-					get_next_wchar(&prev_c, &next_c, &pos, &pos_add_next, &str_byte);
+					get_next_wchar_slice(string, &prev_c, &next_c, &pos, &pos_add_next);
 				}
 
 				TnfaTransition* next_state = null;
@@ -3065,7 +3112,7 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, ZString string, TagId* match_tags, E
 						}
 						else
 						{
-							bt_stack_push(&stack, tnfa, pos, str_byte, trans_i, next_c, tags)!;
+							bt_stack_push(&stack, tnfa, pos, trans_i, next_c, tags)!;
 						}
 					}
 				}
@@ -3096,9 +3143,7 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, ZString string, TagId* match_tags, E
 					{
 						states_seen[stack.item.state_id] = 0;
 					}
-					// BT_STACK_POP inline
 					pos = stack.item.pos;
-					str_byte = stack.item.str_byte;
 					state = stack.item.state;
 					next_c = stack.item.next_c;
 					for (int i = 0; i < tnfa.num_tags; i++)
@@ -3110,10 +3155,9 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, ZString string, TagId* match_tags, E
 				}
 				else if (match_eo < 0)
 				{
-					if (next_c == 0) { mstate = M_EXIT; }
+					if (next_c == 0 && (sz)pos >= string.len) { mstate = M_EXIT; }
 					else
 					{
-						str_byte = str_byte_start;
 						next_c = next_c_start;
 						mstate = M_RETRY;
 					}
@@ -3133,58 +3177,111 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, ZString string, TagId* match_tags, E
 	if (match_eo < 0) return NOMATCH~;
 }
 
-fn void? tre_tnfa_run_parallel(Tnfa* tnfa, ZString string, TagId* match_tags, ExecFlags eflags, RegOff* match_end_ofs) @local
+fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, TagId* match_tags, ExecFlags eflags, RegOff* match_end_ofs, RegexScratchpad* scratch) @local
 {
 	int prev_c = 0;
 	int next_c = 0;
 	int next_len = 0;
-	char* str_ptr = string;
 
-	// Set up manual UTF-8 decoding to track consistent raw byte offsets
-	next_c = decode_utf8(str_ptr, &next_len);
-	str_ptr += next_len;
+	next_c = decode_utf8_slice(string, 0, &next_len);
 
 	RegOff pos = 0;
+	sz str_len = string.len;
 	bool notbol = (bool)(eflags & NOTBOL);
 	bool noteol = (bool)(eflags & NOTEOL);
 	int num_tags = (match_tags != null) ? tnfa.num_tags : 0;
 	int num_states = tnfa.num_states;
 
-	// Allocate all temporary tables cleanly on tmem
 	TagId* tmp_tags = null;
-	if (num_tags > 0)
-	{
-		tmp_tags = alloc::new_array_try(tmem, TagId, num_tags)!;
-	}
+	TreTnfaReach* reach_next = null;
+	TreTnfaReach* reach = null;
+	TreReachPos* reach_pos = null;
 
-	TreTnfaReach* reach_next = alloc::new_array_try(tmem, TreTnfaReach, (sz)(num_states + 1))!;
-	TreTnfaReach* reach = alloc::new_array_try(tmem, TreTnfaReach, (sz)(num_states + 1))!;
-	TreReachPos* reach_pos = alloc::alloc_array_try(tmem, TreReachPos, num_states)!;
-
-	// Allocate a single flat block for all tags to maximize spatial locality
-	if (num_tags > 0)
+	if (scratch && scratch.capacity_states >= (sz)num_states && (num_tags == 0 || scratch.capacity_tags >= (sz)num_tags))
 	{
-		TagId* tags_block = alloc::new_array_try(tmem, TagId, (sz)(num_states * 2 * num_tags))!;
-		for (int i = 0; i < num_states; i++)
+		reach_next = scratch.reach_next.ptr;
+		reach = scratch.reach.ptr;
+		reach_pos = scratch.reach_pos.ptr;
+		tmp_tags = scratch.tmp_tags.ptr;
+
+		if (num_tags > 0)
 		{
-			reach[i].tags = &tags_block[i * num_tags];
-			reach_next[i].tags = &tags_block[(num_states + i) * num_tags];
-			reach_pos[i].pos = -1;
+			TagId* tags_block = scratch.tags_block.ptr;
+			for (int i = 0; i < num_states; i++)
+			{
+				reach[i].tags = &tags_block[i * num_tags];
+				reach_next[i].tags = &tags_block[(num_states + i) * num_tags];
+				reach_pos[i].pos = -1;
+			}
+		}
+		else
+		{
+			for (int i = 0; i < num_states; i++)
+			{
+				reach_pos[i].pos = -1;
+			}
 		}
 	}
 	else
 	{
-		for (int i = 0; i < num_states; i++)
+		if (num_tags > 0)
 		{
-			reach_pos[i].pos = -1;
+			tmp_tags = alloc::new_array_try(tmem, TagId, num_tags)!;
+		}
+
+		reach_next = alloc::new_array_try(tmem, TreTnfaReach, (sz)(num_states + 1))!;
+		reach = alloc::new_array_try(tmem, TreTnfaReach, (sz)(num_states + 1))!;
+		reach_pos = alloc::alloc_array_try(tmem, TreReachPos, num_states)!;
+
+		if (num_tags > 0)
+		{
+			TagId* tags_block = alloc::new_array_try(tmem, TagId, (sz)(num_states * 2 * num_tags))!;
+			for (int i = 0; i < num_states; i++)
+			{
+				reach[i].tags = &tags_block[i * num_tags];
+				reach_next[i].tags = &tags_block[(num_states + i) * num_tags];
+				reach_pos[i].pos = -1;
+			}
+		}
+		else
+		{
+			for (int i = 0; i < num_states; i++)
+			{
+				reach_pos[i].pos = -1;
+			}
 		}
 	}
 
 	RegOff match_eo = -1;
-
 	TreTnfaReach* reach_next_i = reach_next;
+
 	while (true)
 	{
+		// Literal prefix fast-path acceleration
+		if (match_eo == -1 && reach_next_i == reach_next && tnfa.first_char >= 0 && next_c != tnfa.first_char)
+		{
+			if ((sz)pos < str_len)
+			{
+				if (try skip = string[pos ..].index_of_char((char)tnfa.first_char))
+				{
+					if (skip > 0)
+					{
+						pos += (RegOff)skip;
+						prev_c = (int)string[pos - 1];
+						next_c = decode_utf8_slice(string, (sz)pos, &next_len);
+					}
+				}
+				else
+				{
+					break;
+				}
+			}
+			else
+			{
+				break;
+			}
+		}
+
 		// Add initial states
 		if (match_eo == -1)
 		{
@@ -3200,7 +3297,7 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, ZString string, TagId* match_tags, Ex
 					}
 
 					reach_next_i.state = trans_i.state;
-					reach_next_i.tags[0 : num_tags] = -1;
+					if (num_tags > 0) reach_next_i.tags[0 : num_tags] = -1;
 
 					int* tag_i = trans_i.tags;
 					if (tag_i)
@@ -3230,13 +3327,12 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, ZString string, TagId* match_tags, Ex
 			if (num_tags == 0 || reach_next_i == reach_next) break;
 		}
 
-		if (next_c == 0) break;
+		if (next_c == 0 && (sz)pos >= str_len) break;
 
-		// Move window forward by decoding next character once
+		// Move window forward
 		prev_c = next_c;
 		pos += next_len;
-		next_c = decode_utf8(str_ptr, &next_len);
-		str_ptr += next_len;
+		next_c = decode_utf8_slice(string, (sz)pos, &next_len);
 
 		// Swap reach
 		TreTnfaReach* tmp_reach = reach;
@@ -3316,25 +3412,24 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, ZString string, TagId* match_tags, Ex
 	if (match_eo < 0) return NOMATCH~;
 }
 
-<*
- @param [&in] preg
- @require nmatch >= 0
- @require !string.contains_char('\0') : "Search string must not contain embedded null bytes; the regex engine is null-terminated internally"
-*>
-fn void? re_exec(Regex* preg, String string, sz nmatch, RegMatch* pmatch, ExecFlags eflags) @private
+fn void? re_exec(Regex* preg, String string, sz nmatch, RegMatch* pmatch, ExecFlags eflags, RegexScratchpad* scratch) @private
 {
 	@pool()
 	{
 		Tnfa* tnfa = preg.__tnfa;
 		if (!tnfa) return BADPAT~;
 
-		// Ensure target string is null-terminated for backtrack and parallel execution
-		ZString string_nt = string.zstr_copy(tmem);
-
 		TagId* match_tags = null;
 		if (tnfa.num_tags > 0)
 		{
-			match_tags = mem::talloc_array(TagId, tnfa.num_tags);
+			if (scratch && scratch.match_tags.len >= (sz)tnfa.num_tags)
+			{
+				match_tags = scratch.match_tags.ptr;
+			}
+			else
+			{
+				match_tags = mem::talloc_array(TagId, tnfa.num_tags);
+			}
 			match_tags[0 : tnfa.num_tags] = -1;
 		}
 
@@ -3342,11 +3437,11 @@ fn void? re_exec(Regex* preg, String string, sz nmatch, RegMatch* pmatch, ExecFl
 
 		if (tnfa.have_backrefs)
 		{
-			tre_tnfa_run_backtrack(tnfa, string_nt, match_tags, eflags, &match_end_ofs)!;
+			tre_tnfa_run_backtrack(tnfa, string, match_tags, eflags, &match_end_ofs)!;
 		}
 		else
 		{
-			tre_tnfa_run_parallel(tnfa, string_nt, match_tags, eflags, &match_end_ofs)!;
+			tre_tnfa_run_parallel(tnfa, string, match_tags, eflags, &match_end_ofs, scratch)!;
 		}
 
 		if (pmatch && nmatch > 0)
@@ -3368,7 +3463,7 @@ fn void re_free(Regex* preg) @private
 		{
 			if (tnfa.transitions[i].state)
 			{
-				if (tnfa.transitions[i].tags)       alloc::free(allocator, tnfa.transitions[i].tags);
+				if (tnfa.transitions[i].tags)        alloc::free(allocator, tnfa.transitions[i].tags);
 				if (tnfa.transitions[i].neg_classes) alloc::free(allocator, tnfa.transitions[i].neg_classes);
 			}
 		}
