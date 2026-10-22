@@ -962,21 +962,12 @@ static void project_add_targets(const char *filename, Project *project, JSONObje
 	if (!expand_env_in_object(filename, NULL, project_data, &problem)) error_exit("%s", problem);
 	load_into_build_target((BuildParseContext) { .file = filename }, project_data, &default_target);
 	JSONObject *targets_json = json_map_get(project_data, "targets");
-	if (!targets_json)
-	{
-		error_exit("No targets found in project.");
-	}
-	if (targets_json->type != J_OBJECT)
-	{
-		error_exit("'targets' did not contain map of targets.");
-	}
+	if (!targets_json) error_exit("No targets found in project.");
+	if (targets_json->type != J_OBJECT) error_exit("'targets' did not contain map of targets.");
 	FOREACH_IDX(i, JSONObject *, object, targets_json->members)
 	{
 		const char *key = targets_json->keys[i];
-		if (object->type != J_OBJECT)
-		{
-			error_exit("Invalid data in target '%s'", key);
-		}
+		if (object->type != J_OBJECT) error_exit("Invalid data in target '%s'", key);
 		BuildParseContext context = { filename, key, false };
 		int type = get_valid_string_setting(context, object, "type", targets, 0, ELEMENTLEN(targets), "a target type like 'executable' or 'static-lib'");
 		if (type < 0) error_exit("Target %s did not contain 'type' key.", key);
