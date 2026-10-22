@@ -735,7 +735,7 @@ fn void? stack_push(Stack* s, StackItem value) @local
 	else
 	{
 		if (s.size >= s.max_size) return OUT_OF_MEMORY~;
-		int new_size = s.size + s.increment;
+		int new_size = s.size.overflow_add(s.increment) ?? s.max_size;
 		if (new_size > s.max_size) new_size = s.max_size;
 		StackItem[] nb = alloc::realloc_array_try(s.allocator, s.stack, StackItem, new_size)!;
 		s.stack = nb;
@@ -2370,7 +2370,7 @@ fn void? tre_copy_ast(Allocator allocator, Stack* stack, AstNode* ast, int flags
 						int max = lit.code_max;
 						if (!is_special(lit) || is_backref(lit))
 						{
-							pos += *pos_add;
+							pos = (StateId)(pos.overflow_add(*pos_add) ?? OUT_OF_MEMORY~!);
 							num_copied++;
 						}
 						else if (is_tag(lit) && (flags & COPY_REMOVE_TAGS) != 0)
@@ -2442,7 +2442,7 @@ fn void? tre_copy_ast(Allocator allocator, Stack* stack, AstNode* ast, int flags
 				}
 		}
 	}
-	*pos_add += num_copied;
+	*pos_add = (StateId)((*pos_add).overflow_add(num_copied) ?? OUT_OF_MEMORY~!);
 }
 
 fn void? tre_expand_ast(Allocator allocator, Stack* stack, AstNode* ast, StateId* position, int* tag_directions) @local
@@ -2471,7 +2471,7 @@ fn void? tre_expand_ast(Allocator allocator, Stack* stack, AstNode* ast, StateId
 						Literal* lit = node.obj;
 						if (!is_special(lit) || is_backref(lit))
 						{
-							lit.position += pos_add;
+							lit.position = (StateId)(lit.position.overflow_add(pos_add) ?? OUT_OF_MEMORY~!);
 							if (lit.position > max_pos) max_pos = lit.position;
 						}
 					}
@@ -2516,6 +2516,9 @@ fn void? tre_expand_ast(Allocator allocator, Stack* stack, AstNode* ast, StateId
 					AstNode* seq2 = null;
 					StateId pos_add_save = pos_add;
 
+					long total_copies = (long)iter.min + (long)(iter.max == -1 ? 1 : (iter.max > iter.min ? iter.max - iter.min : 0));
+					bool checked_capacity = false;
+
 					// Mandatory sequence copies for repetitions with min > 1.
 					for (int j = 0; j < iter.min; j++)
 					{
@@ -2524,6 +2527,13 @@ fn void? tre_expand_ast(Allocator allocator, Stack* stack, AstNode* ast, StateId
 						pos_add_save = pos_add;
 						tre_copy_ast(allocator, stack, iter.arg, flags, &pos_add, tag_directions, &copy, &max_pos)!;
 						seq1 = seq1 ? ast_new_catenation(allocator, seq1, copy)! : copy;
+
+						if (!checked_capacity)
+						{
+							checked_capacity = true;
+							long step = (long)(pos_add - pos_add_save);
+							if (step > 0 && (step * (total_copies - 1) + (long)pos_add) > (long)int::max) return OUT_OF_MEMORY~;
+						}
 					}
 
 					// Optional/trailing sequence copies for repetitions with max > min.
@@ -2543,6 +2553,13 @@ fn void? tre_expand_ast(Allocator allocator, Stack* stack, AstNode* ast, StateId
 							seq2 = seq2 ? ast_new_catenation(allocator, copy, seq2)! : copy;
 							AstNode* tmp = ast_new_literal(allocator, EMPTY, -1, -1)!;
 							seq2 = ast_new_union(allocator, tmp, seq2)!;
+
+							if (!checked_capacity)
+							{
+								checked_capacity = true;
+								long step = (long)(pos_add - pos_add_save);
+								if (step > 0 && (step * (total_copies - 1) + (long)pos_add) > (long)int::max) return OUT_OF_MEMORY~;
+							}
 						}
 					}
 
@@ -2562,12 +2579,12 @@ fn void? tre_expand_ast(Allocator allocator, Stack* stack, AstNode* ast, StateId
 				}
 
 				iter_depth--;
-				pos_add_total += pos_add - pos_add_last;
+				pos_add_total = (StateId)(pos_add_total.overflow_add(pos_add - pos_add_last) ?? OUT_OF_MEMORY~!);
 				if (iter_depth == 0) pos_add = pos_add_total;
 			}
 		}
 	}
-	*position += pos_add_total;
+	*position = (StateId)((*position).overflow_add(pos_add_total) ?? OUT_OF_MEMORY~!);
 	if (max_pos > *position) *position = max_pos;
 }
 
@@ -2578,9 +2595,12 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 {
 	@pool()
 	{
+		const int INPUT_LIMIT = 1024000;
+		if (regex.len >= INPUT_LIMIT) return OUT_OF_MEMORY~;
+
 		ZString regex_nt = regex.zstr_copy(tmem);
 
-		Stack* stack = stack_new(tmem, 512, 1024000, 128);
+		Stack* stack = stack_new(tmem, 512, 8 * INPUT_LIMIT, 128);
 		if (!stack) return OUT_OF_MEMORY~;
 		defer catch stack_destroy(stack);
 
@@ -2622,8 +2642,9 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 		tre_add_tags(tmem, stack, ctx.node, tnfa)!;
 		tre_expand_ast(tmem, stack, ctx.node, &ctx.position, tnfa.tag_directions)!;
 
-		Literal* empty_lit = alloc::new_try(tmem, Literal, { .code_min = 0, .code_max = 0, .position = ctx.position++ })!;
+		Literal* empty_lit = alloc::new_try(tmem, Literal, { .code_min = 0, .code_max = 0, .position = ctx.position })!;
 		AstNode* final_node = ast_new_node(tmem, LITERAL, empty_lit)!;
+		ctx.position = (StateId)(ctx.position.overflow_add(1) ?? OUT_OF_MEMORY~!);
 		ctx.node = ast_new_catenation(tmem, ctx.node, final_node)!;
 
 		tre_compute_nfl(tmem, stack, ctx.node)!;
@@ -2638,7 +2659,7 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 		for (int i = 0; i < num_states; i++)
 		{
 			offs[i] = total_trans;
-			total_trans += counts[i] + 1;
+			total_trans = total_trans.overflow_add(counts[i] + 1) ?? OUT_OF_MEMORY~!;
 			counts[i] = 0;
 		}
 
