@@ -1094,3 +1094,35 @@ fn void test_regex_memory_and_allocations() @test
 		test::eq(heap_tracker.allocated(), 0);
 	}
 }
+
+fn void test_cve_transition_overflow() @test @feat(SLOW_TESTS)
+{
+	// Strictly crosses int::max (2,162,389,970 transitions) with half the AST nodes.
+	test::@error(regex::compile(mem, "((a|b*){130,}){250,}", EXTENDED), regex::OUT_OF_MEMORY);
+}
+
+fn void test_cve_input_limit() @test
+{
+	// Verifies that patterns >= 1,024,000 bytes reject with OUT_OF_MEMORY.
+	char[] big_pat = mem::temp_array(char, 1024000);
+	big_pat[..] = 'a';
+	test::@error(regex::compile(mem, (String)big_pat, EXTENDED), regex::OUT_OF_MEMORY);
+}
+
+fn void test_cve_dense_alternations() @test
+{
+	// Verifies quadratic transition scaling compiles cleanly with repetition.
+	DString ds;
+	ds.init(tmem, 64);
+	ds.append("(");
+	for (int i = 0; i < 20; i++)
+	{
+		if (i > 0) ds.append_char('|');
+		ds.append_char('a');
+	}
+	ds.append(")*");
+
+	Regex? r = regex::compile(mem, ds.str_view(), EXTENDED);
+	test::@check(@ok(r));
+	if (@ok(r)) r!!.free();
+}
