@@ -905,47 +905,28 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 						c_emit_const_init_expr(c, s_init->init_value, type);
 						return;
 					}
-					Type *elem_t                = type->array.base ? c_safe_type_lower(type->array.base) : type_char;
-					ConstInitializer **elements = NULL;
-					int count                   = 0;
-					if (s_init->kind == CONST_INIT_ARRAY_FULL)
+					Type *elem_t = c_safe_type_lower(type->array.base);
+					bool full = s_init->kind == CONST_INIT_ARRAY_FULL;
+					ConstInitializer **elements = full ? s_init->init_array_full : s_init->init_array.elements;
+					int len = (int)type_lowering(s_init->type)->array.len;
+					PRINTF("{ .ptr = (%s[%d])", c_type_name(c, elem_t), len);
+					PRINT("{ ");
+					FOREACH_IDX (i, ConstInitializer*, init, elements)
 					{
-						elements = s_init->init_array_full;
-						count    = (int)s_init->type->array.len;
-					}
-					else if (s_init->kind == CONST_INIT_ARRAY)
-					{
-						elements = s_init->init_array.elements;
-						count    = vec_size(elements);
-					}
-					else if (s_init->kind == CONST_INIT_STRUCT)
-					{
-						elements = s_init->init_struct;
-						count    = vec_size(elements);
-					}
-					if (elements)
-					{
-						int el_count = count;
-						PRINTF("{ .ptr = (%s[])", c_type_name(c, elem_t));
-						PRINT("{ ");
-						for (int i = 0; i < el_count; i++)
+						if (i) PRINT(", ");
+						if (full)
 						{
-							if (i > 0)
-							{
-								PRINT(", ");
-							}
-							if (s_init->kind == CONST_INIT_ARRAY && elements[i]->kind == CONST_INIT_ARRAY_VALUE)
-							{
-								c_emit_const_initializer_rec(c, elements[i]->init_array_value.element);
-							}
-							else
-							{
-								c_emit_const_initializer_rec(c, elements[i]);
-							}
+							c_emit_const_initializer_rec(c, init);
 						}
-						PRINTF(" }, .len = %d }", count);
-						return;
+						else
+						{
+							ASSERT(init->kind == CONST_INIT_ARRAY_VALUE);
+							PRINTF("[%d] = ", init->init_array_value.index);
+							c_emit_const_initializer_rec(c, init->init_array_value.element);
+						}
 					}
+					PRINTF(" }, .len = %d }", len);
+					return;
 				}
 				if (s_init)
 				{

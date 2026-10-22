@@ -624,12 +624,25 @@ static inline double __c3_roundeven(double x) {
 extern long syscall(long number, ...);
 #endif
 
+
 #if defined(_MSC_VER) && !defined(__clang__)
+#if defined(_M_ARM64)
+__int64 _ReadStatusReg(int);
+#pragma intrinsic(_ReadStatusReg)
+
+static inline uint64_t __c3_sysclock(void)
+{
+	return (uint64_t)_ReadStatusReg(0x5F02); // CNTVCT_EL0
+}
+#else
 unsigned __int64 __rdtsc(void);
 #pragma intrinsic(__rdtsc)
-static inline uint64_t __c3_sysclock(void) {
+
+static inline uint64_t __c3_sysclock(void)
+{
 	return (uint64_t)__rdtsc();
 }
+#endif
 #elif defined(__x86_64__) || defined(__i386__)
 static inline uint64_t __c3_sysclock(void) {
 #if defined(__has_builtin)
@@ -649,9 +662,19 @@ static inline uint64_t __c3_sysclock(void) {
 }
 #elif defined(__riscv)
 static inline uint64_t __c3_sysclock(void) {
+#if __riscv_xlen == 32
+	uint32_t hi1, lo, hi2;
+	do {
+		__asm__ __volatile__("rdcycleh %0" : "=r"(hi1));
+		__asm__ __volatile__("rdcycle %0" : "=r"(lo));
+		__asm__ __volatile__("rdcycleh %0" : "=r"(hi2));
+	} while (hi1 != hi2);
+	return ((uint64_t)hi1 << 32) | lo;
+#else
 	uint64_t val;
 	__asm__ __volatile__("rdcycle %0" : "=r"(val));
 	return val;
+#endif
 }
 #else
 static inline uint64_t __c3_sysclock(void) {
