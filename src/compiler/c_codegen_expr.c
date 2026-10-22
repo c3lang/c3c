@@ -23,6 +23,36 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 	const char *tname = c_type_name(c, t);
 	int temp          = c_emit_temp_var(c, value, t);
 
+	if (t->type_kind == TYPE_SLICE && expr->const_expr.const_kind == CONST_SLICE)
+	{
+		ConstInitializer *init = expr->const_expr.slice_init;
+		if (!init || init->kind == CONST_INIT_ZERO)
+		{
+			PRINTF("%s ___var_%d = (%s){ .ptr = NULL, .len = 0 };\n", tname, temp, tname);
+			return;
+		}
+		Type *elem_t = (init->type && init->type->type_kind == TYPE_ARRAY && init->type->array.base) ? c_safe_type_lower(init->type->array.base) : (t->array.base ? c_safe_type_lower(t->array.base) : type_void);
+		int count = (init->type && init->type->type_kind == TYPE_ARRAY) ? (int)init->type->array.len : 0;
+		VariableId arr_var = c_emit_alloca_array(c, elem_t, count > 0 ? count : 1);
+		ConstInitializer **elements = init->kind == CONST_INIT_ARRAY_FULL ? init->init_array_full : (init->kind == CONST_INIT_ARRAY ? init->init_array.elements : NULL);
+		int el_count = (init->kind == CONST_INIT_ARRAY_FULL) ? count : (elements ? vec_size(elements) : 0);
+		for (int i = 0; i < el_count; i++)
+		{
+			int index = i;
+			ConstInitializer *el = elements[i];
+			if (init->kind == CONST_INIT_ARRAY && el->kind == CONST_INIT_ARRAY_VALUE)
+			{
+				index = el->init_array_value.index;
+				el = el->init_array_value.element;
+			}
+			PRINTF("___var_%d[%d] = (%s)", arr_var, index, c_type_name(c, elem_t));
+			c_emit_const_initializer_rec(c, el);
+			PRINT(";\n");
+		}
+		PRINTF("%s ___var_%d = (%s){ .ptr = ___var_%d, .len = %d };\n", tname, temp, tname, arr_var, count);
+		return;
+	}
+
 	if ((expr->const_expr.const_kind == CONST_BYTES || expr->const_expr.const_kind == CONST_STRING) &&
 	    expr->const_expr.bytes.len > 4000)
 	{
@@ -386,8 +416,7 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 						c_emit_expr(c, &vvals[j], varargs[j]);
 						c_value_rvalue(c, &vvals[j]);
 					}
-					int arr_var = c_create_variable(c);
-					PRINTF("%s ___var_%d[%d];\n", elem_tname, arr_var, num_varargs);
+					VariableId arr_var = c_emit_alloca_array(c, elem_type, num_varargs);
 					bool elem_is_any = (elem_type->type_kind == TYPE_ANY || elem_type->type_kind == TYPE_INTERFACE || strcmp(elem_tname, "__c3_any__") == 0);
 					for (int j = 0; j < num_varargs; j++)
 					{
@@ -2313,9 +2342,8 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			else if (target_type->type_kind == TYPE_SLICE)
 			{
 				Type *base_type        = (target_type->array.base && is_valid_type_ptr(target_type->array.base)) ? c_safe_type_lower(target_type->array.base) : type_void;
-				const char *base_tname = c_type_name(c, base_type);
-				int arr_var            = c_create_variable(c);
-				PRINTF("%s ___var_%d[%d];\n", base_tname, arr_var, count > 0 ? count : 1);
+				int arr_len            = count > 0 ? count : 1;
+				VariableId arr_var     = c_emit_alloca_array(c, base_type, arr_len);
 				for (int i = 0; i < count; i++)
 				{
 					CValue el_val = {0};
@@ -2324,7 +2352,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 					c_ensure_cvalue_var(c, &el_val, base_type);
 					if (c_type_is_aggregate(el_val.type))
 					{
-						PRINTF("__c3_memcpy(&___var_%d[%d], &___var_%d, sizeof(%s));\n", arr_var, i, el_val.var, base_tname);
+						PRINTF("__c3_memcpy(&___var_%d[%d], &___var_%d, sizeof(%s));\n", arr_var, i, el_val.var, c_type_name(c, el_val.type));
 					}
 					else
 					{

@@ -14,25 +14,30 @@ The C backend has some known issues / potential problems:
 
 4. popcount and clz sign-extend narrow negative ints: popcount((int)-1) gives 64 and clz gives -32.
 sat_shl never saturates: int::max.sat_shl(1) gives -2.
+(Fixed)
 
 5. roundeven is mapped to round (c_codegen_builtins.c:29).
 (Fixed)
 
 6. $$sysclock is hard-wired to 0, so benchmarks report 0.00 CPU clocks.
+(Fixed)
 
 7. $$breakpoint aborts.
 (Fixed)
 
 8. Stack use-after-scope (ASan-confirmed). Temporaries are declared inside conditional C blocks. int* p = c ? &&5 : &&7; *p dangles, and so do (int[]){…} slices in ternary branches.
+(Fixed)
 
 9. @finalizer order is reversed (c_codegen_function.c:653-660). LLVM runs priority 1, 2, default. The C build runs default, 2, 1, because it feeds the priority straight into destructor(N).
 (Tested: LLVM also executes default, 2, 1 via atexit LIFO; behavior matches LLVM)
 
 10. Null handling differs from LLVM. &((Foo*)null).b yields 0 instead of the field offset (c_codegen_lvalue.c:575). Loads through a null address silently return 0 (:1024).
+(Fixed)
 
 11. Compound-assignment evaluation order differs. arr[idx()] += val() evaluates val() first in C but idx() first in LLVM (c_codegen_expr.c:852).
 
 12. goto to an undeclared label. is_opt emits goto __C3_LABEL_n (c_codegen_expr.c:994,1002), but the label is only emitted on the fall-through path (:1236). Shifts, vector ops, float %, slice compares and similar early-return paths skip it. int? r = get(3) << 2; fails. It also hits real stdlib code: std::gfx scale_to_monitor (monitor.scale * (Vec2)size) breaks --strip-unused=no.
+(Fixed cd0f39819)
 
 13. trap-on-wrap is broken. It emits __builtin_add_overflow(a, b, &___var_N) into a variable that is never declared (c_codegen_expr.c:1046). Ordinary stdlib code fails with use of undeclared identifier. The same block is duplicated at :1042-1056, and every check is type_is_signed, so unsigned overflow never traps (LLVM traps it).
 (Fixed)
@@ -41,8 +46,10 @@ sat_shl never saturates: int::max.sat_shl(1) gives -2.
 (Fixed)
 
 15. Symbol collisions. Modules net_utils and net::utils both mangle to net_utils__init and hit a duplicate-symbol link error (c_codegen.c:14-33, :126-128).
+(Fixed)
 
 16. An absolute -o breaks single-module builds. static-lib, -Oz and --single-module=yes build <objdir>//abs/path.c and fail (c_codegen.c:823). LLVM is fine here.
+(Fixed)
 
 17. Hello world doesn't compile on this clang. It emits typedef void (*f)(...) (c_codegen_type.c:820-827), which needs C23.
 (Fixed by 71485732d)
@@ -98,7 +105,17 @@ const char *c_sanitize_name(const char *name)
 
 	scratch_buffer_push();
 	scratch_buffer_clear();
-	for (p = name; *p; p++) scratch_buffer_append_char(c_sanitize_char(*p));
+	for (p = name; *p; p++)
+	{
+		if (*p == '.')
+		{
+			scratch_buffer_append("__");
+		}
+		else
+		{
+			scratch_buffer_append_char(c_sanitize_char(*p));
+		}
+	}
 	const char *interned = scratch_buffer_interned();
 	scratch_buffer_pop();
 	return interned;
@@ -165,24 +182,6 @@ bool c_decl_needs_asm_label(Decl *decl)
 
 static const char *c_compute_decl_name(Decl *decl)
 {
-	if ((decl == compiler.context.main && !decl->func_decl.type_parent) ||
-	    (decl->is_synthetic && decl->name && strcmp(decl->name, "main") == 0))
-	{
-		if (compiler.platform.os == OS_TYPE_WIN32 && decl->decl_kind == DECL_FUNC && vec_size(decl->func_decl.signature.params) == 4)
-		{
-			Decl *param2 = decl->func_decl.signature.params[2];
-			Type *t2 = c_decl_type(param2);
-			if (t2 && t2->type_kind == TYPE_POINTER && t2->pointer && t2->pointer->type_kind == TYPE_U16)
-			{
-				return "wWinMain";
-			}
-			return "WinMain";
-		}
-		if (!decl->unit || !decl->unit->main_function || !decl->unit->main_function->is_synthetic || decl == decl->unit->main_function)
-		{
-			return "main";
-		}
-	}
 	if (decl->is_extern)
 	{
 		const char *name = NULL;
@@ -215,9 +214,10 @@ static const char *c_compute_decl_name(Decl *decl)
 		return c_check_collision(c_sanitize_name(decl->name));
 	}
 
-	decl->is_export = true;
+	scratch_buffer_push();
 	scratch_buffer_set_extern_decl_name(decl, true);
 	char *str = scratch_buffer_copy();
+	scratch_buffer_pop();
 	return c_check_collision(c_sanitize_name(str));
 }
 
@@ -331,14 +331,43 @@ void c_emit_string_literal(GenContext *c, const char *bytes, ArrayIndex len)
 	PRINT("\"");
 }
 
+void c_emit_panic(GenContext *c, const char *message, SourceLocId loc)
+{
+	Decl *panic_var = compiler.context.panic_var;
+	if (no_panic() || !panic_var)
+	{
+		PRINT("__c3_abort();\n");
+		return;
+	}
+
+	SourceLoc *location = sourcelocptrzero(loc);
+	File *file = source_file_by_id(location ? location->file_id : 0);
+	const char *filename = file ? file->name : "";
+	const char *funcname = c->cur_func_name ? c->cur_func_name : (c->cur_func_decl ? c->cur_func_decl->name : "");
+	uint32_t line = location ? location->row : 0;
+	const char *panic_name = c_get_decl_name(panic_var);
+
+	PRINTF("if (%s) { ((void (*)(__c3_slice_uint8_t, __c3_slice_uint8_t, __c3_slice_uint8_t, int32_t))%s)((__c3_slice_uint8_t){(uint8_t*)", panic_name, panic_name);
+	c_emit_string_literal(c, message ? message : "", message ? (ArrayIndex)strlen(message) : 0);
+	PRINTF(", %zu}, (__c3_slice_uint8_t){(uint8_t*)", message ? strlen(message) : 0);
+	c_emit_string_literal(c, filename, (ArrayIndex)strlen(filename));
+	PRINTF(", %zu}, (__c3_slice_uint8_t){(uint8_t*)", strlen(filename));
+	c_emit_string_literal(c, funcname, (ArrayIndex)strlen(funcname));
+	PRINTF(", %zu}, %u); } __c3_abort();\n", strlen(funcname), line);
+}
+
 static void c_traverse_decl(GenContext *c, Decl *d, CDeclVisitor visitor, void *userdata)
 {
-	if (!d || d->decl_kind == DECL_POISONED || d->decl_kind == DECL_ERASED || d->replacement)
+	if (!d)
 	{
 		return;
 	}
-	if (d->decl_kind == DECL_MACRO || d->decl_kind == DECL_IMPORT || d->decl_kind == DECL_ATTRIBUTE || d->decl_kind == DECL_CONTRACT)
+	if (d->decl_kind == DECL_GROUP)
 	{
+		FOREACH(Decl *, gd, d->decl_list)
+		{
+			c_traverse_decl(c, gd, visitor, userdata);
+		}
 		return;
 	}
 	if (d->decl_kind == DECL_GENERIC)
@@ -357,24 +386,16 @@ static void c_traverse_decl(GenContext *c, Decl *d, CDeclVisitor visitor, void *
 		}
 		return;
 	}
-	if (d->decl_kind == DECL_ALIAS)
+	d = c_decl_unwrap(d);
+	if (!d || d->decl_kind == DECL_POISONED || d->decl_kind == DECL_ERASED || d->replacement)
 	{
-		Decl *raw = c_decl_unwrap(d);
-		if (raw && raw != d)
-		{
-			c_traverse_decl(c, raw, visitor, userdata);
-		}
 		return;
 	}
-	if (d->decl_kind == DECL_GROUP)
+	if (d->decl_kind == DECL_MACRO || d->decl_kind == DECL_IMPORT || d->decl_kind == DECL_ATTRIBUTE || d->decl_kind == DECL_CONTRACT)
 	{
-		FOREACH(Decl *, gd, d->decl_list)
-		{
-			c_traverse_decl(c, gd, visitor, userdata);
-		}
 		return;
 	}
-	if (d->is_template)
+	if (d->is_template || !c_decl_is_live(d))
 	{
 		return;
 	}
@@ -558,7 +579,6 @@ static void c_emit_decl_types(GenContext *c, Decl *d, bool forward_decl)
 static void visit_forward_decl(GenContext *c, Decl *d, void *ud)
 {
 	(void)ud;
-	decl_append_links_to_global_during_codegen(d);
 	c_emit_decl_types(c, d, true);
 }
 
@@ -571,29 +591,11 @@ static void visit_type_decl(GenContext *c, Decl *d, void *ud)
 static void visit_fn_prototype(GenContext *c, Decl *d, void *ud)
 {
 	(void)ud;
-	d = c_decl_unwrap(d);
-	if (!d || d->decl_kind != DECL_FUNC)
+	if (d->decl_kind != DECL_FUNC)
 	{
 		return;
 	}
-	if (d->func_decl.attr_test)
-	{
-		if (!compiler.build.build_test)
-		{
-			return;
-		}
-	}
-	else if (d->func_decl.attr_benchmark)
-	{
-		if (!compiler.build.build_benchmark)
-		{
-			return;
-		}
-	}
-	else if (strip_unused() && !d->is_live)
-	{
-		return;
-	}
+	decl_append_links_to_global_during_codegen(d);
 	bool is_current = (!c->current_module || (d->unit && d->unit->module == c->current_module));
 	c_emit_function_decl(c, d, is_current);
 }
@@ -613,11 +615,7 @@ static void visit_dynamic_dispatcher(GenContext *c, Decl *d, void *ud)
 static void visit_global_forward_decl(GenContext *c, Decl *d, void *ud)
 {
 	(void)ud;
-	d = c_decl_unwrap(d);
-	if (!d || (strip_unused() && !d->is_live))
-	{
-		return;
-	}
+	decl_append_links_to_global_during_codegen(d);
 	if (d->decl_kind == DECL_VAR && c_is_file_global(d))
 	{
 		c_emit_global_decl(c, d);
@@ -652,11 +650,6 @@ static void visit_global_forward_decl(GenContext *c, Decl *d, void *ud)
 static void visit_global_def(GenContext *c, Decl *d, void *ud)
 {
 	(void)ud;
-	d = c_decl_unwrap(d);
-	if (!d || (strip_unused() && !d->is_live))
-	{
-		return;
-	}
 	bool is_current = (!c->current_module || (d->unit && d->unit->module == c->current_module));
 	if (!is_current)
 	{
@@ -896,7 +889,7 @@ static GenContext *c_gen_module(Module *module, int num)
 	}
 	else
 	{
-		base_name       = build_base_name();
+		base_name       = filename(build_base_name());
 		object_filename = file_append_path(compiler.build.object_file_dir ? compiler.build.object_file_dir : ".", str_printf("%s%s", base_name, get_object_extension()));
 	}
 
@@ -1321,12 +1314,14 @@ void **c_gen(Module **modules, int module_count)
 	htable_init(&c_shared_gen_def, 16384);
 	htable_init(&c_shared_decl_names, 8192);
 	htable_init(&c_shared_emitted_global_decls, 8192);
+	htable_init(&c_needed_typeids, 1024);
+	c_needed_typeids_vec = NULL;
+	c_recording_typeids = true;
 
 	const char *dir = compiler.build.object_file_dir ? compiler.build.object_file_dir : ".";
 	scratch_buffer_clear();
 	scratch_buffer_append(dir);
 	dir_make_recursive(scratch_buffer_to_string());
-	c_emit_runtime_header(dir);
 	c_emit_shared_header(dir);
 
 	bool will_compile = compiler.build.emit_object_files
@@ -1347,11 +1342,6 @@ void **c_gen(Module **modules, int module_count)
 	}
 
 	GenContext **gen_contexts = NULL;
-	GenContext *rt            = c_emit_runtime_c(dir);
-	if (rt)
-	{
-		vec_add(gen_contexts, rt);
-	}
 
 	if (compiler.build.single_module == SINGLE_MODULE_ON)
 	{
@@ -1360,16 +1350,26 @@ void **c_gen(Module **modules, int module_count)
 		{
 			vec_add(gen_contexts, c);
 		}
-		return (void **)gen_contexts;
 	}
-
-	for (int i = 0; i < module_count; i++)
+	else
 	{
-		GenContext *c = c_gen_module(modules[i], i);
-		if (c)
+		for (int i = 0; i < module_count; i++)
 		{
-			vec_add(gen_contexts, c);
+			GenContext *c = c_gen_module(modules[i], i);
+			if (c)
+			{
+				vec_add(gen_contexts, c);
+			}
 		}
 	}
+
+	c_recording_typeids = false;
+	c_emit_runtime_header(dir);
+	GenContext *rt = c_emit_runtime_c(dir);
+	if (rt)
+	{
+		vec_add(gen_contexts, rt);
+	}
+
 	return (void **)gen_contexts;
 }
