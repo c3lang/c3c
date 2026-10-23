@@ -15,6 +15,7 @@
 - `project.json` strings (except `exec` and `type`) expand environment variables written as `${NAME}`. #3580
 - Add `env` and `env-override` to `project.json`, setting environment variables (`"NAME=value"`) for the `exec` scripts. #3580
 - Add `-gline-tables-only` to emit line tables debug info only.
+- Disallow `{ .a = 1, .a = 1 }`. #3579
 
 ### Fixes
 - Compressed `.c3l` libraries were not unpacked again when only files other than `manifest.json` had changed.

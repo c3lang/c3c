@@ -933,6 +933,42 @@ static Expr *parse_grouping_expr(ParseContext *c, Expr *left, SourceLoc *lhs_spa
 }
 
 
+static bool index_expr_match(Expr *expr1, Expr *expr2)
+{
+	if (expr1->expr_kind != EXPR_CONST || expr1->const_expr.const_kind != CONST_INTEGER) return false;
+	if (expr2->expr_kind != EXPR_CONST || expr2->const_expr.const_kind != CONST_INTEGER) return false;
+	return int_comp(expr1->const_expr.ixx, expr2->const_expr.ixx, BINARYOP_EQ);
+}
+
+static bool designators_match(DesignatorElement **el1, DesignatorElement **el2)
+{
+	int len = vec_size(el1);
+	if (len != vec_size(el2)) return false;
+	for (int i = 0; i < len; i++)
+	{
+		DesignatorElement *el = el1[i];
+		DesignatorElement *other = el2[i];
+		if (el->kind != other->kind) return false;
+		switch (el->kind)
+		{
+			case DESIGNATOR_FIELD:
+				if (el->field_expr->expr_kind != EXPR_UNRESOLVED_IDENTIFIER) return false;
+				if (other->field_expr->expr_kind != EXPR_UNRESOLVED_IDENTIFIER) return false;
+				if (el->field_expr->unresolved_ident_expr.ident != other->field_expr->unresolved_ident_expr.ident) return false;
+				continue;
+			case DESIGNATOR_RANGE:
+				if (!index_expr_match(el->index_end_expr, other->index_end_expr)) return false;
+				FALLTHROUGH;
+			case DESIGNATOR_ARRAY:
+				if (!index_expr_match(el->index_expr, other->index_expr)) return false;
+				continue;
+			default:
+				UNREACHABLE
+		}
+	}
+	return true;
+}
+
 /**
  * initializer_list
  * 	: '{' initializer_values '}'
@@ -951,13 +987,16 @@ static Expr *parse_initializer_list(ParseContext *c, Expr *left, SourceLoc *lhs_
 	Expr *initializer_list = EXPR_NEW_TOKEN(EXPR_INITIALIZER_LIST);
 	advance_and_verify(c, TOKEN_LBRACE);
 	Expr *splat = NULL;
+	bool duplicates = false;
 	if (!try_consume(c, TOKEN_RBRACE))
 	{
 		Expr **exprs = NULL;
 		if (!parse_init_list(c, &exprs, TOKEN_RBRACE, NULL, true)) return poisoned_expr;
 		int designated = -1;
-		FOREACH_IDX(i, Expr *, expr, exprs)
+		int elements = vec_size(exprs);
+		for (int i = 0; i < elements; i++)
 		{
+			Expr *expr = exprs[i];
 			if (i == 0 && expr->expr_kind == EXPR_SPLAT)
 			{
 				splat = expr;
@@ -971,6 +1010,19 @@ static Expr *parse_initializer_list(ParseContext *c, Expr *left, SourceLoc *lhs_
 					goto ERROR;
 				}
 				designated = expr->designator_expr.path[0]->kind == DESIGNATOR_FIELD ? 1 : 2;
+				if (duplicates) continue;
+				for (int j = 0; j < i; j++)
+				{
+					Expr *other = exprs[j];
+					if (other->expr_kind != EXPR_DESIGNATOR) continue;
+					if (designators_match(expr->designator_expr.path, other->designator_expr.path))
+					{
+						PRINT_ERROR_AT(expr, "This element is assigned twice in the same initializer.");
+						SEMA_NOTE(exprs[j], "The previous assignment was here.");
+						duplicates = true;
+						break;
+					}
+				}
 				continue;
 			}
 			if (designated > 0) goto ERROR;
@@ -1004,7 +1056,7 @@ ERROR:;
 		}
 	}
 	RANGE_EXTEND_PREV(initializer_list);
-	return initializer_list;
+	return duplicates ? poisoned_expr : initializer_list;
 }
 
 static Expr *parse_orelse(ParseContext *c, Expr *left_side, SourceLoc *lhs_start)
