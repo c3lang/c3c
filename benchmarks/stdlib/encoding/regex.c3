@@ -46,6 +46,8 @@ fn void bench_setup() @init(1000)
 	set_benchmark_func_iterations($reflect(stress_overlapping_alternation_c3).qname,    20_000);
 	set_benchmark_func_iterations($reflect(stress_massive_alternation_c3).qname,         2_000);
 	set_benchmark_func_iterations($reflect(stress_multi_wildcard_c3).qname,                100);
+	set_benchmark_func_iterations($reflect(stress_backref_fail_a_c3).qname,              10_000);
+	set_benchmark_func_iterations($reflect(stress_backref_fail_ab_c3).qname,             10_000);
 
 	input_small   = repeat_str("a", 100);
 	input_medium  = repeat_str("a", 1000);
@@ -133,6 +135,8 @@ fn void bench_glibc_setup() @init(2000)
 	set_benchmark_func_iterations($reflect(stress_overlapping_alternation_glibc).qname, 20_000);
 	set_benchmark_func_iterations($reflect(stress_massive_alternation_glibc).qname,      4_000);
 	set_benchmark_func_iterations($reflect(stress_multi_wildcard_glibc).qname,           4_000);
+	set_benchmark_func_iterations($reflect(stress_backref_fail_a_glibc).qname,          1_000);
+	set_benchmark_func_iterations($reflect(stress_backref_fail_ab_glibc).qname,         1_000);
 
 	int rc;
 	rc = regcomp(&glibc_re_simple, PATTERN_SIMPLE);
@@ -355,6 +359,38 @@ fn void stress_multi_wildcard_glibc() @feat(POSIX)
 	RegexT re;
 	regcomp(&re, "a*a*a*a*a*b", regex::CompileFlags.EXTENDED);
 	regexec(&re, input_large, 0, null);
+	regfree(&re);
+}
+
+fn void stress_backref_fail_a_c3()
+{
+	Regex re = regex::compile(mem, "\\(a*\\)\\1b")!!;
+	(void)re.texec(input_small, 0);
+	re.free();
+}
+
+fn void stress_backref_fail_a_glibc() @feat(POSIX)
+{
+	RegexT re;
+	regcomp(&re, "\\(a*\\)\\1b", {});
+	regexec(&re, input_small, 0, null);
+	regfree(&re);
+}
+
+fn void stress_backref_fail_ab_c3()
+{
+	String input_ab = repeat_str("ab", 50);
+	Regex re = regex::compile(mem, "\\(ab\\)*\\1x")!!;
+	(void)re.texec(input_ab, 0);
+	re.free();
+}
+
+fn void stress_backref_fail_ab_glibc() @feat(POSIX)
+{
+	String input_ab = repeat_str("ab", 50);
+	RegexT re;
+	regcomp(&re, "\\(ab\\)*\\1x", {});
+	regexec(&re, input_ab, 0, null);
 	regfree(&re);
 }
 
