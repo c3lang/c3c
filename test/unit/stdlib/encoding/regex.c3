@@ -1335,3 +1335,70 @@ fn void test_embedded_nul_is_not_end_of_input() @test
 		test::@check(re.matches("a\0b"));
 	}
 }
+
+// Popping an alternative off the backtrack stack must restore the width of the character at the restored position,
+// otherwise the next character is decoded from the middle of a multibyte sequence.
+fn void test_backref_backtrack_pop_after_multibyte() @test
+{
+	Regex re = regex::compile(mem, "b*\\(.\\)\\1")!!;
+	defer re.free();
+
+	Match m1 = re.first_match("b€€")!!;
+	test::eq(m1.start, 0);
+	test::eq(m1.end, 7);
+
+	Match m2 = re.first_match("bab€béb€€b")!!;
+	test::eq(m2.start, 9);
+	test::eq(m2.end, 16);
+}
+
+// A group that matched the empty string must not prune a later, valid path through the same backreference.
+fn void test_backref_empty_group_does_not_prune_valid_match() @test
+{
+	{
+		Regex re = regex::compile(mem, "b*\\(a*\\)\\1c")!!;
+		defer re.free();
+
+		Match m1 = re.first_match("xbc")!!;
+		test::eq(m1.start, 1);
+		test::eq(m1.end, 3);
+
+		Match m2 = re.first_match("bc")!!;
+		test::eq(m2.start, 0);
+		test::eq(m2.end, 2);
+	}
+
+	{
+		Regex re = regex::compile(mem, "b*\\(a*\\)\\1")!!;
+		defer re.free();
+
+		Match m = re.first_match("bb")!!;
+		test::eq(m.start, 0);
+		test::eq(m.end, 2);
+	}
+
+	{
+		Regex re = regex::compile(mem, "\\(a*\\)\\1\\(a*\\)\\1c")!!;
+		defer re.free();
+
+		Match m = re.first_match("xaac")!!;
+		test::eq(m.start, 1);
+		test::eq(m.end, 4);
+	}
+}
+
+// A search that fails must stay cheap. Every start position is tried, but a start that cannot match should be rejected
+// quickly, so the total cost must not grow like n^2 for backreference patterns (n = 2000 takes 0.2-0.6 s when it does).
+fn void test_backref_failing_search_stays_fast() @test
+{
+	char[] input = mem::temp_array(char, 2000);
+	input[..] = 'a';
+
+	Regex re = regex::compile(mem, "\\(a*\\)\\1b")!!;
+	defer re.free();
+
+	Clock clock = clock::now();
+	test::@check(!re.matches((String)input));
+	long micros = (long)clock.mark() / 1000;
+	test::@check(micros < 50_000, "took %d us, expected under 50000 us", micros);
+}
