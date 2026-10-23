@@ -1217,3 +1217,121 @@ fn void test_fault_triggers() @test
 	test::@error(regex::compile(mem, "[z-a]", EXTENDED), regex::INVALID_CHAR_RANGE);
 	test::@error(regex::compile(mem, "+", EXTENDED), regex::INVALID_REPETITION);
 }
+
+// A backreference to an empty group, evaluated at the very end of the input, must not index past the end of the string.
+fn void test_backref_empty_group_at_end_of_input() @test
+{
+	{
+		Regex re = regex::compile(mem, "\\(a*\\)\\1")!!;
+		defer re.free();
+		Match m = re.first_match("")!!;
+		test::eq(m.start, 0);
+		test::eq(m.end, 0);
+	}
+
+	{
+		Regex re = regex::compile(mem, "b\\(c*\\)\\1")!!;
+		defer re.free();
+		Match m = re.first_match("ab")!!;
+		test::eq(m.start, 1);
+		test::eq(m.end, 2);
+	}
+}
+
+// A failed attempt in the backtracking engine must retry at the next *character*, not at the next byte offset
+// derived from whichever character was decoded last.
+fn void test_backref_retry_after_multibyte() @test
+{
+	Regex re = regex::compile(mem, "\\(.\\)\\1")!!;
+	defer re.free();
+
+	Match m1 = re.first_match("a€b€€")!!;
+	test::eq(m1.start, 5);
+	test::eq(m1.end, 11);
+	test::eq(m1.str, "€€");
+
+	Match m2 = re.first_match("x€y€€")!!;
+	test::eq(m2.start, 5);
+	test::eq(m2.end, 11);
+
+	Match m3 = re.first_match("日本aa")!!;
+	test::eq(m3.start, 6);
+	test::eq(m3.end, 8);
+}
+
+// An empty match must be reported once. find_all has to resume *after* it, otherwise the next search finds it again.
+fn void test_find_all_empty_matches_not_duplicated() @test
+{
+	{
+		Regex re = regex::compile(mem, "$", EXTENDED)!!;
+		defer re.free();
+		Match[] m = re.tfind_all("ab")!!;
+		test::eq(m.len, 1);
+		test::eq(m[0].start, 2);
+		test::eq(re.treplace("ab", "|")!!, "ab|");
+	}
+
+	{
+		Regex re = regex::compile(mem, "\\b", EXTENDED)!!;
+		defer re.free();
+		Match[] m = re.tfind_all("ab cd")!!;
+		test::eq(m.len, 4);
+		test::eq(m[0].start, 0);
+		test::eq(m[1].start, 2);
+		test::eq(m[2].start, 3);
+		test::eq(m[3].start, 5);
+		test::eq(re.treplace("ab cd", "|")!!, "|ab| |cd|");
+	}
+
+	{
+		Regex re = regex::compile(mem, "\\B", EXTENDED)!!;
+		defer re.free();
+		Match[] m = re.tfind_all("abc")!!;
+		test::eq(m.len, 2);
+		test::eq(m[0].start, 1);
+		test::eq(m[1].start, 2);
+	}
+
+	{
+		Regex re = regex::compile(mem, "\\<", EXTENDED)!!;
+		defer re.free();
+		Match[] m = re.tfind_all("ab cd")!!;
+		test::eq(m.len, 2);
+		test::eq(m[0].start, 0);
+		test::eq(m[1].start, 3);
+	}
+
+	{
+		Regex re = regex::compile(mem, "\\>", EXTENDED)!!;
+		defer re.free();
+		Match[] m = re.tfind_all("ab cd")!!;
+		test::eq(m.len, 2);
+		test::eq(m[0].start, 2);
+		test::eq(m[1].start, 5);
+	}
+}
+
+// Embedded NUL bytes are ordinary characters; only the end of the slice is the end of the line.
+fn void test_embedded_nul_is_not_end_of_input() @test
+{
+	{
+		Regex re = regex::compile(mem, "^[a-z]+$", EXTENDED)!!;
+		defer re.free();
+		test::@check(re.matches("abc"));
+		test::@check(!re.matches("abc\0<script>"));
+		test::@check(!re.matches("abc\0"));
+	}
+
+	{
+		Regex re = regex::compile(mem, "a$", EXTENDED)!!;
+		defer re.free();
+		test::@check(re.matches("xa"));
+		test::@check(!re.matches("a\0b"));
+	}
+
+	{
+		Regex re = regex::compile(mem, "a.b", EXTENDED)!!;
+		defer re.free();
+		test::@check(re.matches("a\0b"));
+	}
+}

@@ -1618,7 +1618,7 @@ fn void tre_purge_regset(int* regset, Tnfa* tnfa, TagId tag) @local
 	regset[0] = -1;
 }
 
-constdef AddTagsSymbol : inline int @local
+constset AddTagsSymbol : inline int @local
 {
 	RECURSE,
 	AFTER_ITERATION,
@@ -2049,7 +2049,7 @@ fn PosAndTags*? tre_set_union(Allocator arena, PosAndTags* set1, PosAndTags* set
 	return new_set;
 }
 
-constdef NflSymbol : inline int @local
+constset NflSymbol : inline int @local
 {
 	RECURSE,
 	POST_UNION,
