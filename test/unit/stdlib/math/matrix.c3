@@ -353,3 +353,49 @@ fn void test_vec3()
 	double[<3>] cross = (double[<3>]){2,3,4}.cross({5,6,7});
 	assert(cross == {-3,6,-3});
 }
+
+fn void test_mat4_perspective_reverse_z()
+{
+	double near = 0.1;
+	double far = 100.0;
+	Matrix4 m = matrix::perspective_reverse_z(math::PI / 2, 1.0, near, far);
+	double[<4>] at_near = m * (double[<4>]){ 0, 0, -near, 1 };
+	double[<4>] at_far = m * (double[<4>]){ 0, 0, -far, 1 };
+	assert(math::abs(at_near.z / at_near.w - 1) < 1e-6);
+	assert(math::abs(at_far.z / at_far.w) < 1e-6);
+}
+
+fn void test_mat4_perspective_infinite()
+{
+	double near = 0.1;
+	Matrix4 m = matrix::perspective_infinite(math::PI / 2, 1.0, near);
+	double[<4>] at_near = m * (double[<4>]){ 0, 0, -near, 1 };
+	double[<4>] far_away = m * (double[<4>]){ 0, 0, -1.0e9, 1 };
+	assert(math::abs(at_near.z / at_near.w) < 1e-6);
+	assert(math::abs(far_away.z / far_away.w - 1) < 1e-6);
+}
+
+fn void test_mat4_position_scale()
+{
+	Matrix4 m = matrix::IDENTITY4.scale({2, 3, 4}).translate({5, 6, 7});
+	assert(m.get_scale() == (double[<3>]){2, 3, 4});
+	Matrix4 t = matrix::IDENTITY4.translate({5, 6, 7});
+	assert(t.position() == (double[<3>]){5, 6, 7});
+	Matrix3 t3 = matrix::IDENTITY3.translate({5, 6});
+	assert(t3.position() == (double[<2>]){5, 6});
+}
+
+fn void test_mat_row_column()
+{
+	Matrix4 m = { .m = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 } };
+	assert(m.column(1) == (double[<4>]){5, 6, 7, 8});
+	assert(m.row(1) == (double[<4>]){2, 6, 10, 14});
+	Matrix4 c = m.set_column(0, {0, 0, 0, 0});
+	assert(c.m[0] == 0 && c.m[3] == 0 && c.m[4] == 5);
+	Matrix4 r = m.set_row(0, {0, 0, 0, 0});
+	assert(r.m[0] == 0 && r.m[12] == 0 && r.m[1] == 2);
+	Matrix3 m3 = { .m = { 1, 2, 3, 4, 5, 6, 7, 8, 9 } };
+	assert(m3.row(2) == (double[<3>]){3, 6, 9});
+	Matrix2 m2 = { .m = { 1, 2, 3, 4 } };
+	assert(m2.column(1) == (double[<2>]){3, 4});
+}
