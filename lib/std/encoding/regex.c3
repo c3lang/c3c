@@ -674,6 +674,8 @@ struct TreReachPos @local
 struct TreBacktrackItem @local
 {
 	RegOff          pos;
+	RegOff          pos_add_next;
+	int             prev_c;
 	TnfaTransition* state;
 	StateId         state_id;
 	int             next_c;
@@ -2955,7 +2957,7 @@ fn void tre_fill_pmatch(sz nmatch, RegMatch* pmatch, Tnfa* tnfa, TagId* tags, Re
 	}
 }
 
-fn void? bt_stack_push(TreBacktrack** pstack, Tnfa* tnfa, RegOff pos, TnfaTransition* trans, int next_c, TagId* tags) @local @inline
+fn void? bt_stack_push(TreBacktrack** pstack, Tnfa* tnfa, RegOff pos, RegOff pos_add_next, int prev_c, TnfaTransition* trans, int next_c, TagId* tags) @local @inline
 {
 	TreBacktrack* stack = *pstack;
 	if (!stack.next)
@@ -2975,6 +2977,8 @@ fn void? bt_stack_push(TreBacktrack** pstack, Tnfa* tnfa, RegOff pos, TnfaTransi
 
 	TreBacktrack* active = *pstack;
 	active.item.pos = pos;
+	active.item.pos_add_next = pos_add_next;
+	active.item.prev_c = prev_c;
 	active.item.state = trans.state;
 	active.item.state_id = trans.state_id;
 	active.item.next_c = next_c;
@@ -3068,7 +3072,7 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, Ex
 				}
 				for (int i = 0; i < tnfa.num_states; i++)
 				{
-					states_seen[i] = 0;
+					states_seen[i] = -1;
 				}
 				state = null;
 				pos = pos_start;
@@ -3095,7 +3099,7 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, Ex
 					}
 					else
 					{
-						bt_stack_push(&stack, tnfa, pos, trans_i, next_c, tags)!;
+						bt_stack_push(&stack, tnfa, pos, pos_add_next, prev_c, trans_i, next_c, tags)!;
 					}
 				}
 
@@ -3137,7 +3141,7 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, Ex
 					RegOff so, eo;
 					int bt = trans_i.u_class_or_backref;
 					RegOff bt_len;
-					int result;
+					int result = -1;
 
 					tre_fill_pmatch((sz)(bt + 1), pmatch, tnfa, tags, pos);
 					so = pmatch[bt].rm_so;
@@ -3146,22 +3150,47 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, Ex
 
 					if (so >= 0 && eo >= 0 && (sz)(pos + bt_len) <= string.len)
 					{
-						result = (bt_len == 0) ? 0 : (mem::equals(&string[so], &string[pos], bt_len) ? 0 : 1);
-					}
-					else
-					{
-						result = -1;
+						RegOff post = pos + bt_len;
+						bool can_follow = (trans_i.state == tnfa.final);
+						if (!can_follow && post < string.len)
+						{
+							int c_after = string[post];
+							for (TnfaTransition* tr = trans_i.state; tr.state; tr++)
+							{
+								if (tr.code_min < 0 || tr.assertions != 0 ||
+									(c_after >= tr.code_min && c_after <= tr.code_max))
+								{
+									can_follow = true;
+									break;
+								}
+							}
+						}
+						else if (!can_follow && post == string.len)
+						{
+							for (TnfaTransition* tr = trans_i.state; tr.state; tr++)
+							{
+								if (tr.code_min < 0 || tr.assertions != 0)
+								{
+									can_follow = true;
+									break;
+								}
+							}
+						}
+
+						if (can_follow)
+						{
+							result = (bt_len == 0) ? 0 : (mem::equals(&string[so], &string[pos], bt_len) ? 0 : 1);
+						}
 					}
 
 					if (result == 0)
 					{
-						if (bt_len == 0) empty_br_match = 1;
-						if (empty_br_match != 0 && states_seen[trans_i.state_id] != 0)
+						if (bt_len == 0 && states_seen[trans_i.state_id] == pos)
 						{
 							mstate = M_BACKTRACK;
 							break;
 						}
-						states_seen[trans_i.state_id] = empty_br_match;
+						if (bt_len == 0) states_seen[trans_i.state_id] = pos;
 
 						pos += bt_len;
 						pos_add_next = 0;
@@ -3170,6 +3199,13 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, Ex
 					}
 					else
 					{
+						if (so >= 0 && (sz)(pos + bt_len) > string.len)
+						{
+							while (stack.prev && stack.item.pos >= pos)
+							{
+								stack = stack.prev;
+							}
+						}
 						mstate = M_BACKTRACK;
 						break;
 					}
@@ -3204,7 +3240,7 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, Ex
 						}
 						else
 						{
-							bt_stack_push(&stack, tnfa, pos, trans_i, next_c, tags)!;
+							bt_stack_push(&stack, tnfa, pos, pos_add_next, prev_c, trans_i, next_c, tags)!;
 						}
 					}
 				}
@@ -3231,16 +3267,18 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, Ex
 			{
 				if (stack.prev)
 				{
-					if ((stack.item.state.assertions & ASSERT_BACKREF) != 0)
-					{
-						states_seen[stack.item.state_id] = 0;
-					}
 					pos = stack.item.pos;
+					pos_add_next = stack.item.pos_add_next;
+					prev_c = stack.item.prev_c;
 					state = stack.item.state;
 					next_c = stack.item.next_c;
 					for (int i = 0; i < tnfa.num_tags; i++)
 					{
 						tags[i] = stack.item.tags[i];
+					}
+					for (int i = 0; i < tnfa.num_states; i++)
+					{
+						if (states_seen[i] >= pos) states_seen[i] = -1;
 					}
 					stack = stack.prev;
 					mstate = M_PROCESS;
