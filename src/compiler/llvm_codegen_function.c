@@ -297,7 +297,7 @@ static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABI
 
 	ABIArgInfo *info = *((*abi_info_ref)++);
 	llvm_process_parameter_value(context, decl, info, index);
-	if (llvm_use_debug(context))
+	if (llvm_use_debug_variables(context))
 	{
 		llvm_emit_debug_parameter(context, decl, real_index, context->debug.function);
 	}

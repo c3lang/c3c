@@ -12,6 +12,9 @@
 - An `else if` now requires `{ }` around a single statement, like `else` does. `else if (x) foo();` is an error. #3473
 - Add `depends-on` to project targets, allowing them to depend on other targets.
 - LLVM IR (`.ll`) and bitcode (`.bc`) files can be added to the compilation, just like .o files #3339
+- `project.json` strings (except `exec` and `type`) expand environment variables written as `${NAME}`. #3580
+- Add `env` and `env-override` to `project.json`, setting environment variables (`"NAME=value"`) for the `exec` scripts. #3580
+- Add `-gline-tables-only` to emit line tables debug info only.
 
 ### Fixes
 - Compressed `.c3l` libraries were not unpacked again when only files other than `manifest.json` had changed.
@@ -34,6 +37,7 @@
 - Compiler hangs on c3c project fetch #3562
 - Temp dirs were left behind by `c3c compile` (including unpacked `.c3l` libraries), `fetch-list`, `vendor-fetch` and the SDK fetch commands, in particular after errors. #3553
 - Fix integer overflow vulnerabilities in regex compiler (CVE-2026-107891). #3585
+- Compiler crashes when emitting line-tables debug info. #3581
 
 ### Stdlib changes
 - Added termios support for OpenBSD.

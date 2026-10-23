@@ -628,7 +628,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	scratch_buffer_set_extern_decl_name(decl, true);
 	char *name = scratch_buffer_copy();
 	LLVMValueRef global_ref = decl->backend_ref = llvm_add_global_raw(c, name, LLVMTypeOf(init_value), decl->alignment);
-	if (llvm_use_debug(c))
+	if (llvm_use_debug_variables(c))
 	{
 		SourceLoc *loc = sourcelocptrzero(decl->loc);
 		decl->var.backend_debug_ref = LLVMDIBuilderCreateGlobalVariableExpression(
@@ -826,7 +826,7 @@ void llvm_emit_local_var_alloca(GenContext *c, Decl *decl)
 {
 	ASSERT(!decl->var.is_static && decl->var.kind != VARDECL_CONST);
 	llvm_emit_and_set_decl_alloca(c, decl);
-	if (llvm_use_debug(c))
+	if (llvm_use_debug_variables(c))
 	{
 		llvm_emit_debug_local_var(c, decl);
 	}
