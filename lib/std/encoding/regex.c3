@@ -687,7 +687,7 @@ struct TreBacktrack @local
 	TreBacktrack*    next;
 }
 
-fn int tre_tag_order(int num_tags, int* tag_directions, TagId* t1, TagId* t2) @local
+fn int tre_tag_order(int num_tags, int* tag_directions, TagId* t1, TagId* t2) @local @inline
 {
 	for (int i = 0; i < num_tags; i++)
 	{
@@ -2808,8 +2808,10 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 	};
 }
 
-fn bool check_assertions(int assertions, CompileFlags cflags, int prev_c, int next_c, RegOff pos, sz str_len, bool notbol, bool noteol) @local
+fn bool check_assertions(int assertions, CompileFlags cflags, int prev_c, int next_c, RegOff pos, sz str_len, ExecFlags eflags) @local @inline
 {
+	bool notbol = (bool)(eflags & NOT_BOL);
+	bool noteol = (bool)(eflags & NOT_EOL);
 	switch
 	{
 		case (assertions & ASSERT_AT_BOL)    != 0 && (pos > 0 || notbol) && (prev_c != '\n' || !(cflags & NEWLINE)):
@@ -2823,7 +2825,7 @@ fn bool check_assertions(int assertions, CompileFlags cflags, int prev_c, int ne
 	return false;
 }
 
-fn bool check_char_classes(TnfaTransition* trans, Tnfa* tnfa, int prev_c) @local
+fn bool check_char_classes(TnfaTransition* trans, Tnfa* tnfa, int prev_c) @local @inline
 {
 	bool icase = (bool)(tnfa.cflags & IGNORE_CASE);
 	if ((trans.assertions & ASSERT_CHAR_CLASS) != 0)
@@ -3082,7 +3084,7 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, Ex
 				for (TnfaTransition* trans_i = tnfa.initial; trans_i.state; trans_i++)
 				{
 					if (trans_i.assertions != 0 &&
-						check_assertions(trans_i.assertions, tnfa.cflags, prev_c, next_c, pos, string.len, (bool)(eflags & NOT_BOL), (bool)(eflags & NOT_EOL)))
+						check_assertions(trans_i.assertions, tnfa.cflags, prev_c, next_c, pos, string.len, eflags))
 					{
 						continue;
 					}
@@ -3174,7 +3176,7 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, Ex
 				}
 				else
 				{
-					if (next_c == 0 && (sz)pos >= string.len)
+					if (next_c == 0 && pos >= string.len)
 					{
 						mstate = M_BACKTRACK;
 						break;
@@ -3189,7 +3191,7 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, Ex
 					if (prev_c >= trans_i.code_min && prev_c <= trans_i.code_max)
 					{
 						if (trans_i.assertions != 0
-							&& (check_assertions(trans_i.assertions, tnfa.cflags, prev_c, next_c, pos, string.len, (bool)(eflags & NOT_BOL), (bool)(eflags & NOT_EOL))
+							&& (check_assertions(trans_i.assertions, tnfa.cflags, prev_c, next_c, pos, string.len, eflags)
 							|| check_char_classes(trans_i, tnfa, prev_c)))
 						{
 							continue;
@@ -3277,8 +3279,6 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, TagId* match_tags, Exe
 
 	RegOff pos = 0;
 	sz str_len = string.len;
-	bool notbol = (bool)(eflags & NOT_BOL);
-	bool noteol = (bool)(eflags & NOT_EOL);
 	int num_tags = (match_tags != null) ? tnfa.num_tags : 0;
 	int num_states = tnfa.num_states;
 
@@ -3380,7 +3380,8 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, TagId* match_tags, Exe
 			{
 				if (reach_pos[trans_i.state_id].pos < pos)
 				{
-					if (trans_i.assertions != 0 && check_assertions(trans_i.assertions, tnfa.cflags, prev_c, next_c, pos, str_len, notbol, noteol))
+					if (trans_i.assertions != 0
+						&& check_assertions(trans_i.assertions, tnfa.cflags, prev_c, next_c, pos, str_len, eflags))
 					{
 						trans_i++;
 						continue;
@@ -3417,7 +3418,7 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, TagId* match_tags, Exe
 			if (num_tags == 0 || reach_next_i == reach_next) break;
 		}
 
-		if (next_c == 0 && (sz)pos >= str_len) break;
+		if (next_c == 0 && pos >= str_len) break;
 
 		// Move window forward
 		prev_c = next_c;
@@ -3445,7 +3446,7 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, TagId* match_tags, Exe
 				if (prev_c >= trans_i.code_min && prev_c <= trans_i.code_max)
 				{
 					if (trans_i.assertions != 0
-						&& (check_assertions(trans_i.assertions, tnfa.cflags, prev_c, next_c, pos, str_len, notbol, noteol)
+						&& (check_assertions(trans_i.assertions, tnfa.cflags, prev_c, next_c, pos, str_len, eflags)
 						|| check_char_classes(trans_i, tnfa, prev_c)))
 					{
 						trans_i++;
@@ -3479,7 +3480,7 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, TagId* match_tags, Exe
 						}
 						reach_next_i++;
 					}
-					else
+					else if (num_tags > 0)
 					{
 						if (tre_tag_order(num_tags, tnfa.tag_directions, tmp_tags, *reach_pos[trans_i.state_id].tags))
 						{
@@ -3488,7 +3489,7 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, TagId* match_tags, Exe
 							if (trans_i.state == tnfa.final)
 							{
 								match_eo = pos;
-								if (num_tags > 0) mem::copy(match_tags, *reach_pos[trans_i.state_id].tags, num_tags * int::size);
+								mem::copy(match_tags, *reach_pos[trans_i.state_id].tags, num_tags * int::size);
 							}
 							tmp_tags = tmp_iptr;
 						}
