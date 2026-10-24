@@ -846,7 +846,7 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 	}
 }
 
-static void c_emit_null_deref_check(GenContext *c, Expr *expr, VariableId addr_var)
+void c_emit_null_deref_check(GenContext *c, Expr *expr, VariableId addr_var)
 {
 	if (!safe_mode_enabled() || addr_var == 0) return;
 	if (expr->expr_kind != EXPR_UNARY || expr->unary_expr.operator != UNARYOP_DEREF) return;
@@ -1080,7 +1080,7 @@ void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target
 	}
 }
 
-static void c_emit_vec_compound_assign(GenContext *c, const char *lhs_fmt, int len, const char *assign_op, CValue *right_val)
+void c_emit_vec_compound_assign(GenContext *c, const char *lhs_fmt, int len, const char *assign_op, CValue *right_val)
 {
 	bool r_is_agg = (right_val->type && c_type_is_aggregate(right_val->type));
 	for (int k = 0; k < len; k++)
@@ -1098,7 +1098,7 @@ static void c_emit_vec_compound_assign(GenContext *c, const char *lhs_fmt, int l
 	}
 }
 
-void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *right_val, const char *assign_op, CValue *out_val)
+void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *addr, CValue *right_val, const char *assign_op, CValue *out_val)
 {
 	if (!left)
 	{
@@ -1106,15 +1106,15 @@ void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *right_val, const ch
 	}
 	if (left->expr_kind == EXPR_RECAST || left->expr_kind == EXPR_ADDR_CONVERSION || left->expr_kind == EXPR_RVALUE)
 	{
-		c_emit_lvalue_assign(c, left->inner_expr, right_val, assign_op, out_val);
+		c_emit_lvalue_assign(c, left->inner_expr, addr, right_val, assign_op, out_val);
 		return;
 	}
 	if (left->expr_kind == EXPR_SWIZZLE)
 	{
 		Expr *parent       = exprptr(left->swizzle_expr.parent);
 		Type *parent_type  = c_expr_type(parent);
-		CValue parent_addr = {0};
-		c_emit_lvalue_addr(c, parent, &parent_addr, type_get_ptr(parent_type));
+		CValue parent_addr = (addr && addr->var) ? *addr : (CValue){0};
+		if (!parent_addr.var) c_emit_lvalue_addr(c, parent, &parent_addr, type_get_ptr(parent_type));
 		const char *ptname = c_type_name(c, parent_type);
 		const char *sw     = left->swizzle_expr.swizzle;
 		int sw_len         = (int)strlen(sw);
@@ -1160,7 +1160,7 @@ void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *right_val, const ch
 		Decl *left_decl = (left->expr_kind == EXPR_DECL) ? left->decl_expr : c_decl_unwrap(left->ident_expr);
 		if (left_decl && left_decl->decl_kind == DECL_VAR && left_decl->var.kind == VARDECL_PARAM_EXPR && left_decl->var.init_expr)
 		{
-			c_emit_lvalue_assign(c, left_decl->var.init_expr, right_val, assign_op, out_val);
+			c_emit_lvalue_assign(c, left_decl->var.init_expr, addr, right_val, assign_op, out_val);
 			return;
 		}
 		if (c_is_file_global(left_decl))
@@ -1359,9 +1359,12 @@ void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *right_val, const ch
 	{
 		target_type = type_int;
 	}
-	CValue addr_val = {0};
-	c_emit_lvalue_addr(c, left, &addr_val, type_get_ptr(target_type));
-	c_emit_null_deref_check(c, left, addr_val.var);
+	CValue addr_val = (addr && addr->var) ? *addr : (CValue){0};
+	if (!addr_val.var)
+	{
+		c_emit_lvalue_addr(c, left, &addr_val, type_get_ptr(target_type));
+		c_emit_null_deref_check(c, left, addr_val.var);
+	}
 	const char *tname = c_type_name(c, target_type);
 	if (!right_val || right_val->var == 0)
 	{

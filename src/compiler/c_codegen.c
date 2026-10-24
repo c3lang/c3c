@@ -35,6 +35,7 @@ sat_shl never saturates: int::max.sat_shl(1) gives -2.
 (Fixed)
 
 11. Compound-assignment evaluation order differs. arr[idx()] += val() evaluates val() first in C but idx() first in LLVM (c_codegen_expr.c:852).
+(Fixed)
 
 12. goto to an undeclared label. is_opt emits goto __C3_LABEL_n (c_codegen_expr.c:994,1002), but the label is only emitted on the fall-through path (:1236). Shifts, vector ops, float %, slice compares and similar early-return paths skip it. int? r = get(3) << 2; fails. It also hits real stdlib code: std::gfx scale_to_monitor (monitor.scale * (Vec2)size) breaks --strip-unused=no.
 (Fixed cd0f39819)

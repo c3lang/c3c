@@ -876,8 +876,23 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 
 	if (op >= BINARYOP_ASSIGN)
 	{
-		Expr *left       = exprptr(binary->left);
-		Expr *right      = exprptr(binary->right);
+		Expr *left      = exprptr(binary->left);
+		Expr *right     = exprptr(binary->right);
+		CValue addr_val = {0};
+
+		if (op > BINARYOP_ASSIGN)
+		{
+			Expr *target = (left->expr_kind == EXPR_SWIZZLE) ? exprptr(left->swizzle_expr.parent) : left;
+			while (target && (target->expr_kind == EXPR_RECAST || target->expr_kind == EXPR_ADDR_CONVERSION || target->expr_kind == EXPR_RVALUE))
+			{
+				target = target->inner_expr;
+			}
+			if (target->expr_kind != EXPR_IDENTIFIER && target->expr_kind != EXPR_DECL)
+			{
+				c_emit_lvalue_addr(c, target, &addr_val, type_get_ptr(c_expr_type(target)));
+			}
+		}
+
 		CValue right_val = {0};
 		c_emit_expr(c, &right_val, right);
 		c_value_rvalue(c, &right_val);
@@ -907,14 +922,13 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 		{
 			CValue current_left = {0};
 			bool is_ident       = (left->expr_kind == EXPR_IDENTIFIER || left->expr_kind == EXPR_DECL);
-			CValue addr_val     = {0};
 			if (is_ident)
 			{
 				c_emit_lvalue_read(c, left, &current_left, target_t);
 			}
 			else
 			{
-				c_emit_lvalue_addr(c, left, &addr_val, type_get_ptr(target_t));
+				if (!addr_val.var) c_emit_lvalue_addr(c, left, &addr_val, type_get_ptr(target_t));
 				int cur_temp = c_emit_temp_var(c, &current_left, target_t);
 				PRINTF("%s ___var_%d = *(%s*)___var_%d;\n", target_tname, cur_temp, target_tname, addr_val.var);
 			}
@@ -925,20 +939,13 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 			PRINTF("if (%s(___var_%d, ___var_%d, &___var_%d)) { __c3_abort(); }\n",
 			       bname, current_left.var, right_val.var, res_temp);
 			CValue res_val = {.var = res_temp, .type = target_t, .kind = CV_VALUE};
-			if (is_ident)
-			{
-				c_emit_lvalue_assign(c, left, &res_val, "=", NULL);
-			}
-			else
-			{
-				PRINTF("*(%s*)___var_%d = ___var_%d;\n", target_tname, addr_val.var, res_temp);
-			}
-			*value = res_val;
+			c_emit_lvalue_assign(c, left, addr_val.var ? &addr_val : NULL, &res_val, "=", NULL);
+			if (value) *value = res_val;
 			return;
 		}
 
 		const char *assign_op = c_assign_op_str(op);
-		c_emit_lvalue_assign(c, left, &right_val, assign_op, value);
+		c_emit_lvalue_assign(c, left, addr_val.var ? &addr_val : NULL, &right_val, assign_op, value);
 		return;
 	}
 
@@ -1538,7 +1545,7 @@ void c_emit_inc_dec(GenContext *c, CValue *value, Expr *expr, bool is_post)
 	CValue new_val = {.var = new_temp, .type = target_type, .kind = CV_VALUE};
 	if (is_ident)
 	{
-		c_emit_lvalue_assign(c, inner, &new_val, "=", NULL);
+		c_emit_lvalue_assign(c, inner, NULL, &new_val, "=", NULL);
 	}
 	else if (c_type_is_aggregate(target_type))
 	{
@@ -3090,7 +3097,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			PRINTF("if (___var_%d) {\n", value->var);
 			if (expr->try_expr.assign_existing && expr->try_expr.lhs)
 			{
-				c_emit_lvalue_assign(c, expr->try_expr.lhs, &opt_val, "=", NULL);
+				c_emit_lvalue_assign(c, expr->try_expr.lhs, NULL, &opt_val, "=", NULL);
 			}
 			else if (expr->try_expr.decl)
 			{

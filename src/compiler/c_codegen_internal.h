@@ -178,7 +178,9 @@ void c_emit_bitstruct_accessors_to_file(FILE *f, Decl *decl);
 const char *c_emit_bitstruct_container(GenContext *c, Expr *parent_expr, Decl *member, int *out_container_var, Decl **out_bitstruct_decl);
 void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target_type);
 void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target_type);
-void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *right_val, const char *assign_op, CValue *out_val);
+void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *addr, CValue *right_val, const char *assign_op, CValue *out_val);
+void c_emit_null_deref_check(GenContext *c, Expr *expr, VariableId addr_var);
+void c_emit_vec_compound_assign(GenContext *c, const char *lhs_fmt, int len, const char *assign_op, CValue *right_val);
 
 /* Global & Runtime */
 bool c_is_file_global(Decl *decl);
