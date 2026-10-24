@@ -1364,7 +1364,11 @@ const char *cc_compiler(const char *cc, const char *file, const char *out_name, 
 		if (dir) dir_make(dir);
 		char *filename = NULL;
 		bool split_worked = file_namesplit(file, &filename, NULL);
-		if (!split_worked) error_exit("Cannot compile '%s'", file);
+		if (!split_worked)
+		{
+			lock_release();
+			return NULL;
+		}
 		size_t len = strlen(filename);
 		// Remove .cpp or .c
 		if (len > 5 && memcmp(filename + len - 4, ".cpp", 4) == 0)

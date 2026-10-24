@@ -13,6 +13,7 @@ typedef struct TaskQueue_
 {
 	pthread_mutex_t lock;
 	Task **queue;
+	bool aborted;
 } TaskQueue;
 
 static void taskqueue_drain(TaskQueue *task_queue)
@@ -20,16 +21,21 @@ static void taskqueue_drain(TaskQueue *task_queue)
 	while (1)
 	{
 		pthread_mutex_lock(&task_queue->lock);
-		int task_count = vec_size(task_queue->queue);
-		if (!task_count)
+		if (task_queue->aborted || !vec_size(task_queue->queue))
 		{
 			pthread_mutex_unlock(&task_queue->lock);
 			return;
 		}
+		int task_count = vec_size(task_queue->queue);
 		Task *task = (Task*)task_queue->queue[task_count - 1];
 		vec_pop(task_queue->queue);
 		pthread_mutex_unlock(&task_queue->lock);
-		task->task(task->arg);
+		if (!task->task(task->arg))
+		{
+			pthread_mutex_lock(&task_queue->lock);
+			task_queue->aborted = true;
+			pthread_mutex_unlock(&task_queue->lock);
+		}
 	}
 }
 
@@ -40,21 +46,21 @@ static void *taskqueue_thread(void *data)
 	return NULL;
 }
 
-void taskqueue_run(int threads, Task **task_list)
+bool taskqueue_run(int threads, Task **task_list)
 {
 	ASSERT(threads > 0);
 	if (threads == 1)
 	{
 		FOREACH(Task *, task, task_list)
 		{
-			task->task(task->arg);
+			if (!task->task(task->arg)) return false;
 		}
-		return;
+		return true;
 	}
 	// The calling thread works too, so only threads - 1 extra OS threads are needed.
 	int worker_threads = threads - 1;
 	pthread_t *pthreads = cmalloc(sizeof(pthread_t) * (int)worker_threads);
-	TaskQueue queue = { .queue = task_list };
+	TaskQueue queue = { .queue = task_list, .aborted = false };
 	pthread_attr_t attr;
 	if (pthread_mutex_init(&queue.lock, NULL)) error_exit("Failed to set up mutex");
 	if (pthread_attr_init(&attr)) error_exit("Failed to set up attribute for thread");
@@ -75,6 +81,7 @@ void taskqueue_run(int threads, Task **task_list)
 	}
 	free(pthreads);
 	pthread_mutex_destroy(&queue.lock);
+	return !queue.aborted;
 }
 
 static pthread_mutex_t global_compile_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -96,6 +103,7 @@ typedef struct TaskQueue_
 {
 	CRITICAL_SECTION lock;
 	Task **queue;
+	bool aborted;
 } TaskQueue;
 
 static void taskqueue_drain(TaskQueue *task_queue)
@@ -103,16 +111,21 @@ static void taskqueue_drain(TaskQueue *task_queue)
 	while (1)
 	{
 		EnterCriticalSection(&task_queue->lock);
-		int task_count = vec_size(task_queue->queue);
-		if (!task_count)
+		if (task_queue->aborted || !vec_size(task_queue->queue))
 		{
 			LeaveCriticalSection(&task_queue->lock);
 			return;
 		}
+		int task_count = vec_size(task_queue->queue);
 		Task *task = (Task*)task_queue->queue[task_count - 1];
 		vec_pop(task_queue->queue);
 		LeaveCriticalSection(&task_queue->lock);
-		task->task(task->arg);
+		if (!task->task(task->arg))
+		{
+			EnterCriticalSection(&task_queue->lock);
+			task_queue->aborted = true;
+			LeaveCriticalSection(&task_queue->lock);
+		}
 	}
 }
 
@@ -122,13 +135,13 @@ static unsigned WINAPI taskqueue_thread(LPVOID lpParam)
 	return 0;
 }
 
-void taskqueue_run(int threads, Task **task_list)
+bool taskqueue_run(int threads, Task **task_list)
 {
 	ASSERT(threads > 0);
 	// The calling thread works too, so only threads - 1 extra OS threads are needed.
 	int worker_threads = threads - 1;
 	HANDLE *handles = cmalloc(sizeof(HANDLE) * (int)worker_threads);
-	TaskQueue queue = { .queue = task_list };
+	TaskQueue queue = { .queue = task_list, .aborted = false };
 	InitializeCriticalSection(&queue.lock);
 	for (int i = 0; i < worker_threads; i++)
 	{
@@ -144,6 +157,7 @@ void taskqueue_run(int threads, Task **task_list)
 	}
 	free((void*)handles);
 	DeleteCriticalSection(&queue.lock);
+	return !queue.aborted;
 }
 
 static SRWLOCK global_compile_lock = SRWLOCK_INIT;
@@ -158,12 +172,13 @@ void lock_release(void)
 
 #else
 
-void taskqueue_run(int threads, Task **task_list)
+bool taskqueue_run(int threads, Task **task_list)
 {
 	FOREACH(Task *, task, task_list)
 	{
-		task->task(task->arg);
+		if (!task->task(task->arg)) return false;
 	}
+	return true;
 }
 
 void lock_acquire(void) {}

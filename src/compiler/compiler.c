@@ -175,41 +175,43 @@ typedef struct CompileData_
 } CompileData;
 
 #if LLVM_AVAILABLE
-void thread_compile_task_llvm(void *compile_data)
+static bool thread_compile_task_llvm(void *compile_data)
 {
 	CompileData *data = compile_data;
-	data->object_name = llvm_codegen(data->context);
+	return llvm_codegen(data->context, &data->object_name);
 }
 
-static void thread_compile_task_llvm_ir(void *compile_data)
+static bool thread_compile_task_llvm_ir(void *compile_data)
 {
 	CompileData *data = compile_data;
-	data->object_name = llvm_codegen_ir_file(data->context);
+	return llvm_codegen_ir_file(data->context, &data->object_name);
 }
 #else 
-void thread_compile_task_llvm(void *compile_data)
+static bool thread_compile_task_llvm(void *compile_data)
 {
-	error_exit("LLVM backend not available.");
+	eprintf("LLVM backend not available.\n");
+	return false;
 }
 #endif 
 
-static void thread_compile_c_source(void *compile_data)
+static bool thread_compile_c_source(void *compile_data)
 {
 	CompileData *data = compile_data;
 	data->object_name = cc_compiler(data->cc, data->c_file, NULL, data->cflags, data->cinclude_dirs, data->output_subdir);
-	if (!data->object_name) error_exit("Failed to compile '%s'.\n", data->c_file);
+	return data->object_name != NULL;
 }
 
-void thread_compile_task_c(void *compile_data)
+static bool thread_compile_task_c(void *compile_data)
 {
 	CompileData *data = compile_data;
-	data->object_name = c_codegen(data->context);
+	return c_codegen(data->context, &data->object_name);
 }
 
-void thread_compile_task_tb(void *compile_data)
+static bool thread_compile_task_tb(void *compile_data)
 {
 	CompileData *data = compile_data;
 	data->object_name = tilde_codegen(data->context);
+	return data->object_name != NULL;
 }
 
 #if !TB_AVAILABLE
@@ -681,7 +683,7 @@ void compiler_compile(void)
 	}
 
 	void **gen_contexts;
-	void (*task)(void *);
+	bool (*task)(void *);
 
 	if ((compiler.build.emit_llvm || compiler.build.test_output || compiler.build.lsp_output))
 	{
@@ -912,7 +914,10 @@ void compiler_compile(void)
 	if (task_count > 0)
 	{
 		int threads = (int)(compiler.build.build_threads > task_count ? task_count : compiler.build.build_threads);
-		taskqueue_run(threads, tasks);
+		if (!taskqueue_run(threads, tasks))
+		{
+			exit_compiler(EXIT_FAILURE);
+		}
 	}
 	if (compiler.build.print_output)
 	{

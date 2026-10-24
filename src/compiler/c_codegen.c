@@ -1283,24 +1283,21 @@ static const char *c_backend_build_cflags(const char *cc)
 	return scratch_buffer_copy();
 }
 
-const char *c_codegen(void *context)
+bool c_codegen(void *context, const char **out_name)
 {
+	*out_name = NULL;
 	GenContext *c = (GenContext *)context;
 	if (!c || (c->current_module && !compiler_should_output_file(c->base_name)))
 	{
-		return NULL;
+		return true;
 	}
 
 	if (c_backend_cc)
 	{
-		const char *out = cc_compiler(c_backend_cc, c->c_filename, c->object_filename, c_backend_cflags, NULL, NULL);
-		if (!out)
-		{
-			exit(EXIT_FAILURE);
-		}
-		return out;
+		*out_name = cc_compiler(c_backend_cc, c->c_filename, c->object_filename, c_backend_cflags, NULL, NULL);
+		return *out_name != NULL;
 	}
-	return NULL;
+	return true;
 }
 
 void **c_gen(Module **modules, int module_count)
