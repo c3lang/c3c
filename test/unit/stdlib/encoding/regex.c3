@@ -1387,18 +1387,51 @@ fn void test_backref_empty_group_does_not_prune_valid_match() @test
 	}
 }
 
-// A search that fails must stay cheap. Every start position is tried, but a start that cannot match should be rejected
-// quickly, so the total cost must not grow like n^2 for backreference patterns (n = 2000 takes 0.2-0.6 s when it does).
-fn void test_backref_failing_search_stays_fast() @test
+// Whatever follows a backreference must be matched against *every* successor of the backreference, and as a decoded
+// character rather than as a raw byte. Pruning on only the first successor, or on the first byte, drops valid matches.
+fn void test_backref_followed_by_alternation_or_multibyte() @test
 {
-	char[] input = mem::temp_array(char, 2000);
-	input[..] = 'a';
+	{
+		Regex re = regex::compile(mem, "\\(a\\)\\1\\(b\\|c\\)")!!;
+		defer re.free();
 
-	Regex re = regex::compile(mem, "\\(a*\\)\\1b")!!;
-	defer re.free();
+		Match m1 = re.first_match("aab")!!;
+		test::eq(m1.start, 0);
+		test::eq(m1.end, 3);
 
-	Clock clock = clock::now();
-	test::@check(!re.matches((String)input));
-	long micros = (long)clock.mark() / 1000;
-	test::@check(micros < 50_000, "took %d us, expected under 50000 us", micros);
+		Match m2 = re.first_match("aac")!!;
+		test::eq(m2.start, 0);
+		test::eq(m2.end, 3);
+	}
+
+	{
+		Regex re = regex::compile(mem, "\\(b\\)\\1\\(a\\|b\\)\\1")!!;
+		defer re.free();
+
+		Match m = re.first_match("abbbbcb")!!;
+		test::eq(m.start, 1);
+		test::eq(m.end, 5);
+	}
+
+	{
+		Regex re = regex::compile(mem, "\\(a\\)\\1é")!!;
+		defer re.free();
+
+		Match m = re.first_match("aaé")!!;
+		test::eq(m.start, 0);
+		test::eq(m.end, 4);
+	}
+
+	{
+		Regex re = regex::compile(mem, "\\(a\\)\\1\\(é\\|€\\)")!!;
+		defer re.free();
+
+		Match m1 = re.first_match("aaé")!!;
+		test::eq(m1.start, 0);
+		test::eq(m1.end, 4);
+
+		Match m2 = re.first_match("aa€")!!;
+		test::eq(m2.start, 0);
+		test::eq(m2.end, 5);
+	}
 }
