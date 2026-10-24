@@ -144,7 +144,7 @@ bool c_decl_needs_asm_label(Decl *decl);
 const char *c_get_enum_assoc_name(Decl *enum_decl, Decl *param);
 void c_emit_string_literal(GenContext *c, const char *bytes, ArrayIndex len);
 void c_traverse_all_modules(GenContext *c, CDeclVisitor visitor, void *userdata);
-void c_emit_panic(GenContext *c, const char *message, SourceLocId loc);
+void c_emit_panic(GenContext *c, const char *message, SourceLocId loc, Expr **args);
 
 /* Function & Variable Management */
 int c_create_label(GenContext *c);
@@ -178,7 +178,9 @@ void c_emit_bitstruct_accessors_to_file(FILE *f, Decl *decl);
 const char *c_emit_bitstruct_container(GenContext *c, Expr *parent_expr, Decl *member, int *out_container_var, Decl **out_bitstruct_decl);
 void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target_type);
 void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target_type);
-void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *right_val, const char *assign_op, CValue *out_val);
+void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *addr, CValue *right_val, const char *assign_op, CValue *out_val);
+void c_emit_null_deref_check(GenContext *c, Expr *expr, VariableId addr_var);
+void c_emit_vec_compound_assign(GenContext *c, const char *lhs_fmt, int len, const char *assign_op, CValue *right_val);
 
 /* Global & Runtime */
 bool c_is_file_global(Decl *decl);
