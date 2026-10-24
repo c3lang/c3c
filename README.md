@@ -446,7 +446,7 @@ called `hello_world` or `hello_world.exe`depending on platform.
 1. Make sure you have Visual Studio 17 2022 installed or alternatively install the "Buildtools for Visual Studio" (https://aka.ms/vs/17/release/vs_BuildTools.exe) and then select "Desktop development with C++"
 2. Install CMake
 3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
-4. Enter the C3C directory: `cd c3c`.
+4. Open Developer Command Prompt for VS (or run `vsvarsall.bat`) and enter the C3C directory: `cd c3c`.
 5. Set up the CMake build: `cmake --preset windows-vs-2022-release -D C3_FETCH_LLVM=ON`
 6. Build: `cmake --build --preset windows-vs-2022-release`
 
