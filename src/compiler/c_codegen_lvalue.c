@@ -849,7 +849,11 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 void c_emit_null_deref_check(GenContext *c, Expr *expr, VariableId addr_var)
 {
 	if (!safe_mode_enabled() || addr_var == 0) return;
-	if (expr->expr_kind != EXPR_UNARY || expr->unary_expr.operator != UNARYOP_DEREF) return;
+	while (expr && (expr->expr_kind == EXPR_RECAST || expr->expr_kind == EXPR_ADDR_CONVERSION || expr->expr_kind == EXPR_RVALUE))
+	{
+		expr = expr->inner_expr;
+	}
+	if (!expr || expr->expr_kind != EXPR_UNARY || expr->unary_expr.operator != UNARYOP_DEREF) return;
 	if (expr_is_const(expr->unary_expr.expr)) return;
 
 	PRINTF("if (___var_%d == NULL) { ", addr_var);

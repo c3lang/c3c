@@ -890,6 +890,7 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 			if (target->expr_kind != EXPR_IDENTIFIER && target->expr_kind != EXPR_DECL)
 			{
 				c_emit_lvalue_addr(c, target, &addr_val, type_get_ptr(c_expr_type(target)));
+				c_emit_null_deref_check(c, target, addr_val.var);
 			}
 		}
 
@@ -928,7 +929,11 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 			}
 			else
 			{
-				if (!addr_val.var) c_emit_lvalue_addr(c, left, &addr_val, type_get_ptr(target_t));
+				if (!addr_val.var)
+				{
+					c_emit_lvalue_addr(c, left, &addr_val, type_get_ptr(target_t));
+					c_emit_null_deref_check(c, left, addr_val.var);
+				}
 				int cur_temp = c_emit_temp_var(c, &current_left, target_t);
 				PRINTF("%s ___var_%d = *(%s*)___var_%d;\n", target_tname, cur_temp, target_tname, addr_val.var);
 			}
@@ -1515,6 +1520,7 @@ void c_emit_inc_dec(GenContext *c, CValue *value, Expr *expr, bool is_post)
 	else
 	{
 		c_emit_lvalue_addr(c, inner, &addr_val, type_get_ptr(target_type));
+		c_emit_null_deref_check(c, inner, addr_val.var);
 		int cur_temp = c_emit_temp_var(c, &old_val, target_type);
 		PRINTF("%s ___var_%d = *(%s*)___var_%d;\n", tname, cur_temp, tname, addr_val.var);
 	}
