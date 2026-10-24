@@ -167,6 +167,7 @@ static void usage(bool full)
 	print_opt("-g0", "Emit no debug info.");
 	if (full)
 	{
+		print_opt("-gline-tables-only", "Emit line tables debug info only.");
 		PRINTF("");
 		print_opt("--ansi=<yes|no>", "Set colour output using ansi on/off, default is to try to detect it.");
 		print_opt("--echo-prefix <arg>", "Sets the prefix for any output using '$echo', defaults to 'c3c:'.");
@@ -929,7 +930,7 @@ static void parse_option(BuildOptions *options) // NOLINT
 			if (match_shortopt("gline-tables-only"))
 			{
 				options->debug_info_override = DEBUG_INFO_LINE_TABLES;
-				FATAL_ERROR("Line tables only are currently not available");
+				return;
 			}
 			if (match_shortopt("g") || match_shortopt("g1"))
 			{

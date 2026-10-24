@@ -512,6 +512,8 @@ typedef struct
 	const char **csources;
 	const char **cinclude_dirs;
 	const char **exec;
+	const char **env;
+	const char *env_expand_error;
 	const char **depends_on;
 	AuthorEntry *authors;
 	const char **feature_list;

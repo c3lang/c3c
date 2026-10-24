@@ -599,6 +599,7 @@ LLVMMetadataRef llvm_get_debug_file(GenContext *c, FileId file_id);
 	c__->debug.block_stack = &new_scope; } } while (0)
 #define DEBUG_POP_LEXICAL_SCOPE(c__) do { c__->debug.block_stack = old_scope; } while (0)
 INLINE bool llvm_use_debug(GenContext *context);
+INLINE bool llvm_use_debug_variables(GenContext *context);
 DebugScope llvm_debug_create_lexical_scope(GenContext *context, SourceLocId location);
 LLVMMetadataRef llvm_debug_current_scope(GenContext *context);
 void llvm_emit_debug_function(GenContext *c, Decl *decl);

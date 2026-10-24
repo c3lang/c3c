@@ -1752,6 +1752,21 @@ void setup_exec_paths(const char **old_dir_ref, const char **script_dir_ref, con
 	}
 }
 
+static void set_env_var(const char *name, const char *value)
+{
+#if PLATFORM_WINDOWS
+	// An empty value removes the variable.
+	_putenv_s(name, value ? value : "");
+#else
+	if (!value)
+	{
+		unsetenv(name);
+		return;
+	}
+	setenv(name, value, 1);
+#endif
+}
+
 void execute_scripts(void)
 {
 	if (!vec_size(compiler.build.exec)) return;
@@ -1764,6 +1779,20 @@ void execute_scripts(void)
 	const char *old_dir;
 	setup_exec_paths(&old_dir, &script_dir, &exec_dir);
 	bool same_exec_as_script = str_eq(exec_dir, script_dir);
+
+	// Patch our env values
+	const char **env_names = NULL;
+	const char **env_old_values = NULL;
+	FOREACH(const char *, env, compiler.build.env)
+	{
+		const char *eq = strchr(env, '=');
+		const char *name = str_copy(env, eq - env);
+		const char *old_value = getenv(name);
+		vec_add(env_names, name);
+		vec_add(env_old_values, old_value ? str_dup(old_value) : NULL);
+		set_env_var(name, eq + 1);
+	}
+
 	double start = bench_mark();
 	FOREACH(const char *, exec, compiler.build.exec)
 	{
@@ -1797,6 +1826,15 @@ PRINT_SCRIPT:;
 		}
 	}
 	dir_change(old_path);
+
+	// Restore the env values in reverse order
+	// in case we have ABC=1, ABC=2 because otherwise
+	// setting it back would give ABC=1 as the final value.
+	for (int i = vec_size(env_names) - 1; i >= 0; i--)
+	{
+		set_env_var(env_names[i], env_old_values[i]);
+	}
+
 	compiler.script_time += bench_mark() - start;
 }
 
