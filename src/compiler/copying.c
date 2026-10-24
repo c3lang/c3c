@@ -1201,6 +1201,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_TYPE_LIST(copy->interfaces);
 			MACRO_COPY_DECL_METHODS(copy->method_table);
 			MACRO_COPY_TYPE(copy->distinct);
+			MACRO_COPY_EXPR(copy->distinct_align);
 			break;
 		case DECL_CT_ECHO:
 			MACRO_COPY_AST(copy->ct_echo_decl);

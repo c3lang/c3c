@@ -70,6 +70,7 @@
 - Lazy resolution of function pointer types could cause a segfault when unifying ternary types. #3552
 - `@swap` now works with non-pure arguments.
 - Incorrect lowering of vectors when created from designated initializers with zeroes at the end.
+- Aligned typedefs in macros/generics would not work correctly.
 
 ### Stdlib changes
 - Added `std::gfx` module.
