@@ -456,7 +456,11 @@ static inline bool assert_create_from_contract(SemaContext *context, Expr *direc
 		if (expr_is_const_bool(expr))
 		{
 			if (expr->const_expr.b) continue;
+			// With an evaluation location the error is at the call site, outside any generic instance.
+			Decl *generic_instance = context->generic_instance;
+			if (evaluation_location) context->generic_instance = NULL;
 			sema_error_at(context, expr->loc, "%s", comment);
+			context->generic_instance = generic_instance;
 			return false;
 		}
 

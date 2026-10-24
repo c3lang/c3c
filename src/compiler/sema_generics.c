@@ -105,7 +105,7 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 	{
 		SemaContext temp_context;
 		InliningSpan *old_span = c->inlined_at;
-		InliningSpan new_span = { .prev = old_span, .loc = invocation_loc };
+		InliningSpan new_span = { .prev = old_span, .loc = invocation_loc, .instance = instance };
 		SemaContext *new_context = context_transform_for_eval(c, &temp_context, module->units[0]);
 		Decl *old_generic_instance = new_context->generic_instance;
 		InliningSpan *old_inlined_at = new_context->inlined_at;
@@ -130,6 +130,7 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 			}
 			FAIL:
 			new_context->inlined_at = old_inlined_at;
+			new_context->generic_instance = old_generic_instance;
 			sema_context_destroy(&temp_context);
 			return false;
 		}

@@ -618,18 +618,26 @@ void sema_print_inline(SemaContext *context, SourceLocId original)
 	InliningSpan *inlined_at = context->inlined_at;
 	SourceLocId last_span = 0;
 	SourceLoc *original_loc = sourcelocptrzero(original);
+	Decl *instance = context->generic_instance;
+	bool instance_in_span = false;
 	while (inlined_at)
 	{
+		// A span for this instance already points at where it is instantiated.
+		if (instance && inlined_at->instance == instance) instance_in_span = true;
 		if (inlined_at->loc != original && inlined_at->loc != last_span)
 		{
 			SourceLoc *inlined_loc = sourcelocptrzero(inlined_at->loc);
 			if (!loc_inside_loc(original_loc, inlined_loc))
 			{
-				sema_note_prev_at(inlined_at->loc, "Inlined from here.");
+				sema_note_prev_at(inlined_at->loc, inlined_at->instance ? "Instantiated here." : "Inlined from here.");
 				last_span = inlined_at->loc;
 			}
 		}
 		inlined_at = inlined_at->prev;
+	}
+	if (instance && !instance_in_span && instance->loc != original)
+	{
+		sema_note_prev_at(instance->loc, "Instantiated here.");
 	}
 	InliningSpan span = context->compilation_unit->module->inlined_at;
 	if (!span.loc) return;

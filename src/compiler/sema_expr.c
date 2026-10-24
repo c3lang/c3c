@@ -1795,7 +1795,7 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDeclContext *c
 		InliningSpan inlined_at;
 		if (!new_context->inlined_at)
 		{
-			inlined_at = (InliningSpan) { .loc = call->loc };
+			inlined_at = (InliningSpan) { .loc = call->loc, .instance = new_context->generic_instance != context->generic_instance ? new_context->generic_instance : NULL };
 			new_context->inlined_at = &inlined_at;
 		}
 		bool success;
@@ -2971,7 +2971,8 @@ static inline bool sema_expr_setup_call_analysis(SemaContext *context, CalledDec
 	macro_context->expected_block_type = rtype;
 	if (span_ref)
 	{
-		*span_ref = (InliningSpan){ call_expr->loc, context->inlined_at };
+		Decl *instance = macro_context->generic_instance != context->generic_instance ? macro_context->generic_instance : NULL;
+		*span_ref = (InliningSpan){ call_expr->loc, context->inlined_at, instance };
 	}
 	else
 	{
