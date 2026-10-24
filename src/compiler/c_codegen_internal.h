@@ -144,7 +144,7 @@ bool c_decl_needs_asm_label(Decl *decl);
 const char *c_get_enum_assoc_name(Decl *enum_decl, Decl *param);
 void c_emit_string_literal(GenContext *c, const char *bytes, ArrayIndex len);
 void c_traverse_all_modules(GenContext *c, CDeclVisitor visitor, void *userdata);
-void c_emit_panic(GenContext *c, const char *message, SourceLocId loc);
+void c_emit_panic(GenContext *c, const char *message, SourceLocId loc, Expr **args);
 
 /* Function & Variable Management */
 int c_create_label(GenContext *c);

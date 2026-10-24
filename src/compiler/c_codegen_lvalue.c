@@ -857,7 +857,7 @@ static void c_emit_null_deref_check(GenContext *c, Expr *expr, VariableId addr_v
 	scratch_buffer_append("Dereference of null pointer, '");
 	loc_to_scratch(expr->unary_expr.expr->loc);
 	scratch_buffer_append("' was null.");
-	c_emit_panic(c, scratch_buffer_to_string(), expr->loc);
+	c_emit_panic(c, scratch_buffer_to_string(), expr->loc, NULL);
 	PRINT("}\n");
 }
 

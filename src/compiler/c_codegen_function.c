@@ -314,7 +314,7 @@ void c_emit_assign_to_any(GenContext *c, const char *dst_expr, CValue *src)
 	{
 		c_value_addr(c, src);
 	}
-	PRINTF("%s = (__c3_any__){ .ptr = (void*)___var_%d, .typeid = (c3typeid_t)&%s };\n",
+	PRINTF("%s = (__c3_any__){ .ptr = (void*)&___var_%d, .typeid = (c3typeid_t)&%s };\n",
 	       dst_expr, src->var, c_typeid_name(src_type));
 }
 
