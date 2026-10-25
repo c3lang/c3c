@@ -2004,7 +2004,11 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.build_threads = cpus(),
 		.command = COMMAND_MISSING,
 		.reloc_model = RELOC_DEFAULT,
+#if LLVM_AVAILABLE
 		.backend = BACKEND_LLVM,
+#else
+		.backend = BACKEND_C,
+#endif
 		.x86_vector_capability = X86VECTOR_DEFAULT,
 		.win_64_simd = WIN64_SIMD_DEFAULT,
 		.win_debug = WIN_DEBUG_DEFAULT,
