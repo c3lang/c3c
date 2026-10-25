@@ -1000,6 +1000,7 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, int
 				add_plain_arg("/DLL");
 				add_concat_quote_arg("/IMPLIB:", static_lib_name());
 			}
+			break;
 		case LINKER_CC:
 			if (is_dylib) add_plain_arg("-shared");
 			break;
