@@ -361,7 +361,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_MEMBER_GET:
 		case EXPR_MEMBER_SET:
 			fixup_decl(c, &expr->member_get_expr);
-			break;
+			return expr;
 		case EXPR_SWIZZLE:
 			MACRO_COPY_EXPRID(expr->swizzle_expr.parent);
 			return expr;
@@ -896,7 +896,8 @@ static ResolvedAttrData *copy_attrs_resolved(CopyStruct *c, ResolvedAttrData *da
 			.deprecated = data->deprecated,
 			.links = new_links,
 			.section = data->section,
-			.wasm_module = data->wasm_module
+			.wasm_module = data->wasm_module,
+			.overload = data->overload,
 	};
 	return copy;
 }
@@ -913,7 +914,7 @@ Decl **copy_decl_list_single_for_generic(Decl **decl_list, Decl *generic_instanc
 {
 	const char *name_suffix = generic_instance->instance_decl.name_suffix;
 	bool old_is_template = copy_struct.is_template;
-	bool old_instance = copy_struct.instance_id;
+	DeclId old_instance = copy_struct.instance_id;
 	copy_struct.is_template = true;
 	copy_struct.instance_id = declid(generic_instance);
 	copy_begin();
@@ -1098,6 +1099,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 		case DECL_CT_EXEC:
 			MACRO_COPY_EXPR(copy->exec_decl.filename);
 			MACRO_COPY_EXPR_LIST(copy->exec_decl.args);
+			MACRO_COPY_EXPR(copy->exec_decl.stdin_string);
 			break;
 		case DECL_CT_INCLUDE:
 			MACRO_COPY_EXPR(copy->include.filename);
@@ -1201,6 +1203,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_TYPE_LIST(copy->interfaces);
 			MACRO_COPY_DECL_METHODS(copy->method_table);
 			MACRO_COPY_TYPE(copy->distinct);
+			MACRO_COPY_EXPR(copy->distinct_align);
 			break;
 		case DECL_CT_ECHO:
 			MACRO_COPY_AST(copy->ct_echo_decl);
@@ -1233,11 +1236,3 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 	return copy;
 }
 
-InliningSpan *copy_inlining_span(InliningSpan *span)
-{
-	if (!span) return NULL;
-	InliningSpan *copy_span = MALLOCS(InliningSpan);
-	copy_span->loc = span->loc;
-	copy_span->prev = copy_inlining_span(span->prev);
-	return copy_span;
-}

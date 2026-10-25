@@ -815,12 +815,11 @@ static bool report_cast_error(CastContext *cc, bool may_cast_explicit)
 	{
 		if (to == enum_inner_type(expr->type))
 		{
-			RETURN_CAST_ERROR(expr, "It is not possible to cast the enum %s to %s, but you can use .ordinal to get the ordinal. E.g. 'my_enum.ordinal.",
+			RETURN_CAST_ERROR(expr, "It is not possible to cast the enum %s to %s, but you can use .ordinal to get the ordinal. E.g. 'my_enum.ordinal'.",
 				type_quoted_error_string(type_no_optional(expr->type)),
-				type_quoted_error_string(type_no_optional(to)),
-				type_to_error_string(type_no_optional(to)));
+				type_quoted_error_string(type_no_optional(to)));
 		}
-		RETURN_CAST_ERROR(expr, "It is not possible to cast the enum %s to %s, but you can use .ordinal to get the ordinal and cast it. E.g. '(%s)my_enum.ordinal.",
+		RETURN_CAST_ERROR(expr, "It is not possible to cast the enum %s to %s, but you can use .ordinal to get the ordinal and cast it. E.g. '(%s)my_enum.ordinal'.",
 			type_quoted_error_string(type_no_optional(expr->type)),
 			type_quoted_error_string(type_no_optional(to)),
 			type_to_error_string(type_no_optional(to)));
@@ -2139,7 +2138,7 @@ static void cast_vec_to_vec(Expr *expr, Type *to_type)
 				return;
 			}
 			case ALL_INTS:
-				expr_rewrite_to_int_to_ptr(expr, to_type);
+				expr_rewrite_to_ptr_to_int(expr, to_type);
 				return;
 			case TYPE_POINTER:
 			case TYPE_FUNC_PTR:
@@ -2445,6 +2444,7 @@ static void cast_slice_to_vec(Expr *expr, Type *to_type)
 		switch (expr->expr_kind)
 		{
 			case EXPR_SLICE:
+			case EXPR_MAKE_SLICE:
 			{
 				expr->inner_expr = expr_copy(expr);
 				expr->expr_kind = EXPR_SLICE_TO_VEC_ARRAY;

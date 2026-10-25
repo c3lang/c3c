@@ -1403,12 +1403,14 @@ const char *cc_compiler(const char *cc, const char *file, const char *out_name, 
 	}
 
 	const bool pie_set =
-			flags != NULL &&
-			(strstr(flags, "-fno-PIE") || // This is a weird case, but probably don't set PIE if
-			 strstr(flags, "-fno-pie") || // it is being set in user defined cflags.
-			 strstr(flags, "-fpie") ||
-			 strstr(flags, "-fPIE")); // strcasestr is apparently nonstandard >:(
-	if (!pie_set && !is_cl_exe)
+		flags != NULL &&
+		(strstr(flags, "-fno-PIE") || // This is a weird case, but probably don't set PIE if
+		 strstr(flags, "-fno-pie") || // it is being set in user defined cflags.
+		 strstr(flags, "-fpie") ||
+		 strstr(flags, "-fPIE")); // strcasestr is apparently nonstandard >:(
+
+	// Windows has no PIC/PIE compile mode, clang rejects -fPIE/-fPIC for *-windows-msvc.
+	if (!pie_set && compiler.platform.os != OS_TYPE_WIN32)
 	{
 		append_fpie_pic_options(compiler.platform.reloc_model, &parts);
 	}

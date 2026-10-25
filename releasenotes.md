@@ -16,6 +16,7 @@
 - Add `env` and `env-override` to `project.json`, setting environment variables (`"NAME=value"`) for the `exec` scripts. #3580
 - Add `-gline-tables-only` to emit line tables debug info only.
 - Disallow `{ .a = 1, .a = 1 }`. #3579
+- Add better instantiation error output.
 
 ### Fixes
 - Compressed `.c3l` libraries were not unpacked again when only files other than `manifest.json` had changed.
@@ -38,6 +39,8 @@
 - Compiler hangs on c3c project fetch #3562
 - Temp dirs were left behind by `c3c compile` (including unpacked `.c3l` libraries), `fetch-list`, `vendor-fetch` and the SDK fetch commands, in particular after errors. #3553
 - Compiler crashes when emitting line-tables debug info. #3581
+- Do not pass PIE/PIC on Windows. #3586
+- Crashes in slice->vector and ptrvec->intvec conversions.
 
 ### Stdlib changes
 - Added termios support for OpenBSD.
@@ -63,12 +66,13 @@
 - Fix source locations for byte literal values continued on a new line.
 - Faulty selection of subscript operator overload when calling method #3499
 - Retain `@nostrip` on optimized code even if no use is found, static variables may now also have nostrip. #3500
-
 - `!=` overloads on structs behaved as `==` #3547.
 - Multi-dimensional array comparisons on types with `==` overloaded would not compare.
 - Lazy resolution of function pointer types could cause a segfault when unifying ternary types. #3552
 - `@swap` now works with non-pure arguments.
 - Incorrect lowering of vectors when created from designated initializers with zeroes at the end.
+- Aligned typedefs in macros/generics would not work correctly.
+
 ### Stdlib changes
 - Added `std::gfx` module.
 - Added `IntRect`, `IntVec2`, `IntVec3` and `IntVec4` types.

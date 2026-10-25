@@ -188,6 +188,7 @@ typedef struct InliningSpan_
 {
 	SourceLocId loc;
 	struct InliningSpan_ *prev;
+	Decl *instance;
 } InliningSpan;
 
 typedef struct
@@ -2390,7 +2391,6 @@ Decl **copy_decl_list_macro(Decl **decl_list);
 Ast *copy_ast_macro(Ast *source_ast);
 Ast *copy_ast_defer(Ast *source_ast);
 TypeInfo *copy_type_info_single(TypeInfo *type_info);
-InliningSpan *copy_inlining_span(InliningSpan *span);
 
 void init_asm(PlatformTarget *target);
 void print_asm_list(PlatformTarget *target);
