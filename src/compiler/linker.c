@@ -1184,6 +1184,20 @@ static int assemble_link_arguments(const char **arguments, int len)
 	return count;
 }
 
+#if !LLVM_AVAILABLE && PLATFORM_WINDOWS
+static const char *find_msvc_linker(void)
+{
+	WindowsSDK *sdk = windows_get_sdk();
+	if (sdk && sdk->cl_path)
+	{
+		char *dir = file_get_dir(sdk->cl_path);
+		char *link = file_append_path(dir, "link.exe");
+		if (file_exists(link)) return link;
+	}
+	return "link.exe";
+}
+#endif
+
 static bool link_exe(const char *output_file, const char **files_to_link, int file_count)
 {
 	INFO_LOG("Using linker directly.");
@@ -1521,20 +1535,6 @@ bool dynamic_lib_linker(const char *output_file, const char **files, int file_co
 }
 
 #if !LLVM_AVAILABLE
-#if PLATFORM_WINDOWS
-static const char *find_msvc_linker(void)
-{
-	WindowsSDK *sdk = windows_get_sdk();
-	if (sdk && sdk->cl_path)
-	{
-		char *dir = file_get_dir(sdk->cl_path);
-		char *link = file_append_path(dir, "link.exe");
-		if (file_exists(link)) return link;
-	}
-	return "link.exe";
-}
-#endif
-
 static const char *find_archiver(void)
 {
 	const char *ar = getenv("C3C_AR");
