@@ -604,21 +604,33 @@ static bool compiler_link_exe(const char *output_exe, const char **obj_files, in
 			if (!system_linker_available)
 			{
 				cc = cc ? cc : find_c_compiler();
+#if LLVM_AVAILABLE
 				OUTF("C compiler '%s' not found or system linker is unsupported; using built-in linker instead.\n", cc);
 				compiler.build.linker_type = LINKER_TYPE_BUILTIN;
 				use_system_linker = false;
+#else
+				error_exit("C compiler '%s' not found or system linker is unsupported, and built-in linker is not available without LLVM.", cc);
+#endif
 				break;
 			}
 			use_system_linker = true;
 			break;
 		case LINKER_TYPE_BUILTIN:
+#if !LLVM_AVAILABLE
+			error_exit("Built-in linker is not available in C3C compiled without LLVM.");
+#endif
 			use_system_linker = false;
 			break;
 		default:
+#if !LLVM_AVAILABLE
+			compiler.build.linker_type = LINKER_TYPE_CC;
+			use_system_linker = true;
+#else
 			if (!use_system_linker && compiler.build.linker_type == LINKER_TYPE_NOT_SET)
 			{
 				compiler.build.linker_type = LINKER_TYPE_BUILTIN;
 			}
+#endif
 			break;
 		}
 	if (use_system_linker || compiler.build.linker_type == LINKER_TYPE_CC)
