@@ -41,7 +41,8 @@
 - Compiler crashes when emitting line-tables debug info. #3581
 - Do not pass PIE/PIC on Windows. #3586
 - Crashes in slice->vector and ptrvec->intvec conversions.
-
+- Implicit cast rules too lose for slice->arrptr.
+ 
 ### Stdlib changes
 - Added termios support for OpenBSD.
 - Add `file::open_fd` to open files directly from file descriptors.

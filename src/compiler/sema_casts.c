@@ -1078,9 +1078,19 @@ static bool rule_ulist_to_inferred(CastContext *cc, UNUSED bool is_explicit, boo
 
 static bool rule_slice_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	Type *slice_base = cc->from->array.base->canonical;
-	Type *natural_ptr = type_get_ptr(slice_base);
-	switch (match_pointers(cc, natural_ptr, cc->to, is_explicit))
+	Type *slice_base = cc->from->array.base;
+	// A slice is also convertible to `Type[N]*` if it is known to be N long (or explicitly cast).
+	Type *to_pointee = is_explicit ? type_flatten(cc->to->pointer) : cc->to->pointer;
+	TypeCmpResult cmp;
+	if (to_pointee->type_kind == TYPE_ARRAY && (is_explicit || to_pointee->array.len == sema_len_from_const(cc->expr)))
+	{
+		cmp = type_array_element_is_equivalent(cc->context, to_pointee->array.base, slice_base, is_explicit);
+	}
+	else
+	{
+		cmp = match_pointers(cc, cc->to, type_get_ptr(slice_base), is_explicit);
+	}
+	switch (cmp)
 	{
 		case TYPE_SAME:
 			return true;
