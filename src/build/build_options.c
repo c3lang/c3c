@@ -849,14 +849,13 @@ static void print_version(void)
 	PRINTF("Git Hash:                  %s", GIT_HASH);
 
 #if LLVM_AVAILABLE && TB_AVAILABLE
-	PRINTF("Backends:                  LLVM; TB");
+	PRINTF("Backends:                  LLVM; TB; C");
 #elif LLVM_AVAILABLE
-	PRINTF("Backends:                  LLVM");
+	PRINTF("Backends:                  LLVM; C");
 #elif TB_AVAILABLE
-	PRINTF("Backends:                  TB");
+	PRINTF("Backends:                  TB; C");
 #else
-
-	PRINTF("No backends available");
+	PRINTF("Backends:                  C");
 #endif
 
 #if LLVM_AVAILABLE
