@@ -683,7 +683,9 @@ if(C3_WITH_LLVM)
 else()
     target_sources(c3c PRIVATE src/utils/hostinfo.c)
     target_compile_definitions(c3c PUBLIC LLVM_AVAILABLE=0)
-    target_link_libraries(c3c PRIVATE m)
+    if (NOT MSVC)
+        target_link_libraries(c3c PRIVATE m)
+    endif()
 endif()
 
 target_include_directories(c3c PRIVATE
