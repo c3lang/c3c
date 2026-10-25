@@ -1214,6 +1214,12 @@ static bool link_exe(const char *output_file, const char **files_to_link, int fi
 		default:
 			UNREACHABLE
 	}
+#elif PLATFORM_WINDOWS
+	vec_insert_first(args, find_msvc_linker());
+	const char *cmd = assemble_linker_command(args, true);
+	if (compiler.build.print_linking) puts(cmd);
+	success = (system(cmd) == 0);
+	if (!success) error = "link.exe failed";
 #else
 	success = false;
 	error = "linking (.exe) is not implemented for C3C compiled without LLVM";
@@ -1461,8 +1467,12 @@ const char *cc_compiler(const char *cc, const char *file, const char *out_name, 
 bool dynamic_lib_linker(const char *output_file, const char **files, int file_count)
 {
 #if !LLVM_AVAILABLE
+#if PLATFORM_WINDOWS
+	return link_exe(output_file, files, file_count);
+#else
 	platform_linker(output_file, files, file_count);
 	return true;
+#endif
 #else
 	INFO_LOG("Using linker directly.");
 	const char **args = NULL;
@@ -1511,6 +1521,20 @@ bool dynamic_lib_linker(const char *output_file, const char **files, int file_co
 }
 
 #if !LLVM_AVAILABLE
+#if PLATFORM_WINDOWS
+static const char *find_msvc_linker(void)
+{
+	WindowsSDK *sdk = windows_get_sdk();
+	if (sdk && sdk->cl_path)
+	{
+		char *dir = file_get_dir(sdk->cl_path);
+		char *link = file_append_path(dir, "link.exe");
+		if (file_exists(link)) return link;
+	}
+	return "link.exe";
+}
+#endif
+
 static const char *find_archiver(void)
 {
 	const char *ar = getenv("C3C_AR");
