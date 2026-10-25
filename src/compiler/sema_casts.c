@@ -964,6 +964,18 @@ static bool rule_arrptr_to_slice(CastContext *cc, bool is_explicit, bool is_sile
 			case TYPE_SAME_INT_SIZE:
 				if (is_explicit) return true;
 				break;
+			case TYPE_ALIGNMENT_INCREASE:
+				if (is_explicit) return true;
+				if (is_silent) return false;
+				RETURN_CAST_ERROR(cc->expr,
+				  "Implicitly casting %s (with element alignment %d) to %s (element alignment %d) is not permitted – "
+				  "it would require an explicit cast. Before using an explicit cast, please make "
+				  "sure you understand the ramifications as the explicit cast might crash your program if used incorrectly.",
+				  type_quoted_error_string(type_no_optional(cc->expr->type)),
+				  type_abi_alignment(type_get_indexed_type(from_base)),
+				  type_quoted_error_string(cc->to),
+				  type_abi_alignment(type_get_indexed_type(slice_base)));
+				break;
 			case TYPE_ERROR:
 				return false;
 			case TYPE_MISMATCH:
@@ -1101,6 +1113,15 @@ static bool rule_slice_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 			return false;
 		case TYPE_MISMATCH:
 			break;
+		case TYPE_ALIGNMENT_INCREASE:
+			if (is_explicit) return true;
+			if (is_silent) return false;
+			RETURN_CAST_ERROR(cc->expr,
+			  "Implicitly casting %s to %s (which has a different element alignment) is not permitted – "
+			  "it would require an explicit cast. Before using an explicit cast, please make "
+			  "sure you understand the ramifications as the explicit cast might crash your program if used incorrectly.",
+			  type_quoted_error_string(type_no_optional(cc->expr->type)),
+			  type_quoted_error_string(cc->to));
 		default:
 			UNREACHABLE
 	}
@@ -2659,7 +2680,7 @@ CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
  {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, _NO__, _NA__, _NO__, REXPL, REXPL, _NO__, _NO__}, // TYPEID
  {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NA__, REXPL, REXPL, _NO__, _NO__}, // ANYFAULT
  {REXPL, _NO__, REXPL, RPTIN, _NO__, ROKOK, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, RVPAN, RVPAN, _NO__, RXXDI, ROKOK, _NO__, _NO__, _NA__, ROKOK, _NO__, _NO__}, // VOIDPTR
- {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, RAPSL, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE, _NO__}, // ARRPTR
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, RAPSL, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RPTIF, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE, _NO__}, // ARRPTR
  {_NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // INFERRED
  {_NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RULSL, RULAR, RULST, RXXDI, RULAR, RULST, _NO__, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, RULFE, _NO__}, // UNTYPED_LIST
 };
@@ -2679,8 +2700,8 @@ CastFunction cast_function[CONV_LAST + 1][CONV_LAST + 1] = {
  {XX2VO,      0,     0,     0,     0,     0, VA2SL, AR2VC, IA2BS,     0, AR2AR,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0, VA2FE,     0     }, // ARRAY
  {XX2VO,      0, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN,     0, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN,     0,     0     }, // STRUCT
  {XX2VO,      0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // UNION
- {XX2VO,      0, AY2BO,     0,     0, AY2PT,     0,     0,     0,     0,     0,     0,     0,     PT2PT, PT2PT, 0,     0,     0,     0,     0, AY2PT, AY2PT,     0,     0     }, // ANY
- {XX2VO,      0, AY2BO,     0,     0, AY2PT,     0,     0,     0,     0,     0,     0,     0,     PT2PT, PT2PT, 0,     0,     0,     0,     0, AY2PT, AY2PT,     0,     0     }, // INTERFACE
+ {XX2VO,      0, AY2BO,     0,     0, AY2PT,     0,     0,     0,     0,     0,     0,     0, PT2PT, PT2PT,     0,     0,     0,     0,     0, AY2PT, AY2PT,     0,     0     }, // ANY
+ {XX2VO,      0, AY2BO,     0,     0, AY2PT,     0,     0,     0,     0,     0,     0,     0, PT2PT, PT2PT,     0,     0,     0,     0,     0, AY2PT, AY2PT,     0,     0     }, // INTERFACE
  {XX2VO,      0, EN2XX, EN2XX, EN2XX, EN2XX, EN2XX, EN2XX, EN2XX, EN2XX, EN2XX, EN2XX, EN2XX, EN2XX, EN2XX, EN2XX, EN2XX, EN2XX, EN2XX, EN2XX, EN2XX, EN2XX, EN2XX, EN2XX     }, // ENUM
  {    0,      0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // CONST ENUM
  {XX2VO,      0, PT2BO, PT2IN,     0,     0,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0, PT2PT,     0,     0, PT2PT,     0,     0,     0     }, // FUNC
