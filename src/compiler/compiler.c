@@ -623,8 +623,12 @@ static bool compiler_link_exe(const char *output_exe, const char **obj_files, in
 			break;
 		default:
 #if !LLVM_AVAILABLE
+#if PLATFORM_WINDOWS
+			use_system_linker = false;
+#else
 			compiler.build.linker_type = LINKER_TYPE_CC;
 			use_system_linker = true;
+#endif
 #else
 			if (!use_system_linker && compiler.build.linker_type == LINKER_TYPE_NOT_SET)
 			{
