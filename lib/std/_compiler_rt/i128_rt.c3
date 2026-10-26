@@ -309,16 +309,14 @@ fn int128 __multi3(int128 a, int128 b) @cname("__multi3") @weak @nostrip
 
 fn int128 __muloti4(int128 a, int128 b, CInt* overflow) @cname("__muloti4") @weak @nostrip
 {
-	const int128 MIN = int128::min;
-	const int128 MAX = int128::max;
 	*overflow = 0;
 	int128 result = a * b;
-	if (a == MIN)
+	if (a == int128::min)
 	{
 		if (b != 0 && b != 1) *overflow = 1;
 		return result;
 	}
-	if (b == MIN)
+	if (b == int128::min)
 	{
 		if (a != 0 && a != 1) *overflow = 1;
 		return result;
@@ -330,11 +328,11 @@ fn int128 __muloti4(int128 a, int128 b, CInt* overflow) @cname("__muloti4") @wea
 	if (abs_a < 2 || abs_b < 2) return result;
 	if (sa == sb)
 	{
-		if (abs_a > MAX / abs_b) *overflow = 1;
+		if (abs_a > int128::max / abs_b) *overflow = 1;
 	}
 	else
 	{
-		if (abs_a > MIN / -abs_b) *overflow = 1;
+		if (abs_a > int128::min / -abs_b) *overflow = 1;
 	}
 	return result;
 }
