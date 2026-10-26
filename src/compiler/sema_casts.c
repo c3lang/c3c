@@ -701,8 +701,8 @@ static void expr_recursively_rewrite_untyped_list(Expr *expr, Type *to_type)
 bool cast_to_index_len(SemaContext *context, Expr *index, bool is_len)
 {
 	Type *type = index->type;
-	type = type_flat_distinct_enum_inline(type);
 	type = type_no_optional(type);
+	type = type_flat_distinct_enum_inline(type);
 	switch (type->type_kind)
 	{
 		case TYPE_I8:
@@ -1707,8 +1707,8 @@ static bool rule_int_to_enum(CastContext *cc, bool is_explicit, bool is_silent)
 
 static bool rule_arr_to_bits(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	Type *base_type = cc->to->decl->strukt.container_type->type;
-	Type *from_type = cc->from;
+	Type *base_type = type_flatten(cc->to->decl->strukt.container_type->type);
+	Type *from_type = type_flatten(cc->from);
 	bool success = from_type == base_type;
 	if (!is_explicit || !success) return sema_cast_error(cc, success, is_silent);
 	return true;
