@@ -53,7 +53,8 @@
 - Aarch64 MacOS did not zero/sign-extend args (and Win32 Aarch64 incorrectly did). #3593
 - Overaligned structs were not passed correctly on Linux Aarch64.
 - Add alignstack for Linux Aarch64 ABI for correct HFA/HVA handling.
-  
+- `string::unescape` and `string::escape` would not work correctly after initial size was reached. #3592
+
 ### Stdlib changes
 - Added termios support for OpenBSD.
 - Add `file::open_fd` to open files directly from file descriptors.
