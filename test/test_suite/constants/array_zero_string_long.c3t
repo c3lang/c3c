@@ -11,7 +11,7 @@ fn int main()
 
 /* #expect: test.ll
 
-@.str = private unnamed_addr constant <{ [5 x i8], [5 x i8] }> <{ [5 x i8] c"abcd\00", [5 x i8] zeroinitializer }>, align 1
+@.str = private unnamed_addr constant [11 x i8] c"abcd\00\00\00\00\00\00\00", align 1
 
 define i32 @main() #0 {
 entry:

@@ -1790,8 +1790,9 @@ static void cast_ptr_to_any(Expr *expr, Type *type)
 {
 	Expr *inner = expr_copy(expr);
 	Expr *typeid = expr_copy(expr);
-	assert(type_no_optional(expr->type)->canonical->type_kind == TYPE_POINTER);
-	expr_rewrite_const_typeid(typeid, type_no_optional(expr->type)->canonical->pointer);
+	Type *flat = type_flatten(expr->type);
+	assert(flat->type_kind == TYPE_POINTER);
+	expr_rewrite_const_typeid(typeid, flat->pointer);
 	expr->expr_kind = EXPR_MAKE_ANY;
 	expr->make_any_expr = (ExprMakeAny) { .inner = inner, .typeid = typeid };
 	expr->type = type;
@@ -1840,11 +1841,22 @@ static void vector_const_initializer_convert_to_type(ConstInitializer *initializ
 			if (is_neg_conversion)
 			{
 				bool is_true = initializer->init_value->const_expr.b;
-				initializer->init_value->const_expr = (ExprConst)
-						{
-							.const_kind = CONST_INTEGER,
-							.ixx = (Int) { .i = is_true ? (Int128) { UINT64_MAX, UINT64_MAX } : (Int128) { 0, 0 }, .type = to_flat->type_kind },
-						};
+				if (type_is_float(to_flat))
+				{
+					initializer->init_value->const_expr = (ExprConst)
+					{
+						.const_kind = CONST_FLOAT,
+						.fxx = (Float) { .f = is_true ? 1.0 : 0, .type = to_flat->type_kind },
+					};
+				}
+				else
+				{
+					initializer->init_value->const_expr = (ExprConst)
+					{
+						.const_kind = CONST_INTEGER,
+						.ixx = (Int) { .i = is_true ? (Int128) { UINT64_MAX, UINT64_MAX } : (Int128) { 0, 0 }, .type = to_flat->type_kind },
+					};
+				}
 				initializer->init_value->type = to_type;
 			}
 			else
@@ -1984,7 +1996,7 @@ static void cast_int_arr_to_bitstruct(Expr *expr, Type *type)
 	if (expr_is_const_int(expr))
 	{
 		Type *widening_type = type_flatten(type)->decl->strukt.container_type->type->canonical;
-		expr->const_expr.ixx.type = widening_type->type_kind;
+		expr->const_expr.ixx = int_conv(expr->const_expr.ixx, widening_type->type_kind);
 		expr->type = widening_type;
 	}
 	expr_rewrite_recast(expr, type);
@@ -2415,6 +2427,21 @@ static void cast_vecarr_to_slice(Expr *expr, Type *to_type)
 	}
 	UNREACHABLE_VOID
 }
+
+/**
+ * A constant string or bytes may be converted to a longer array, where the extra elements are zero.
+ * Make the constant itself that long, so that its length always matches its array type.
+ */
+static void const_bytes_zero_extend(Expr *expr, ArrayIndex len)
+{
+	ArrayIndex old_len = expr->const_expr.bytes.len;
+	if (len <= old_len) return;
+	char *data = calloc_arena(len + 1);
+	memcpy(data, expr->const_expr.bytes.ptr, old_len);
+	expr->const_expr.bytes.ptr = data;
+	expr->const_expr.bytes.len = len;
+}
+
 static void cast_slice_to_arr(Expr *expr, Type *to_type)
 {
 	if (!sema_cast_const(expr))
@@ -2437,6 +2464,10 @@ static void cast_slice_to_arr(Expr *expr, Type *to_type)
 	if (expr_is_const_slice(expr))
 	{
 		expr->const_expr.const_kind = CONST_INITIALIZER;
+	}
+	else if (expr_is_const_string(expr) || expr_is_const_bytes(expr))
+	{
+		const_bytes_zero_extend(expr, type_flatten(to_type)->array.len);
 	}
 	ASSERT(expr_is_const(expr));
 	expr->type = to_type;
@@ -2530,7 +2561,7 @@ static void cast_arr_to_vec(Expr *expr, Type *to_type)
 {
 	Type *index_vec = type_flatten(type_get_indexed_type(to_type));
 	Type *index_arr = type_flatten(type_get_indexed_type(expr->type));
-	Type *to_temp = index_vec == index_arr ? to_type : type_get_vector(index_arr, to_type->canonical->type_kind, type_flatten(expr->type)->array.len);
+	Type *to_temp = index_vec == index_arr ? to_type : type_get_vector(index_arr, type_flatten(to_type)->type_kind, type_flatten(expr->type)->array.len);
 	if (sema_cast_const(expr))
 	{
 		if (expr->const_expr.const_kind == CONST_BYTES || expr->const_expr.const_kind == CONST_STRING)

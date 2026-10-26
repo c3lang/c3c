@@ -41,7 +41,11 @@
 - Compiler crashes when emitting line-tables debug info. #3581
 - Do not pass PIE/PIC on Windows. #3586
 - Crashes in slice->vector and ptrvec->intvec conversions.
-- Implicit cast rules too lose for slice->arrptr.
+- Implicit cast rules too loose for slice->arrptr.
+- Invalid lowering for `(Bitstruct)-1` where the bitstruct is backed by an unsigned type.
+- Cast to `any` from typedef with an underlying inline pointer, would cause a crash.
+- Cast from constant `bool[<2>]` to `float[<2>]` would crash.
+- Padding would be incorrectly lowered in things like `(char[<8>])(char[8])"abc"`.
 
 ### Stdlib changes
 - Added termios support for OpenBSD.
