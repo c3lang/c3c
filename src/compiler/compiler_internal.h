@@ -1959,6 +1959,7 @@ typedef struct ABIArgInfo_
 		bool signext : 1;
 		bool realign : 1;
 		bool by_val : 1;
+		uint8_t stack_align : 5;
 	} attributes;
 	union
 	{

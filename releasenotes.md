@@ -50,6 +50,9 @@
 - Casting a constant to an alias to an enum would be incorrectly checked.
 - Cast to aliased bitstruct would fail when non-aliased cast would succeed.
 - Casting an optional distinct index would incorrectly fail.
+- Aarch64 MacOS did not zero/sign-extend args (and Win32 Aarch64 incorrectly did). #3593
+- Overaligned structs were not passed correctly on Linux Aarch64.
+- Add alignstack for Linux Aarch64 ABI for correct HFA/HVA handling.
   
 ### Stdlib changes
 - Added termios support for OpenBSD.
