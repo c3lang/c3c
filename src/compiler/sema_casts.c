@@ -1685,7 +1685,7 @@ static bool rule_int_to_bits(CastContext *cc, bool is_explicit, bool is_silent)
 static bool rule_int_to_enum(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	if (!is_explicit) return sema_cast_error(cc, true, is_silent);
-	Decl *decl = cc->to_type->decl;
+	Decl *decl = cc->to->decl;
 	if (sema_cast_const(cc->expr))
 	{
 		Int to_convert = cc->expr->const_expr.ixx;
@@ -2367,7 +2367,7 @@ static void cast_slice_to_bool(Expr *expr, Type *type)
 	}
 	if (expr_is_const_slice(expr))
 	{
-		expr_rewrite_const_bool(expr, type, expr->const_expr.slice_init != NULL && expr->const_expr.slice_init->kind != CONST_INIT_ZERO);
+		expr_rewrite_const_bool(expr, type, sema_len_from_const(expr) > 0);
 		return;
 	}
 	Expr *inner = expr_copy(expr);

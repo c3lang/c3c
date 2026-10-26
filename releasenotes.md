@@ -46,7 +46,9 @@
 - Cast to `any` from typedef with an underlying inline pointer, would cause a crash.
 - Cast from constant `bool[<2>]` to `float[<2>]` would crash.
 - Padding would be incorrectly lowered in things like `(char[<8>])(char[8])"abc"`.
-
+- Const casting a const slice derived from a zero array initializer (e.g. `(bool)(int[])(int[3]){}`) would incorrectly return false.
+- Casting a constant to an alias to an enum would be incorrectly checked.
+ 
 ### Stdlib changes
 - Added termios support for OpenBSD.
 - Add `file::open_fd` to open files directly from file descriptors.
