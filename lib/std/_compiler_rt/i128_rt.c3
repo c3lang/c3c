@@ -307,6 +307,38 @@ fn int128 __multi3(int128 a, int128 b) @cname("__multi3") @weak @nostrip
 	return (int128)r.all;
 }
 
+fn int128 __muloti4(int128 a, int128 b, CInt* overflow) @cname("__muloti4") @weak @nostrip
+{
+	const int128 MIN = int128::min;
+	const int128 MAX = int128::max;
+	*overflow = 0;
+	int128 result = a * b;
+	if (a == MIN)
+	{
+		if (b != 0 && b != 1) *overflow = 1;
+		return result;
+	}
+	if (b == MIN)
+	{
+		if (a != 0 && a != 1) *overflow = 1;
+		return result;
+	}
+	int128 sa = a >> 127;
+	int128 abs_a = (a ^ sa) - sa;
+	int128 sb = b >> 127;
+	int128 abs_b = (b ^ sb) - sb;
+	if (abs_a < 2 || abs_b < 2) return result;
+	if (sa == sb)
+	{
+		if (abs_a > MAX / abs_b) *overflow = 1;
+	}
+	else
+	{
+		if (abs_a > MIN / -abs_b) *overflow = 1;
+	}
+	return result;
+}
+
 fn float __floattisf(int128 a) @cname("__floattisf") @weak @nostrip => float_from_i128(float, a);
 fn double __floattidf(int128 a) @cname("__floattidf") @weak @nostrip => float_from_i128(double, a);
 fn float __floatuntisf(uint128 a) @cname("__floatuntisf") @weak @nostrip => float_from_u128(float, a);

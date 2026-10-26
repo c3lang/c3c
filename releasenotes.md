@@ -50,6 +50,7 @@
 ### Stdlib changes
 - Added termios support for OpenBSD.
 - Add `file::open_fd` to open files directly from file descriptors.
+- Added missing `__muloti4` to compiler_rt.
 
 ## 0.8.5 Change list
 
