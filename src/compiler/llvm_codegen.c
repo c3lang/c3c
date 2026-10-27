@@ -972,6 +972,7 @@ static void llvm_codegen_setup(void)
 
 	attribute_id.afn = lookup_attribute("afn");
 	attribute_id.align = lookup_attribute("align");
+	attribute_id.alignstack = lookup_attribute("alignstack");
 	attribute_id.alwaysinline = lookup_attribute("alwaysinline");
 	attribute_id.arcp = lookup_attribute("arcp");
 	attribute_id.byval = lookup_attribute("byval");
@@ -1302,6 +1303,11 @@ static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABI
 		// Direct only
 		ASSERT(index == last_index);
 		llvm_attribute_add(c, function, attribute_id.sext, index);
+	}
+	if (info->attributes.stack_align)
+	{
+		ASSERT(index == last_index);
+		llvm_attribute_add_int(c, function, attribute_id.alignstack, info->attributes.stack_align, index);
 	}
 	if (info->attributes.by_reg)
 	{

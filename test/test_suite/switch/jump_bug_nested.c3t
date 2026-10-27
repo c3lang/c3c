@@ -71,7 +71,7 @@ guard_block:                                      ; preds = %assign_optional
 noerr_block:                                      ; preds = %after_check
   %6 = load i64, ptr %retparam, align 8
   store i64 %6, ptr %len, align 8
-  %7 = call i64 @std.io.File.write_byte(ptr %2, i8 10)
+  %7 = call i64 @std.io.File.write_byte(ptr %2, i8 zeroext 10)
   %not_err3 = icmp eq i64 %7, 0
   %8 = call i1 @llvm.expect.i1(i1 %not_err3, i1 true)
   br i1 %8, label %after_check5, label %assign_optional4

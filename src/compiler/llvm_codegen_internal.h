@@ -277,6 +277,7 @@ typedef struct
 {
 	unsigned afn;             // allow approximate functions
 	unsigned align;           // align
+	unsigned alignstack;      // alignstack (param)
 	unsigned alwaysinline;    // Force inlining
 	unsigned arcp;            // allow reciprocal
 	unsigned byval;           // ByVal (param)

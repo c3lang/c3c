@@ -6,6 +6,6 @@ fn int main()
 
 fn int main2()
 {
-	ulong x1 = -1 + ulong::max;
+	ulong x1 = -1 + ulong::max; // #error: out of range
 	return 0;
 }
