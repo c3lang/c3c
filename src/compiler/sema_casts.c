@@ -144,15 +144,17 @@ static bool cast_is_allowed(CastContext *cc, bool is_explicit, bool is_silent)
 		{
 			RETURN_CAST_ERROR(cc->expr, "You cannot cast %s to the inner type %s.", type_quoted_error_string(cc->expr->type), type_quoted_error_string(cc->to_type));
 		}
+
+		Type *expr_type = type_no_optional(cc->expr->type);
 		// Improve the error when incorrectly casting (char[])char*
-		if (cc->to_type->type_kind == TYPE_SLICE && cc->expr->type->type_kind == TYPE_POINTER && cc->to_type->array.base == cc->expr->type->pointer)
+		if (cc->to_type->type_kind == TYPE_SLICE && expr_type->type_kind == TYPE_POINTER && cc->to_type->array.base == expr_type->pointer)
 		{
 			RETURN_CAST_ERROR(cc->expr, "You cannot cast %s to %s. However, you may slice the pointer with an explicit length to create a slice, e.g. 'foo_ptr[:len]'.", type_quoted_error_string(cc->expr->type), type_quoted_error_string(cc->to_type));
 		}
 		// (int[4])*int*
-		if (cc->to_type->type_kind == TYPE_ARRAY && cc->to_type->array.base == cc->expr->type
+		if (cc->to_type->type_kind == TYPE_ARRAY && cc->to_type->array.base == expr_type
 			&& cc->expr->expr_kind == EXPR_UNARY && cc->expr->unary_expr.operator == UNARYOP_DEREF
-			&& cc->expr->unary_expr.expr->type->type_kind == TYPE_POINTER && cc->expr->unary_expr.expr->type->pointer == cc->to_type->array.base)
+			&& type_no_optional(cc->expr->unary_expr.expr->type)->type_kind == TYPE_POINTER && type_no_optional(cc->expr->unary_expr.expr->type)->pointer == cc->to_type->array.base)
 		{
 			RETURN_CAST_ERROR(cc->expr, "You cannot directly cast from a dereferenced %s to %s. "
 							   "However, you can could cast the pointer to the array before doing dereference, e.g. "
@@ -160,7 +162,7 @@ static bool cast_is_allowed(CastContext *cc, bool is_explicit, bool is_silent)
 				type_quoted_error_string(cc->expr->unary_expr.expr->type), type_quoted_error_string(cc->to_type),
 				type_to_error_string(cc->to_type));
 		}
-		if (cc->to_type->type_kind == TYPE_ENUM && type_is_integer(cc->expr->type))
+		if (cc->to_type->type_kind == TYPE_ENUM && type_is_integer(expr_type))
 		{
 			RETURN_CAST_ERROR(cc->expr, "It is not possible to cast %s to the enum %s, but you can use .from_ordinal() to convert it. E.g. '%s.from_ordinal(foo)'.",
 				type_quoted_error_string(cc->expr->type),
@@ -771,12 +773,13 @@ static bool report_cast_error(CastContext *cc, bool may_cast_explicit)
 		                  "It is not possible to cast %s to the inner type %s.",
 		                  type_quoted_error_string(type_no_optional(expr->type)), type_quoted_error_string(to));
 	}
+	Type *expr_type = type_no_optional(expr->type)->canonical;
+	TypeKind type_kind = expr_type->type_kind;
 	if (may_cast_explicit)
 	{
 		Type *typeto = type_no_optional(to);
 		Type *from = type_no_optional(expr->type);
-		if (expr->type->canonical->type_kind == TYPE_TYPEDEF
-			&& type_no_optional(to)->canonical->type_kind == TYPE_TYPEDEF)
+		if (type_kind == TYPE_TYPEDEF && type_no_optional(to)->canonical->type_kind == TYPE_TYPEDEF)
 		{
 			RETURN_CAST_ERROR(expr,
 					   "Implicitly casting %s to %s is not permitted. It's possible to do an explicit cast by placing '(%s)' before the expression. However, explicit casts between distinct types are usually not intended and are not safe.",
@@ -791,35 +794,32 @@ static bool report_cast_error(CastContext *cc, bool may_cast_explicit)
 				   type_quoted_error_string_maybe_with_path(to, from),
 				   type_error_string_maybe_with_path(typeto, from));
 	}
-	if (to->type_kind == TYPE_INTERFACE)
+	if (to->type_kind == TYPE_INTERFACE && type_kind != TYPE_POINTER)
 	{
-		if (expr->type->canonical->type_kind != TYPE_POINTER)
-		{
-			RETURN_CAST_ERROR(expr,
-			                  "You can only convert pointers to an interface like %s. "
-			                  "Try passing the address of the expression instead.",
-			                  type_quoted_error_string(to));
-		}
+		RETURN_CAST_ERROR(expr,
+		                  "You can only convert pointers to an interface like %s. "
+		                  "Try passing the address of the expression instead.",
+		                  type_quoted_error_string(to));
 	}
-	if (to->type_kind == TYPE_ANY && expr->type->canonical->type_kind != TYPE_POINTER)
+	if (to->type_kind == TYPE_ANY && type_kind != TYPE_POINTER)
 	{
 		RETURN_CAST_ERROR(expr, "You can only convert pointers to 'any'. "
 		                  "Try passing the address of the expression instead.");
 	}
 	// Improve the error when incorrectly casting (String)ZString
-	if (to == type_string && str_eq(expr->type->name, "ZString"))
+	if (to == type_string && str_eq(expr_type->name, "ZString"))
 	{
 		RETURN_CAST_ERROR(expr, "It is not possible to cast a ZString to a String but you can use .str_view() to do the conversion. E.g. 'my_zstring.str_view()'.");
 	}
-	if (expr->type->type_kind == TYPE_ENUM && type_is_integer(to))
+	if (type_kind == TYPE_ENUM && type_is_integer(to))
 	{
-		if (to == enum_inner_type(expr->type))
+		if (to == enum_inner_type(expr_type))
 		{
-			RETURN_CAST_ERROR(expr, "It is not possible to cast the enum %s to %s, but you can use .ordinal to get the ordinal. E.g. 'my_enum.ordinal'.",
+			RETURN_CAST_ERROR(expr, "It is not possible to implicitly cast the enum %s to %s, but you can use an explicit cast or .ordinal to get the ordinal value. E.g. 'my_enum.ordinal'.",
 				type_quoted_error_string(type_no_optional(expr->type)),
 				type_quoted_error_string(type_no_optional(to)));
 		}
-		RETURN_CAST_ERROR(expr, "It is not possible to cast the enum %s to %s, but you can use .ordinal to get the ordinal and cast it. E.g. '(%s)my_enum.ordinal'.",
+		RETURN_CAST_ERROR(expr, "It is not possible to implicitly cast the enum %s to %s, but you can use an explicit cast or .ordinal to get the ordinal and cast it. E.g. '(%s)my_enum.ordinal'.",
 			type_quoted_error_string(type_no_optional(expr->type)),
 			type_quoted_error_string(type_no_optional(to)),
 			type_to_error_string(type_no_optional(to)));
@@ -855,15 +855,14 @@ static bool rule_voidptr_to_any(CastContext *cc, UNUSED bool is_explicit, bool i
 static bool rule_ptr_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	if (is_explicit) return true;
-	switch (match_pointers(cc, cc->to, cc->from, is_silent))
+	switch (match_pointers(cc, cc->to, cc->from, false))
 	{
 		case TYPE_SAME:
 			return true;
 		case TYPE_ERROR:
 			return false;
 		case TYPE_ALIGNMENT_INCREASE:
-			if (is_explicit) return false;
-			ASSERT(!is_explicit);
+			if (is_silent) return false;
 			RETURN_CAST_ERROR(cc->expr,
 			                  "Implicitly casting %s (alignment %d) to %s (alignment %d) is not permitted, "
 							  "it would require an explicit cast. Before using an explicit cast, please make "
@@ -903,6 +902,7 @@ static bool rule_int_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 		return true;
 	}
 
+	// A non-constant integer must be exactly the size of a pointer.
 	if (type_size(cc->from) < type_size(type_uptr))
 	{
 		if (is_silent) return false;
@@ -913,6 +913,17 @@ static bool rule_int_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 		}
 		RETURN_CAST_ERROR(expr, "You cannot implicitly convert an integer to a pointer, you may use an explicit cast "
 			"if you first widen the value to pointer size, e.g. '(%s)(uptr)some_value'.", type_to_error_string(cc->to));
+	}
+	if (type_size(cc->from) > type_size(type_uptr))
+	{
+		if (is_silent) return false;
+		if (is_explicit)
+		{
+			RETURN_CAST_ERROR(expr, "You cannot convert an integer larger than pointer size to a pointer, "
+						   "try first narrowing it to pointer size, for example write '(%s)(uptr)some_value' instead.", type_to_error_string(cc->to));
+		}
+		RETURN_CAST_ERROR(expr, "You cannot implicitly convert an integer to a pointer, you may use an explicit cast "
+			"if you first narrow the value to pointer size, e.g. '(%s)(uptr)some_value'.", type_to_error_string(cc->to));
 	}
 
 	if (!is_explicit) return sema_cast_error(cc, true, is_silent);
@@ -1058,6 +1069,7 @@ static bool rule_ulist_to_inferred(CastContext *cc, UNUSED bool is_explicit, boo
 	{
 		if (!may_cast(cc->context, expr, base, false, true))
 		{
+			if (is_silent) return false;
 			RETURN_CAST_ERROR(cc->expr, "This untyped list contained an element of type %s which could not be converted to %s.",
 			                  type_quoted_error_string(expr->type), type_quoted_error_string(base));
 		}
@@ -1219,18 +1231,20 @@ static bool rule_slice_to_vecarr(CastContext *cc, bool is_explicit, bool is_sile
 		if (is_silent) return false;
 		RETURN_CAST_ERROR(expr, "Conversions from slices to arrays or vectors are only permitted on constant slices.");
 	}
+	Type *base = cc->from->array.base;
+	// A constant string or bytes is zero extended to fit a longer array.
+	if (cc->to_group == CONV_ARRAY && (expr_is_const_string(expr) || expr_is_const_bytes(expr)))
+	{
+		if ((ArrayIndex)cc->to->array.len > size) size = (ArrayIndex)cc->to->array.len;
+	}
+	// Check before creating the type, a zero length array is not a valid type.
 	if (size == 0)
 	{
 		if (is_silent) return false;
 		RETURN_CAST_ERROR(expr, "Zero sized slices can't be converted to arrays or vectors.");
 	}
-	Type *base = cc->from->array.base;
 	if (cc->to_group == CONV_ARRAY)
 	{
-		if (expr_is_const_string(expr) || expr_is_const_bytes(expr))
-		{
-			if ((ArrayIndex)cc->to->array.len > size) size = (ArrayIndex)cc->to->array.len;
-		}
 		cast_context_set_from(cc, type_get_array(base, size));
 	}
 	else
@@ -1424,20 +1438,22 @@ static bool rule_widen_narrow(CastContext *cc, bool is_explicit, bool is_silent)
 		if (expr_is_simple(cc->expr, type_is_float(cc->to)))
 		{
 			// Do we have an unsigned <-> signed conversion and it's not constant?
-			if (!is_const && type_is_integer(cc->to) && type_is_integer(cc->from) && type_is_signed(cc->to) != type_is_signed(cc->from))
+			if (type_is_integer(cc->to) && type_is_integer(cc->from) && type_is_signed(cc->from) && type_is_unsigned(cc->to))
 			{
-				// Prevent cast int -> ulong
-				if (type_is_unsigned(cc->to)) return sema_cast_error(cc, true, is_silent);
+				if (!is_const) return sema_cast_error(cc, true, is_silent);
+				if (int_is_neg(cc->expr->const_expr.ixx))
+				{
+					if (is_silent) return false;
+					RETURN_CAST_ERROR(expr, "The value '%s' is out of range for %s, so an explicit cast is needed.", expr_const_to_error_string(&expr->const_expr),
+						type_quoted_error_string(cc->to_type));
+				}
 			}
 			return true;
 		}
 
 		if (is_silent) return false;
-		{
-			RETURN_CAST_ERROR(expr, "This conversion requires an explicit cast to %s, because the widening of the expression may be done in more than one way.",
+		RETURN_CAST_ERROR(expr, "This conversion requires an explicit cast to %s, because the widening of the expression may be done in more than one way.",
 							  type_quoted_error_string(cc->to_type));
-		}
-		return false;
 	}
 
 	// If const, check in range.
@@ -1495,17 +1511,26 @@ static bool rule_not_applicable(UNUSED CastContext *cc, UNUSED bool is_explicit,
 
 static bool rule_from_explicit_flattened(CastContext *cc, bool is_silent)
 {
-	Type *flat = type_flatten(cc->from);
-	if (cc->to_group == CONV_ANY || cc->to_group == CONV_INTERFACE)
+	CastContext original_cc = *cc;
+	bool to_any_or_interface = cc->to_group == CONV_ANY || cc->to_group == CONV_INTERFACE;
+	// Look through one level at a time, the closest first, and use the first one that converts.
+	// The attempts are silent: the error is only reported once, below.
+	Type *flat = cc->from;
+	while (1)
 	{
-		switch (flat->type_kind)
-		{
-			case TYPE_ANY:
-			case TYPE_INTERFACE:
-				break;
-			default:
-				return sema_cast_error(cc, false, is_silent);
-		}
+		Type *old = flat;
+		flat = type_flatten_once(old);
+		if (flat == old) break;
+		if (to_any_or_interface && flat->type_kind != TYPE_ANY && flat->type_kind != TYPE_INTERFACE) continue;
+		cast_context_set_from(cc, flat);
+		if (cast_is_allowed(cc, true, true)) return true;
+		*cc = original_cc;
+	}
+	// Nothing converted. Report the error for the fully flattened type, which has the specific error.
+	flat = type_flatten(original_cc.from);
+	if (to_any_or_interface && flat->type_kind != TYPE_ANY && flat->type_kind != TYPE_INTERFACE)
+	{
+		return sema_cast_error(cc, false, is_silent);
 	}
 	cast_context_set_from(cc, flat);
 	return cast_is_allowed(cc, true, is_silent);
@@ -1522,12 +1547,24 @@ static bool rule_from_distinct(CastContext *cc, bool is_explicit, bool is_silent
 		return rule_from_explicit_flattened(cc, is_silent);
 	}
 	// No inline? Then it's an error.
-	if (!from_type->decl->is_substruct)
+	if (!type_has_inline(from_type))
 	{
 		return sema_cast_error(cc, rule_from_distinct(cc, true, true), is_silent);
 	}
-	cast_context_set_from(cc, type_flat_distinct_inline(from_type));
-	return cast_is_allowed(cc, is_explicit, is_silent);
+	// Try the types we inline one at a time, the closest first, so an inline type converts to any
+	// of the types it inlines. The attempts are silent: the error is only reported once, below.
+	CastContext original_cc = *cc;
+	while (type_has_inline(from_type))
+	{
+		from_type = type_inline(from_type);
+		cast_context_set_from(cc, from_type);
+		if (cast_is_allowed(cc, false, true)) return true;
+		*cc = original_cc;
+	}
+	// None converted. Report the error for the innermost type, which has the specific error.
+	if (is_silent) return false;
+	cast_context_set_from(cc, from_type);
+	return cast_is_allowed(cc, false, false);
 }
 
 static bool rule_to_distinct(CastContext *cc, bool is_explicit, bool is_silent)
@@ -1599,7 +1636,7 @@ static bool rule_to_from_distinct(CastContext *cc, bool is_explicit, bool is_sil
 	// It's not possible to inline from, so it's an error.
 	if (!cc->from->decl->is_substruct)
 	{
-		return sema_cast_error(cc, rule_to_from_distinct(cc, true, is_silent), is_silent);
+		return sema_cast_error(cc, rule_to_from_distinct(cc, true, true), is_silent);
 	}
 	// Let's to a flattering of the from, and see if it's allowed then.
 	cast_context_set_from(cc, type_flat_distinct_inline(cc->from));
@@ -1799,7 +1836,7 @@ static void cast_ptr_to_any(Expr *expr, Type *type)
 }
 static void cast_struct_to_inline(Expr *expr, Type *type) { expr_rewrite_addr_conversion(expr, type); }
 static void cast_fault_to_ptr(Expr *expr, Type *type) { expr_rewrite_to_int_to_ptr(expr, type); }
-static void cast_typeid_to_int(Expr *expr, Type *type) { expr_rewrite_ext_trunc(expr, type, type_is_signed(type_flatten_to_int(type))); }
+static void cast_typeid_to_int(Expr *expr, Type *type) { expr_rewrite_ext_trunc(expr, type, false); }
 static void cast_fault_to_int(Expr *expr, Type *type) { cast_typeid_to_int(expr, type); }
 static void cast_typeid_to_ptr(Expr *expr, Type *type) { expr_rewrite_to_int_to_ptr(expr, type); }
 static void cast_any_to_bool(Expr *expr, Type *type)

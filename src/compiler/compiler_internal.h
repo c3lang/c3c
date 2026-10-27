@@ -3543,6 +3543,20 @@ static inline CanonicalType *type_distinct_inline(Type *type)
 		}
 	}
 }
+
+INLINE Type *type_flatten_once(Type *type)
+{
+	type = type->canonical;
+	switch (type->type_kind)
+	{
+		case TYPE_CONSTSET: return enum_inner_type(type)->canonical;
+		case TYPE_TYPEDEF: return type->decl->distinct->type->canonical;
+		case TYPE_OPTIONAL: return type->optional->canonical;
+		case TYPE_ALIAS: UNREACHABLE
+		default: return type;
+	}
+}
+
 static inline FlatType *type_flatten(Type *type)
 {
 	while (1)

@@ -17,6 +17,9 @@
 - Add `-gline-tables-only` to emit line tables debug info only.
 - Disallow `{ .a = 1, .a = 1 }`. #3579
 - Add better instantiation error output.
+- Implicitly converting a negative constant to a wider unsigned type, e.g. `ulong x = -1;`, is now correctly an error.
+- Improved the error when implicitly casting an enum to an integer, it now points to the explicit cast.
+- Casting a non-constant integer larger than a pointer, e.g. an `int128`, to a pointer is now an error. Cast it to `uptr` first.
 
 ### Fixes
 - Compressed `.c3l` libraries were not unpacked again when only files other than `manifest.json` had changed.
@@ -54,6 +57,13 @@
 - Overaligned structs were not passed correctly on Linux Aarch64.
 - Add alignstack for Linux Aarch64 ABI for correct HFA/HVA handling.
 - `string::unescape` and `string::escape` would not work correctly after initial size was reached. #3592
+- `$defined` on an untyped list that cannot be converted, e.g. `$defined(int[*] y = $list)` with `var $list = { 1, "a" };`, would print an error instead of being false.
+- An empty constant string could not be converted to an array, e.g. `char[4] x = "";`.
+- A constset inlining a constset that in turn inlines a third one, could not be implicitly converted to the one in the middle.
+- `$defined` on an implicit pointer conversion was true for pointers to distinct types, and printed an error instead of being false when the pointee alignment would increase.
+- Casting a `typeid` or `fault` to a wider signed integer, e.g. `(int128)t`, would sign extend instead of zero extend.
+- An implicit cast between unrelated distinct types would report the error twice.
+- The hints in cast errors (for enums, distinct types, `ZString` and pointers to slices) were missing when the value was optional.
 
 ### Stdlib changes
 - Added termios support for OpenBSD.
