@@ -58,7 +58,7 @@ extern struct ScratchBuf *sb_current;
 
 typedef struct Task_
 {
-	void (*task)(void *arg);
+	bool (*task)(void *arg);
 	void *arg;
 } Task;
 
@@ -140,7 +140,7 @@ static inline void *malloc_arena(size_t len)
 void free_arena(void);
 void print_arena_status(void);
 void run_arena_allocator_tests(void);
-void taskqueue_run(int threads, Task **task_list);
+bool taskqueue_run(int threads, Task **task_list);
 void lock_acquire(void);
 void lock_release(void);
 int cpus(void);

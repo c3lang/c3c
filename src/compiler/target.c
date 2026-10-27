@@ -369,8 +369,8 @@ static bool os_target_signed_c_char_type(OsType os, ArchType arch)
 
 static inline void target_setup_aarch64_abi(void)
 {
-	compiler.platform.aarch.is_darwin = os_is_apple(compiler.platform.os);
-	compiler.platform.aarch.is_win32 = compiler.platform.os == OS_TYPE_WIN32;
+	compiler.platform.aarch64.is_darwin_pcs = os_is_apple(compiler.platform.os);
+	compiler.platform.aarch64.is_aapcs = !compiler.platform.aarch64.is_darwin_pcs && compiler.platform.os != OS_TYPE_WIN32;
 	compiler.platform.abi = ABI_AARCH64;
 	// TODO improve Aarch64 functionality support.
 	CpuFeatures features = cpu_feature_zero;

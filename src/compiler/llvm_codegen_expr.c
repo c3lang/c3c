@@ -5220,6 +5220,10 @@ void llvm_add_abi_call_attributes(GenContext *c, LLVMValueRef call_value, int co
 		{
 			llvm_attribute_add_call(c, call_value, attribute_id.zext, (int)info->param_index_start + 1, 0);
 		}
+		if (info->attributes.stack_align)
+		{
+			llvm_attribute_add_call(c, call_value, attribute_id.alignstack, (int)info->param_index_start + 1, info->attributes.stack_align);
+		}
 		switch (info->kind)
 		{
 			case ABI_ARG_INDIRECT:

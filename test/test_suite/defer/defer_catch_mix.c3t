@@ -116,7 +116,7 @@ guard_block15:                                    ; preds = %assign_optional13
 noerr_block:                                      ; preds = %after_check14
   %15 = load i64, ptr %retparam10, align 8
   store i64 %15, ptr %len, align 8
-  %16 = call i64 @std.io.File.write_byte(ptr %11, i8 10)
+  %16 = call i64 @std.io.File.write_byte(ptr %11, i8 zeroext 10)
   %not_err17 = icmp eq i64 %16, 0
   %17 = call i1 @llvm.expect.i1(i1 %not_err17, i1 true)
   br i1 %17, label %after_check19, label %assign_optional18
@@ -176,7 +176,7 @@ guard_block36:                                    ; preds = %assign_optional34
 noerr_block37:                                    ; preds = %after_check35
   %26 = load i64, ptr %retparam31, align 8
   store i64 %26, ptr %len28, align 8
-  %27 = call i64 @std.io.File.write_byte(ptr %22, i8 10)
+  %27 = call i64 @std.io.File.write_byte(ptr %22, i8 zeroext 10)
   %not_err39 = icmp eq i64 %27, 0
   %28 = call i1 @llvm.expect.i1(i1 %not_err39, i1 true)
   br i1 %28, label %after_check41, label %assign_optional40
@@ -239,7 +239,7 @@ guard_block61:                                    ; preds = %assign_optional59
 noerr_block62:                                    ; preds = %after_check60
   %38 = load i64, ptr %retparam56, align 8
   store i64 %38, ptr %len53, align 8
-  %39 = call i64 @std.io.File.write_byte(ptr %34, i8 10)
+  %39 = call i64 @std.io.File.write_byte(ptr %34, i8 zeroext 10)
   %not_err64 = icmp eq i64 %39, 0
   %40 = call i1 @llvm.expect.i1(i1 %not_err64, i1 true)
   br i1 %40, label %after_check66, label %assign_optional65
