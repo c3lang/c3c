@@ -59,7 +59,12 @@ bool taskqueue_run(int threads, Task **task_list)
 	}
 	// The calling thread works too, so only threads - 1 extra OS threads are needed.
 	int worker_threads = threads - 1;
-	pthread_t *pthreads = cmalloc(sizeof(pthread_t) * (int)worker_threads);
+	pthread_t *pthreads = malloc(sizeof(pthread_t) * (size_t)worker_threads);
+	if (!pthreads)
+	{
+		eprintf("Failed to allocate memory for the thread pool.\n");
+		return false;
+	}
 	TaskQueue queue = { .queue = task_list, .aborted = false };
 	pthread_attr_t attr;
 	if (pthread_mutex_init(&queue.lock, NULL)) error_exit("Failed to set up mutex");
@@ -140,7 +145,12 @@ bool taskqueue_run(int threads, Task **task_list)
 	ASSERT(threads > 0);
 	// The calling thread works too, so only threads - 1 extra OS threads are needed.
 	int worker_threads = threads - 1;
-	HANDLE *handles = cmalloc(sizeof(HANDLE) * (int)worker_threads);
+	HANDLE *handles = malloc(sizeof(HANDLE) * (size_t)worker_threads);
+	if (!handles && worker_threads > 0)
+	{
+		eprintf("Failed to allocate memory for the thread pool.\n");
+		return false;
+	}
 	TaskQueue queue = { .queue = task_list, .aborted = false };
 	InitializeCriticalSection(&queue.lock);
 	for (int i = 0; i < worker_threads; i++)

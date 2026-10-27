@@ -217,8 +217,8 @@ static bool thread_compile_task_tb(void *compile_data)
 #if !TB_AVAILABLE
 const char *tilde_codegen(void *context)
 {
-	error_exit("TB backend not available.");
-	UNREACHABLE
+	eprintf("TB backend not available.\n");
+	return NULL;
 }
 void **tilde_gen(Module** modules, int module_count)
 {

@@ -1171,7 +1171,8 @@ bool llvm_codegen(void *context, const char **out_name)
 	// Serialize the LLVM IR, if requested, also verify the IR in this case
 	if (compiler.build.emit_llvm)
 	{
-		if (!gencontext_print_llvm_ir(c) || !gencontext_verify_ir(c)) return false;
+		bool success = gencontext_print_llvm_ir(c) && gencontext_verify_ir(c);
+		if (!success) return false;
 	}
 
 	if (compiler.build.emit_asm)
@@ -2014,8 +2015,8 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 	// If it's in test or benchmark, then we want to serialize the IR before it is optimized.
 	if (compiler.build.test_output || compiler.build.benchmark_output)
 	{
-		gencontext_print_llvm_ir(gen_context);
-		gencontext_verify_ir(gen_context);
+		bool success = gencontext_print_llvm_ir(gen_context) && gencontext_verify_ir(gen_context);
+		if (!success) exit_compiler(EXIT_FAILURE);
 	}
 	if (!has_elements) return NULL;
 	gen_context->module_size = LLVMGetModuleInstructionCount(gen_context->module);

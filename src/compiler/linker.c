@@ -1367,6 +1367,7 @@ const char *cc_compiler(const char *cc, const char *file, const char *out_name, 
 		if (!split_worked)
 		{
 			lock_release();
+			eprintf("Cannot compile '%s'\n", file);
 			return NULL;
 		}
 		size_t len = strlen(filename);
