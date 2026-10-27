@@ -18,7 +18,7 @@ fn int get_val()
 	return 10;
 }
 
-/*
+
 // I am fixing this one
 fn void test_compound_assign_eval_order() @test
 {
@@ -33,7 +33,7 @@ fn void test_compound_assign_eval_order() @test
 	assert(val_order == 2);
 	assert(arr[0] == 11);
 }
-*/
+
 fn void test_simple_assign_eval_order() @test
 {
 	eval_counter = 0;
