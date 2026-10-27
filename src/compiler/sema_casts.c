@@ -6,6 +6,7 @@
 // implicit conversions. C3 has a fairly complex set of rules,
 // which makes this code somewhat lengthy.
 
+#include <math.h>
 #include "sema_internal.h"
 
 typedef struct // NOLINT
@@ -117,7 +118,7 @@ bool may_cast(SemaContext *context, Expr *expr, Type *to_type, bool is_explicit,
 			.to = to,
 			.to_type = to_type,
 			.expr = expr,
-			.context = context
+			.context = context,
 	};
 	return cast_is_allowed(&cc, is_explicit, is_silent);
 }
@@ -281,7 +282,7 @@ bool sema_error_failed_cast(SemaContext *context, Expr *expr, Type *from, Type *
 /**
  * Create a type by inferring the length.
  */
-Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type)
+static Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type)
 {
 	// This may be called on types not inferable,
 	// if so we assume the original type
@@ -379,7 +380,7 @@ static bool cast_if_valid(SemaContext *context, Expr *expr, Type *to_type, bool 
 			.to = to,
 			.to_type = to_type,
 			.expr = expr,
-			.context = context
+			.context = context,
 	};
 	if (!sema_resolve_type_decl(context, to)) return false;
 	if (!cast_is_allowed(&cc, is_explicit, is_silent))
@@ -391,12 +392,14 @@ static bool cast_if_valid(SemaContext *context, Expr *expr, Type *to_type, bool 
 	return true;
 }
 
-bool may_convert_int_float(CanonicalType *from, CanonicalType *to)
+static bool may_convert_int_float(CanonicalType *from, CanonicalType *to)
 {
 	assert(from->canonical == from && to->canonical == to);
 	if (from == to) return true;
 	if (type_is_float(from))
 	{
+		// float16 and bfloat have the same size but neither contains the other.
+		if (type_is_float(to) && type_size(from) == type_size(to)) return false;
 		return type_size(from) <= type_size(to);
 	}
 	if (type_is_signed(from))
@@ -526,7 +529,7 @@ RETRY:
 			goto RETRY;
 		}
 		case EXPR_EXT_TRUNC:
-			if (may_convert_int_float(type_no_optional(expr->type)->canonical, type)) return NULL;
+			if (may_convert_int_float(type_flatten(expr->type), type)) return NULL;
 			// Otherwise just look through it.
 			expr = expr->ext_trunc_expr.inner;
 			goto RETRY;
@@ -590,7 +593,7 @@ RETRY:
 			break;
 	}
 CHECK_SIZE:
-	if (may_convert_int_float(type_no_optional(expr->type)->canonical, type)) return NULL;
+	if (may_convert_int_float(type_flatten(expr->type), type)) return NULL;
 	return expr;
 }
 
@@ -1031,8 +1034,8 @@ static bool rule_ulist_to_vecarr(CastContext *cc, UNUSED bool is_explicit, bool 
 	{
 		if (is_silent) return false;
 		RETURN_CAST_ERROR(cc->expr, "%s may only be initialized with 0 elements or %d, not %d.",
-		                  type_quoted_error_string(cc->to_type),
-						  cc->to->array.len, size);
+			type_quoted_error_string(cc->to_type),
+			cc->to->array.len, size);
 	}
 	Type *base = cc->to->array.base;
 	FOREACH(Expr *, expr, expressions)
@@ -1102,31 +1105,32 @@ static bool rule_ulist_to_inferred(CastContext *cc, UNUSED bool is_explicit, boo
 
 static bool rule_slice_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 {
+	// Explicitly, like for any pointer.
+	if (is_explicit) return true;
 	Type *slice_base = cc->from->array.base;
-	// A slice is also convertible to `Type[N]*` if it is known to be N long (or explicitly cast).
-	Type *to_pointee = is_explicit ? type_flatten(cc->to->pointer) : cc->to->pointer;
+	// A slice is also convertible to `Type[N]*` if it is known to be N long.
+	Type *to_pointee = cc->to->pointer;
 	TypeCmpResult cmp;
-	if (to_pointee->type_kind == TYPE_ARRAY && (is_explicit || to_pointee->array.len == sema_len_from_const(cc->expr)))
+	if (to_pointee->type_kind == TYPE_ARRAY && to_pointee->array.len == sema_len_from_const(cc->expr))
 	{
-		cmp = type_array_element_is_equivalent(cc->context, to_pointee->array.base, slice_base, is_explicit);
+		cmp = type_array_element_is_equivalent(cc->context, to_pointee->array.base, slice_base, false);
 	}
 	else
 	{
-		cmp = match_pointers(cc, cc->to, type_get_ptr(slice_base), is_explicit);
+		cmp = match_pointers(cc, cc->to, type_get_ptr(slice_base), false);
 	}
 	switch (cmp)
 	{
 		case TYPE_SAME:
 			return true;
 		case TYPE_SAME_INT_SIZE:
-			if (is_explicit || expr_is_const_string(cc->expr)) return true;
+			if (expr_is_const_string(cc->expr)) return true;
 			break;
 		case TYPE_ERROR:
 			return false;
 		case TYPE_MISMATCH:
 			break;
 		case TYPE_ALIGNMENT_INCREASE:
-			if (is_explicit) return true;
 			if (is_silent) return false;
 			RETURN_CAST_ERROR(cc->expr,
 			  "Implicitly casting %s to %s (which has a different element alignment) is not permitted – "
@@ -1137,8 +1141,7 @@ static bool rule_slice_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 		default:
 			UNREACHABLE
 	}
-	bool may_explicit = !is_silent && rule_slice_to_ptr(cc, true, true);
-	return sema_cast_error(cc, may_explicit, is_silent);
+	return sema_cast_error(cc, true, is_silent);
 }
 
 static bool rule_slice_to_slice(CastContext *cc, bool is_explicit, bool is_silent)
@@ -1154,12 +1157,16 @@ static bool rule_slice_to_slice(CastContext *cc, bool is_explicit, bool is_silen
 	{
 		case TYPE_ERROR:
 			return false;
+		case TYPE_SAME_INT_SIZE:
+			// Signed <-> unsigned needs an explicit cast, as it does for `int` -> `uint` and `int*` -> `uint*`.
+			// A constant string or bytes is text, which may be stored in any one byte integer.
+			if (is_explicit || expr_is_const_string(cc->expr) || expr_is_const_bytes(cc->expr)) return true;
+			FALLTHROUGH;
 		case TYPE_MISMATCH:
 		case TYPE_ALIGNMENT_INCREASE:
 			if (is_silent) return false;
 			return sema_cast_error(cc, is_explicit ? false : rule_slice_to_slice(cc, true, true), is_silent);
 		case TYPE_SAME:
-		case TYPE_SAME_INT_SIZE:
 			return true;
 	}
 	UNREACHABLE
@@ -1300,8 +1307,10 @@ static inline BoolErr type_implements_interface_ignore_substruct(CastContext *cc
 	FOREACH(TypeInfo *, interface_type, decl->interfaces)
 	{
 		if (!sema_resolve_type_info(cc->context, interface_type, RESOLVE_TYPE_DEFAULT)) return BOOL_ERR;
-		if (interface_type->type == interface) return BOOL_TRUE;
-		BoolErr res = type_implements_interface_ignore_substruct(cc, interface_type->type->decl, interface);
+		// The interface may have been named through an alias.
+		Type *implemented = interface_type->type->canonical;
+		if (implemented == interface) return BOOL_TRUE;
+		BoolErr res = type_implements_interface_ignore_substruct(cc, implemented->decl, interface);
 		if (res != BOOL_FALSE) return res;
 	}
 
@@ -1348,12 +1357,13 @@ static bool rule_ptr_to_interface(CastContext *cc, bool is_explicit, bool is_sil
 	                  type_quoted_error_string(cc->expr->type), type_quoted_error_string(cc->to_type));
 }
 
-bool is_parent_interface(Type *from_interface, Type *to_interface)
+static bool is_parent_interface(Type *from_interface, Type *to_interface)
 {
 	FOREACH(TypeInfo *, parent, from_interface->decl->interfaces)
 	{
-		if (parent->type->canonical == to_interface) return true;
-		if (is_parent_interface(parent->type, to_interface)) return true;
+		Type *parent_type = parent->type->canonical;
+		if (parent_type == to_interface) return true;
+		if (is_parent_interface(parent_type, to_interface)) return true;
 	}
 	return false;
 }
@@ -1412,6 +1422,64 @@ static bool rule_int_to_float(CastContext *cc, bool is_explicit, bool is_silent)
 		           type_quoted_error_string(cc->to_type));
 	}
 	return true;
+}
+
+// A constant float is truncated towards zero, so it fits if the truncated value is in the range of the integer.
+static bool const_float_fits_int(Real d, Type *int_type)
+{
+	if (isnan(d)) return false;
+	d = trunc(d);
+	int bits = (int)type_bit_size(int_type);
+	if (type_is_signed(int_type)) return d >= -ldexp(1, bits - 1) && d < ldexp(1, bits - 1);
+	return d >= 0 && d < ldexp(1, bits);
+}
+
+static bool rule_float_to_int(CastContext *cc, bool is_explicit, bool is_silent)
+{
+	if (!is_explicit) return rule_explicit_ok(cc, false, is_silent);
+	Expr *expr = cc->expr;
+	if (!sema_cast_const(expr) || !expr_is_const_float(expr)) return true;
+	if (const_float_fits_int(expr->const_expr.fxx.f, cc->to)) return true;
+	if (is_silent) return false;
+	RETURN_CAST_ERROR(expr, "The value '%s' is out of range for %s.",
+	                  expr_const_to_error_string(&expr->const_expr), type_quoted_error_string(cc->to_type));
+}
+
+// Find the constant in a float vector (or array) that does not fit the integer type, if any.
+static Expr *const_float_vector_problem(ConstInitializer *init, Type *int_type)
+{
+	switch (init->kind)
+	{
+		case CONST_INIT_ZERO:
+			return NULL;
+		case CONST_INIT_VALUE:
+			if (!expr_is_const_float(init->init_value)) return NULL;
+			return const_float_fits_int(init->init_value->const_expr.fxx.f, int_type) ? NULL : init->init_value;
+		case CONST_INIT_ARRAY:
+		{
+			FOREACH(ConstInitializer *, element, init->init_array.elements)
+			{
+				Expr *problem = const_float_vector_problem(element, int_type);
+				if (problem) return problem;
+			}
+			return NULL;
+		}
+		case CONST_INIT_ARRAY_FULL:
+		{
+			FOREACH(ConstInitializer *, element, init->init_array_full)
+			{
+				Expr *problem = const_float_vector_problem(element, int_type);
+				if (problem) return problem;
+			}
+			return NULL;
+		}
+		case CONST_INIT_ARRAY_VALUE:
+			return const_float_vector_problem(init->init_array_value.element, int_type);
+		case CONST_INIT_STRUCT:
+		case CONST_INIT_UNION:
+			UNREACHABLE
+	}
+	UNREACHABLE
 }
 
 INLINE bool expr_is_pointer_diff(Expr *expr)
@@ -1521,7 +1589,9 @@ static bool rule_from_explicit_flattened(CastContext *cc, bool is_silent)
 		Type *old = flat;
 		flat = type_flatten_once(old);
 		if (flat == old) break;
-		if (to_any_or_interface && flat->type_kind != TYPE_ANY && flat->type_kind != TYPE_INTERFACE) continue;
+		// A distinct type is not the pointer it wraps, unless it is inline. Without inline we may only look
+		// through it to an `any` or an interface: `(any)&p` is probably what was meant for a pointer.
+		if (to_any_or_interface && flat->type_kind != TYPE_ANY && flat->type_kind != TYPE_INTERFACE && !type_has_inline(old)) break;
 		cast_context_set_from(cc, flat);
 		if (cast_is_allowed(cc, true, true)) return true;
 		*cc = original_cc;
@@ -1665,6 +1735,18 @@ static bool rule_vec_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	if (cc->from->array.len != cc->to->array.len) return sema_cast_error(cc, false, is_silent);
 	Type *from_base = cc->from->array.base;
+	// A constant float vector must fit when it is cast to an integer vector.
+	if (is_explicit && type_is_float(from_base) && type_is_integer(cc->to->array.base)
+		&& sema_cast_const(cc->expr) && expr_is_const_initializer(cc->expr))
+	{
+		Expr *problem = const_float_vector_problem(cc->expr->const_expr.initializer, type_flatten(cc->to->array.base));
+		if (problem)
+		{
+			if (is_silent) return false;
+			RETURN_CAST_ERROR(cc->expr, "The value '%s' is out of range for %s.",
+			                  expr_const_to_error_string(&problem->const_expr), type_quoted_error_string(cc->to_type));
+		}
+	}
 	CastContext cc_copy = *cc;
 	cast_context_set_to(cc, cc->to->array.base);
 	// Allow bool vectors to expand to any int.
@@ -1732,7 +1814,7 @@ static bool rule_int_to_enum(CastContext *cc, bool is_explicit, bool is_silent)
 			RETURN_CAST_ERROR(cc->expr, "Casting a negative number cannot yield a valid enum.");
 		}
 		int max_enums = vec_size(decl->enums.values);
-		Int max = {.i.low = max_enums, .type = TYPE_U32};
+		Int max = { .i.low = max_enums, .type = TYPE_U32 };
 		if (int_comp(to_convert, max, BINARYOP_GE))
 		{
 			if (is_silent) return false;
@@ -1880,8 +1962,7 @@ static void vector_const_initializer_convert_to_type(ConstInitializer *initializ
 				bool is_true = initializer->init_value->const_expr.b;
 				if (type_is_float(to_flat))
 				{
-					initializer->init_value->const_expr = (ExprConst)
-					{
+					initializer->init_value->const_expr = (ExprConst) {
 						.const_kind = CONST_FLOAT,
 						.fxx = (Float) { .f = is_true ? 1.0 : 0, .type = to_flat->type_kind },
 					};
@@ -1942,6 +2023,11 @@ static void cast_float_to_float(Expr *expr, Type *type)
 	// Insert runtime cast if needed.
 	if (!sema_cast_const(expr))
 	{
+		// float16 and bfloat have the same size and there is no direct conversion, so go through float.
+		if (type_size(type_flatten(type)) == type_size(type_flatten(expr->type)))
+		{
+			expr_rewrite_ext_trunc(expr, type_float, true);
+		}
 		expr_rewrite_ext_trunc(expr, type, true);
 		return;
 	}
@@ -2132,6 +2218,11 @@ static void cast_vec_to_vec(Expr *expr, Type *to_type)
 			switch (to_element->type_kind)
 			{
 				case ALL_FLOATS:
+					// float16 and bfloat have the same size and there is no direct conversion, so go through float.
+					if (from_element != to_element && type_size(from_element) == type_size(to_element))
+					{
+						expr_rewrite_ext_trunc(expr, type_get_vector(type_float, from_type->type_kind, from_type->array.len), true);
+					}
 					expr_rewrite_ext_trunc(expr, to_type, true);
 					return;
 				case TYPE_BOOL:
@@ -2690,6 +2781,7 @@ static void cast_typeid_to_bool(Expr *expr, Type *to_type) { expr_rewrite_int_to
 #define _NA__ &rule_not_applicable        /* "Not applicable" - should not be seen.                                                            */
 #define RWIDE &rule_widen_narrow          /* Widen / narrow conversion of int/float                                                            */
 #define RINFL &rule_int_to_float          /* Simple expressions, check sizes                                                                   */
+#define RFLIN &rule_float_to_int          /* Float -> int (explicit, a constant must fit)                                                      */
 #define RINEN &rule_int_to_enum           /* Const int must fit                                                                                */
 #define ROKOK &rule_all_ok                /* Always works                                                                                      */
 #define RINPT &rule_int_to_ptr            /* Int -> ptr (explicit + size match)                                                                */
@@ -2731,7 +2823,7 @@ CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
  {ROKOK, _NA__, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, _NO__, _NO__}, // WILDCARD
  {REXPL, _NO__, _NA__, REXPL, REXPL, _NO__, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BOOL
  {REXPL, _NO__, REXPL, RWIDE, RINFL, RINPT, _NO__, REXVC, RINBS, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, RINEN, RXXDI, RINPT, _NO__, _NO__, RINPT, RINPT, _NO__, _NO__}, // INT
- {REXPL, _NO__, REXPL, REXPL, RWIDE, _NO__, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // FLOAT
+ {REXPL, _NO__, REXPL, RFLIN, RWIDE, _NO__, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // FLOAT
  {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RPTIF, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE, _NO__}, // PTR
  {REXPL, _NO__, REXPL, _NO__, _NO__, RSLPT, RSLSL, RSLVA, _NO__, RXXDI, RSLVA, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RSLPT, RSLFE, _NO__}, // SLICE
  {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, RVASL, RVCVC, _NO__, RXXDI, RVCAR, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, RVAFE, _NO__}, // VECTOR
@@ -2742,7 +2834,7 @@ CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
  {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // UNION
  {REXPL, _NO__, REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NA__, REXPL, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, REXPL, _NO__, _NO__}, // ANY
  {REXPL, _NO__, REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RIFIF, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, REXPL, _NO__, _NO__}, // INTERFACE
- {REXPL, _NO__, RENXX, RENXX, RENXX, RENXX, RENXX, RENXX, RENXX, RENXX, RENXX, RENXX, RENXX, RENXX, RENXX, RENXX, RENXX, RENXX, RENXX, RENXX, RENXX, RENXX, RENXX, _NO__}, // ENUM
+ {REXPL, _NO__, RENXX, RENXX, RENXX, RENXX, RENXX, RENXX, RENXX, RXXDI, RENXX, RENXX, RENXX, RENXX, RENXX, RENXX, RXXDI, RENXX, RENXX, RENXX, RENXX, RENXX, RENXX, _NO__}, // ENUM
  {REXPL, _NO__, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIDI, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, _NO__}, // CONST_ENUM
  {REXPL, _NO__, REXPL, RPTIN, _NO__, _NO__, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, RPTPT, _NO__, _NO__, ROKOK, _NO__, _NO__, _NO__}, // FUNC
  {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, _NO__, _NA__, _NO__, REXPL, REXPL, _NO__, _NO__}, // TYPEID

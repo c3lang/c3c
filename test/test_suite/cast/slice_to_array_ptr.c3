@@ -35,21 +35,21 @@ fn void unknown_length(int[] s)
 fn void wrong_element()
 {
 	int[4] x;
-	float[3]* a = x[:3]; // #error: It is not possible to cast 'int[]' to 'float[3]*'
+	float[3]* a = x[:3]; // #error: Implicitly casting 'int[]' to 'float[3]*' is not permitted
 }
 
 fn void wrong_nesting()
 {
 	int[4] x;
-	int[3][3]* a = x[:3]; // #error: It is not possible to cast 'int[]' to 'int[3][3]*'
+	int[3][3]* a = x[:3]; // #error: Implicitly casting 'int[]' to 'int[3][3]*' is not permitted
 }
 
 fn void struct_array_stride(Child[] children)
 {
-	Parent[2]* a = children[:2]; // #error: It is not possible to cast 'Child[]' to 'Parent[2]*'
+	Parent[2]* a = children[:2]; // #error: Implicitly casting 'Child[]' to 'Parent[2]*' is not permitted
 }
 
 fn void no_downcast(Parent[] parents)
 {
-	Child* a = parents; // #error: It is not possible to cast 'Parent[]' to 'Child*'
+	Child* a = parents; // #error: Implicitly casting 'Parent[]' to 'Child*' is not permitted
 }

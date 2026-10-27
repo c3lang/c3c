@@ -20,6 +20,9 @@
 - Implicitly converting a negative constant to a wider unsigned type, e.g. `ulong x = -1;`, is now correctly an error.
 - Improved the error when implicitly casting an enum to an integer, it now points to the explicit cast.
 - Casting a non-constant integer larger than a pointer, e.g. an `int128`, to a pointer is now an error. Cast it to `uptr` first.
+- Converting between signed and unsigned integers of the same size in arrays, slices and vectors, e.g. `int[3]` to `uint[3]`, requires explicit casts.
+- `float16` and `bfloat` no longer convert implicitly to each other, as both directions lose information.
+- An explicit cast of a slice to a pointer is now allowed for any pointer type, like a cast between pointers.
 
 ### Fixes
 - Compressed `.c3l` libraries were not unpacked again when only files other than `manifest.json` had changed.
@@ -64,6 +67,12 @@
 - Casting a `typeid` or `fault` to a wider signed integer, e.g. `(int128)t`, would sign extend instead of zero extend.
 - An implicit cast between unrelated distinct types would report the error twice.
 - The hints in cast errors (for enums, distinct types, `ZString` and pointers to slices) were missing when the value was optional.
+- Casting between `float16` and `bfloat`, also in vectors, would abort the compiler. An explicit cast now converts through `float`.
+- Casting a constant float to an integer it does not fit, e.g. `(int)1e30`, `(char)300.5`, infinity or NaN, would abort the compiler or give a wrong value. It is now an error, also for the elements of a constant float vector or array cast to an integer vector.
+- An inline distinct signed integer, or an inline constset of one, would implicitly convert to an unsigned integer of the same size, e.g. `uint y = my_inline_int;`, which `int` to `uint` does not allow.
+- Explicitly casting a pointer wrapped in an inline distinct type to `any` or an interface was an error, even though the implicit cast worked.
+- A struct implementing an interface through an alias, e.g. `struct Foo (IAlias)`, would not convert to the interface, and an interface inheriting through an alias would not convert to its parent.
+- Casting an enum to a distinct type over that enum, e.g. `(MyFoo)foo` with `typedef MyFoo = Foo;`, was an error. It is now allowed with an explicit cast, like for a distinct type over an integer.
 
 ### Stdlib changes
 - Added termios support for OpenBSD.
