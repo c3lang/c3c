@@ -73,6 +73,7 @@
 - Explicitly casting a pointer wrapped in an inline distinct type to `any` or an interface was an error, even though the implicit cast worked.
 - A struct implementing an interface through an alias, e.g. `struct Foo (IAlias)`, would not convert to the interface, and an interface inheriting through an alias would not convert to its parent.
 - Casting an enum to a distinct type over that enum, e.g. `(MyFoo)foo` with `typedef MyFoo = Foo;`, was an error. It is now allowed with an explicit cast, like for a distinct type over an integer.
+- Errors in multithreaded compilation tasks, such as a failing `c-sources` file, could crash the compiler. A failing task now aborts the remaining tasks and the compiler exits with an error. #3584
 
 ### Stdlib changes
 - Added termios support for OpenBSD.

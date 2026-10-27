@@ -27,7 +27,10 @@ static void diagnostics_handler(LLVMDiagnosticInfoRef ref, void *context)
 	switch (severity)
 	{
 		case LLVMDSError:
-			error_exit("LLVM error generating code for %s: %s", ((GenContext *)context)->code_module->name->module, message);
+			eprintf("LLVM error generating code for %s: %s\n", ((GenContext *)context)->code_module->name->module, message);
+			((GenContext *)context)->failed = true;
+			severity_name = "error";
+			break;
 		case LLVMDSWarning:
 			severity_name = "warning";
 			break;
@@ -699,7 +702,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	llvm_set_decl_linkage(c, decl, true);
 
 }
-static void gencontext_verify_ir(GenContext *context)
+static bool gencontext_verify_ir(GenContext *context)
 {
 	char *error = NULL;
 	ASSERT(context->module);
@@ -709,13 +712,18 @@ static void gencontext_verify_ir(GenContext *context)
 		{
 			eprintf("----------------------------------IR integrity failure:\n");
 			LLVMDumpModule(context->module);
-			error_exit("Could not verify IR: %s", error);
+			eprintf("Could not verify IR: %s\n", error);
 		}
-		error_exit("Could not verify module IR.");
+		else
+		{
+			eprintf("Could not verify module IR.\n");
+		}
+		return false;
 	}
+	return true;
 }
 
-static void llvm_emit_file(GenContext *c, const char *filename, LLVMCodeGenFileType llvm_codegen_type, bool clone_module)
+static bool llvm_emit_file(GenContext *c, const char *filename, LLVMCodeGenFileType llvm_codegen_type, bool clone_module)
 {
 	DEBUG_LOG("Target: %s", compiler.platform.target_triple);
 	LLVMModuleRef module = clone_module ? LLVMCloneModule(c->module) : c->module;
@@ -756,20 +764,23 @@ static void llvm_emit_file(GenContext *c, const char *filename, LLVMCodeGenFileT
 	}
 	fclose(file);
 	LLVMDisposeMemoryBuffer(buffer);
-	return;
+	return true;
 ERR:
 	if (file) fclose(file);
 	if (buffer) LLVMDisposeMemoryBuffer(buffer);
-	error_exit("Could not emit '%s': %s", filename, err);
+	eprintf("Could not emit '%s': %s\n", filename, err);
+	return false;
 }
 
-void gencontext_print_llvm_ir(GenContext *context)
+bool gencontext_print_llvm_ir(GenContext *context)
 {
 	char *err = NULL;
 	if (LLVMPrintModuleToFile(context->module, context->ir_filename, &err))
 	{
-		error_exit("Could not emit ir '%s' to file: %s", context->ir_filename, err);
+		eprintf("Could not emit ir '%s' to file: %s\n", context->ir_filename, err);
+		return false;
 	}
+	return true;
 }
 
 INLINE LLVMValueRef llvm_emit_alloca_internal(GenContext *c, LLVMTypeRef type, int alignment, const char *name)
@@ -1093,7 +1104,7 @@ static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 }
 
 
-static inline void llvm_optimize(GenContext *c)
+static inline bool llvm_optimize(GenContext *c)
 {
 	bool should_debug = false;
 #ifndef NDEBUG
@@ -1144,40 +1155,44 @@ static inline void llvm_optimize(GenContext *c)
 	};
 	if (!llvm_run_passes(c->module, c->machine, &passes))
 	{
-		error_exit("Failed to run passes.");
+		eprintf("Failed to run passes.\n");
+		return false;
 	}
+	return true;
 }
 
-const char *llvm_codegen(void *context)
+bool llvm_codegen(void *context, const char **out_name)
 {
+	*out_name = NULL;
 	GenContext *c = context;
-	if (!compiler_should_output_file(c->base_name)) return NULL;
-	llvm_optimize(c);
+	if (!compiler_should_output_file(c->base_name)) return true;
+	if (c->failed || !llvm_optimize(c)) return false;
 
 	// Serialize the LLVM IR, if requested, also verify the IR in this case
 	if (compiler.build.emit_llvm)
 	{
-		gencontext_print_llvm_ir(c);
-		gencontext_verify_ir(c);
+		bool success = gencontext_print_llvm_ir(c) && gencontext_verify_ir(c);
+		if (!success) return false;
 	}
 
-	const char *object_name = NULL;
 	if (compiler.build.emit_asm)
 	{
 		// Clone if there will be object file output.
-		llvm_emit_file(c, c->asm_filename, LLVMAssemblyFile, compiler.build.emit_object_files);
+		if (!llvm_emit_file(c, c->asm_filename, LLVMAssemblyFile, compiler.build.emit_object_files)) return false;
 	}
 
 	if (compiler.build.emit_object_files)
 	{
-		llvm_emit_file(c, c->object_filename, LLVMObjectFile, false);
-		object_name = c->object_filename;
+		if (!llvm_emit_file(c, c->object_filename, LLVMObjectFile, false)) return false;
+		*out_name = c->object_filename;
 	}
+
+	if (c->failed) return false;
 
 	gencontext_end_module(c);
 	gencontext_destroy(c);
 
-	return object_name;
+	return true;
 }
 
 /**
@@ -1216,18 +1231,18 @@ void *llvm_load_ir_file(const char *filename, const char *object_filename)
 	return c;
 }
 
-const char *llvm_codegen_ir_file(void *context)
+bool llvm_codegen_ir_file(void *context, const char **out_name)
 {
+	*out_name = NULL;
 	GenContext *c = context;
-	const char *object_name = c->object_filename;
-	llvm_optimize(c);
-	llvm_emit_file(c, c->object_filename, LLVMObjectFile, false);
+	bool ok = llvm_optimize(c) && llvm_emit_file(c, c->object_filename, LLVMObjectFile, false);
+	if (ok) *out_name = c->object_filename;
 	LLVMDisposeTargetData(c->target_data);
 	LLVMDisposeTargetMachine(c->machine);
 	LLVMDisposeModule(c->module);
 	LLVMContextDispose(c->context);
 	free(c);
-	return object_name;
+	return ok;
 }
 
 
@@ -2000,8 +2015,8 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 	// If it's in test or benchmark, then we want to serialize the IR before it is optimized.
 	if (compiler.build.test_output || compiler.build.benchmark_output)
 	{
-		gencontext_print_llvm_ir(gen_context);
-		gencontext_verify_ir(gen_context);
+		bool success = gencontext_print_llvm_ir(gen_context) && gencontext_verify_ir(gen_context);
+		if (!success) exit_compiler(EXIT_FAILURE);
 	}
 	if (!has_elements) return NULL;
 	gen_context->module_size = LLVMGetModuleInstructionCount(gen_context->module);
