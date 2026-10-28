@@ -215,7 +215,10 @@ Float float_from_hex(const char *string, char **error)
 		scratch_buffer_append_char('-');
 		index++;
 	}
-	else if (*index == '+') index++;
+	else if (*index == '+')
+	{
+		index++;
+	}
 	while ((c = *(index++)) && (c >= '0' && c <= '9'))
 	{
 		scratch_buffer_append_char(c);

@@ -10749,7 +10749,7 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr, T
 {
 	if (context->call_env.kind != CALL_ENV_FUNCTION)
 	{
-		if (CALL_ENV_FUNCTION_STATIC)
+		if (context->call_env.kind == CALL_ENV_FUNCTION_STATIC)
 		{
 			RETURN_SEMA_ERROR(expr, "Rethrow cannot be used for a static initializer.");
 		}
