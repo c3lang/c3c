@@ -76,6 +76,7 @@
 - Errors in multithreaded compilation tasks, such as a failing `c-sources` file, could crash the compiler. A failing task now aborts the remaining tasks and the compiler exits with an error. #3584
 - Fix error message rethrowing in a non-function context.
 - Fix name mangling of untyped list.
+- `"max-vector-size"` was not whitelisted as a project property.
 
 ### Stdlib changes
 - Added termios support for OpenBSD.
