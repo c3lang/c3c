@@ -6373,7 +6373,10 @@ static inline void llvm_emit_try_unwrap(GenContext *c, BEValue *value, Expr *exp
 {
 	if (!expr->try_expr.optional)
 	{
-		LLVMValueRef fail_ref = decl_optional_ref(expr->try_expr.decl);
+		Decl *decl = expr->try_expr.decl;
+		// A global may not be declared in this module yet, this creates its fault slot.
+		llvm_get_ref(c, decl);
+		LLVMValueRef fail_ref = decl_optional_ref(decl);
 		LLVMValueRef errv = llvm_load(c, llvm_get_type(c, type_fault), fail_ref, type_abi_alignment(type_fault), "load.err");
 		LLVMValueRef result = LLVMBuildICmp(c->builder, LLVMIntEQ, errv, llvm_get_zero(c, type_fault), "result");
 		llvm_value_set(value, result, type_bool);
