@@ -188,6 +188,7 @@ typedef struct InliningSpan_
 {
 	SourceLocId loc;
 	struct InliningSpan_ *prev;
+	Decl *instance;
 } InliningSpan;
 
 typedef struct
@@ -1958,6 +1959,7 @@ typedef struct ABIArgInfo_
 		bool signext : 1;
 		bool realign : 1;
 		bool by_val : 1;
+		uint8_t stack_align : 5;
 	} attributes;
 	union
 	{
@@ -2390,7 +2392,6 @@ Decl **copy_decl_list_macro(Decl **decl_list);
 Ast *copy_ast_macro(Ast *source_ast);
 Ast *copy_ast_defer(Ast *source_ast);
 TypeInfo *copy_type_info_single(TypeInfo *type_info);
-InliningSpan *copy_inlining_span(InliningSpan *span);
 
 void init_asm(PlatformTarget *target);
 void print_asm_list(PlatformTarget *target);
@@ -2423,10 +2424,10 @@ void cast_no_check(Expr *expr, Type *to_type, bool add_optional);
 
 bool cast_to_index_len(SemaContext *context, Expr *index, bool is_len);
 
-const char *c_codegen(void *context);
-const char *llvm_codegen(void *context);
+bool c_codegen(void *context, const char **out_name);
+bool llvm_codegen(void *context, const char **out_name);
 void *llvm_load_ir_file(const char *filename, const char *object_filename);
-const char *llvm_codegen_ir_file(void *context);
+bool llvm_codegen_ir_file(void *context, const char **out_name);
 const char *tilde_codegen(void *context);
 void **c_gen(Module** modules, int module_count);
 void **llvm_gen(Module** modules, int module_count);
@@ -3542,6 +3543,20 @@ static inline CanonicalType *type_distinct_inline(Type *type)
 		}
 	}
 }
+
+INLINE Type *type_flatten_once(Type *type)
+{
+	type = type->canonical;
+	switch (type->type_kind)
+	{
+		case TYPE_CONSTSET: return enum_inner_type(type)->canonical;
+		case TYPE_TYPEDEF: return type->decl->distinct->type->canonical;
+		case TYPE_OPTIONAL: return type->optional->canonical;
+		case TYPE_ALIAS: UNREACHABLE
+		default: return type;
+	}
+}
+
 static inline FlatType *type_flatten(Type *type)
 {
 	while (1)

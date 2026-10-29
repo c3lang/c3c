@@ -28,13 +28,13 @@ fn String String.escape(String s, Allocator allocator, bool strip_quotes = false
 	if (allocator == tmem)
 	{
 		DString result = dstring::new_with_capacity(tmem, initial_capacity);
-		escape_dstring(s, result, strip_quotes);
+		escape_dstring(s, &result, strip_quotes);
 		return result.str_view();
 	}
 	@pool()
 	{
 		DString result = dstring::temp_with_capacity(initial_capacity);
-		escape_dstring(s, result, strip_quotes);
+		escape_dstring(s, &result, strip_quotes);
 		return result.copy_str(allocator);
 	};
 }
@@ -118,13 +118,13 @@ fn String? String.unescape(String s, Allocator allocator, bool allow_unquoted = 
 	if (allocator == tmem)
 	{
 		DString result = dstring::new_with_capacity(tmem, s.len);
-		unescape_dstring(s, result, allow_unquoted, lenient)!;
+		unescape_dstring(s, &result, allow_unquoted, lenient)!;
 		return result.str_view();
 	}
 	@pool()
 	{
 		DString result = dstring::temp_with_capacity(s.len);
-		unescape_dstring(s, result, allow_unquoted, lenient)!;
+		unescape_dstring(s, &result, allow_unquoted, lenient)!;
 		return result.copy_str(allocator);
 	};
 }
@@ -167,7 +167,7 @@ fn bool needs_escape(char c)
 
 // --- implementation
 
-fn void escape_dstring(String s, DString result, bool strip_quotes) @private
+fn void escape_dstring(String s, DString* result, bool strip_quotes) @private
 {
 	if (!strip_quotes) result.append_char('"');
 
@@ -202,7 +202,7 @@ fn void escape_dstring(String s, DString result, bool strip_quotes) @private
 
 }
 
-fn void? unescape_dstring(String s, DString result, bool allow_unquoted = false, bool lenient = false) @private
+fn void? unescape_dstring(String s, DString* result, bool allow_unquoted = false, bool lenient = false) @private
 {
 	sz len = s.len;
 	for (sz i = 0; i < len; i++)

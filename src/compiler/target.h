@@ -119,11 +119,6 @@ typedef struct
 		} aarch64;
 		struct
 		{
-			bool is_darwin : 1;
-			bool is_win32 : 1;
-		} aarch;
-		struct
-		{
 			bool is_win32 : 1;
 			ARMVariant variant : 3;
 			ARMABIVariant abi_variant : 3;

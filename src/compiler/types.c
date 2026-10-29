@@ -704,6 +704,7 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 			UNREACHABLE_VOID
 		case TYPE_UNTYPEDLIST:
 			scratch_buffer_append("ul$");
+			return;
 		case TYPE_ANY:
 			scratch_buffer_append("any$");
 			return;

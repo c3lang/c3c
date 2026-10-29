@@ -30,6 +30,7 @@ Checks: >
   -readability-redundant-casting,
   -readability-redundant-declaration,
   -readability-redundant-parentheses,
+  -readability-trailing-comma,
   -readability-uppercase-literal-suffix,
 
 # Turn remaining warnings into errors.

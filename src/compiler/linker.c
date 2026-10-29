@@ -81,7 +81,6 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 {
 	add_concat_arg("/SUBSYSTEM:", win_subsystem_name(compiler.build.win.subsystem));
 	if (link_libc()) linking_add_link(&compiler.linking, "dbghelp");
-	if (linker_type == LINKER_CC) return;
 	add_plain_arg(compiler.platform.arch == ARCH_TYPE_ARM ? "/MACHINE:ARM" : compiler.platform.arch == ARCH_TYPE_AARCH64 ? "/MACHINE:ARM64" 
 		: compiler.platform.arch == ARCH_TYPE_X86 ? "/MACHINE:X86" : "/MACHINE:X64");
 	const char *suffix = NULL;
@@ -1001,7 +1000,9 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, int
 				add_plain_arg("/DLL");
 				add_concat_quote_arg("/IMPLIB:", static_lib_name());
 			}
+			break;
 		case LINKER_CC:
+			if (is_dylib) add_plain_arg("-shared");
 			break;
 		default:
 			UNREACHABLE
@@ -1184,6 +1185,20 @@ static int assemble_link_arguments(const char **arguments, int len)
 	return count;
 }
 
+#if !LLVM_AVAILABLE && PLATFORM_WINDOWS
+static const char *find_msvc_linker(void)
+{
+	WindowsSDK *sdk = windows_get_sdk();
+	if (sdk && sdk->cl_path)
+	{
+		char *dir = file_get_dir(sdk->cl_path);
+		char *link = file_append_path(dir, "link.exe");
+		if (file_exists(link)) return link;
+	}
+	return "link.exe";
+}
+#endif
+
 static bool link_exe(const char *output_file, const char **files_to_link, int file_count)
 {
 	INFO_LOG("Using linker directly.");
@@ -1214,6 +1229,12 @@ static bool link_exe(const char *output_file, const char **files_to_link, int fi
 		default:
 			UNREACHABLE
 	}
+#elif PLATFORM_WINDOWS
+	vec_insert_first(args, find_msvc_linker());
+	const char *cmd = assemble_linker_command(args, true);
+	if (compiler.build.print_linking) puts(cmd);
+	success = (system(cmd) == 0);
+	if (!success) error = "link.exe failed";
 #else
 	success = false;
 	error = "linking (.exe) is not implemented for C3C compiled without LLVM";
@@ -1364,7 +1385,12 @@ const char *cc_compiler(const char *cc, const char *file, const char *out_name, 
 		if (dir) dir_make(dir);
 		char *filename = NULL;
 		bool split_worked = file_namesplit(file, &filename, NULL);
-		if (!split_worked) error_exit("Cannot compile '%s'", file);
+		if (!split_worked)
+		{
+			lock_release();
+			eprintf("Cannot compile '%s'\n", file);
+			return NULL;
+		}
 		size_t len = strlen(filename);
 		// Remove .cpp or .c
 		if (len > 5 && memcmp(filename + len - 4, ".cpp", 4) == 0)
@@ -1403,12 +1429,14 @@ const char *cc_compiler(const char *cc, const char *file, const char *out_name, 
 	}
 
 	const bool pie_set =
-			flags != NULL &&
-			(strstr(flags, "-fno-PIE") || // This is a weird case, but probably don't set PIE if
-			 strstr(flags, "-fno-pie") || // it is being set in user defined cflags.
-			 strstr(flags, "-fpie") ||
-			 strstr(flags, "-fPIE")); // strcasestr is apparently nonstandard >:(
-	if (!pie_set && !is_cl_exe)
+		flags != NULL &&
+		(strstr(flags, "-fno-PIE") || // This is a weird case, but probably don't set PIE if
+		 strstr(flags, "-fno-pie") || // it is being set in user defined cflags.
+		 strstr(flags, "-fpie") ||
+		 strstr(flags, "-fPIE")); // strcasestr is apparently nonstandard >:(
+
+	// Windows has no PIC/PIE compile mode, clang rejects -fPIE/-fPIC for *-windows-msvc.
+	if (!pie_set && compiler.platform.os != OS_TYPE_WIN32)
 	{
 		append_fpie_pic_options(compiler.platform.reloc_model, &parts);
 	}
@@ -1458,6 +1486,14 @@ const char *cc_compiler(const char *cc, const char *file, const char *out_name, 
 
 bool dynamic_lib_linker(const char *output_file, const char **files, int file_count)
 {
+#if !LLVM_AVAILABLE
+#if PLATFORM_WINDOWS
+	return link_exe(output_file, files, file_count);
+#else
+	platform_linker(output_file, files, file_count);
+	return true;
+#endif
+#else
 	INFO_LOG("Using linker directly.");
 	const char **args = NULL;
 	if (compiler.build.linker_type == LINKER_TYPE_CUSTOM) vec_add(args, compiler.build.custom_linker_path);
@@ -1477,7 +1513,6 @@ bool dynamic_lib_linker(const char *output_file, const char **files, int file_co
 	}
 	bool success;
 	const char *error = NULL;
-#if LLVM_AVAILABLE
 	int count = assemble_link_arguments(args, vec_size(args));
 	switch (compiler.platform.object_format)
 	{
@@ -1496,17 +1531,35 @@ bool dynamic_lib_linker(const char *output_file, const char **files, int file_co
 		default:
 			UNREACHABLE
 	}
-#else
-	success = false;
-	error = "linking not implemented for c3c compiled without llvm";
-#endif
 	if (!success)
 	{
 		error_exit("Failed to create a dynamic library: %s", error);
 	}
 	INFO_LOG("Linking complete.");
 	return true;
+#endif
 }
+
+#if !LLVM_AVAILABLE
+static const char *find_archiver(void)
+{
+	const char *ar = getenv("C3C_AR");
+	if (ar && *ar) return ar;
+	ar = getenv("AR");
+	if (ar && *ar) return ar;
+#if PLATFORM_WINDOWS
+	WindowsSDK *sdk = windows_get_sdk();
+	if (sdk && sdk->vs_library_path)
+	{
+		char *lib = file_append_path(sdk->vs_library_path, "lib.exe");
+		if (file_exists(lib)) return lib;
+	}
+	return "lib.exe";
+#else
+	return "ar";
+#endif
+}
+#endif
 
 bool static_lib_linker(const char *output_file, const char **files, int file_count)
 {
@@ -1532,7 +1585,19 @@ bool static_lib_linker(const char *output_file, const char **files, int file_cou
 	}
 	return llvm_ar(output_file, files, file_count, format);
 #else
-	return false;
+	const char *ar = find_archiver();
+	file_delete_file(output_file);
+	const char **parts = NULL;
+	const char ***args_ref = &parts;
+	add_quote_arg(ar);
+	bool is_lib_exe = str_ends_with(ar, "lib.exe") || str_ends_with(ar, "lib");
+	add_plain_arg(is_lib_exe ? "/NOLOGO" : "rcs");
+	if (is_lib_exe) add_concat_quote_arg("/OUT:", output_file);
+	else add_quote_arg(output_file);
+	for (int i = 0; i < file_count; i++) add_quote_arg(files[i]);
+	const char *cmd = assemble_linker_command(parts, PLATFORM_WINDOWS);
+	if (compiler.build.print_linking) puts(cmd);
+	return system(cmd) == 0;
 #endif
 }
 

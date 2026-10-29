@@ -16,6 +16,13 @@
 - Add `env` and `env-override` to `project.json`, setting environment variables (`"NAME=value"`) for the `exec` scripts. #3580
 - Add `-gline-tables-only` to emit line tables debug info only.
 - Disallow `{ .a = 1, .a = 1 }`. #3579
+- Add better instantiation error output.
+- Implicitly converting a negative constant to a wider unsigned type, e.g. `ulong x = -1;`, is now correctly an error.
+- Improved the error when implicitly casting an enum to an integer, it now points to the explicit cast.
+- Casting a non-constant integer larger than a pointer, e.g. an `int128`, to a pointer is now an error. Cast it to `uptr` first.
+- Converting between signed and unsigned integers of the same size in arrays, slices and vectors, e.g. `int[3]` to `uint[3]`, requires explicit casts.
+- `float16` and `bfloat` no longer convert implicitly to each other, as both directions lose information.
+- An explicit cast of a slice to a pointer is now allowed for any pointer type, like a cast between pointers.
 
 ### Fixes
 - Compressed `.c3l` libraries were not unpacked again when only files other than `manifest.json` had changed.
@@ -39,11 +46,44 @@
 - Temp dirs were left behind by `c3c compile` (including unpacked `.c3l` libraries), `fetch-list`, `vendor-fetch` and the SDK fetch commands, in particular after errors. #3553
 - Fix integer overflow vulnerabilities in regex compiler (CVE-2026-107891). #3585
 - Compiler crashes when emitting line-tables debug info. #3581
+- Do not pass PIE/PIC on Windows. #3586
+- Crashes in slice->vector and ptrvec->intvec conversions.
+- Implicit cast rules too loose for slice->arrptr.
+- Invalid lowering for `(Bitstruct)-1` where the bitstruct is backed by an unsigned type.
+- Cast to `any` from typedef with an underlying inline pointer, would cause a crash.
+- Cast from constant `bool[<2>]` to `float[<2>]` would crash.
+- Padding would be incorrectly lowered in things like `(char[<8>])(char[8])"abc"`.
+- Const casting a const slice derived from a zero array initializer (e.g. `(bool)(int[])(int[3]){}`) would incorrectly return false.
+- Casting a constant to an alias to an enum would be incorrectly checked.
+- Cast to aliased bitstruct would fail when non-aliased cast would succeed.
+- Casting an optional distinct index would incorrectly fail.
+- Aarch64 MacOS did not zero/sign-extend args (and Win32 Aarch64 incorrectly did). #3593
+- Overaligned structs were not passed correctly on Linux Aarch64.
+- Add alignstack for Linux Aarch64 ABI for correct HFA/HVA handling.
+- `string::unescape` and `string::escape` would not work correctly after initial size was reached. #3592
+- `$defined` on an untyped list that cannot be converted, e.g. `$defined(int[*] y = $list)` with `var $list = { 1, "a" };`, would print an error instead of being false.
+- An empty constant string could not be converted to an array, e.g. `char[4] x = "";`.
+- A constset inlining a constset that in turn inlines a third one, could not be implicitly converted to the one in the middle.
+- `$defined` on an implicit pointer conversion was true for pointers to distinct types, and printed an error instead of being false when the pointee alignment would increase.
+- Casting a `typeid` or `fault` to a wider signed integer, e.g. `(int128)t`, would sign extend instead of zero extend.
+- An implicit cast between unrelated distinct types would report the error twice.
+- The hints in cast errors (for enums, distinct types, `ZString` and pointers to slices) were missing when the value was optional.
+- Casting between `float16` and `bfloat`, also in vectors, would abort the compiler. An explicit cast now converts through `float`.
+- Casting a constant float to an integer it does not fit, e.g. `(int)1e30`, `(char)300.5`, infinity or NaN, would abort the compiler or give a wrong value. It is now an error, also for the elements of a constant float vector or array cast to an integer vector.
+- An inline distinct signed integer, or an inline constset of one, would implicitly convert to an unsigned integer of the same size, e.g. `uint y = my_inline_int;`, which `int` to `uint` does not allow.
+- Explicitly casting a pointer wrapped in an inline distinct type to `any` or an interface was an error, even though the implicit cast worked.
+- A struct implementing an interface through an alias, e.g. `struct Foo (IAlias)`, would not convert to the interface, and an interface inheriting through an alias would not convert to its parent.
+- Casting an enum to a distinct type over that enum, e.g. `(MyFoo)foo` with `typedef MyFoo = Foo;`, was an error. It is now allowed with an explicit cast, like for a distinct type over an integer.
+- Errors in multithreaded compilation tasks, such as a failing `c-sources` file, could crash the compiler. A failing task now aborts the remaining tasks and the compiler exits with an error. #3584
+- Fix error message rethrowing in a non-function context.
+- Fix name mangling of untyped list.
+- `"max-vector-size"` was not whitelisted as a project property.
 
 ### Stdlib changes
 - Added termios support for OpenBSD.
 - Add `file::open_fd` to open files directly from file descriptors.
 - Changed regex fault and flag names, removed `NOSUB`. #3585
+- Added missing `__muloti4` to compiler_rt.
 
 ## 0.8.5 Change list
 
@@ -65,12 +105,13 @@
 - Fix source locations for byte literal values continued on a new line.
 - Faulty selection of subscript operator overload when calling method #3499
 - Retain `@nostrip` on optimized code even if no use is found, static variables may now also have nostrip. #3500
-
 - `!=` overloads on structs behaved as `==` #3547.
 - Multi-dimensional array comparisons on types with `==` overloaded would not compare.
 - Lazy resolution of function pointer types could cause a segfault when unifying ternary types. #3552
 - `@swap` now works with non-pure arguments.
 - Incorrect lowering of vectors when created from designated initializers with zeroes at the end.
+- Aligned typedefs in macros/generics would not work correctly.
+
 ### Stdlib changes
 - Added `std::gfx` module.
 - Added `IntRect`, `IntVec2`, `IntVec3` and `IntVec4` types.

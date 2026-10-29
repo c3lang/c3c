@@ -35,6 +35,7 @@ sat_shl never saturates: int::max.sat_shl(1) gives -2.
 (Fixed)
 
 11. Compound-assignment evaluation order differs. arr[idx()] += val() evaluates val() first in C but idx() first in LLVM (c_codegen_expr.c:852).
+(Fixed)
 
 12. goto to an undeclared label. is_opt emits goto __C3_LABEL_n (c_codegen_expr.c:994,1002), but the label is only emitted on the fall-through path (:1236). Shifts, vector ops, float %, slice compares and similar early-return paths skip it. int? r = get(3) << 2; fails. It also hits real stdlib code: std::gfx scale_to_monitor (monitor.scale * (Vec2)size) breaks --strip-unused=no.
 (Fixed cd0f39819)
@@ -331,7 +332,7 @@ void c_emit_string_literal(GenContext *c, const char *bytes, ArrayIndex len)
 	PRINT("\"");
 }
 
-void c_emit_panic(GenContext *c, const char *message, SourceLocId loc)
+void c_emit_panic(GenContext *c, const char *message, SourceLocId loc, Expr **args)
 {
 	Decl *panic_var = compiler.context.panic_var;
 	if (no_panic() || !panic_var)
@@ -345,8 +346,34 @@ void c_emit_panic(GenContext *c, const char *message, SourceLocId loc)
 	const char *filename = file ? file->name : "";
 	const char *funcname = c->cur_func_name ? c->cur_func_name : (c->cur_func_decl ? c->cur_func_decl->name : "");
 	uint32_t line = location ? location->row : 0;
-	const char *panic_name = c_get_decl_name(panic_var);
 
+	int num_args = vec_size(args);
+	if (num_args > 0 && compiler.context.panicf)
+	{
+		Decl *panicf = compiler.context.panicf;
+		VariableId arr_var = c_emit_alloca_array(c, type_any, num_args);
+		for (int i = 0; i < num_args; i++)
+		{
+			CValue arg_val = {0};
+			c_emit_expr(c, &arg_val, args[i]);
+			c_value_rvalue(c, &arg_val);
+			char slot[64];
+			snprintf(slot, sizeof(slot), "___var_%d[%d]", arr_var, i);
+			c_emit_assign_to_any(c, slot, &arg_val);
+		}
+		c_emit_function_decl(c, panicf, false);
+		PRINTF("%s((__c3_slice_uint8_t){(uint8_t*)", c_get_decl_name(panicf));
+		c_emit_string_literal(c, message ? message : "", message ? (ArrayIndex)strlen(message) : 0);
+		PRINTF(", %zu}, (__c3_slice_uint8_t){(uint8_t*)", message ? strlen(message) : 0);
+		c_emit_string_literal(c, filename, (ArrayIndex)strlen(filename));
+		PRINTF(", %zu}, (__c3_slice_uint8_t){(uint8_t*)", strlen(filename));
+		c_emit_string_literal(c, funcname, (ArrayIndex)strlen(funcname));
+		PRINTF(", %zu}, %u, (__c3_slice___c3_any__){ .ptr = ___var_%d, .len = %d }); __c3_abort();\n",
+		       strlen(funcname), line, arr_var, num_args);
+		return;
+	}
+
+	const char *panic_name = c_get_decl_name(panic_var);
 	PRINTF("if (%s) { ((void (*)(__c3_slice_uint8_t, __c3_slice_uint8_t, __c3_slice_uint8_t, int32_t))%s)((__c3_slice_uint8_t){(uint8_t*)", panic_name, panic_name);
 	c_emit_string_literal(c, message ? message : "", message ? (ArrayIndex)strlen(message) : 0);
 	PRINTF(", %zu}, (__c3_slice_uint8_t){(uint8_t*)", message ? strlen(message) : 0);
@@ -1283,24 +1310,21 @@ static const char *c_backend_build_cflags(const char *cc)
 	return scratch_buffer_copy();
 }
 
-const char *c_codegen(void *context)
+bool c_codegen(void *context, const char **out_name)
 {
+	*out_name = NULL;
 	GenContext *c = (GenContext *)context;
 	if (!c || (c->current_module && !compiler_should_output_file(c->base_name)))
 	{
-		return NULL;
+		return true;
 	}
 
 	if (c_backend_cc)
 	{
-		const char *out = cc_compiler(c_backend_cc, c->c_filename, c->object_filename, c_backend_cflags, NULL, NULL);
-		if (!out)
-		{
-			exit(EXIT_FAILURE);
-		}
-		return out;
+		*out_name = cc_compiler(c_backend_cc, c->c_filename, c->object_filename, c_backend_cflags, NULL, NULL);
+		return *out_name != NULL;
 	}
-	return NULL;
+	return true;
 }
 
 void **c_gen(Module **modules, int module_count)

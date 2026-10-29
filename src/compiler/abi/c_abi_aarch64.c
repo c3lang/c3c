@@ -75,6 +75,33 @@ ABIArgInfo *aarch64_coerce_illegal_vector(Type *type, ParamInfo param)
 	return abi_arg_new_indirect_not_by_val(type, param);
 }
 
+static inline AlignSize aarch64_alignment(Type *type)
+{
+	if (!compiler.platform.aarch64.is_aapcs) return type_abi_alignment(type);
+	assert(type == type_lowering(type));
+	switch (type->type_kind)
+	{
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+			break;
+		default:
+			return type_abi_alignment(type);
+	}
+	Decl *decl = type->decl;
+	AlignSize alignment = 0;
+	AlignSize max_alignment = decl->alignment;
+	FOREACH (Decl *, member, decl->strukt.members)
+	{
+		AlignSize member_align = type->type_kind == TYPE_UNION ? type_abi_alignment(member->type) : member->alignment;
+		if (member_align > alignment)
+		{
+			if (member_align == max_alignment) return member_align;
+			alignment = member_align;
+		}
+	}
+	return alignment;
+}
+
 static ABIArgInfo *aarch64_classify_argument_type(ParamInfo param)
 {
 	Type *type = type_lowering(param.type);
@@ -108,18 +135,19 @@ static ABIArgInfo *aarch64_classify_argument_type(ParamInfo param)
 	if (type_is_homogeneous_aggregate(type, &base, &members))
 	{
 		ASSERT(members < 128);
-		if (members > 1)
-		{
-			return abi_arg_new_direct_coerce_type(abi_type_get(type_get_array(base, members)), param);
-		}
-		return abi_arg_new_direct_coerce_type(abi_type_get(base), param);
+		Type *coerce_type = members > 1 ? type_get_array(base, members) : base;
+		ABIArgInfo *info = abi_arg_new_direct_coerce_type(abi_type_get(coerce_type), param);
+		// On the stack, AAPCS aligns these by their natural alignment, at least 8 and at most 16.
+		if (compiler.platform.aarch64.is_aapcs) info->attributes.stack_align = aarch64_alignment(type) >= 16 ? 16 : 8;
+		return info;
 	}
 
 	// Aggregates <= in registers
 	if (size <= 16)
 	{
 		// For RenderScript <= 16 needs to be coerced.
-		AlignSize alignment = type_abi_alignment(type);
+		// We need the aarch64 alignment which ignores the alignment at the top level.
+		AlignSize alignment = aarch64_alignment(type);
 		if (compiler.platform.aarch64.is_aapcs)
 		{
 			alignment = alignment < 16 ? 8 : 16;
