@@ -338,6 +338,67 @@ const char *unpack_c3l(const char *zip_path, const char *dest_dir)
 	return file_exists(file_append_path(dest_dir, MANIFEST_FILE)) ? NULL : "the library has no manifest";
 }
 
+// A registry library may end with the checksum it is locked to: "<namespace>/<name>[@<version>]:<checksum>".
+// Returns the ':' in front of the checksum, or NULL. Anything after a ':' that is not a library
+// ("<namespace>/<name>[@<version>]") is a checksum.
+static const char *dependency_pin(const char *text)
+{
+	const char *colon = strrchr(text, ':');
+	if (!colon || strchr(colon + 1, '/') || strchr(colon + 1, '@')) return NULL;
+	const char *scheme = strstr(text, "://");
+	return scheme && colon == scheme ? NULL : colon;
+}
+
+// A registry library may start with the URL of its own registry: "<url>:<namespace>/<name>...".
+// The URL ends at the last ':', so it may contain a port. Returns the start of the library, or the
+// text itself if it has no URL. The text must not have a checksum.
+static const char *dependency_library(const char *text)
+{
+	const char *scheme = strstr(text, "://");
+	if (!scheme) return text;
+	const char *colon = strrchr(text, ':');
+	return colon > scheme ? colon + 1 : text;
+}
+
+// A dependency is a plain library name ("curl", from the vendor collection) or a registry library
+// "[<url>:]<namespace>/<name>[@<version>][:<checksum>]".
+Dependency dependency_parse(const char *text)
+{
+	const char *original = text;
+	const char *pin = dependency_pin(text);
+	if (pin) text = str_copy(text, (size_t)(pin - text));
+	const char *library = dependency_library(text);
+	const char *at = strchr(library, '@');
+	const char *id = at ? str_copy(library, (size_t)(at - library)) : library;
+	// Without a namespace it is a vendor library, which has no registry, version or checksum.
+	if (!strchr(id, '/')) return (Dependency) { .id = original, .name = original };
+	Dependency dependency = { .registry = true, .id = id, .name = strrchr(id, '/') + 1, .version = at ? at + 1 : NULL };
+	if (pin) dependency.checksum = pin + 1;
+	if (library != text) dependency.url = str_copy(text, (size_t)(library - text - 1));
+	return dependency;
+}
+
+// The dependency as it is written in the project file.
+const char *dependency_string(const Dependency *dependency)
+{
+	const char *text = dependency->id;
+	if (dependency->version) text = str_printf("%s@%s", text, dependency->version);
+	if (dependency->checksum) text = str_printf("%s:%s", text, dependency->checksum);
+	if (dependency->url) text = str_printf("%s:%s", dependency->url, text);
+	return text;
+}
+
+// The "version" in the manifest of an installed library (a .c3l file or an unpacked directory),
+// or NULL if it has no manifest or the manifest has no version.
+const char *library_version(const char *lib_path)
+{
+	const char *manifest_path;
+	JSONObject *manifest = read_library_manifest_for_path(lib_path, &manifest_path);
+	if (!manifest) return NULL;
+	JSONObject *version = json_map_get(manifest, "version");
+	return version && version->type == J_STRING ? version->str : NULL;
+}
+
 void resolve_libraries(BuildTarget *build_target)
 {
 	DEBUG_LOG("Resolve libraries");

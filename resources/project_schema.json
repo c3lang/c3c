@@ -232,6 +232,10 @@
       "enum": ["none", "full", "line-tables"],
       "default": "full"
     },
+    "fetch-url": {
+      "type": "string",
+      "description": "Registry that 'dependencies' written as <namespace>/<name>[@<version>] are fetched from, --fetch-url overrides it. A dependency can name its own registry with <url>:<namespace>/<name>[@<version>]."
+    },
     "fp-math": {
       "type": "string",
       "description": "FP math behaviour.",

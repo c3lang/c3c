@@ -160,6 +160,16 @@ static const char *target_desc[8] = {
 };
 
 
+typedef struct Dependency
+{
+	bool registry;
+	const char *url;
+	const char *id;
+	const char *name;
+	const char *version;
+	const char *checksum;
+} Dependency;
+
 typedef struct BuildOptions_
 {
 	const char *lib_dir[MAX_BUILD_LIB_DIRS];
@@ -676,6 +686,9 @@ void create_project(BuildOptions *build_options);
 void create_library(BuildOptions *build_options);
 void resolve_libraries(BuildTarget *build_target);
 const char *unpack_c3l(const char *zip_path, const char *dest_dir);
+Dependency dependency_parse(const char *text);
+const char *dependency_string(const Dependency *dependency);
+const char *library_version(const char *lib_path);
 void build_source_library(BuildTarget *target);
 void view_project(BuildOptions *build_options);
 void add_target_project(BuildOptions *build_options);

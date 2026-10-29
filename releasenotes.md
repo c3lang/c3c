@@ -9,6 +9,13 @@
 - `.c3l` manifests without `targets` now work for all platforms, and may contain `version`, `authors` and `langrev`.
 - Fetching dependencies also fetches dependencies in the targets.
 - `fetch`, `vendor-fetch` and `project fetch` now unpack libraries into a `<name>.c3l` directory by default. Use `--decompress=no` to keep them compressed.
+- `fetch` now verifies the downloaded library against the `checksum` (`sha256:<hex>`) of the registry, and refuses a library that doesn't match.
+- `dependencies` may name a library from a registry as `<namespace>/<name>[@<version>]`. `project fetch` gets it from the registry in the new `fetch-url` project property, or from `--fetch-url`.
+- `fetch` adds the library to `dependencies` with the version it fetched. It also sets `fetch-url`, if the project has none.
+- A dependency can have its own registry, written as `<url>:<namespace>/<name>[@<version>]`. `fetch --fetch-url <url>` adds a library like this when the project has another `fetch-url`.
+- A version in the registry's library info may have a `url`, which `fetch` downloads the library from instead of from the registry itself.
+- A registry library can be locked to a checksum: `<namespace>/<name>@<version>:<sha256>`, or just `<namespace>/<name>:<sha256>`, which fetches the version with that checksum. `fetch` refuses a library that doesn't match.
+- `project fetch` replaces an installed registry library when the dependency names a `@<version>` and the `version` in the library's manifest.json is another one.
 - An `else if` now requires `{ }` around a single statement, like `else` does. `else if (x) foo();` is an error. #3473
 - Add `depends-on` to project targets, allowing them to depend on other targets.
 - LLVM IR (`.ll`) and bitcode (`.bc`) files can be added to the compilation, just like .o files #3339
