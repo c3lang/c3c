@@ -27,6 +27,7 @@ const char *project_default_keys[][2] = {
 		{"env", "Environment variables (NAME=value) set for the 'exec' scripts of all targets."},
 		{"exec", "Scripts run for all targets."},
 		{"features", "Features enabled for all targets."},
+		{"fetch-url", "Registry that 'dependencies' written as <namespace>/<name>[@<version>] are fetched from, --fetch-url overrides it. A dependency can name its own registry with <url>:<namespace>/<name>[@<version>]."},
 		{"fp-math", "Set math behaviour: `strict`, `relaxed` or `fast`."},
 		{"function-sections", "Place each function in its own section, so the linker can discard unused ones (no effect on Mach-O)."},
 		{"implicit-float", "Allow implicit use of floating point instructions. (default: true)"},
@@ -210,6 +211,15 @@ const int project_deprecated_target_keys_count = ELEMENTLEN(project_deprecated_t
   (type__)get_valid_string_setting(context, json, key__, strings__, 0, ELEMENTLEN(strings__), comment__)
 
 // Json -> target / default target
+// Libraries are found by name, so a dependency like "test/vk@1.0.0" is looked up as "vk".
+static void use_library_names(const char **libs)
+{
+	FOREACH_IDX(i, const char *, lib, libs)
+	{
+		libs[i] = dependency_parse(lib).name;
+	}
+}
+
 static void load_into_build_target(BuildParseContext context, JSONObject *json, BuildTarget *target)
 {
 	if (context.target || context.is_template)
@@ -352,6 +362,7 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 
 	// Dependencies
 	APPEND_STRING_LIST(&target->libs, "dependencies");
+	use_library_names(target->libs);
 
 	FOREACH(const char *, name, target->libs)
 	{
@@ -924,6 +935,7 @@ static void project_add_target(BuildParseContext context, Project *project, Buil
 		const char **default_libs = target->libs;
 		APPEND_STRING_LIST(&target->libdirs, "dependency-search-paths");
 		APPEND_STRING_LIST(&target->libs, "dependencies");
+		use_library_names(target->libs);
 		const char *manifest_path = NULL;
 		JSONObject *template_json = resolve_template(target, template_ref, &manifest_path);
 		target->libdirs = default_libdirs;

@@ -483,6 +483,254 @@ run_http_server_tests() {
     kill_server
 }
 
+run_fetch_tests() {
+    local MY_WORK_DIR="$WORK_DIR/fetch"
+    mkdir -p "$MY_WORK_DIR"
+
+    echo "--- Running Registry Fetch Tests ---"
+
+    if [ -n "$SKIP_NETWORK_TESTS" ] || [[ "$OS_MODE" == "ios" ]]; then
+        echo "Skipping registry fetch tests"
+        return
+    fi
+
+    local sha256="sha256sum"
+    if ! command -v sha256sum &> /dev/null; then sha256="shasum -a 256"; fi
+    if ! command -v zip &> /dev/null || ! command -v curl &> /dev/null; then
+        echo "::warning::zip or curl not found, skipping registry fetch tests"
+        return
+    fi
+
+    # A registry is only files: info/<ns>/<name> and download/<ns>/<name>@<version>.
+    local REGISTRY="$MY_WORK_DIR/registry"
+    mkdir -p "$REGISTRY/info/acme" "$REGISTRY/download/acme" "$MY_WORK_DIR/lib/hello.c3l"
+    echo '{"provides":"hello"}' > "$MY_WORK_DIR/lib/hello.c3l/manifest.json"
+    (cd "$MY_WORK_DIR/lib/hello.c3l" && zip -qr "$REGISTRY/download/acme/hello@1.0.0" .)
+    local good_sum
+    good_sum=$($sha256 "$REGISTRY/download/acme/hello@1.0.0" | cut -d' ' -f1)
+    local bad_sum="0000000000000000000000000000000000000000000000000000000000000000"
+
+    # $1 = name, $2 = checksum field (may be empty)
+    write_info() {
+        cp "$REGISTRY/download/acme/hello@1.0.0" "$REGISTRY/download/acme/$1@1.0.0"
+        echo "{\"library\":\"acme/$1\",\"description\":\"d\",\"latest\":\"1.0.0\",\"updated\":\"2026-01-01T00:00:00Z\",\"versions\":{\"1.0.0\":{\"version\":\"1.0.0\"$2}}}" > "$REGISTRY/info/acme/$1"
+    }
+    write_info good ",\"checksum\":\"sha256:$good_sum\""
+    write_info upper ",\"checksum\":\"sha256:$(echo "$good_sum" | tr 'a-f' 'A-F')\""
+    write_info plain ""
+    write_info tampered ",\"checksum\":\"sha256:$bad_sum\""
+    write_info other ",\"checksum\":\"md5:$bad_sum\""
+
+    cd "$ROOT_DIR/resources/examples"
+    run_c3c compile -O1 http_server.c3 -o fetch_registry_server
+    local server_bin="$MY_WORK_DIR/fetch_registry_server"
+    if [[ "$OS_MODE" == "windows" ]]; then server_bin="$server_bin.exe"; fi
+
+    local PORT=$(( 8085 + $RANDOM % 10000 ))
+    "$server_bin" -p $PORT -r "$REGISTRY" > "$MY_WORK_DIR/server.log" 2>&1 &
+    local SERVER_PID=$!
+    trap 'kill $SERVER_PID 2>/dev/null || true' RETURN
+
+    local ready=false
+    for ((i = 1; i <= 30; i++)); do
+        kill -0 "$SERVER_PID" 2>/dev/null || break
+        if curl -s -o /dev/null "http://127.0.0.1:$PORT/"; then ready=true; break; fi
+        sleep 0.2
+    done
+    if [ "$ready" != "true" ]; then
+        echo "::error::Registry test server failed to start on port $PORT."
+        cat "$MY_WORK_DIR/server.log" 2>/dev/null || true
+        exit 1
+    fi
+
+    local INSTALL="$MY_WORK_DIR/install"
+    mkdir -p "$INSTALL"
+    cd "$INSTALL"
+    local FETCH=("$C3C_BIN" --fetch-url "http://127.0.0.1:$PORT" fetch)
+
+    echo "Fetch with a matching checksum (upper case hex is fine too)"
+    "${FETCH[@]}" acme/good acme/upper
+    test -f good.c3l/manifest.json
+    test -f upper.c3l/manifest.json
+
+    echo "Fetch without a checksum"
+    "${FETCH[@]}" acme/plain
+    test -f plain.c3l/manifest.json
+
+    echo "A wrong checksum is rejected and an existing copy is kept"
+    mkdir tampered.c3l && echo keep > tampered.c3l/old
+    if "${FETCH[@]}" acme/tampered; then
+        echo "::error::fetch accepted a library with a wrong checksum."
+        exit 1
+    fi
+    test -f tampered.c3l/old
+    test ! -f tampered.c3l/manifest.json
+
+    echo "An unknown checksum algorithm is rejected"
+    if "${FETCH[@]}" acme/other; then
+        echo "::error::fetch accepted a checksum it can't verify."
+        exit 1
+    fi
+    test ! -e other.c3l
+
+    local URL="http://127.0.0.1:$PORT"
+    echo "A project fetches '<ns>/<name>@<version>' dependencies from its fetch-url and builds with them"
+    # This library is called vk, as the dependency name is what the build looks for.
+    mkdir -p "$MY_WORK_DIR/vklib"
+    echo '{"provides":"vk"}' > "$MY_WORK_DIR/vklib/manifest.json"
+    (cd "$MY_WORK_DIR/vklib" && zip -qr "$REGISTRY/download/acme/vk@1.0.0" .)
+    local vk_sum
+    vk_sum=$($sha256 "$REGISTRY/download/acme/vk@1.0.0" | cut -d' ' -f1)
+    echo "{\"library\":\"acme/vk\",\"description\":\"d\",\"latest\":\"1.0.0\",\"updated\":\"2026-01-01T00:00:00Z\",\"versions\":{\"1.0.0\":{\"version\":\"1.0.0\",\"checksum\":\"sha256:$vk_sum\"}}}" > "$REGISTRY/info/acme/vk"
+
+    local PROJECTS="$MY_WORK_DIR/projects"
+    mkdir -p "$PROJECTS"
+    cd "$PROJECTS"
+    "$C3C_BIN" init app > /dev/null
+    sed -i.bak "s|\"dependencies\": \[ \],|\"fetch-url\": \"$URL\", \"dependencies\": [\"acme/vk@1.0.0\"],|" app/project.json
+    (
+        cd app
+        "$C3C_BIN" project fetch
+        test -f lib/vk.c3l/manifest.json
+        run_c3c build
+    )
+
+    echo "fetch records the library with its version, and the registry unless the project has one"
+    "$C3C_BIN" init recorded > /dev/null
+    (
+        cd recorded
+        "$C3C_BIN" --fetch-url "$URL" fetch acme/vk
+        grep -q '"acme/vk@1.0.0"' project.json
+        grep -q "\"fetch-url\": \"$URL\"" project.json
+        rm -rf lib/vk.c3l
+        "$C3C_BIN" project fetch
+        test -f lib/vk.c3l/manifest.json
+    )
+
+    echo "Two dependencies with the same name are rejected"
+    "$C3C_BIN" init clash > /dev/null
+    sed -i.bak "s|\"dependencies\": \[ \],|\"fetch-url\": \"$URL\", \"dependencies\": [\"acme/vk\", \"other/vk\"],|" clash/project.json
+    if (cd clash && "$C3C_BIN" project fetch); then
+        echo "::error::project fetch accepted two dependencies named vk."
+        exit 1
+    fi
+    test ! -e clash/lib/vk.c3l
+
+    # A library with two versions, whose manifests say which version they are.
+    echo "A library can be locked to a checksum"
+    local v
+    for v in 1.0.0 2.0.0; do
+        mkdir -p "$MY_WORK_DIR/pinned$v"
+        echo "{\"provides\":\"pinned\",\"version\":\"$v\"}" > "$MY_WORK_DIR/pinned$v/manifest.json"
+        (cd "$MY_WORK_DIR/pinned$v" && zip -qr "$REGISTRY/download/acme/pinned@$v" .)
+    done
+    local pin1 pin2
+    pin1=$($sha256 "$REGISTRY/download/acme/pinned@1.0.0" | cut -d' ' -f1)
+    pin2=$($sha256 "$REGISTRY/download/acme/pinned@2.0.0" | cut -d' ' -f1)
+    echo "{\"library\":\"acme/pinned\",\"description\":\"d\",\"latest\":\"2.0.0\",\"updated\":\"2026-01-01T00:00:00Z\",\"versions\":{\"2.0.0\":{\"version\":\"2.0.0\",\"checksum\":\"sha256:$pin2\"},\"1.0.0\":{\"version\":\"1.0.0\",\"checksum\":\"sha256:$pin1\"}}}" > "$REGISTRY/info/acme/pinned"
+
+    local PIN="$MY_WORK_DIR/pin"
+    # $1 = project.json content
+    new_project() {
+        rm -rf "$PIN"
+        mkdir -p "$PIN"
+        echo "$1" > "$PIN/project.json"
+    }
+    local EMPTY='{ "dependency-search-paths": ["lib"], "sources": ["src/**"] }'
+
+    new_project "$EMPTY"
+    (
+        cd "$PIN"
+        # without a version, the version with that checksum is fetched and the library stays locked to it
+        "$C3C_BIN" --fetch-url "$URL" fetch "acme/pinned:$pin1"
+        grep -q '"version":"1.0.0"' lib/pinned.c3l/manifest.json
+        grep -q "\"acme/pinned:$pin1\"" project.json
+    )
+    new_project "$EMPTY"
+    (
+        cd "$PIN"
+        "$C3C_BIN" --fetch-url "$URL" fetch "acme/pinned@2.0.0:$pin2"
+        grep -q "\"acme/pinned@2.0.0:$pin2\"" project.json
+    )
+
+    echo "A wrong, unknown or malformed checksum is rejected before anything is installed"
+    local unknown
+    unknown=$(printf 'a%.0s' $(seq 64))
+    local lock
+    for lock in "acme/pinned@1.0.0:$pin2" "acme/pinned:$unknown" "acme/pinned:abc"; do
+        new_project "$EMPTY"
+        if (cd "$PIN" && "$C3C_BIN" --fetch-url "$URL" fetch "$lock"); then
+            echo "::error::fetch accepted '$lock'."
+            exit 1
+        fi
+        test ! -e "$PIN/lib/pinned.c3l"
+    done
+
+    echo "A dependency can name its own registry"
+    new_project "{ \"dependency-search-paths\": [\"lib\"], \"fetch-url\": \"http://127.0.0.1:1\", \"dependencies\": [\"$URL:acme/pinned@2.0.0:$pin2\"], \"sources\": [\"src/**\"] }"
+    (
+        cd "$PIN"
+        "$C3C_BIN" project fetch
+        grep -q '"version":"2.0.0"' lib/pinned.c3l/manifest.json
+    )
+
+    echo "fetch lists a library with its own registry when the project has another one"
+    new_project '{ "dependency-search-paths": ["lib"], "fetch-url": "http://127.0.0.1:1", "sources": ["src/**"] }'
+    (
+        cd "$PIN"
+        "$C3C_BIN" --fetch-url "$URL" fetch acme/pinned
+        grep -q "\"$URL:acme/pinned@2.0.0\"" project.json
+        grep -q '"fetch-url": "http://127.0.0.1:1"' project.json
+    )
+
+    echo "project fetch replaces a library of another version, and keeps one that matches or has no version asked"
+    new_project "{ \"dependency-search-paths\": [\"lib\"], \"fetch-url\": \"$URL\", \"dependencies\": [\"acme/pinned@2.0.0\"], \"sources\": [\"src/**\"] }"
+    mkdir -p "$PIN/lib/pinned.c3l"
+    echo '{"provides":"pinned","version":"0.5.0"}' > "$PIN/lib/pinned.c3l/manifest.json"
+    (
+        cd "$PIN"
+        "$C3C_BIN" project fetch
+        grep -q '"version":"2.0.0"' lib/pinned.c3l/manifest.json
+        touch lib/pinned.c3l/marker
+        "$C3C_BIN" project fetch
+        test -f lib/pinned.c3l/marker
+        sed -i.bak 's|acme/pinned@2.0.0|acme/pinned|' project.json
+        echo '{"provides":"pinned","version":"0.5.0"}' > lib/pinned.c3l/manifest.json
+        "$C3C_BIN" project fetch
+        grep -q '"version":"0.5.0"' lib/pinned.c3l/manifest.json
+    )
+
+    echo "A version of the registry may say where the library is stored"
+    mkdir -p "$REGISTRY/files" "$MY_WORK_DIR/remotelib"
+    echo '{"provides":"remote"}' > "$MY_WORK_DIR/remotelib/manifest.json"
+    (cd "$MY_WORK_DIR/remotelib" && zip -qr "$REGISTRY/files/remote.c3l" .)
+    local remote_sum
+    remote_sum=$($sha256 "$REGISTRY/files/remote.c3l" | cut -d' ' -f1)
+    local entry name location sum
+    for entry in "remote|$URL/files/remote.c3l|sha256:$remote_sum" "badurl|ftp://example.invalid/badurl.c3l|sha256:$remote_sum" "wrongsum|$URL/files/remote.c3l|sha256:$bad_sum"; do
+        IFS='|' read -r name location sum <<< "$entry"
+        echo "{\"library\":\"acme/$name\",\"description\":\"d\",\"latest\":\"1.0.0\",\"updated\":\"2026-01-01T00:00:00Z\",\"versions\":{\"1.0.0\":{\"version\":\"1.0.0\",\"url\":\"$location\",\"checksum\":\"$sum\"}}}" > "$REGISTRY/info/acme/$name"
+    done
+    new_project "$EMPTY"
+    (
+        cd "$PIN"
+        "$C3C_BIN" --fetch-url "$URL" fetch acme/remote
+        test -f lib/remote.c3l/manifest.json
+        if "$C3C_BIN" --fetch-url "$URL" fetch acme/badurl; then
+            echo "::error::fetch accepted a url that is not http or https."
+            exit 1
+        fi
+        if "$C3C_BIN" --fetch-url "$URL" fetch acme/wrongsum; then
+            echo "::error::fetch accepted a wrong checksum for a library stored elsewhere."
+            exit 1
+        fi
+        test ! -e lib/badurl.c3l
+        test ! -e lib/wrongsum.c3l
+    )
+
+    echo "Registry fetch tests passed."
+}
+
 run_unit_tests() {
     local MY_WORK_DIR="$WORK_DIR/unit"
     mkdir -p "$MY_WORK_DIR"
@@ -568,6 +816,7 @@ run_parallel sourcelib run_sourcelib_tests
 run_parallel wasm run_wasm_compile
 run_parallel bsd_cross run_bsd_cross_compile
 run_parallel http run_http_server_tests
+run_parallel fetch run_fetch_tests
 
 # Wait for background tasks
 exit_code=0

@@ -15,6 +15,10 @@
 const char *download_file(const char *url, const char *resource, const char *file_path, bool show_progress);
 bool download_available(void);
 
+// SHA-256 as 64 lowercase hex characters. The file version returns NULL if the file can't be read.
+const char *sha256_hex(const void *data, size_t len);
+const char *sha256_file_hex(const char *path);
+
 #define ELEMENTLEN(x) (sizeof(x) / sizeof(x[0]))
 extern const char *compiler_exe_name;
 

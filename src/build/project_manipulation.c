@@ -276,8 +276,39 @@ static const char **get_list(const char *file, JSONObject *project, const char *
 	return list;
 }
 
+// The registry named by "fetch-url" in the project file, or NULL.
+const char *project_fetch_url(void)
+{
+	if (!file_exists(PROJECT_JSON5) && !file_exists(PROJECT_JSON)) return NULL;
+	const char *filename;
+	JSONObject *url = json_map_get(project_json_load(&filename), "fetch-url");
+	if (!url) return NULL;
+	if (url->type != J_STRING) error_exit("'fetch-url' in '%s' must be a string.", filename);
+	return url->str;
+}
+
+// Libraries are installed as <name>.c3l, so two dependencies of the target (or of the project if target is NULL)
+// with the same name can't be used together, unless it is the same dependency written twice.
+static void check_dependency_names(const char *file, JSONObject *project, const char *target)
+{
+	const char **deps = get_list(file, project, target, "dependencies", "dependencies-override");
+	if (!vec_size(deps)) return;
+	FOREACH_IDX(dep_index, const char *, dep, deps)
+	{
+		const char *name = dependency_parse(dep).name;
+		for (int i = 0; i < dep_index; i++)
+		{
+			if (!str_eq(dependency_parse(deps[i]).name, name) || str_eq(deps[i], dep)) continue;
+			error_exit("Failed: the dependencies '%s' and '%s' would both be installed as '%s.c3l'.", deps[i], dep, name);
+		}
+	}
+}
+
 // Fetch the dependencies of the target (or of the project if target is NULL) missing from its search paths.
-static void fetch_missing_dependencies(const char *file, JSONObject *project, const char *target, bool decompress)
+// A dependency "[<url>:]<namespace>/<name>[@<version>]" comes from the registry (the one at <url> if it has one),
+// any other from the vendor collection. The dependencies of a target include those of the project, so
+// `handled` lists the ones already dealt with in this run.
+static void fetch_missing_dependencies(BuildOptions *options, const char *file, JSONObject *project, const char *target, const char ***handled)
 {
 	const char **deps = get_list(file, project, target, "dependencies", "dependencies-override");
 	if (!vec_size(deps)) return;
@@ -289,18 +320,43 @@ static void fetch_missing_dependencies(const char *file, JSONObject *project, co
 	}
 	FOREACH(const char *, dep, deps)
 	{
-		const char *lib_file = str_printf("%s.c3l", dep);
+		if (str_findlist(dep, vec_size(*handled), *handled) != -1) continue;
+		vec_add(*handled, dep);
+		Dependency library = dependency_parse(dep);
+		const char *lib_file = str_printf("%s.c3l", library.name);
+		// New libraries go into the first search path, an installed one is replaced where it is.
+		const char *install_dir = dirs[0];
 		bool found = false;
 		FOREACH(const char *, dir, dirs)
 		{
-			found = found || file_exists(file_append_path(dir, lib_file));
+			if (found || !file_exists(file_append_path(dir, lib_file))) continue;
+			found = true;
+			install_dir = dir;
 		}
-		if (found) continue;
-		// New libraries go into the first search path.
-		file_create_folders(file_append_path(dirs[0], lib_file));
-		printf("Fetching missing library '%s'...\n", dep);
+		if (found)
+		{
+			// An installed library is kept, unless the dependency asks for a version and the
+			// manifest of the installed library says it is another one.
+			const char *installed_version = NULL;
+			if (library.registry && library.version) installed_version = library_version(file_append_path(install_dir, lib_file));
+			if (!installed_version || str_eq(installed_version, library.version)) continue;
+			printf("Updating library '%s' (installed version is %s)...\n", dep, installed_version);
+		}
+		else
+		{
+			printf("Fetching missing library '%s'...\n", dep);
+		}
 		fflush(stdout);
-		const char *error = vendor_fetch_single(dep, dirs[0], use_ansi(), decompress);
+		file_create_folders(file_append_path(install_dir, lib_file));
+		const char *error;
+		if (library.registry)
+		{
+			error = registry_fetch_single(options, &library, install_dir, NULL, use_ansi());
+		}
+		else
+		{
+			error = vendor_fetch_single(dep, install_dir, use_ansi(), !options->fetch_compressed);
+		}
 		if (error) printf("Failed: '%s'\n", error);
 	}
 }
@@ -320,19 +376,34 @@ void fetch_project(BuildOptions* options)
 	// First the dependencies of the project itself, then those of each target.
 	const char *filename;
 	JSONObject *project = project_json_load(&filename);
-	fetch_missing_dependencies(filename, project, NULL, !options->fetch_compressed);
 	JSONObject *project_targets = json_map_get(project, "targets");
-	if (!project_targets || project_targets->type != J_OBJECT) return;
-	FOREACH_IDX(i, JSONObject *, target, project_targets->members)
+	if (project_targets && project_targets->type != J_OBJECT) project_targets = NULL;
+	// Check all the names before fetching anything.
+	check_dependency_names(filename, project, NULL);
+	if (project_targets)
 	{
-		if (target->type != J_OBJECT) error_exit("Invalid data in target '%s'", project_targets->keys[i]);
-		fetch_missing_dependencies(filename, project, project_targets->keys[i], !options->fetch_compressed);
+		FOREACH_IDX(i, JSONObject *, target, project_targets->members)
+		{
+			if (target->type != J_OBJECT) error_exit("Invalid data in target '%s'", project_targets->keys[i]);
+			check_dependency_names(filename, project, project_targets->keys[i]);
+		}
+	}
+	const char **handled = NULL;
+	fetch_missing_dependencies(options, filename, project, NULL, &handled);
+	if (!project_targets) return;
+	FOREACH(const char *, target_name, project_targets->keys)
+	{
+		fetch_missing_dependencies(options, filename, project, target_name, &handled);
 	}
 }
 
 
 
-void add_libraries_to_project_file(const char** libs) {
+// Add the libraries to "dependencies". A library is listed once, by name: a registry library
+// ("<namespace>/<name>@<version>") replaces an older entry for it, a plain name never does.
+// The registry is saved as "fetch-url" if the project doesn't have one yet. If the project has another
+// one, the libraries are listed with their own registry: "<url>:<namespace>/<name>@<version>".
+void add_libraries_to_project_file(const char** libs, const char *fetch_url) {
 
 	if (!vec_size(libs)) return;
 	if (!file_exists(PROJECT_JSON5) && !file_exists(PROJECT_JSON)) return;
@@ -353,11 +424,33 @@ void add_libraries_to_project_file(const char** libs) {
 		vec_add(dependencies, element->str);
 	}
 
-	// check if libraries are already present
+	const char *project_url = project_fetch_url();
+	bool own_url = fetch_url && project_url && !str_eq(project_url, fetch_url);
+
 	FOREACH(const char*, lib, libs)
 	{
-		if (str_findlist(lib, vec_size(dependencies), dependencies)!=-1) continue;
-		vec_add(dependencies, lib);
+		Dependency library = dependency_parse(lib);
+		if (own_url && library.registry && !library.url)
+		{
+			printf("'%s' is fetched from '%s', and not from the 'fetch-url' of the project, so it is listed with that URL.\n", lib, fetch_url);
+			library.url = fetch_url;
+			lib = dependency_string(&library);
+		}
+		int present = -1;
+		FOREACH_IDX(i, const char *, dependency, dependencies)
+		{
+			if (str_eq(dependency_parse(dependency).name, library.name)) present = i;
+		}
+		if (present == -1) {
+			vec_add(dependencies, lib);
+		}
+		else if (library.registry) {
+			dependencies[present] = lib;
+		}
+	}
+	if (fetch_url && !project_url)
+	{
+		json_map_set(project_json, "fetch-url", json_new_string(fetch_url));
 	}
 
 	JSONObject** elements = NULL;

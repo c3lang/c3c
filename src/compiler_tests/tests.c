@@ -194,6 +194,71 @@ static void test_json(void)
 	TEST_ASSERT(strcmp(array->elements[0]->str, "hello\nworld\t.") == 0, "Mismatching string");
 }
 
+static void test_sha256(void)
+{
+	printf("Begin sha256 testing.\n");
+	TEST_ASSERT(strcmp(sha256_hex("", 0), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855") == 0, "Empty input");
+	TEST_ASSERT(strcmp(sha256_hex("abc", 3), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad") == 0, "Single block");
+	// 56 bytes: the padding no longer fits in the first block.
+	const char *two_blocks = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq";
+	TEST_ASSERT(strcmp(sha256_hex(two_blocks, strlen(two_blocks)), "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1") == 0, "Padding spilling into a second block");
+	char *million = malloc(1000000);
+	memset(million, 'a', 1000000);
+	TEST_ASSERT(strcmp(sha256_hex(million, 1000000), "cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0") == 0, "One million bytes");
+	free(million);
+	TEST_ASSERT(sha256_file_hex("this/file/does/not/exist") == NULL, "Missing file");
+}
+
+static bool dependency_is(const char *text, bool registry, const char *url, const char *id, const char *name, const char *version, const char *checksum)
+{
+	Dependency d = dependency_parse(text);
+	return d.registry == registry
+		&& (d.url == NULL ? url == NULL : url && strcmp(d.url, url) == 0)
+		&& strcmp(d.id, id) == 0 && strcmp(d.name, name) == 0
+		&& (d.version == NULL ? version == NULL : version && strcmp(d.version, version) == 0)
+		&& (d.checksum == NULL ? checksum == NULL : checksum && strcmp(d.checksum, checksum) == 0);
+}
+
+static void test_dependency(void)
+{
+	printf("Begin dependency testing.\n");
+	TEST_ASSERT(dependency_is("curl", false, NULL, "curl", "curl", NULL, NULL), "A plain name is a vendor library");
+	TEST_ASSERT(dependency_is("test/vk", true, NULL, "test/vk", "vk", NULL, NULL), "Registry library, no version means the latest");
+	TEST_ASSERT(dependency_is("test/vk@1.2.0", true, NULL, "test/vk", "vk", "1.2.0", NULL), "Id and version are split at '@'");
+	TEST_ASSERT(dependency_is("a/b@1", true, NULL, "a/b", "b", "1", NULL), "Short version");
+	TEST_ASSERT(dependency_is("https://my.example:raylib6/raylib6", true, "https://my.example", "raylib6/raylib6", "raylib6", NULL, NULL), "Registry library with a URL");
+	TEST_ASSERT(dependency_is("http://127.0.0.1:8080:test/vk@1.2.0", true, "http://127.0.0.1:8080", "test/vk", "vk", "1.2.0", NULL), "The URL keeps its port");
+	TEST_ASSERT(dependency_is("test/vk@1.2.0:ab12", true, NULL, "test/vk", "vk", "1.2.0", "ab12"), "Version and checksum");
+	TEST_ASSERT(dependency_is("test/vk:ab12", true, NULL, "test/vk", "vk", NULL, "ab12"), "Locked by checksum only");
+	TEST_ASSERT(dependency_is("http://127.0.0.1:8080:test/vk@1.2.0:ab12", true, "http://127.0.0.1:8080", "test/vk", "vk", "1.2.0", "ab12"), "URL, version and checksum");
+	TEST_ASSERT(dependency_is("http://127.0.0.1:8080:test/vk", true, "http://127.0.0.1:8080", "test/vk", "vk", NULL, NULL), "A port is no checksum");
+
+	const char *texts[] = { "test/vk", "test/vk@1.2.0", "test/vk:ab12", "test/vk@1.2.0:ab12", "http://127.0.0.1:8080:test/vk@1.2.0:ab12", "curl" };
+	for (size_t i = 0; i < ELEMENTLEN(texts); i++)
+	{
+		Dependency d = dependency_parse(texts[i]);
+		TEST_ASSERT(strcmp(dependency_string(&d), texts[i]) == 0, "A dependency is written back as it was");
+	}
+}
+
+static void test_library_version(void)
+{
+	printf("Begin library version testing.\n");
+	const char *dir = dir_make_temp_dir_in(".");
+	TEST_ASSERT(dir != NULL, "Temporary directory");
+	TEST_ASSERT(library_version(file_append_path(dir, "missing.c3l")) == NULL, "A missing library has no version");
+	const char *lib = file_append_path(dir, "vk.c3l");
+	dir_make(lib);
+	TEST_ASSERT(library_version(lib) == NULL, "A directory without manifest has no version");
+	const char *plain = "{ \"provides\": \"vk\" }";
+	file_write_all(file_append_path(lib, "manifest.json"), plain, strlen(plain));
+	TEST_ASSERT(library_version(lib) == NULL, "A manifest without a version has none");
+	const char *versioned = "{ \"provides\": \"vk\", \"version\": \"1.2.0\" }";
+	file_write_all(file_append_path(lib, "manifest.json"), versioned, strlen(versioned));
+	TEST_ASSERT(library_version(lib) != NULL && strcmp(library_version(lib), "1.2.0") == 0, "The manifest version is read");
+	file_delete_dir(dir);
+}
+
 void compiler_tests(void)
 {
 	symtab_init(0x100000);
@@ -203,5 +268,8 @@ void compiler_tests(void)
 	run_arena_allocator_tests();
 
 	test_json();
+	test_sha256();
+	test_dependency();
+	test_library_version();
 	exit_compiler(COMPILER_SUCCESS_EXIT);
 }

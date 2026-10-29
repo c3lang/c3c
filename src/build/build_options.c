@@ -159,7 +159,7 @@ static void usage(bool full)
 		print_opt("--warn-unusedparam=<yes|no|error>", "Print warning when a parameter is not used after compile-time folding: yes, no, error.");
 		print_opt("--warn-unusedlocal=<yes|no|error>", "Print warning when a local is not used after compile-time folding: yes, no, error.");
 		PRINTF("");
-		print_opt("--fetch-url <url>", "Use this URL for fetching libraries.");
+		print_opt("--fetch-url <url>", "Fetch libraries from this registry, and save it in the project file.");
 		print_opt("--decompress=<yes|no>", "Unpack fetched libraries into directories (default: yes), no keeps them as compressed .c3l files.");
 	}
 	PRINTF("");
@@ -1990,7 +1990,6 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 	BuildOptions build_options = {
 		.path = DEFAULT_PATH,
 		.vendor_download_path = DEFAULT_PATH,
-		.fetch_url = DEFAULT_FETCH_URL,
 		.emit_llvm = false,
 		.optsetting = OPT_SETTING_NOT_SET,
 		.debug_info_override = DEBUG_INFO_NOT_SET,
