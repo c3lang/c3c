@@ -3151,30 +3151,31 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, Ex
 					if (so >= 0 && eo >= 0 && (sz)(pos + bt_len) <= string.len)
 					{
 						RegOff post = pos + bt_len;
-						bool can_follow = (trans_i.state == tnfa.final);
-						if (!can_follow && post < string.len)
+						bool can_follow = false;
+						int c_after = 0;
+						if (post < string.len)
 						{
-							int c_after = string[post];
-							for (TnfaTransition* tr = trans_i.state; tr.state; tr++)
+							int dummy_len = 0;
+							c_after = decode_utf8_slice(string, post, &dummy_len);
+						}
+
+						for (TnfaTransition* succ = state; succ.state; succ++)
+						{
+							if (succ.state == tnfa.final)
+							{
+								can_follow = true;
+								break;
+							}
+							for (TnfaTransition* tr = succ.state; tr.state; tr++)
 							{
 								if (tr.code_min < 0 || tr.assertions != 0 ||
-									(c_after >= tr.code_min && c_after <= tr.code_max))
+									(post < string.len && c_after >= tr.code_min && c_after <= tr.code_max))
 								{
 									can_follow = true;
 									break;
 								}
 							}
-						}
-						else if (!can_follow && post == string.len)
-						{
-							for (TnfaTransition* tr = trans_i.state; tr.state; tr++)
-							{
-								if (tr.code_min < 0 || tr.assertions != 0)
-								{
-									can_follow = true;
-									break;
-								}
-							}
+							if (can_follow) break;
 						}
 
 						if (can_follow)
