@@ -349,6 +349,62 @@ static void free_arenas(void)
 	if (compiler.build.print_stats) print_arena_status();
 }
 
+typedef struct
+{
+	Module *module;
+	Decl *generic;
+	int count;
+} GenericInstanceCount;
+
+static int generic_instance_count_cmp(const void *a, const void *b)
+{
+	int count_a = ((const GenericInstanceCount *)a)->count;
+	int count_b = ((const GenericInstanceCount *)b)->count;
+	return count_b - count_a;
+}
+
+static void print_generic_instance_stats(void)
+{
+	// Sections with the same parameters share an id, but instances are stored on the section that was used.
+	GenericInstanceCount *counts = NULL;
+	FOREACH(Module *, module, compiler.context.module_list)
+	{
+		FOREACH(Decl *, generic, module->generic_sections)
+		{
+			int instances = vec_size(generic->generic_decl.instances);
+			if (!instances) continue;
+			FOREACH_IDX(i, GenericInstanceCount, entry, counts)
+			{
+				if (entry.generic->generic_decl.id != generic->generic_decl.id) continue;
+				counts[i].count += instances;
+				goto NEXT;
+			}
+			vec_add(counts, ((GenericInstanceCount) { .module = module, .generic = generic, .count = instances }));
+NEXT:;
+		}
+	}
+	int entries = vec_size(counts);
+	if (!entries) return;
+	qsort(counts, entries, sizeof(GenericInstanceCount), &generic_instance_count_cmp);
+	if (entries > 10) entries = 10;
+	OUTN("--- Generic instance top list ----------------------------------------");
+	for (int i = 0; i < entries; i++)
+	{
+		scratch_buffer_clear();
+		scratch_buffer_append(counts[i].module->name->module);
+		scratch_buffer_append(" {");
+		FOREACH_IDX(j, const char *, param, counts[i].generic->generic_decl.parameters)
+		{
+			if (j) scratch_buffer_append(", ");
+			scratch_buffer_append(param);
+		}
+		scratch_buffer_append("}");
+		OUTF("%2u %-50s %6u instances\n", i + 1, scratch_buffer_to_string(), counts[i].count);
+	}
+	OUTN("----------------------------------------------------------------------");
+	OUTN("");
+}
+
 static void compiler_print_bench(void)
 {
 	if (compiler.build.print_stats)
@@ -673,6 +729,7 @@ void compiler_compile(void)
 		exit_compiler(COMPILER_SUCCESS_EXIT);
 	}
 	compiler_sema_time = bench_mark();
+	if (compiler.build.print_stats) print_generic_instance_stats();
 	Module **modules = compiler.context.module_list;
 	int module_count = vec_size(modules);
 	if (module_count > MAX_MODULES)
