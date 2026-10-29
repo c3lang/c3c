@@ -636,15 +636,13 @@ void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 	if (!len) return;
 	if (compiler.platform.object_format == OBJ_FORMAT_MACHO)
 	{
-		LLVMTypeRef types[3] = { c->ptr_type, c->ptr_type, c->typeid_type };
+		LLVMTypeRef types[3] = { c->ptr_type, c->typeid_type, c->selector_type };
 		LLVMTypeRef entry_type = LLVMStructTypeInContext(c->context, types, 3, false);
 		LLVMValueRef *entries = VECNEW(LLVMValueRef, len);
 		FOREACH(Decl *, func, funcs)
 		{
 			Type *type = decl_find_method_target(func)->type;
-			Decl *proto = declptrzero(func->func_decl.interface_method);
-			LLVMValueRef proto_ref = proto ? llvm_get_ref(c, proto) : llvm_get_selector(c, func->name);
-			LLVMValueRef vals[3] = {llvm_get_ref(c, func), proto_ref, llvm_get_typeid(c, type)};
+			LLVMValueRef vals[3] = { llvm_get_ref(c, func), llvm_get_typeid(c, type), llvm_get_selector_hash(c, func->name) };
 			LLVMValueRef entry = LLVMConstNamedStruct(entry_type, vals, 3);
 			vec_add(entries, entry);
 		}
@@ -654,7 +652,7 @@ void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 		LLVMSetLinkage(global, LLVMInternalLinkage);
 		LLVMSetInitializer(global, array);
 		LLVMSetSection(global, "__DATA,__c3_dynamic");
-		LLVMSetAlignment(global, llvm_abi_alignment(c, c->xtor_entry_type));
+		LLVMSetAlignment(global, llvm_abi_alignment(c, entry_type));
 		return;
 	}
 
@@ -674,18 +672,15 @@ void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 		scratch_buffer_set_extern_decl_name(decl, false);
 		LLVMValueRef global = llvm_add_global_raw(c, scratch_buffer_copy(), c->dtable_type, 0);
 		llvm_set_weak(c, global);
-		Decl *proto = declptrzero(decl->func_decl.interface_method);
-		LLVMValueRef proto_ref = proto ? llvm_get_ref(c, proto) : llvm_get_selector(c, decl->name);
-
 		LLVMValueRef all_one_ptr = LLVMConstAllOnes(llvm_get_type(c, type_uptr));
 		all_one_ptr = LLVMBuildIntToPtr(builder, all_one_ptr, c->ptr_type, "");
-		LLVMValueRef vals[3] = {llvm_get_ref(c, decl), proto_ref, all_one_ptr};
+		LLVMValueRef vals[3] = { llvm_get_ref(c, decl), all_one_ptr, llvm_get_selector_hash(c, decl->name) };
 		LLVMSetInitializer(global, LLVMConstNamedStruct(c->dtable_type, vals, 3));
 
 		LLVMBasicBlockRef check = llvm_basic_block_new(c, "dtable_check");
 		LLVMBasicBlockRef skip = llvm_basic_block_new(c, "dtable_skip");
 
-		LLVMValueRef check_ptr = LLVMBuildStructGEP2(builder, c->dtable_type, global, 2, "check_dtable_ref");
+		LLVMValueRef check_ptr = LLVMBuildStructGEP2(builder, c->dtable_type, global, 1, "check_dtable_ref");
 		LLVMValueRef load_check = LLVMBuildLoad2(builder, c->ptr_type, check_ptr, "next_val");
 		LLVMBuildCondBr(builder, LLVMBuildICmp(builder, LLVMIntEQ, load_check, all_one_ptr, ""), check, skip);
 
@@ -705,7 +700,7 @@ void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 
 		// Check if null
 		LLVMValueRef is_null = LLVMBuildICmp(builder, LLVMIntEQ, load_dtable, LLVMConstNull(c->ptr_type), "");
-		LLVMValueRef next_ptr = LLVMBuildStructGEP2(builder, c->dtable_type, load_dtable, 2, "next_dtable_ref");
+		LLVMValueRef next_ptr = LLVMBuildStructGEP2(builder, c->dtable_type, load_dtable, 1, "next_dtable_ref");
 		// Grab new pointer
 		LLVMAddIncoming(phi, &next_ptr, &check, 1);
 
@@ -736,6 +731,7 @@ void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 void llvm_emit_function_decl(GenContext *c, Decl *decl)
 {
 	ASSERT_SPAN(decl, decl->decl_kind == DECL_FUNC);
+	if (decl->func_decl.attr_interface_method) return;
 	// Resolve function backend type for function.
 	decl_append_links_to_global_during_codegen(decl);
 	LLVMValueRef function = llvm_get_ref(c, decl);

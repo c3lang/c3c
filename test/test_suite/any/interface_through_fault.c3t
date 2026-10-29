@@ -48,7 +48,7 @@ after_check:                                      ; preds = %entry
   br i1 %6, label %cache_hit, label %cache_miss
 
 cache_miss:                                       ; preds = %after_check
-  %7 = call ptr @.dyn_search(ptr %4, ptr @"$sel.test")
+  %7 = call ptr @.dyn_search(ptr %4,
   store ptr %7, ptr %.inlinecache, align 8
   store ptr %4, ptr %.cachedtype, align 8
   br label %9

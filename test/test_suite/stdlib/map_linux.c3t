@@ -52,7 +52,6 @@ fn void main()
 
 /* #expect: test.ll
 
-@"$sel.to_new_string" = linkonce_odr constant [14 x i8] c"to_new_string\00", comdat, align 1
 @llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 1, ptr @.c3_dynamic_register, ptr null }]
 
 define { ptr, i64 } @test.Foo.to_new_string(ptr %0, i64 %1, ptr %2) #0 {

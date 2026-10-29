@@ -23,6 +23,7 @@
 - Converting between signed and unsigned integers of the same size in arrays, slices and vectors, e.g. `int[3]` to `uint[3]`, requires explicit casts.
 - `float16` and `bfloat` no longer convert implicitly to each other, as both directions lose information.
 - An explicit cast of a slice to a pointer is now allowed for any pointer type, like a cast between pointers.
+- Selectors are now a stable 128 bit signature. The first 16 bytes are guaranteed unique.
 
 ### Fixes
 - Compressed `.c3l` libraries were not unpacked again when only files other than `manifest.json` had changed.
@@ -78,6 +79,9 @@
 - Fix error message rethrowing in a non-function context.
 - Fix name mangling of untyped list.
 - `"max-vector-size"` was not whitelisted as a project property.
+- In some cases, optional ref was extracted before it was created during LLVM IR codegen #3598.
+- Bitstruct method did not check if field with the same name existed #3602.
+- Casting a constant string (or constant bytes) to a vector at compile time would cause a crash. #3601
 
 ### Stdlib changes
 - Added termios support for OpenBSD.

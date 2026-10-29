@@ -103,6 +103,7 @@ typedef struct GenContext_
 	LLVMTypeRef atexit_type;
 	LLVMTypeRef fault_type;
 	LLVMTypeRef size_type;
+	LLVMTypeRef selector_type;
 	LLVMTypeRef typeid_type;
 	LLVMTypeRef dtable_type;
 	LLVMTypeRef ptr_type;
@@ -330,12 +331,16 @@ LLVMAttributeRef LLVMCreateTypeAttribute(LLVMContextRef C, unsigned KindID,
 #endif
 
 LLVMBuilderRef llvm_create_builder(GenContext *c);
+LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl);
 
-static inline LLVMValueRef decl_optional_ref(Decl *decl)
+static inline LLVMValueRef decl_optional_ref(GenContext *c, Decl *decl)
 {
 	ASSERT(decl->decl_kind == DECL_VAR);
-	if (decl->var.kind == VARDECL_UNWRAPPED) return decl_optional_ref(decl->var.alias);
+	if (decl->var.kind == VARDECL_UNWRAPPED) return decl_optional_ref(c, decl->var.alias);
 	if (decl->type->type_kind != TYPE_OPTIONAL) return NULL;
+
+	// A global may not be declared in this module yet, this creates its fault slot.
+	llvm_get_ref(c, decl);
 	return decl->var.optional_ref;
 }
 
@@ -389,7 +394,6 @@ void llvm_attribute_add_type(GenContext *c, LLVMValueRef value_to_add_attribute_
 void llvm_attribute_add_int(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute, uint64_t val, int index);
 
 // -- Linking --
-void llvm_set_selector_linkage(GenContext *c, LLVMValueRef selector);
 void llvm_set_linkonce(GenContext *c, LLVMValueRef global);
 void llvm_set_comdat(GenContext *c, LLVMValueRef global);
 void llvm_set_private_declaration(LLVMValueRef alloc);
@@ -541,7 +545,7 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, int *arg_count_ref, ABIArgInfo *info, BEValue *be_value);
 
 // -- Dynamic interface --
-LLVMValueRef llvm_get_selector(GenContext *c, const char *name);
+LLVMValueRef llvm_get_selector_hash(GenContext *c, const char *name);
 
 // -- C3 Lowering --
 void llvm_emit_expr_global_value(GenContext *c, BEValue *value, Expr *expr);
@@ -575,7 +579,6 @@ void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref,
 INLINE bool llvm_emit_rvalue_id_in_block(GenContext *c, BEValue *value, ExprId expr_id) { return llvm_emit_rvalue_in_block(c, value, exprptr(expr_id)); }
 Expr *llvm_fold_init_expr(Expr *expr);
 
-LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl);
 LLVMValueRef llvm_emit_call_intrinsic(GenContext *c, unsigned intrinsic, LLVMTypeRef *types, int type_count, LLVMValueRef *values, int arg_count);
 void llvm_emit_local_var_alloca(GenContext *c, Decl *decl);
 void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value);

@@ -3045,9 +3045,9 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 				goto NOT_VALID_NAME;
 			}
 			FALLTHROUGH;
-		case TYPE_CONSTSET:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
+		case TYPE_BITSTRUCT:
 		{
 			Decl *d = sema_decl_stack_find_decl_member(context, par_type->canonical->decl, kw, FIELDS_ONLY);
 			if (!decl_ok(d)) return false;
@@ -3099,8 +3099,8 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 		case TYPE_FUNC_PTR:
 		case TYPE_POINTER:
 		case TYPE_FUNC_RAW:
-		case TYPE_BITSTRUCT:
 		case TYPE_TYPEDEF:
+		case TYPE_CONSTSET:
 			break;
 		case TYPE_TYPEID:
 			if (type_property_by_name(kw) != TYPE_PROPERTY_NONE)

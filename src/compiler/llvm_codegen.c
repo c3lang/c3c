@@ -121,20 +121,11 @@ INLINE void llvm_emit_xtor(GenContext *c, LLVMValueRef *list, const char *name)
 	LLVMSetInitializer(global, array);
 }
 
-LLVMValueRef llvm_get_selector(GenContext *c, const char *name)
+LLVMValueRef llvm_get_selector_hash(GenContext *c, const char *name)
 {
-	scratch_buffer_clear();
-	scratch_buffer_printf("$sel.%s", name);
-	const char *sel_name = scratch_buffer_to_string();
-	LLVMValueRef selector_old = LLVMGetNamedGlobal(c->module, sel_name);
-	if (selector_old) return selector_old;
-	size_t name_len = strlen(name);
-	LLVMTypeRef char_array_type = LLVMArrayType(c->byte_type, name_len + 1);
-	LLVMValueRef selector = llvm_add_global_raw(c, sel_name, char_array_type, 0);
-	LLVMSetGlobalConstant(selector, 1);
-	LLVMSetInitializer(selector, llvm_get_zstring(c, name, name_len));
-	llvm_set_selector_linkage(c, selector);
-	return selector;
+	uint64_t words[2];
+	stable_identifier_hash(name, words);
+	return LLVMConstIntOfArbitraryPrecision(c->selector_type, 2, words);
 }
 
 
@@ -1019,13 +1010,6 @@ void llvm_set_comdat(GenContext *c, LLVMValueRef global)
 	LLVMSetComdat(global, comdat);
 }
 
-void llvm_set_selector_linkage(GenContext *c, LLVMValueRef selector)
-{
-	LLVMSetVisibility(selector, LLVMDefaultVisibility);
-	LLVMSetLinkage(selector, LLVMLinkOnceODRLinkage);
-	llvm_set_comdat(c, selector);
-}
-
 void llvm_set_linkonce(GenContext *c, LLVMValueRef global)
 {
 	LLVMSetLinkage(global, LLVMLinkOnceAnyLinkage);
@@ -1563,10 +1547,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			llvm_add_global_decl(c, decl);
 			return decl->backend_ref;
 		case DECL_FUNC:
-			if (decl->func_decl.attr_interface_method)
-			{
-				return decl->backend_ref = llvm_get_selector(c, decl->name);
-			}
+			ASSERT_SPAN(decl, !decl->func_decl.attr_interface_method);
 			LLVMTypeRef type = llvm_get_type(c, decl->type);
 			scratch_buffer_set_extern_decl_name(decl, true);
 			if (decl->name == kw_memcmp && c->memcmp_function)

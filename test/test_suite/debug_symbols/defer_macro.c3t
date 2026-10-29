@@ -460,7 +460,7 @@ if.exit:                                          ; preds = %entry
   br i1 %21, label %cache_hit, label %cache_miss
 
 cache_miss:                                       ; preds = %if.exit
-  %22 = call ptr @.dyn_search(ptr %19, ptr @"$sel.acquire")
+  %22 = call ptr @.dyn_search(ptr %19,
   store ptr %22, ptr %.inlinecache, align 8
   store ptr %19, ptr %.cachedtype, align 8
   br label %24
@@ -605,7 +605,7 @@ declare { ptr, i64 } @arena_scratch_begin(ptr, i64) #0
 
 declare void @arena_scratch_end(ptr, i64) #0
 
-define weak ptr @.dyn_search(ptr %0, ptr %1) unnamed_addr {
+define weak ptr @.dyn_search(ptr %0, i128 %1) unnamed_addr {
 entry:
   br label %get_dtable
 
@@ -632,8 +632,8 @@ missing_function:                                 ; preds = %next_parent
 
 compare:                                          ; preds = %check
   %5 = getelementptr inbounds
-  %6 = load ptr, ptr %5, align 8
-  %7 = icmp eq ptr %6, %1
+  %6 = load i128, ptr %5, align 16
+  %7 = icmp eq i128 %6, %1
   br i1 %7, label %match, label %no_match
 
 match:                                            ; preds = %compare

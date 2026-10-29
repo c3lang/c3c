@@ -116,8 +116,10 @@ void gencontext_begin_module(GenContext *c)
 	c->ptr_type = LLVMPointerType(c->byte_type, 0);
 	c->size_type = llvm_get_type(c, type_sz);
 	c->typeid_type = llvm_get_type(c, type_typeid);
+	c->selector_type = llvm_get_type(c, type_u128);
 	LLVMTypeRef void_type = LLVMVoidTypeInContext(c->context);
-	LLVMTypeRef dtable_type[3] = { c->ptr_type, c->ptr_type, c->ptr_type };
+	// { fn_ptr, next, selector hash }
+	LLVMTypeRef dtable_type[3] = { c->ptr_type, c->ptr_type, c->selector_type };
 	c->dtable_type = LLVMStructTypeInContext(c->context, dtable_type, 3, false);
 	c->chars_type = llvm_get_type(c, type_chars);
 	LLVMTypeRef ctor_type[3] = { LLVMInt32TypeInContext(c->context), c->ptr_type, c->ptr_type };

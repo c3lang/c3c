@@ -33,12 +33,12 @@ struct Callback
 struct DynamicMethod
 {
 	void* fn_ptr;
-	char* sel;
 	union
 	{
 		DynamicMethod* next;
 		TypeId* type;
 	}
+	uint128 selector_hash;
 }
 
 enum StartupState
