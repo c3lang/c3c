@@ -4458,7 +4458,7 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		if (left->expr_kind == EXPR_IDENTIFIER)
 		{
 			llvm_value_set_decl(c, be_value, left->ident_expr);
-			*be_value = llvm_emit_assign_expr(c, be_value, NULL, exprptr(expr->binary_expr.right), decl_optional_ref(left->ident_expr), false);
+			*be_value = llvm_emit_assign_expr(c, be_value, NULL, exprptr(expr->binary_expr.right), decl_optional_ref(c, left->ident_expr), false);
 			return;
 		}
 
@@ -6373,10 +6373,7 @@ static inline void llvm_emit_try_unwrap(GenContext *c, BEValue *value, Expr *exp
 {
 	if (!expr->try_expr.optional)
 	{
-		Decl *decl = expr->try_expr.decl;
-		// A global may not be declared in this module yet, this creates its fault slot.
-		llvm_get_ref(c, decl);
-		LLVMValueRef fail_ref = decl_optional_ref(decl);
+		LLVMValueRef fail_ref = decl_optional_ref(c, expr->try_expr.decl);
 		LLVMValueRef errv = llvm_load(c, llvm_get_type(c, type_fault), fail_ref, type_abi_alignment(type_fault), "load.err");
 		LLVMValueRef result = LLVMBuildICmp(c->builder, LLVMIntEQ, errv, llvm_get_zero(c, type_fault), "result");
 		llvm_value_set(value, result, type_bool);

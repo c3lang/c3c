@@ -331,12 +331,16 @@ LLVMAttributeRef LLVMCreateTypeAttribute(LLVMContextRef C, unsigned KindID,
 #endif
 
 LLVMBuilderRef llvm_create_builder(GenContext *c);
+LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl);
 
-static inline LLVMValueRef decl_optional_ref(Decl *decl)
+static inline LLVMValueRef decl_optional_ref(GenContext *c, Decl *decl)
 {
 	ASSERT(decl->decl_kind == DECL_VAR);
-	if (decl->var.kind == VARDECL_UNWRAPPED) return decl_optional_ref(decl->var.alias);
+	if (decl->var.kind == VARDECL_UNWRAPPED) return decl_optional_ref(c, decl->var.alias);
 	if (decl->type->type_kind != TYPE_OPTIONAL) return NULL;
+
+	// A global may not be declared in this module yet, this creates its fault slot.
+	llvm_get_ref(c, decl);
 	return decl->var.optional_ref;
 }
 
@@ -575,7 +579,6 @@ void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref,
 INLINE bool llvm_emit_rvalue_id_in_block(GenContext *c, BEValue *value, ExprId expr_id) { return llvm_emit_rvalue_in_block(c, value, exprptr(expr_id)); }
 Expr *llvm_fold_init_expr(Expr *expr);
 
-LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl);
 LLVMValueRef llvm_emit_call_intrinsic(GenContext *c, unsigned intrinsic, LLVMTypeRef *types, int type_count, LLVMValueRef *values, int arg_count);
 void llvm_emit_local_var_alloca(GenContext *c, Decl *decl);
 void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value);
