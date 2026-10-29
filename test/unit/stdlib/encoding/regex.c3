@@ -1435,3 +1435,88 @@ fn void test_backref_followed_by_alternation_or_multibyte() @test
 		test::eq(m2.end, 5);
 	}
 }
+
+fn void test_backref_repetition_empty_match_no_hang() @test
+{
+	{
+		Regex re = regex::compile(mem, "b\\(a*c*\\)[ab]*\\1*")!!;
+		defer re.free();
+
+		Match[] m1 = re.texec("xxba", 2)!!;
+		test::eq(m1[0].start, 2);
+		test::eq(m1[0].end, 4);
+		test::eq(m1[0].str, "ba");
+		test::eq(m1[1].start, 3);
+		test::eq(m1[1].end, 4);
+		test::eq(m1[1].str, "a");
+
+		Match[] m2 = re.texec("xxb", 2)!!;
+		test::eq(m2[0].start, 2);
+		test::eq(m2[0].end, 3);
+		test::eq(m2[0].str, "b");
+		test::eq(m2[1].start, 3);
+		test::eq(m2[1].end, 3);
+		test::eq(m2[1].str, "");
+	}
+
+	{
+		Regex re = regex::compile(mem, "\\(a*\\)\\1*")!!;
+		defer re.free();
+
+		Match m1 = re.first_match("a")!!;
+		test::eq(m1.start, 0);
+		test::eq(m1.end, 1);
+
+		Match m2 = re.first_match("")!!;
+		test::eq(m2.start, 0);
+		test::eq(m2.end, 0);
+	}
+}
+
+fn void test_backref_repetition_edge_cases() @test
+{
+	// 1. Must return NO_MATCH without hanging when trailing token fails
+	{
+		Regex re = regex::compile(mem, "b\\(a*c*\\)[ab]*\\1*z")!!;
+		defer re.free();
+		test::eq(@catch(re.first_match("xxba")), regex::NO_MATCH);
+		test::eq(@catch(re.first_match("xxb")), regex::NO_MATCH);
+	}
+
+	// 2. Escaped plus quantifier (\+) in BRE on empty backreference
+	{
+		Regex re = regex::compile(mem, "\\(a*\\)\\1\\+")!!;
+		defer re.free();
+		Match m1 = re.first_match("")!!;
+		test::eq(m1.start, 0);
+		test::eq(m1.end, 0);
+
+		// "a": group 1 must be "" because there is no second 'a' for \1\+
+		Match m2 = re.first_match("a")!!;
+		test::eq(m2.start, 0);
+		test::eq(m2.end, 0);
+
+		// "aa": group 1 matches "a", \1\+ matches "a"
+		Match m3 = re.first_match("aa")!!;
+		test::eq(m3.start, 0);
+		test::eq(m3.end, 2);
+	}
+
+	// 3. Escaped interval quantifier (\{m,n\}) in BRE on empty backreference
+	{
+		Regex re = regex::compile(mem, "\\(a*\\)\\1\\{2,5\\}")!!;
+		defer re.free();
+		Match m = re.first_match("")!!;
+		test::eq(m.start, 0);
+		test::eq(m.end, 0);
+	}
+
+	// 4. Multiple independent nullable backreferences with repetition
+	{
+		Regex re = regex::compile(mem, "\\(a*\\)\\(b*\\)\\1*\\2*c")!!;
+		defer re.free();
+		Match m = re.first_match("c")!!;
+		test::eq(m.start, 0);
+		test::eq(m.end, 1);
+	}
+}

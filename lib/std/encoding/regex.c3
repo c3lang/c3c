@@ -3279,7 +3279,7 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, Ex
 					}
 					for (int i = 0; i < tnfa.num_states; i++)
 					{
-						if (states_seen[i] >= pos) states_seen[i] = -1;
+						if (states_seen[i] > pos) states_seen[i] = -1;
 					}
 					stack = stack.prev;
 					mstate = M_PROCESS;
