@@ -79,6 +79,7 @@
 - Fix name mangling of untyped list.
 - `"max-vector-size"` was not whitelisted as a project property.
 - In some cases, optional ref was extracted before it was created during LLVM IR codegen #3598.
+- Bitstruct method did not check if field with the same name existed #3602.
 
 ### Stdlib changes
 - Added termios support for OpenBSD.
