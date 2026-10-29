@@ -78,6 +78,7 @@
 - Fix error message rethrowing in a non-function context.
 - Fix name mangling of untyped list.
 - `"max-vector-size"` was not whitelisted as a project property.
+- In some cases, optional ref was extracted before it was created during LLVM IR codegen #3598.
 
 ### Stdlib changes
 - Added termios support for OpenBSD.
