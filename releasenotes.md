@@ -23,6 +23,7 @@
 - Converting between signed and unsigned integers of the same size in arrays, slices and vectors, e.g. `int[3]` to `uint[3]`, requires explicit casts.
 - `float16` and `bfloat` no longer convert implicitly to each other, as both directions lose information.
 - An explicit cast of a slice to a pointer is now allowed for any pointer type, like a cast between pointers.
+- Selectors are now a stable 128 bit signature. The first 16 bytes are guaranteed unique.
 
 ### Fixes
 - Compressed `.c3l` libraries were not unpacked again when only files other than `manifest.json` had changed.

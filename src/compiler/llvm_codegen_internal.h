@@ -103,6 +103,7 @@ typedef struct GenContext_
 	LLVMTypeRef atexit_type;
 	LLVMTypeRef fault_type;
 	LLVMTypeRef size_type;
+	LLVMTypeRef selector_type;
 	LLVMTypeRef typeid_type;
 	LLVMTypeRef dtable_type;
 	LLVMTypeRef ptr_type;
@@ -389,7 +390,6 @@ void llvm_attribute_add_type(GenContext *c, LLVMValueRef value_to_add_attribute_
 void llvm_attribute_add_int(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute, uint64_t val, int index);
 
 // -- Linking --
-void llvm_set_selector_linkage(GenContext *c, LLVMValueRef selector);
 void llvm_set_linkonce(GenContext *c, LLVMValueRef global);
 void llvm_set_comdat(GenContext *c, LLVMValueRef global);
 void llvm_set_private_declaration(LLVMValueRef alloc);
@@ -541,7 +541,7 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, int *arg_count_ref, ABIArgInfo *info, BEValue *be_value);
 
 // -- Dynamic interface --
-LLVMValueRef llvm_get_selector(GenContext *c, const char *name);
+LLVMValueRef llvm_get_selector_hash(GenContext *c, const char *name);
 
 // -- C3 Lowering --
 void llvm_emit_expr_global_value(GenContext *c, BEValue *value, Expr *expr);

@@ -37,14 +37,12 @@ fn void main()
 %any = type { ptr, i64 }
 
 @"$ct.overlap.Test" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 1, [0 x i64] zeroinitializer }, comdat, align 8
-@"$sel.tesT" = linkonce_odr constant [5 x i8] c"tesT\00", comdat, align 1
 @.panic_msg = internal constant [42 x i8] c"No method 'tesT' could be found on target\00", align 1
 @.file = internal constant [30 x i8] c"overlapping_function_linux.c3\00", align 1
 @.func = internal constant [5 x i8] c"main\00", align 1
 @std.core.builtin.panic = extern_weak global ptr, align 8
-@"$ct.dyn.overlap.Test.tesT" = weak global { ptr, ptr, ptr } { ptr @overlap.Test.tesT, ptr @"$sel.tesT", ptr inttoptr (i64 -1 to ptr) }, comdat, align 8
-@"$ct.dyn.overlap.Test.foo" = weak global { ptr, ptr, ptr } { ptr @overlap.Test.foo, ptr @"$sel.foo", ptr inttoptr (i64 -1 to ptr) }, comdat, align 8
-@"$sel.foo" = linkonce_odr constant [4 x i8] c"foo\00", comdat, align 1
+@"$ct.dyn.overlap.Test.tesT" = weak global { ptr, ptr, i128 } { ptr @overlap.Test.tesT, ptr inttoptr (i64 -1 to ptr), i128 8358585 }, comdat, align 16
+@"$ct.dyn.overlap.Test.foo" = weak global { ptr, ptr, i128 } { ptr @overlap.Test.foo, ptr inttoptr (i64 -1 to ptr), i128 216363 }, comdat, align 16
 @llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 1, ptr @.c3_dynamic_register, ptr null }]
 
 ; Function Attrs: nounwind uwtable
@@ -80,7 +78,7 @@ entry:
   br i1 %6, label %cache_hit, label %cache_miss
 
 cache_miss:                                       ; preds = %entry
-  %7 = call ptr @.dyn_search(ptr %4, ptr @"$sel.tesT")
+  %7 = call ptr @.dyn_search(ptr %4,
   store ptr %7, ptr %.inlinecache, align 8
   store ptr %4, ptr %.cachedtype, align 8
   br label %9
@@ -112,7 +110,7 @@ match:                                            ; preds = %9
   br i1 %17, label %cache_hit5, label %cache_miss4
 
 cache_miss4:                                      ; preds = %match
-  %18 = call ptr @.dyn_search(ptr %15, ptr @"$sel.tesT")
+  %18 = call ptr @.dyn_search(ptr %15,
   store ptr %18, ptr %.inlinecache2, align 8
   store ptr %15, ptr %.cachedtype3, align 8
   br label %20
@@ -142,7 +140,7 @@ entry:
   call void @overlap.main()
   ret i32 0
 }
-define weak ptr @.dyn_search(ptr %0, ptr %1) unnamed_addr comdat {
+define weak ptr @.dyn_search(ptr %0, i128 %1) unnamed_addr comdat {
 entry:
   br label %get_dtable
 
@@ -169,8 +167,8 @@ missing_function:                                 ; preds = %next_parent
 
 compare:                                          ; preds = %check
   %5 = getelementptr inbounds
-  %6 = load ptr, ptr %5, align 8
-  %7 = icmp eq ptr %6, %1
+  %6 = load i128, ptr %5, align 16
+  %7 = icmp eq i128 %6, %1
   br i1 %7, label %match, label %no_match
 
 match:                                            ; preds = %compare

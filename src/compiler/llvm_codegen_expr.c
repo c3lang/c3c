@@ -12,7 +12,7 @@ static inline LLVMValueRef llvm_const_high_bitmask(GenContext *c, LLVMTypeRef ty
 static inline LLVMValueRef llvm_const_low_bitmask(GenContext *c, LLVMTypeRef type, int type_bits, int low_bits);
 static inline LLVMValueRef llvm_update_vector(GenContext *c, LLVMValueRef vector, LLVMValueRef value, ArrayIndex index);
 static inline void llvm_emit_expression_list_expr(GenContext *c, BEValue *be_value, Expr *expr);
-static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id_ptr, LLVMValueRef selector);
+static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id_ptr, const char *selector);
 static inline void llvm_emit_bitassign_array(GenContext *c, LLVMValueRef result, BEValue parent, Decl *parent_decl, Decl *member);
 static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Expr *expr);
 static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
@@ -2455,7 +2455,7 @@ static void llvm_emit_dynamic_method_addr(GenContext *c, BEValue *value, Expr *e
 	LLVMValueRef introspect = LLVMBuildIntToPtr(c->builder, value->value, c->ptr_type, "");
 
 	Decl *dyn_fn = expr->access_resolved_expr.ref;
-	LLVMValueRef func = llvm_emit_dynamic_search(c, introspect, llvm_get_ref(c, dyn_fn));
+	LLVMValueRef func = llvm_emit_dynamic_search(c, introspect, dyn_fn->name);
 
 	llvm_value_set(value, func, type_get_func_ptr(dyn_fn->type));
 }
@@ -5434,13 +5434,13 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 	}
 }
 
-static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id_ptr, LLVMValueRef selector)
+static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id_ptr, const char *selector)
 {
 	LLVMTypeRef type = c->dyn_find_function_type;
 	LLVMValueRef func = c->dyn_find_function;
 	if (!c->dyn_find_function)
 	{
-		LLVMTypeRef types[2] = { c->ptr_type, c->ptr_type };
+		LLVMTypeRef types[2] = { c->ptr_type, c->selector_type };
 		type = c->dyn_find_function_type = LLVMFunctionType(c->ptr_type, types, 2, false);
 		func = c->dyn_find_function = LLVMAddFunction(c->module, ".dyn_search", c->dyn_find_function_type);
 
@@ -5452,7 +5452,7 @@ static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id
 		LLVMBuilderRef builder = llvm_create_function_entry(c, func, &entry);
 
 		LLVMValueRef typeid_ptr_in = LLVMGetParam(func, 0);
-		LLVMValueRef func_ref = LLVMGetParam(func, 1);
+		LLVMValueRef selector_hash = LLVMGetParam(func, 1);
 
 		LLVMBasicBlockRef get_dtable = llvm_basic_block_new(c, "get_dtable");
 		LLVMBasicBlockRef check = llvm_basic_block_new(c, "check");
@@ -5507,16 +5507,16 @@ static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id
 
 		LLVMBuildRet(builder, LLVMConstNull(c->ptr_type));
 
-		// function_type = dtable_ptr.function_type
+		// hash = dtable_ptr.selector_hash
 		LLVMAppendExistingBasicBlock(func, compare);
 		LLVMPositionBuilderAtEnd(builder, compare);
 
-		LLVMValueRef function_type = LLVMBuildStructGEP2(builder, c->dtable_type, dtable_ptr, 1, "");
-		function_type = LLVMBuildLoad2(builder, c->ptr_type, function_type, "");
-		LLVMSetAlignment(function_type, llvm_abi_alignment(c, c->ptr_type));
+		LLVMValueRef hash = LLVMBuildStructGEP2(builder, c->dtable_type, dtable_ptr, 2, "");
+		hash = LLVMBuildLoad2(builder, c->selector_type, hash, "");
+		LLVMSetAlignment(hash, llvm_abi_alignment(c, c->selector_type));
 
-		// function_type == func_ref
-		cmp = LLVMBuildICmp(builder, LLVMIntEQ, function_type, func_ref, "");
+		// hash == selector_hash
+		cmp = LLVMBuildICmp(builder, LLVMIntEQ, hash, selector_hash, "");
 
 		// if (cmp) goto match else no_match
 		LLVMBuildCondBr(builder, cmp, match, no_match);
@@ -5533,7 +5533,7 @@ static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id
 		// no match: next = dtable_ptr.next
 		LLVMAppendExistingBasicBlock(func, no_match);
 		LLVMPositionBuilderAtEnd(builder, no_match);
-		LLVMValueRef next = LLVMBuildStructGEP2(builder, c->dtable_type, dtable_ptr, 2, "");
+		LLVMValueRef next = LLVMBuildStructGEP2(builder, c->dtable_type, dtable_ptr, 1, "");
 		next = LLVMBuildLoad2(builder, c->ptr_type, next, "");
 		LLVMSetAlignment(next, llvm_abi_alignment(c, c->ptr_type));
 
@@ -5565,7 +5565,7 @@ static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id
 	LLVMValueRef compare = LLVMBuildICmp(c->builder, LLVMIntEQ, type_id_ptr, cached_type_id, "");
 	llvm_emit_cond_br_raw(c, compare, cache_hit, cache_miss);
 	llvm_emit_block(c, cache_miss);
-	LLVMValueRef params[2] = { type_id_ptr, selector };
+	LLVMValueRef params[2] = { type_id_ptr, llvm_get_selector_hash(c, selector) };
 	LLVMValueRef call = LLVMBuildCall2(c->builder, type, func, params, 2, "");
 	// Store in cache.
 	llvm_store_raw(c, &cache_fn_ptr, call);
@@ -5827,8 +5827,9 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		always_inline = function_decl->func_decl.attr_inline;
 		// 2b. Set signature, function and function type
 		prototype = type_get_resolved_prototype(function_decl->type);
-		func = llvm_get_ref(c, function_decl);
-		ASSERT(func);
+		// Dynamic dispatch looks up the function below.
+		func = expr->call_expr.is_dynamic_dispatch ? NULL : llvm_get_ref(c, function_decl);
+		ASSERT(func || expr->call_expr.is_dynamic_dispatch);
 		func_type = llvm_get_type(c, function_decl->type);
 	}
 	int inline_flag = 0;
@@ -5917,7 +5918,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		Decl *dyn_fn = declptr(expr->call_expr.func_ref);
 		prototype = type_get_resolved_prototype(dyn_fn->type);
 		func_type = llvm_get_type(c, dyn_fn->type);
-		func = llvm_emit_dynamic_search(c, introspect, llvm_get_ref(c, dyn_fn));
+		func = llvm_emit_dynamic_search(c, introspect, dyn_fn->name);
 		LLVMValueRef cmp = LLVMBuildICmp(c->builder, LLVMIntEQ, func, LLVMConstNull(c->ptr_type), "");
 		llvm_emit_cond_br_raw(c, cmp, missing_function, match);
 		llvm_emit_block(c, missing_function);

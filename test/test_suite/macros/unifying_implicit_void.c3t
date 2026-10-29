@@ -50,7 +50,7 @@ entry:
   br i1 %5, label %cache_hit, label %cache_miss
 
 cache_miss:                                       ; preds = %entry
-  %6 = call ptr @.dyn_search(ptr %3, ptr @"$sel.read_byte")
+  %6 = call ptr @.dyn_search(ptr %3,
   store ptr %6, ptr %.inlinecache, align 8
   store ptr %3, ptr %.cachedtype, align 8
   br label %8

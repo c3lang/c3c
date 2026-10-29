@@ -175,6 +175,7 @@ bool str_has_no_uppercase(const char *string);
 bool str_is_valid_module_name(const char *name);
 char *str_copy(const char *start, size_t str_len);
 char *str_dup(const char *str);
+void stable_identifier_hash(const char *name, uint64_t output[2]);
 
 StringSlice slice_next_token(StringSlice *slice, char separator);
 static inline bool slice_strcmp(StringSlice slice, const char *other);

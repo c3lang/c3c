@@ -330,7 +330,7 @@ if.exit:                                          ; preds = %entry
   br i1 %7, label %cache_hit, label %cache_miss
 
 cache_miss:                                       ; preds = %if.exit
-  %8 = call ptr @.dyn_search(ptr %5, ptr @"$sel.acquire")
+  %8 = call ptr @.dyn_search(ptr %5,
   store ptr %8, ptr %.inlinecache, align 8
   store ptr %5, ptr %.cachedtype, align 8
   br label %10

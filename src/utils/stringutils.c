@@ -376,6 +376,48 @@ char *str_cat_len(const char *a, size_t a_len, const char *b, size_t b_len)
 	return buffer;
 }
 
+static char alphabet[256] = {
+	['0'] = 1,  ['1'] = 2,  ['2'] = 3,  ['3'] = 4,  ['4'] = 5,
+	['5'] = 6,  ['6'] = 7,  ['7'] = 8,  ['8'] = 9,  ['9'] = 10,
+	['_'] = 11,
+	['A'] = 12, ['B'] = 13, ['C'] = 14, ['D'] = 15, ['E'] = 16,
+	['F'] = 17, ['G'] = 18, ['H'] = 19, ['I'] = 20, ['J'] = 21,
+	['K'] = 22, ['L'] = 23, ['M'] = 24, ['N'] = 25, ['O'] = 26,
+	['P'] = 27, ['Q'] = 28, ['R'] = 29, ['S'] = 30, ['T'] = 31,
+	['U'] = 32, ['V'] = 33, ['W'] = 34, ['X'] = 35, ['Y'] = 36,
+	['Z'] = 37,
+	['a'] = 38, ['b'] = 39, ['c'] = 40, ['d'] = 41, ['e'] = 42,
+	['f'] = 43, ['g'] = 44, ['h'] = 45, ['i'] = 46, ['j'] = 47,
+	['k'] = 48, ['l'] = 49, ['m'] = 50, ['n'] = 51, ['o'] = 52,
+	['p'] = 53, ['q'] = 54, ['r'] = 55, ['s'] = 56, ['t'] = 57,
+	['u'] = 58, ['v'] = 59, ['w'] = 60, ['x'] = 61, ['y'] = 62,
+	['z'] = 63,
+	['@'] = 1,
+};
+
+void stable_identifier_hash(const char *name, uint64_t output[2])
+{
+	int name_len = (int)strlen(name);
+	int len = name_len > 16 ? 16 : name_len;
+	uint64_t val = name_len <= 16 ? 0 : a5hash(name + len, name_len - len, name_len);
+	output[0] = output[1] = 0;
+
+	// 16 characters, 6 bits each, using 96 bits total.
+	for (int i = 0; i < len; i++)
+	{
+		uint64_t code = (uint64_t)alphabet[(unsigned char)name[i]];
+		int bit = i * 6;
+		int word = bit / 64;
+		uint64_t shift = (uint64_t)(bit % 64);
+		output[word] |= code << shift;
+		if (shift > 58) output[word + 1] |= code >> (64 - shift);
+	}
+
+	// Add the low 32 bits of the hash as the last bits to differentiate between
+	// identifiers over 16 bytes long.
+	output[1] |= val << 32u;
+}
+
 char *str_dup(const char *str)
 {
 	return str_copy(str, strlen(str));
