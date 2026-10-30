@@ -718,6 +718,11 @@ void compiler_compile(void)
 		eprintf("> BEGINLSP\n");
 	}
 	sema_analysis_run();
+	if (compiler.build.ast_dump_output)
+	{
+		compiler_ast_dump();
+		exit_compiler(COMPILER_SUCCESS_EXIT);
+	}
 	if (compiler.build.docgen)
 	{
 		compiler_docgen(&compiler.build);

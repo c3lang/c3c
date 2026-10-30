@@ -10,9 +10,10 @@
 extern int llvm_version_major;
 bool silence_deprecation;
 
+int arg_count;
+const char **args;
+
 static int arg_index;
-static int arg_count;
-static const char **args;
 static const char *current_arg;
 extern const char *llvm_version;
 extern const char *llvm_target;
@@ -148,6 +149,7 @@ static void usage(bool full)
 		print_opt("--data-sections=<yes|no>", "Place each global variable in its own section, so the linker can discard unused ones (no effect on Mach-O).");
 		print_opt("--single-module=<yes|no>", "Compile all modules together, enables more inlining.");
 		print_opt("--show-backtrace=<yes|no>", "Show detailed backtrace on segfaults.");
+		print_opt("--ast-dump", "Print a binary representation of the abstract syntax tree for tool usage.");
 		print_opt("--lsp", "Emit data about errors suitable for a LSP.");
 		print_opt("--print-large-functions", "Print functions with large compile size.");
 		print_opt("--warn-deadcode=<yes|no|error>", "Print warning on dead-code: yes, no, error.");
@@ -1870,6 +1872,15 @@ static void parse_option(BuildOptions *options) // NOLINT
 			if (match_longopt("benchmark"))
 			{
 				options->benchmark_mode = true;
+				return;
+			}
+			if (match_longopt("ast-dump"))
+			{
+				options->ast_dump_mode = true;
+				options->strip_unused = STRIP_UNUSED_OFF;
+				options->test_mode = false;
+				options->build_benchmark = true;
+				options->build_test = true;
 				return;
 			}
 			if (match_longopt("lsp"))

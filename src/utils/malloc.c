@@ -13,6 +13,7 @@ static int allocations_done;
 static Vmem arena;
 uintptr_t arena_zero;
 static Vmem char_arena;
+uintptr_t char_arena_zero;
 
 #define START_VMEM_SIZE (sizeof(size_t) == 4 ? 1024 : 4096)
 
@@ -24,6 +25,7 @@ void memory_init(size_t max_mem)
 	vmem_init(&char_arena, START_VMEM_SIZE / 2);
 	allocations_done = 0;
 	arena_zero = (uintptr_t)arena.ptr;
+	char_arena_zero = (uintptr_t)char_arena.ptr;
 	vmem_alloc(&arena, 16);
 }
 

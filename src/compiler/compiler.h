@@ -21,5 +21,6 @@ void fetch_info(BuildOptions *options);
 void fetch(BuildOptions *options);
 void fetch_list(BuildOptions *options);
 void compiler_docgen(BuildTarget *target);
+void compiler_ast_dump(void);
 
 extern const char* c3_suffix_list[3];

@@ -52,6 +52,7 @@ extern jmp_buf on_err_jump;
 extern bool debug_log;
 
 extern uintptr_t arena_zero;
+extern uintptr_t char_arena_zero;
 struct ScratchBuf { char str[MAX_STRING_BUFFER]; int len; };
 extern struct ScratchBuf *sb_current;
 
