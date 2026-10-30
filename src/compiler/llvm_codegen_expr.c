@@ -517,8 +517,41 @@ LLVMValueRef llvm_emit_coerce(GenContext *c, LLVMTypeRef coerced, BEValue *value
 	{
 		return llvm_zext_trunc(c, value->value, coerced);
 	}
+	// Optimize struct with N same sized elements -> array with N elements
+	if (!llvm_value_is_addr(value) && LLVMIsConstant(value->value)
+		&& LLVMGetTypeKind(llvm_source_type) == LLVMStructTypeKind
+		&& LLVMGetTypeKind(coerced) == LLVMArrayTypeKind)
+	{
+		LLVMTypeRef elem = LLVMGetElementType(coerced);
+		unsigned count = LLVMCountStructElementTypes(llvm_source_type);
+		LLVMTypeKind kind = LLVMGetTypeKind(elem);
+		if (kind != LLVMIntegerTypeKind || count != LLVMGetArrayLength2(coerced) || count > 4) goto SKIP_OPT;
+		ByteSize elem_size = llvm_alloc_size(c, elem);
+		LLVMValueRef elements[4];
+		for (int i = 0; i < (int)count; i++)
+		{
+			LLVMTypeRef field_type = LLVMStructGetTypeAtIndex(llvm_source_type, i);
+			LLVMTypeKind struct_kind = LLVMGetTypeKind(field_type);
+			if (llvm_alloc_size(c, field_type) != elem_size) goto SKIP_OPT;
+			LLVMValueRef field = LLVMGetAggregateElement(value->value, i);
+			switch (struct_kind)
+			{
+				case LLVMPointerTypeKind:
+					elements[i] = LLVMConstPtrToInt(field, elem);
+					break;
+				case LLVMIntegerTypeKind:
+					if (field_type != elem) goto SKIP_OPT;
+					elements[i] = field;
+					break;
+				default:
+					goto SKIP_OPT;
+			}
+		}
+		return LLVMConstArray2(elem, elements, count);
+		SKIP_OPT:;
+	}
 
-	// 2. From now on we need th address.
+	// 2. From now on we need the address.
 	llvm_value_addr(c, value);
 	LLVMValueRef addr = value->value;
 

@@ -55,128 +55,92 @@ fn int main()
 define void @test.foo(i32 %0) #0 {
 entry:
   %x = alloca i32, align 4
-  %taddr = alloca %"char[]", align 8
   %switch = alloca i32, align 4
   %switch1 = alloca i32, align 4
-  %taddr4 = alloca %"char[]", align 8
-  %taddr5 = alloca %"char[]", align 8
-  %taddr6 = alloca %"char[]", align 8
-  %taddr7 = alloca %"char[]", align 8
-  %switch9 = alloca i32, align 4
+  %switch5 = alloca i32, align 4
   %j = alloca i32, align 4
-  %taddr12 = alloca %"char[]", align 8
-  %taddr13 = alloca %"char[]", align 8
-  %taddr15 = alloca %"char[]", align 8
-  %taddr16 = alloca %"char[]", align 8
-  %switch18 = alloca i32, align 4
-  %taddr21 = alloca %"char[]", align 8
-  %taddr22 = alloca %"char[]", align 8
-  %taddr24 = alloca %"char[]", align 8
+  %switch10 = alloca i32, align 4
   store i32 %0, ptr %x, align 4
-  store %"char[]" { ptr @.str, i64 3 }, ptr %taddr, align 8
-  %1 = load [2 x i64], ptr %taddr, align 8
-  call void @test.print([2 x i64] %1)
-  %2 = load i32, ptr %x, align 4
-  store i32 %2, ptr %switch, align 4
+  call void @test.print([2 x i64] [i64 ptrtoint (ptr @.str to i64), i64 3])
+  %1 = load i32, ptr %x, align 4
+  store i32 %1, ptr %switch, align 4
   br label %switch.entry
 
-switch.entry:                                     ; preds = %switch.case11, %entry
-  %3 = load i32, ptr %switch, align 4
-  switch i32 %3, label %switch.exit25 [
+switch.entry:                                     ; preds = %switch.case7, %entry
+  %2 = load i32, ptr %switch, align 4
+  switch i32 %2, label %switch.exit14 [
     i32 0, label %switch.case
-    i32 3, label %switch.case8
-    i32 2, label %switch.case17
+    i32 3, label %switch.case4
+    i32 2, label %switch.case9
   ]
 
 switch.case:                                      ; preds = %switch.entry
-  %4 = load i32, ptr %x, align 4
-  store i32 %4, ptr %switch1, align 4
+  %3 = load i32, ptr %x, align 4
+  store i32 %3, ptr %switch1, align 4
   br label %switch.entry2
 
 switch.entry2:                                    ; preds = %switch.case
-  %5 = load i32, ptr %switch1, align 4
-  switch i32 %5, label %switch.exit [
+  %4 = load i32, ptr %switch1, align 4
+  switch i32 %4, label %switch.exit [
     i32 0, label %switch.case3
   ]
 
 switch.case3:                                     ; preds = %switch.entry2
-  store %"char[]" { ptr @.str.1, i64 1 }, ptr %taddr4, align 8
-  %6 = load [2 x i64], ptr %taddr4, align 8
-  call void @test.print([2 x i64] %6)
-  store %"char[]" { ptr @.str.2, i64 3 }, ptr %taddr5, align 8
-  %7 = load [2 x i64], ptr %taddr5, align 8
-  call void @test.print([2 x i64] %7)
-  br label %switch.case8
+  call void @test.print([2 x i64] [i64 ptrtoint (ptr @.str.1 to i64), i64 1])
+  call void @test.print([2 x i64] [i64 ptrtoint (ptr @.str.2 to i64), i64 3])
+  br label %switch.case4
 
 switch.exit:                                      ; preds = %switch.entry2
-  store %"char[]" { ptr @.str.3, i64 3 }, ptr %taddr6, align 8
-  %8 = load [2 x i64], ptr %taddr6, align 8
-  call void @test.print([2 x i64] %8)
-  store %"char[]" { ptr @.str.4, i64 3 }, ptr %taddr7, align 8
-  %9 = load [2 x i64], ptr %taddr7, align 8
-  call void @test.print([2 x i64] %9)
-  br label %switch.exit25
+  call void @test.print([2 x i64] [i64 ptrtoint (ptr @.str.3 to i64), i64 3])
+  call void @test.print([2 x i64] [i64 ptrtoint (ptr @.str.4 to i64), i64 3])
+  br label %switch.exit14
 
-switch.case8:                                     ; preds = %switch.entry, %switch.case3
+switch.case4:                                     ; preds = %switch.entry, %switch.case3
   store i32 3, ptr %x, align 4
-  %10 = load i32, ptr %x, align 4
-  store i32 %10, ptr %switch9, align 4
-  br label %switch.entry10
+  %5 = load i32, ptr %x, align 4
+  store i32 %5, ptr %switch5, align 4
+  br label %switch.entry6
 
-switch.entry10:                                   ; preds = %switch.case8
-  %11 = load i32, ptr %switch9, align 4
-  switch i32 %11, label %switch.exit14 [
-    i32 3, label %switch.case11
+switch.entry6:                                    ; preds = %switch.case4
+  %6 = load i32, ptr %switch5, align 4
+  switch i32 %6, label %switch.exit8 [
+    i32 3, label %switch.case7
   ]
 
-switch.case11:                                    ; preds = %switch.entry10
+switch.case7:                                     ; preds = %switch.entry6
   store i32 2, ptr %j, align 4
-  %12 = load i32, ptr %j, align 4
-  store i32 %12, ptr %switch, align 4
-  store %"char[]" { ptr @.str.5, i64 1 }, ptr %taddr12, align 8
-  %13 = load [2 x i64], ptr %taddr12, align 8
-  call void @test.print([2 x i64] %13)
-  store %"char[]" { ptr @.str.6, i64 3 }, ptr %taddr13, align 8
-  %14 = load [2 x i64], ptr %taddr13, align 8
-  call void @test.print([2 x i64] %14)
+  %7 = load i32, ptr %j, align 4
+  store i32 %7, ptr %switch, align 4
+  call void @test.print([2 x i64] [i64 ptrtoint (ptr @.str.5 to i64), i64 1])
+  call void @test.print([2 x i64] [i64 ptrtoint (ptr @.str.6 to i64), i64 3])
   br label %switch.entry
 
-switch.exit14:                                    ; preds = %switch.entry10
-  store %"char[]" { ptr @.str.7, i64 3 }, ptr %taddr15, align 8
-  %15 = load [2 x i64], ptr %taddr15, align 8
-  call void @test.print([2 x i64] %15)
-  store %"char[]" { ptr @.str.8, i64 3 }, ptr %taddr16, align 8
-  %16 = load [2 x i64], ptr %taddr16, align 8
-  call void @test.print([2 x i64] %16)
-  br label %switch.exit25
+switch.exit8:                                     ; preds = %switch.entry6
+  call void @test.print([2 x i64] [i64 ptrtoint (ptr @.str.7 to i64), i64 3])
+  call void @test.print([2 x i64] [i64 ptrtoint (ptr @.str.8 to i64), i64 3])
+  br label %switch.exit14
 
-switch.case17:                                    ; preds = %switch.entry
+switch.case9:                                     ; preds = %switch.entry
   store i32 2, ptr %x, align 4
-  %17 = load i32, ptr %x, align 4
-  store i32 %17, ptr %switch18, align 4
-  br label %switch.entry19
+  %8 = load i32, ptr %x, align 4
+  store i32 %8, ptr %switch10, align 4
+  br label %switch.entry11
 
-switch.entry19:                                   ; preds = %switch.case17
-  %18 = load i32, ptr %switch18, align 4
-  switch i32 %18, label %switch.exit23 [
-    i32 2, label %switch.case20
+switch.entry11:                                   ; preds = %switch.case9
+  %9 = load i32, ptr %switch10, align 4
+  switch i32 %9, label %switch.exit13 [
+    i32 2, label %switch.case12
   ]
 
-switch.case20:                                    ; preds = %switch.entry19
-  store %"char[]" { ptr @.str.9, i64 1 }, ptr %taddr21, align 8
-  %19 = load [2 x i64], ptr %taddr21, align 8
-  call void @test.print([2 x i64] %19)
-  store %"char[]" { ptr @.str.10, i64 3 }, ptr %taddr22, align 8
-  %20 = load [2 x i64], ptr %taddr22, align 8
-  call void @test.print([2 x i64] %20)
-  br label %switch.exit25
+switch.case12:                                    ; preds = %switch.entry11
+  call void @test.print([2 x i64] [i64 ptrtoint (ptr @.str.9 to i64), i64 1])
+  call void @test.print([2 x i64] [i64 ptrtoint (ptr @.str.10 to i64), i64 3])
+  br label %switch.exit14
 
-switch.exit23:                                    ; preds = %switch.entry19
-  store %"char[]" { ptr @.str.11, i64 3 }, ptr %taddr24, align 8
-  %21 = load [2 x i64], ptr %taddr24, align 8
-  call void @test.print([2 x i64] %21)
-  br label %switch.exit25
+switch.exit13:                                    ; preds = %switch.entry11
+  call void @test.print([2 x i64] [i64 ptrtoint (ptr @.str.11 to i64), i64 3])
+  br label %switch.exit14
 
-switch.exit25:                                    ; preds = %switch.exit23, %switch.case20, %switch.exit14, %switch.exit, %switch.entry
+switch.exit14:                                    ; preds = %switch.exit13, %switch.case12, %switch.exit8, %switch.exit, %switch.entry
   ret void
 }
