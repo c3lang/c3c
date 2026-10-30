@@ -229,6 +229,7 @@ typedef struct
 typedef struct
 {
 	FileId file_id;
+	FileKind kind;
 	const char *contents;
 	size_t content_len;
 	char *name;
@@ -2052,6 +2053,92 @@ typedef struct
 
 typedef struct
 {
+	Decl *decl;
+	double time;
+} FunctionAnalysisTime;
+
+typedef enum
+{
+	STATS_ORIGIN_USER,
+	STATS_ORIGIN_STDLIB,
+	STATS_ORIGIN_RUNTIME,
+	STATS_ORIGIN_GENERATED,
+	STATS_ORIGIN_NONE,
+} StatsOrigin;
+
+#define STATS_ORIGINS STATS_ORIGIN_NONE
+
+// A row in one of the statistics lists, the fields used depend on the list.
+typedef struct
+{
+	const char *name;
+	int id;
+	StatsOrigin origin;
+	int instances;
+	int64_t instructions;
+	int64_t lines;
+	double analysis_time;
+	double ir_gen_time;
+	double codegen_time;
+} StatsEntry;
+
+// The top entries of a list, the rest are summed up in "other".
+typedef struct
+{
+	StatsEntry *top;
+	StatsEntry other;
+	int other_count;
+	StatsEntry total;
+} StatsList;
+
+typedef struct
+{
+	int files;
+	int64_t lines;
+	int functions;
+	int64_t ir_instructions;
+	double codegen_time;
+} StatsOriginTotals;
+
+typedef struct
+{
+	double init_time;
+	double parsing_time;
+	double sema_time;
+	double ir_gen_time;
+	double codegen_time;
+	double link_time;
+	double generic_time;
+	int generic_depth;
+	double nested_analysis_time;
+	double codegen_thread_time;
+	int codegen_tasks;
+	int codegen_threads;
+	const char *linker;
+	int source_files;
+	int64_t source_lines;
+	int functions;
+	int types;
+	int generic_instances;
+	int64_t ir_instructions;
+	int64_t object_size;
+	StatsOriginTotals origins[STATS_ORIGINS];
+	int64_t ast_memory;
+	int64_t decl_memory;
+	int64_t expr_memory;
+	int64_t type_info_memory;
+	int64_t sourceloc_memory;
+	FunctionAnalysisTime *function_analysis_times;
+	StatsList generic_list;
+	StatsList generic_function_list;
+	StatsList function_list;
+	StatsList module_size_list;
+	StatsList module_time_list;
+	bool printed;
+} CompilerStats;
+
+typedef struct
+{
 	bool should_print_environment;
 	bool should_print_asm;
 	Ansi ansi;
@@ -2096,6 +2183,7 @@ typedef struct
 	PlatformTarget platform;
 	Linking linking;
 	GlobalContext context;
+	CompilerStats stats;
 	const char *obj_output;
 	int generic_depth;
 	double exec_time;
@@ -2431,6 +2519,13 @@ bool llvm_codegen_ir_file(void *context, const char **out_name);
 const char *tilde_codegen(void *context);
 void **c_gen(Module** modules, int module_count);
 void **llvm_gen(Module** modules, int module_count);
+void llvm_collect_module_times(void);
+void compiler_print_stats(void);
+void stats_list_add(StatsList *list, StatsEntry entry, bool in_top);
+StatsOrigin stats_module_origin(Module *module);
+int64_t stats_physical_lines(File *file);
+void stats_collect_after_sema(void);
+void stats_collect_object_size(const char **obj_files, int count);
 void **tilde_gen(Module** modules, int module_count);
 
 void header_gen(Module **modules, int module_count);

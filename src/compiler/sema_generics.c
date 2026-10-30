@@ -1,4 +1,5 @@
 #include "sema_internal.h"
+#include "compiler_tests/benchmark.h"
 
 static inline void mangle_type_param(Type *type, bool mangled)
 {
@@ -141,8 +142,8 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 	return true;
 }
 
-Decl *sema_generate_parameterized_identifier(SemaContext *context, Decl *generic, Decl *alias, Expr **params, Decl **param_decls, const char *suffix, const char *csuffix, SourceLocId
-                                             invocation_loc, SourceLocId loc)
+static Decl *generate_parameterized_identifier(SemaContext *context, Decl *generic, Decl *alias, Expr **params, Decl **param_decls, const char *suffix, const char *csuffix, SourceLocId
+                                              invocation_loc, SourceLocId loc)
 {
 	Module *module = alias->unit->module;
 	Decl *instance = NULL;
@@ -438,4 +439,20 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_pat
 	}
 	const char *suffix = scratch_buffer_interned();
 	return sema_generate_parameterized_identifier(context, generic, alias, params, NULL, NULL, suffix, invocation_loc, loc);
+}
+
+Decl *sema_generate_parameterized_identifier(SemaContext *context, Decl *generic, Decl *alias, Expr **params, Decl **param_decls, const char *suffix, const char *csuffix, SourceLocId
+                                             invocation_loc, SourceLocId loc)
+{
+	// Only time the outermost instantiation, the nested ones are part of it.
+	if (!compiler.build.collect_stats || compiler.stats.generic_depth)
+	{
+		return generate_parameterized_identifier(context, generic, alias, params, param_decls, suffix, csuffix, invocation_loc, loc);
+	}
+	compiler.stats.generic_depth++;
+	BenchTime start = benchstart();
+	Decl *decl = generate_parameterized_identifier(context, generic, alias, params, param_decls, suffix, csuffix, invocation_loc, loc);
+	compiler.stats.generic_time += benchmark(start);
+	compiler.stats.generic_depth--;
+	return decl;
 }

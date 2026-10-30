@@ -108,6 +108,23 @@ typedef enum
 
 typedef enum
 {
+	FILE_KIND_SOURCE,
+	FILE_KIND_STDIN,
+	FILE_KIND_TEXT,
+	FILE_KIND_GENERATED,
+} FileKind;
+
+typedef enum
+{
+	STATS_NOT_SET = -1,
+	STATS_NONE = 0,
+	STATS_SUMMARY,
+	STATS_FULL,
+	STATS_JSON,
+} StatsMode;
+
+typedef enum
+{
 	ANSI_DETECT = -1,
 	ANSI_OFF = 0,
 	ANSI_ON = 1

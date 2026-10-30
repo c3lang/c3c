@@ -4,6 +4,7 @@
 
 
 #include "llvm_codegen_internal.h"
+#include "compiler_tests/benchmark.h"
 
 static void llvm_append_xxlizer(GenContext *c, int  priority, bool is_initializer, LLVMValueRef function);
 static inline void llvm_emit_return_value(GenContext *context, LLVMValueRef value);
@@ -465,7 +466,7 @@ void llvm_emit_function_body(GenContext *c, Decl *decl)
 	ASSERT(decl->backend_ref);
 	if (decl->func_decl.attr_init || (decl->func_decl.attr_finalizer && compiler.platform.object_format == OBJ_FORMAT_MACHO))
 	{
-		llvm_append_xxlizer(c, decl->func_decl.priority, decl->func_decl.attr_init, decl->backend_ref);
+		llvm_append_xxlizer(c, (int)decl->func_decl.priority, decl->func_decl.attr_init, decl->backend_ref);
 	}
 	if (decl->func_decl.attr_finalizer && compiler.platform.object_format != OBJ_FORMAT_MACHO)
 	{
@@ -481,13 +482,19 @@ void llvm_emit_function_body(GenContext *c, Decl *decl)
 		LLVMBuildCall2(builder, c->atexit_type, atexit, args, 1, "");
 		LLVMBuildRetVoid(builder);
 		LLVMDisposeBuilder(builder);
-		llvm_append_xxlizer(c, decl->func_decl.priority, true, func);
+		llvm_append_xxlizer(c, (int)decl->func_decl.priority, true, func);
 	}
+	bool track_time = compiler.build.collect_stats_lists;
+	BenchTime start = track_time ? benchstart() : (BenchTime){ 0 };
 	llvm_emit_body(c,
 	               decl->backend_ref,
 	               type_get_resolved_prototype(decl->type),
 	               &decl->func_decl.signature,
 	               astptr(decl->func_decl.body), decl, decl->func_decl.attr_naked);
+	if (compiler.build.collect_stats)
+	{
+		llvm_stats_record_function(decl, (int)LLVMGetFunctionInstructionCount(decl->backend_ref), track_time ? benchmark(start) : 0);
+	}
 }
 
 
@@ -608,15 +615,6 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 	{
 		c->debug.block_stack = NULL;
 		LLVMDIBuilderFinalizeSubprogram(c->debug.builder, c->debug.function);
-	}
-	if (compiler.build.print_large_functions)
-	{
-		int instruction_count = LLVMGetFunctionInstructionCount(function);
-		if (instruction_count > 5000)
-		{
-			eprintf("%8u instructions found in %s:%s (%s) - function is very long.\n", instruction_count, decl->unit->module->name->module,
-				decl->name, decl->unit->file->full_path);
-		}
 	}
 	c->builder = prev_builder;
 	c->cur_func.ref = prev_function;
