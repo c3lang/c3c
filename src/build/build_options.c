@@ -83,6 +83,8 @@ static void usage(bool full)
 	print_opt("-V --version", "Print version information.");
 	print_opt("-q --quiet", "Silence unnecessary output.");
 	print_opt("-v -vv -vvv", "Verbose output, -v for default, -vv and -vvv gives more information.");
+	print_opt("--stats=<none|summary|full|json>", "Compiler statistics: timings and memory, 'full' adds top lists, 'json' saves everything to a file. -vv implies 'summary'.");
+	print_opt("--stats-file <path>", "Write the JSON statistics to this file. Implies --stats=json.");
 	print_opt("-E", "Lex only.");
 	print_opt("-P", "Only parse and output the AST as JSON.");
 	print_opt("-C", "Only lex, parse and check.");
@@ -149,7 +151,6 @@ static void usage(bool full)
 		print_opt("--single-module=<yes|no>", "Compile all modules together, enables more inlining.");
 		print_opt("--show-backtrace=<yes|no>", "Show detailed backtrace on segfaults.");
 		print_opt("--lsp", "Emit data about errors suitable for a LSP.");
-		print_opt("--print-large-functions", "Print functions with large compile size.");
 		print_opt("--warn-deadcode=<yes|no|error>", "Print warning on dead-code: yes, no, error.");
 		print_opt("--warn-recursivecontracts=<yes|no|error>", "Print warning on recursive contracts: yes, no, error.");
 		print_opt("--warn-methodvisibility=<yes|no|error>", "Print warning when methods have ignored visibility attributes.");
@@ -1088,6 +1089,17 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->validation_level = parse_opt_select(ValidationLevel, argopt, validation_levels);
 				return;
 			}
+			if ((argopt = match_argopt("stats-file"))) // NOLINT
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --stats-file needs a filename.");
+				options->stats_file = next_arg();
+				return;
+			}
+			if ((argopt = match_argopt("stats"))) // NOLINT
+			{
+				options->stats_mode = parse_opt_select(StatsMode, argopt, stats_modes);
+				return;
+			}
 			if ((argopt = match_argopt("ansi"))) // NOLINT
 			{
 				options->ansi = parse_opt_select(Ansi, argopt, on_off);
@@ -1164,11 +1176,6 @@ static void parse_option(BuildOptions *options) // NOLINT
 			if (match_longopt("benchmark-csv-report"))
 			{
 				options->benchmark_csv_report = true;
-				return;
-			}
-			if (match_longopt("print-large-functions"))
-			{
-				options->print_large_functions = true;
 				return;
 			}
 			if ((argopt = match_argopt("warn-deadcode"))) // NOLINT
@@ -2027,6 +2034,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.validation_level = VALIDATION_NOT_SET,
 		.implicit_float = IMPLICIT_FLOAT_NOT_SET,
 		.ansi = ANSI_DETECT,
+		.stats_mode = STATS_NOT_SET,
 		.strip_unused = STRIP_UNUSED_NOT_SET,
 		.single_module = SINGLE_MODULE_NOT_SET,
 		.sanitize_mode = SANITIZE_NOT_SET,

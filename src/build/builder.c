@@ -543,7 +543,6 @@ BUILD:
 
 	target->backend = options->backend;
 
-	target->print_large_functions = options->print_large_functions;
 	// Remove feature flags
 	FOREACH(const char *, remove_feature, options->removed_feature_names)
 	{
@@ -734,7 +733,15 @@ BUILD:
 	target->emit_llvm = options->emit_llvm;
 	target->build_threads = options->build_threads;
 	target->emit_asm = options->emit_asm;
-	target->print_stats = options->verbosity_level >= 2;
+	target->stats = options->stats_mode != STATS_NOT_SET ? options->stats_mode : (options->verbosity_level >= 2 ? STATS_SUMMARY : STATS_NONE);
+	if (options->stats_file)
+	{
+		if (options->stats_mode != STATS_NOT_SET && options->stats_mode != STATS_JSON) error_exit("--stats-file can only be used with --stats=json.");
+		target->stats = STATS_JSON;
+		target->stats_file = options->stats_file;
+	}
+	target->collect_stats = target->stats != STATS_NONE;
+	target->collect_stats_lists = target->stats == STATS_FULL || target->stats == STATS_JSON;
 
 #if defined(__linux__) && __linux__
 	static bool libc_detected = false;

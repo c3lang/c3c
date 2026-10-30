@@ -156,6 +156,7 @@ typedef struct GenContext_
 	LLVMValueRef memcmp_function;
 	LLVMTypeRef memcmp_function_type;
 	unsigned module_size;
+	StatsEntry *timing;
 } GenContext;
 
 // LLVM Intrinsics
@@ -571,6 +572,7 @@ void llvm_emit_slice_pointer(GenContext *c, BEValue *slice, BEValue *pointer);
 void llvm_emit_compound_stmt(GenContext *c, Ast *ast);
 LLVMValueRef llvm_emit_const_bitstruct(GenContext *c, ConstInitializer *initializer);
 void llvm_emit_function_body(GenContext *c, Decl *decl);
+void llvm_stats_record_function(Decl *decl, int instructions, double ir_gen_time);
 void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs);
 BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *ref_expr, Expr *expr, LLVMValueRef optional, bool is_init);
 INLINE void llvm_emit_exprid(GenContext *c, BEValue *value, ExprId expr);

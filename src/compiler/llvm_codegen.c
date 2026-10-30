@@ -404,7 +404,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 					// Let's look at the old offset.
 					ByteSize old_offset = members[i - 1]->offset;
 					// What is the expected offset we would get?
-					ByteSize new_offset = is_packed ? old_offset + prev_size : aligned_offset(old_offset + prev_size, llvm_abi_alignment(c, element_type));
+					ByteSize new_offset = is_packed ? old_offset + prev_size : aligned_offset((AlignSize)old_offset + prev_size, llvm_abi_alignment(c, element_type));
 					// Add the padding we have built in.
 					new_offset += member->padding;
 					// If this offset is too small, add const padding.
@@ -1150,6 +1150,7 @@ bool llvm_codegen(void *context, const char **out_name)
 	*out_name = NULL;
 	GenContext *c = context;
 	if (!compiler_should_output_file(c->base_name)) return true;
+	BenchTime start = c->timing ? benchstart() : (BenchTime){ 0 };
 	if (c->failed || !llvm_optimize(c)) return false;
 
 	// Serialize the LLVM IR, if requested, also verify the IR in this case
@@ -1172,6 +1173,7 @@ bool llvm_codegen(void *context, const char **out_name)
 	}
 
 	if (c->failed) return false;
+	if (c->timing) c->timing->codegen_time = benchmark(start);
 
 	gencontext_end_module(c);
 	gencontext_destroy(c);
@@ -1296,7 +1298,7 @@ static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABI
 	}
 	if (info->attributes.by_reg)
 	{
-		llvm_attribute_add_range(c, function, attribute_id.inreg, index, last_index);
+		llvm_attribute_add_range(c, function, attribute_id.inreg, index, last_index); // NOLINT
 	}
 	switch (info->kind)
 	{
@@ -1753,6 +1755,265 @@ static int gen_context_cmp(const void* c1, const void* c2)
 	return 0;
 }
 
+typedef struct
+{
+	Decl *decl;
+	int instructions;
+	int instances;
+	double analysis_time;
+	double ir_gen_time;
+} FunctionSize;
+
+static FunctionSize *function_sizes = NULL;
+static StatsEntry **module_timings = NULL;
+
+static StatsOrigin function_origin(Decl *decl)
+{
+	return decl->is_synthetic ? STATS_ORIGIN_GENERATED : stats_module_origin(decl->unit->module);
+}
+
+void llvm_stats_record_function(Decl *decl, int instructions, double ir_gen_time)
+{
+	compiler.stats.functions++;
+	compiler.stats.origins[function_origin(decl)].functions++;
+	if (!compiler.build.collect_stats_lists) return;
+	vec_add(function_sizes, ((FunctionSize) { .decl = decl, .instructions = instructions, .instances = 1, .ir_gen_time = ir_gen_time }));
+}
+
+static StatsEntry *module_timing_new(const char *name, StatsOrigin origin)
+{
+	StatsEntry *timing = ccalloc(1, sizeof(StatsEntry));
+	timing->name = name;
+	timing->origin = origin;
+	vec_add(module_timings, timing);
+	return timing;
+}
+
+// Account a generated module, so that it is in the totals and gets its codegen timed.
+static GenContext *llvm_stats_add_context(GenContext *context, StatsOrigin origin, double ir_gen_time)
+{
+	if (!compiler.build.collect_stats || !context) return context;
+	compiler.stats.ir_instructions += context->module_size;
+	compiler.stats.origins[origin].ir_instructions += context->module_size;
+	StatsEntry *timing = module_timing_new(context->base_name, origin);
+	timing->instructions = context->module_size;
+	timing->ir_gen_time = ir_gen_time;
+	context->timing = timing;
+	return context;
+}
+
+static GenContext *llvm_gen_module_with_stats(Module *module, LLVMContextRef shared_context)
+{
+	if (!compiler.build.collect_stats) return llvm_gen_module(module, shared_context);
+	BenchTime start = benchstart();
+	GenContext *context = llvm_gen_module(module, shared_context);
+	if (!context) return NULL;
+	llvm_stats_add_context(context, stats_module_origin(module), benchmark(start));
+	// A file with several modules counts for each of them.
+	FOREACH(CompilationUnit *, unit, module->units) context->timing->lines += stats_physical_lines(unit->file);
+	if (!compiler.build.collect_stats_lists) return context;
+	FOREACH(FunctionAnalysisTime, entry, compiler.stats.function_analysis_times)
+	{
+		if (entry.decl->unit->module == module) context->timing->analysis_time += entry.time; // NOLINT
+	}
+	return context;
+}
+
+static int function_size_cmp(const void *a, const void *b)
+{
+	int x = ((const FunctionSize *)a)->instructions;
+	int y = ((const FunctionSize *)b)->instructions;
+	return y - x;
+}
+
+static int function_size_loc_cmp(const void *a, const void *b)
+{
+	SourceLocId x = ((const FunctionSize *)a)->decl->loc;
+	SourceLocId y = ((const FunctionSize *)b)->decl->loc;
+	return x < y ? -1 : (x > y ? 1 : 0); // NOLINT
+}
+
+static int analysis_time_cmp(const void *a, const void *b)
+{
+	uintptr_t x = (uintptr_t)((const FunctionAnalysisTime *)a)->decl;
+	uintptr_t y = (uintptr_t)((const FunctionAnalysisTime *)b)->decl;
+	return x < y ? -1 : (x > y ? 1 : 0); // NOLINT
+}
+
+static double module_timing_total(const StatsEntry *entry)
+{
+	return entry->analysis_time + entry->ir_gen_time + entry->codegen_time;
+}
+
+static int module_timing_cmp(const void *a, const void *b)
+{
+	double x = module_timing_total(*(const StatsEntry **)a);
+	double y = module_timing_total(*(const StatsEntry **)b);
+	return x < y ? 1 : (x > y ? -1 : 0); // NOLINT
+}
+
+static int module_size_cmp(const void *a, const void *b)
+{
+	int64_t x = (*(const StatsEntry **)a)->instructions;
+	int64_t y = (*(const StatsEntry **)b)->instructions;
+	return x < y ? 1 : (x > y ? -1 : 0); // NOLINT
+}
+
+static void scratch_buffer_append_without_suffix(const char *name, const char *suffix)
+{
+	size_t len = strlen(name);
+	size_t suffix_len = suffix ? strlen(suffix) : 0;
+	if (suffix_len && len > suffix_len && !strcmp(name + len - suffix_len, suffix))
+	{
+		scratch_buffer_append_len(name, len - suffix_len);
+		return;
+	}
+	scratch_buffer_append(name);
+}
+
+static const char *function_stats_name(Decl *decl, bool strip_generic_suffix)
+{
+	const char *suffix = strip_generic_suffix && decl->is_templated ? declptr(decl->instance_id)->instance_decl.name_suffix : NULL;
+	scratch_buffer_clear();
+	TypeInfo *parent = decl_find_target_if_method(decl);
+	if (parent)
+	{
+		scratch_buffer_append_without_suffix(parent->type->name, suffix);
+		scratch_buffer_append_char('.');
+	}
+	else
+	{
+		scratch_buffer_append(decl->unit->module->short_path);
+		scratch_buffer_append("::");
+	}
+	scratch_buffer_append_without_suffix(decl_safe_name(decl), suffix);
+	return scratch_buffer_to_string();
+}
+
+// Attach the time spent analysing each function body, summed if a body was analysed more than once.
+static void function_sizes_add_analysis_time(void)
+{
+	FunctionAnalysisTime *times = compiler.stats.function_analysis_times;
+	int time_count = vec_size(times);
+	if (!time_count) return;
+	qsort(times, time_count, sizeof(FunctionAnalysisTime), &analysis_time_cmp);
+	int merged = 0;
+	for (int i = 0; i < time_count; i++)
+	{
+		if (merged && times[merged - 1].decl == times[i].decl)
+		{
+			times[merged - 1].time += times[i].time;
+			continue;
+		}
+		times[merged++] = times[i];
+	}
+	FOREACH_IDX(i, FunctionSize, size, function_sizes)
+	{
+		FunctionAnalysisTime key = { .decl = size.decl }; // NOLINT
+		FunctionAnalysisTime *found = bsearch(&key, times, merged, sizeof(FunctionAnalysisTime), &analysis_time_cmp);
+		if (found) function_sizes[i].analysis_time = found->time;
+	}
+}
+
+static void function_list_add(StatsList *list, FunctionSize *size, bool in_top, bool strip_generic_suffix)
+{
+	StatsEntry entry = {
+		.instructions = size->instructions,
+		.instances = size->instances,
+		.analysis_time = size->analysis_time,
+		.ir_gen_time = size->ir_gen_time };
+	if (in_top) entry.name = str_dup(function_stats_name(size->decl, strip_generic_suffix));
+	stats_list_add(list, entry, in_top);
+}
+
+// Add the cost of a generic function to its generic in the list of generics.
+static void generic_list_add_cost(FunctionSize *size)
+{
+	StatsList *list = &compiler.stats.generic_list;
+	int id = declptr(size->decl->instance_id)->instance_decl.id;
+	StatsEntry *entry = &list->other;
+	FOREACH_IDX(i, StatsEntry, top, list->top)
+	{
+		if (top.id == id) entry = &list->top[i]; // NOLINT
+	}
+	StatsEntry *entries[2] = { entry, &list->total };
+	for (int j = 0; j < 2; j++)
+	{
+		entries[j]->instructions += size->instructions;
+		entries[j]->analysis_time += size->analysis_time;
+		entries[j]->ir_gen_time += size->ir_gen_time;
+	}
+}
+
+// Decls are freed before codegen, so the lists are turned into named entries here.
+static void llvm_collect_function_stats(void)
+{
+	int count = vec_size(function_sizes);
+	if (!count) return;
+	function_sizes_add_analysis_time();
+
+	// Generic functions: all instances of the same template share the template's location.
+	FunctionSize *generics = NULL;
+	FOREACH(FunctionSize, size, function_sizes)
+	{
+		if (!size.decl->is_templated) continue;
+		vec_add(generics, size);
+		generic_list_add_cost(&size);
+	}
+	int generic_count = vec_size(generics);
+	if (generic_count)
+	{
+		qsort(generics, generic_count, sizeof(FunctionSize), &function_size_loc_cmp);
+		int merged = 0;
+		for (int i = 0; i < generic_count; i++)
+		{
+			FunctionSize *last = merged ? &generics[merged - 1] : NULL;
+			if (last && last->decl->loc == generics[i].decl->loc)
+			{
+				last->instructions += generics[i].instructions;
+				last->analysis_time += generics[i].analysis_time;
+				last->ir_gen_time += generics[i].ir_gen_time;
+				last->instances++;
+				continue;
+			}
+			generics[merged++] = generics[i];
+		}
+		qsort(generics, merged, sizeof(FunctionSize), &function_size_cmp);
+		for (int i = 0; i < merged; i++)
+		{
+			function_list_add(&compiler.stats.generic_function_list, &generics[i], i < 20, true);
+		}
+	}
+
+	qsort(function_sizes, count, sizeof(FunctionSize), &function_size_cmp);
+	for (int i = 0; i < count; i++)
+	{
+		function_list_add(&compiler.stats.function_list, &function_sizes[i], i < 20, false);
+	}
+}
+
+// Called after codegen, when each module has its codegen time.
+void llvm_collect_module_times(void)
+{
+	int count = vec_size(module_timings);
+	FOREACH(StatsEntry *, timing, module_timings)
+	{
+		if (timing->origin != STATS_ORIGIN_NONE) compiler.stats.origins[timing->origin].codegen_time += timing->codegen_time;
+	}
+	if (!count) return;
+	qsort(module_timings, count, sizeof(StatsEntry *), &module_size_cmp);
+	int sizes = 0;
+	FOREACH(StatsEntry *, sized, module_timings)
+	{
+		if (sized->instructions) stats_list_add(&compiler.stats.module_size_list, *sized, sizes++ < 20);
+	}
+	qsort(module_timings, count, sizeof(StatsEntry *), &module_timing_cmp);
+	FOREACH_IDX(i, StatsEntry *, timed, module_timings)
+	{
+		stats_list_add(&compiler.stats.module_time_list, *timed, i < 20);
+	}
+}
+
 void **llvm_gen(Module** modules, int module_count)
 {
 	if (!module_count) return NULL;
@@ -1763,19 +2024,22 @@ void **llvm_gen(Module** modules, int module_count)
 		LLVMContextRef context = LLVMContextCreate();
 		for (int i = 0; i < module_count; i++)
 		{
-			GenContext *result = llvm_gen_module(modules[i], context);
+			GenContext *result = llvm_gen_module_with_stats(modules[i], context);
 			if (!result) continue;
 			vec_add(gen_contexts, result);
 		}
 		if (!gen_contexts) return NULL;
-		GenContext *first = gen_contexts[0];
 		if (compiler.build.build_benchmark)
 		{
-			vec_add(gen_contexts, llvm_gen_benchmarks(modules, module_count, context));
+			BenchTime start = benchstart();
+			GenContext *generated = llvm_gen_benchmarks(modules, module_count, context);
+			vec_add(gen_contexts, llvm_stats_add_context(generated, STATS_ORIGIN_GENERATED, benchmark(start)));
 		}
 		if (compiler.build.build_test)
 		{
-			vec_add(gen_contexts, llvm_gen_tests(modules, module_count, context));
+			BenchTime start = benchstart();
+			GenContext *generated = llvm_gen_tests(modules, module_count, context);
+			vec_add(gen_contexts, llvm_stats_add_context(generated, STATS_ORIGIN_GENERATED, benchmark(start)));
 		}
 		int count = vec_size(gen_contexts);
 		while (count > 1)
@@ -1799,40 +2063,35 @@ void **llvm_gen(Module** modules, int module_count)
 			count = new_count;
 		}
 		vec_resize(gen_contexts, 1);
+		if (compiler.build.collect_stats)
+		{
+			// Codegen is a single task for the linked module.
+			gen_contexts[0]->timing = module_timing_new("(single module codegen)", STATS_ORIGIN_NONE);
+			if (compiler.build.collect_stats_lists) llvm_collect_function_stats();
+		}
 		return (void**)gen_contexts;
 	}
 	for (int i = 0; i < module_count; i++)
 	{
-		GenContext *result = llvm_gen_module(modules[i], NULL);
+		GenContext *result = llvm_gen_module_with_stats(modules[i], NULL);
 		if (!result) continue;
 		vec_add(gen_contexts, result);
 	}
 	if (compiler.build.build_benchmark)
 	{
-		vec_add(gen_contexts, llvm_gen_benchmarks(modules, module_count, NULL));
+		BenchTime start = benchstart();
+			GenContext *generated = llvm_gen_benchmarks(modules, module_count, NULL);
+			vec_add(gen_contexts, llvm_stats_add_context(generated, STATS_ORIGIN_GENERATED, benchmark(start)));
 	}
 	if (compiler.build.build_test)
 	{
-		vec_add(gen_contexts, llvm_gen_tests(modules, module_count, NULL));
+		BenchTime start = benchstart();
+			GenContext *generated = llvm_gen_tests(modules, module_count, NULL);
+			vec_add(gen_contexts, llvm_stats_add_context(generated, STATS_ORIGIN_GENERATED, benchmark(start)));
 	}
 	int contexts_count = vec_size(gen_contexts);
 	qsort(gen_contexts, contexts_count, sizeof(void*), &gen_context_cmp);
-	if (compiler.build.print_stats)
-	{
-		int last = contexts_count - 1;
-		int first = last - 20;
-		if (first < 0) first = 0;
-		int line = 1;
-		OUTN("--- Module size top list -----------------------------------------");
-		for (int i = last; i >= first; i--)
-		{
-			GenContext *ctx = gen_contexts[i];
-			OUTF("%2d %-40s %10u approx. loc\n",
-				line++, ctx->base_name, ctx->module_size / 10);
-		}
-		OUTN("------------------------------------------------------------------");
-		OUTN("");
-	}
+	if (compiler.build.collect_stats_lists) llvm_collect_function_stats();
 	return (void**)gen_contexts;
 }
 

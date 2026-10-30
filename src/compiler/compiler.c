@@ -45,12 +45,6 @@ Vmem decl_arena;
 Vmem type_info_arena;
 Vmem sourceloc_arena;
 
-static double compiler_init_time;
-static double compiler_parsing_time;
-static double compiler_sema_time;
-static double compiler_ir_gen_time;
-static double compiler_codegen_time;
-static double compiler_link_time;
 
 const char* c3_suffix_list[3] = { ".c3", ".c3t", ".c3i" };
 
@@ -82,12 +76,12 @@ void compiler_init(BuildOptions *build_options)
 		}
 	}
 
-	compiler_init_time = -1;
-	compiler_parsing_time = -1;
-	compiler_sema_time = -1;
-	compiler_ir_gen_time = -1;
-	compiler_codegen_time = -1;
-	compiler_link_time = -1;
+	compiler.stats.init_time = -1;
+	compiler.stats.parsing_time = -1;
+	compiler.stats.sema_time = -1;
+	compiler.stats.ir_gen_time = -1;
+	compiler.stats.codegen_time = -1;
+	compiler.stats.link_time = -1;
 
 	INFO_LOG("Version: %s", COMPILER_VERSION);
 
@@ -172,6 +166,8 @@ typedef struct CompileData_
 	const char *cflags;
 	const char **cinclude_dirs;
 	const char *output_subdir;
+	bool (*compile)(void *compile_data);
+	double time;
 } CompileData;
 
 #if LLVM_AVAILABLE
@@ -212,6 +208,22 @@ static bool thread_compile_task_tb(void *compile_data)
 	CompileData *data = compile_data;
 	data->object_name = tilde_codegen(data->context);
 	return data->object_name != NULL;
+}
+
+static bool thread_compile_task_timed(void *compile_data)
+{
+	CompileData *data = compile_data;
+	BenchTime start = benchstart();
+	bool success = data->compile(data);
+	data->time = benchmark(start);
+	return success;
+}
+
+static Task *compile_data_task(CompileData *data, bool (*compile)(void *compile_data))
+{
+	data->compile = compile;
+	data->task = (Task){ compiler.build.collect_stats ? &thread_compile_task_timed : compile, data };
+	return &data->task;
 }
 
 #if !TB_AVAILABLE
@@ -310,34 +322,13 @@ const char *static_lib_name(void)
 
 static void free_arenas(void)
 {
-	if (compiler.build.print_stats)
+	if (compiler.build.collect_stats)
 	{
-		printf("-- AST/EXPR/TYPE INFO -- \n");
-		printf(" * Ast size:       %u bytes\n", (unsigned)sizeof(Ast));
-		printf(" * Decl size:      %u bytes\n", (unsigned)sizeof(Decl));
-		printf(" * Expr size:      %u bytes\n", (unsigned)sizeof(Expr));
-		printf(" * TypeInfo size:  %u bytes\n", (unsigned)sizeof(TypeInfo));
-		printf(" * SourceLoc size: %u bytes\n", (unsigned)sizeof(SourceLoc));
-		printf(" - Memory use ----------- \n");
-
-		printf(" * Ast:       %llu kb (%u elements)\n",
-			   (unsigned long long)ast_arena.allocated / 1024,
-			   (unsigned)(ast_arena.allocated / sizeof(Ast)));
-		printf(" * Decl:      %llu kb (%u elements)\n",
-			   (unsigned long long)decl_arena.allocated / 1024,
-			   (unsigned)(decl_arena.allocated / sizeof(Decl)));
-		printf(" * Expr:      %llu kb (%u elements)\n",
-			   (unsigned long long)expr_arena.allocated / 1024,
-			   (unsigned)(expr_arena.allocated / sizeof(Expr)));
-		printf(" * TypeInfo:  %llu kb (%u elements)\n",
-			   (unsigned long long)type_info_arena.allocated / 1024,
-			   (unsigned)(type_info_arena.allocated / sizeof(TypeInfo)));
-		printf(" * SourceLoc: %llu kb (%u elements)\n",
-			   (unsigned long long)sourceloc_arena.allocated / 1024,
-			   (unsigned)(sourceloc_arena.allocated / sizeof(SourceLoc)));
-		printf(" * Total:     %llu kb\n",
-			   (unsigned long long)(sourceloc_arena.allocated + decl_arena.allocated + expr_arena.allocated + type_info_arena.allocated + type_info_arena.allocated) / 1024);
-
+		compiler.stats.ast_memory = ast_arena.allocated;
+		compiler.stats.decl_memory = decl_arena.allocated;
+		compiler.stats.expr_memory = expr_arena.allocated;
+		compiler.stats.type_info_memory = type_info_arena.allocated;
+		compiler.stats.sourceloc_memory = sourceloc_arena.allocated;
 	}
 
 	ast_arena_free();
@@ -345,131 +336,6 @@ static void free_arenas(void)
 	expr_arena_free();
 	type_info_arena_free();
 	sourceloc_arena_free();
-
-	if (compiler.build.print_stats) print_arena_status();
-}
-
-typedef struct
-{
-	Module *module;
-	Decl *generic;
-	int count;
-} GenericInstanceCount;
-
-static int generic_instance_count_cmp(const void *a, const void *b)
-{
-	int count_a = ((const GenericInstanceCount *)a)->count;
-	int count_b = ((const GenericInstanceCount *)b)->count;
-	return count_b - count_a;
-}
-
-static void print_generic_instance_stats(void)
-{
-	// Sections with the same parameters share an id, but instances are stored on the section that was used.
-	GenericInstanceCount *counts = NULL;
-	FOREACH(Module *, module, compiler.context.module_list)
-	{
-		FOREACH(Decl *, generic, module->generic_sections)
-		{
-			int instances = vec_size(generic->generic_decl.instances);
-			if (!instances) continue;
-			FOREACH_IDX(i, GenericInstanceCount, entry, counts)
-			{
-				if (entry.generic->generic_decl.id != generic->generic_decl.id) continue;
-				counts[i].count += instances;
-				goto NEXT;
-			}
-			vec_add(counts, ((GenericInstanceCount) { .module = module, .generic = generic, .count = instances }));
-NEXT:;
-		}
-	}
-	int entries = vec_size(counts);
-	if (!entries) return;
-	qsort(counts, entries, sizeof(GenericInstanceCount), &generic_instance_count_cmp);
-	if (entries > 10) entries = 10;
-	OUTN("--- Generic instance top list ----------------------------------------");
-	for (int i = 0; i < entries; i++)
-	{
-		scratch_buffer_clear();
-		scratch_buffer_append(counts[i].module->name->module);
-		scratch_buffer_append(" {");
-		FOREACH_IDX(j, const char *, param, counts[i].generic->generic_decl.parameters)
-		{
-			if (j) scratch_buffer_append(", ");
-			scratch_buffer_append(param);
-		}
-		scratch_buffer_append("}");
-		OUTF("%2u %-50s %6u instances\n", i + 1, scratch_buffer_to_string(), counts[i].count);
-	}
-	OUTN("----------------------------------------------------------------------");
-	OUTN("");
-}
-
-static void compiler_print_bench(void)
-{
-	if (compiler.build.print_stats)
-	{
-		puts("--------- Compilation time statistics --------\n");
-		double last = compiler_init_time;
-		double parse_time = compiler_parsing_time - compiler_init_time;
-		if (compiler_parsing_time >= 0) last = compiler_parsing_time;
-		double sema_time = compiler_sema_time - compiler_parsing_time;
-		if (compiler_sema_time >= 0) last = compiler_sema_time;
-		double ir_time = compiler_ir_gen_time - compiler_sema_time;
-		if (compiler_ir_gen_time >= 0) last = compiler_ir_gen_time;
-		double codegen_time = compiler_codegen_time - compiler_ir_gen_time;
-		if (compiler_codegen_time >= 0) last = compiler_codegen_time;
-		double link_time = compiler_link_time - compiler_codegen_time;
-		if (compiler_link_time >= 0) last = compiler_link_time;
-		printf("Frontend -------------------- Time --- %% total\n");
-		if (compiler_init_time >= 0)
-		{
-			compiler_init_time -= compiler.script_time;
-			printf("Initialization took: %10.3f ms  %8.1f %%\n", compiler_init_time * 1000, compiler_init_time * 100 / last);
-			if (compiler.script_time > 0)
-			{
-				printf("Scripts took:        %10.3f ms  %8.1f %%\n", compiler.script_time * 1000, compiler.script_time * 100 / last);
-			}
-		}
-		if (compiler_parsing_time >= 0) printf("Parsing took:        %10.3f ms  %8.1f %%\n", parse_time * 1000, parse_time * 100 / last);
-		if (compiler_sema_time >= 0)
-		{
-			printf("Analysis took:       %10.3f ms  %8.1f %%\n", sema_time * 1000, sema_time * 100 / last);
-			if (compiler.exec_time > 0)
-			{
-				printf(" - Scripts took:     %10.3f ms  %8.1f %%\n", compiler.exec_time * 1000, compiler.exec_time * 100 / last);
-			}
-			printf("TOTAL:               %10.3f ms  %8.1f %%\n", compiler_sema_time * 1000, compiler_sema_time * 100 / last);
-			puts("");
-		}
-		if (compiler_ir_gen_time >= 0)
-		{
-			printf("Backend --------------------- Time --- %% total\n");
-			printf("Ir gen took:         %10.3f ms  %8.1f %%\n", ir_time * 1000, ir_time * 100 / last);
-			if (compiler_codegen_time >= 0)
-			{
-				if (compiler.build.build_threads > 1)
-				{
-					printf("Codegen took:        %10.3f ms  %8.1f %%  (%d threads)\n", codegen_time * 1000, codegen_time * 100 / last, compiler.build.build_threads);
-				}
-				else
-				{
-					printf("Codegen took:        %10.3f ms  %8.1f %%\n", codegen_time * 1000, codegen_time * 100 / last);
-				}
-			}
-			if (compiler_link_time >= 0)
-			{
-				printf("Linking took:        %10.3f ms  %8.1f %%\n", link_time * 1000, link_time * 100 / last);
-			}
-			printf("TOTAL:               %10.3f ms  %8.1f %%\n", (last - compiler_sema_time) * 1000, 100 - compiler_sema_time * 100 / last);
-		}
-		if (last)
-		{
-			puts("----------------------------------------------");
-			printf("TOTAL compile time: %.3f ms.\n", last * 1000);
-			puts("----------------------------------------------");
-		}
-	}
 }
 
 void delete_object_files(const char **files, size_t count)
@@ -527,7 +393,7 @@ void compiler_parse(void)
 		}
 		exit_compiler(EXIT_FAILURE);
 	}
-	compiler_parsing_time = bench_mark();
+	compiler.stats.parsing_time = bench_mark();
 }
 
 bool compiler_should_output_file(const char *file)
@@ -697,17 +563,19 @@ static bool compiler_link_exe(const char *output_exe, const char **obj_files, in
 		}
 	if (use_system_linker || compiler.build.linker_type == LINKER_TYPE_CC)
 	{
+		compiler.stats.linker = str_printf("system, using %s", cc ? cc : find_c_compiler());
 		platform_linker(output_exe, obj_files, output_file_count);
-		compiler_link_time = bench_mark();
+		compiler.stats.link_time = bench_mark();
 		return true;
 	}
+	compiler.stats.linker = "built-in (LLD)";
 	if (!obj_format_linking_supported(compiler.platform.object_format) || !linker(output_exe, obj_files, output_file_count))
 	{
 		eprintf("No linking is performed due to missing linker support.\n");
 		compiler.build.run_after_compile = false;
 		return false;
 	}
-	compiler_link_time = bench_mark();
+	compiler.stats.link_time = bench_mark();
 	return true;
 }
 
@@ -728,8 +596,8 @@ void compiler_compile(void)
 		eprintf("> ENDLSP-OK\n");
 		exit_compiler(COMPILER_SUCCESS_EXIT);
 	}
-	compiler_sema_time = bench_mark();
-	if (compiler.build.print_stats) print_generic_instance_stats();
+	compiler.stats.sema_time = bench_mark();
+	if (compiler.build.collect_stats) stats_collect_after_sema();
 	Module **modules = compiler.context.module_list;
 	int module_count = vec_size(modules);
 	if (module_count > MAX_MODULES)
@@ -752,6 +620,7 @@ void compiler_compile(void)
 	if (compiler.build.check_only)
 	{
 		free_arenas();
+		compiler_print_stats();
 		return;
 	}
 
@@ -816,7 +685,7 @@ void compiler_compile(void)
 		default:
 			UNREACHABLE_VOID
 	}
-	compiler_ir_gen_time = bench_mark();
+	compiler.stats.ir_gen_time = bench_mark();
 	const char *output_exe = NULL;
 	const char *output_static = NULL;
 	const char *output_dynamic = NULL;
@@ -918,8 +787,7 @@ void compiler_compile(void)
 	for (int i = 0; i < output_file_count; i++)
 	{
 		compile_data[data_idx] = (CompileData){ .context = gen_contexts[i] };
-		compile_data[data_idx].task = (Task){ task, &compile_data[data_idx] };
-		vec_add(tasks, &compile_data[data_idx].task);
+		vec_add(tasks, compile_data_task(&compile_data[data_idx], task));
 		data_idx++;
 	}
 
@@ -939,8 +807,7 @@ void compiler_compile(void)
 				.cinclude_dirs = lib->cinclude_dirs,
 				.output_subdir = lib->parent->provides,
 			};
-			compile_data[data_idx].task = (Task){ &thread_compile_c_source, &compile_data[data_idx] };
-			vec_add(tasks, &compile_data[data_idx].task);
+			vec_add(tasks, compile_data_task(&compile_data[data_idx], &thread_compile_c_source));
 			data_idx++;
 		}
 	}
@@ -954,8 +821,7 @@ void compiler_compile(void)
 			.cinclude_dirs = compiler.build.cinclude_dirs,
 			.output_subdir = "tmp_c_compile",
 		};
-		compile_data[data_idx].task = (Task){ &thread_compile_c_source, &compile_data[data_idx] };
-		vec_add(tasks, &compile_data[data_idx].task);
+		vec_add(tasks, compile_data_task(&compile_data[data_idx], &thread_compile_c_source));
 		data_idx++;
 	}
 
@@ -971,8 +837,7 @@ void compiler_compile(void)
 			// The index keeps the objects of files with the same name apart.
 			const char *object_name = file_append_path(ir_dir, str_printf("%d_%s%s", i, filename, get_object_extension()));
 			compile_data[data_idx] = (CompileData){ .context = llvm_load_ir_file(ir_src, object_name) };
-			compile_data[data_idx].task = (Task){ &thread_compile_task_llvm_ir, &compile_data[data_idx] };
-			vec_add(tasks, &compile_data[data_idx].task);
+			vec_add(tasks, compile_data_task(&compile_data[data_idx], &thread_compile_task_llvm_ir));
 			data_idx++;
 		}
 	}
@@ -991,6 +856,9 @@ void compiler_compile(void)
 		{
 			exit_compiler(EXIT_FAILURE);
 		}
+		compiler.stats.codegen_threads = threads;
+		compiler.stats.codegen_tasks = task_count;
+		for (int i = 0; i < task_count; i++) compiler.stats.codegen_thread_time += compile_data[i].time;
 	}
 	if (compiler.build.print_output)
 	{
@@ -1019,7 +887,14 @@ void compiler_compile(void)
 	output_file_count = index;
 	int objfile_delete_count = index - external_objfile_count;
 	free(compile_data);
-	compiler_codegen_time = bench_mark();
+	compiler.stats.codegen_time = bench_mark();
+	if (compiler.build.collect_stats)
+	{
+		stats_collect_object_size(obj_files, objfile_delete_count);
+#if LLVM_AVAILABLE
+		if (compiler.build.backend == BACKEND_LLVM) llvm_collect_module_times();
+#endif
+	}
 
 	if ((output_static || output_dynamic || output_exe) && !output_file_count)
 	{
@@ -1041,7 +916,7 @@ void compiler_compile(void)
 		should_delete_object_files = false;
 		if (compiler_link_exe(output_exe, obj_files, output_file_count))
 		{
-			compiler_print_bench();
+			compiler_print_stats();
 			delete_object_files(obj_files, objfile_delete_count);
 			if (compiler.build.run_after_compile)
 			{
@@ -1051,7 +926,7 @@ void compiler_compile(void)
 		}
 		else
 		{
-			compiler_print_bench();
+			compiler_print_stats();
 		}
 		// Note that cleanup doesn't happen on failure to link.
 	}
@@ -1063,8 +938,8 @@ void compiler_compile(void)
 			delete_object_files(obj_files, objfile_delete_count);
 			error_exit("Failed to produce static library '%s'.", output_static);
 		}
-		compiler_link_time = bench_mark();
-		compiler_print_bench();
+		compiler.stats.link_time = bench_mark();
+		compiler_print_stats();
 		OUTF("Static library '%s' created.\n", output_static);
 	}
 	else if (output_dynamic)
@@ -1076,13 +951,13 @@ void compiler_compile(void)
 			error_exit("Failed to produce dynamic library '%s'.", output_dynamic);
 		}
 		OUTF("Dynamic library '%s' created.\n", output_dynamic);
-		compiler_link_time = bench_mark();
-		compiler_print_bench();
+		compiler.stats.link_time = bench_mark();
+		compiler_print_stats();
 	}
 	else
 	{
 		should_delete_object_files = false;
-		compiler_print_bench();
+		compiler_print_stats();
 	}
 	if (should_delete_object_files) delete_object_files(obj_files, objfile_delete_count);
 	free(obj_files);
@@ -2328,7 +2203,7 @@ void compile(void)
 	setup_define("AUTHOR_EMAILS", expr_emails);
 	setup_string_define("PROJECT_VERSION", compiler.build.version);
 	type_init_cint();
-	compiler_init_time = bench_mark();
+	compiler.stats.init_time = bench_mark();
 
 	if (!vec_size((compiler.build.object_files)) && !vec_size(compiler.build.llvm_ir_files) && !vec_size(compiler.build.sources) && !compiler.build.read_stdin) error_exit("No files to compile.");
 	if (vec_size(compiler.build.llvm_ir_files) && compiler.build.backend != BACKEND_LLVM)
@@ -2339,13 +2214,13 @@ void compile(void)
 	if (compiler.build.lex_only)
 	{
 		compiler_lex();
-		compiler_parsing_time = bench_mark();
+		compiler.stats.parsing_time = bench_mark();
 		return;
 	}
 	if (compiler.build.parse_only)
 	{
 		compiler_parse();
-		compiler_parsing_time = bench_mark();
+		compiler.stats.parsing_time = bench_mark();
 		emit_json();
 		exit_compiler(COMPILER_SUCCESS_EXIT);
 	}

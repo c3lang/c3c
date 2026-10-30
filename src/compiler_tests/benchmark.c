@@ -41,23 +41,51 @@ double benchmark(BenchTime start)
 
 #else
 
+#if PLATFORM_WINDOWS
+#include <windows.h>
+// A monotonic wall clock, clock() would be the process CPU time on some platforms.
+static BenchTime bench_now(void)
+{
+	LARGE_INTEGER counter;
+	QueryPerformanceCounter(&counter);
+	return counter.QuadPart;
+}
+
+static double bench_frequency(void)
+{
+	LARGE_INTEGER frequency;
+	QueryPerformanceFrequency(&frequency);
+	return (double)frequency.QuadPart;
+}
+#else
+static BenchTime bench_now(void)
+{
+	return (BenchTime)clock();
+}
+
+static double bench_frequency(void)
+{
+	return (double)CLOCKS_PER_SEC;
+}
+#endif
+
 void bench_begin(void)
 {
-	begin = clock();
+	begin = bench_now();
 }
 double bench_mark(void)
 {
-	return (clock() - begin) / (double)CLOCKS_PER_SEC;
+	return (double)(bench_now() - begin) / bench_frequency();
 }
 
 BenchTime benchstart(void)
 {
-	return clock();
+	return bench_now();
 }
 
 double benchmark(BenchTime start)
 {
-	return (clock() - start) / (double)CLOCKS_PER_SEC;
+	return (double)(bench_now() - start) / bench_frequency();
 }
 
 #endif

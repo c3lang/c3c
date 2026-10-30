@@ -19,6 +19,7 @@ File *source_file_text_load(const char *filename, char *content)
 {
 	File *file = CALLOCS(File);
 	file->file_id = vec_size(compiler.context.loaded_sources);
+	file->kind = FILE_KIND_TEXT;
 	file->full_path = str_copy(filename, strlen(filename));
 	file->content_len = file_clean_buffer(content, filename, strlen(content));
 	file->contents = content;
@@ -33,6 +34,7 @@ File *source_file_generate(const char *filename)
 {
 	File *file = CALLOCS(File);
 	file->file_id = vec_size(compiler.context.loaded_sources);
+	file->kind = FILE_KIND_GENERATED;
 	file->full_path = "<generated>";
 	file->contents = "";
 	file->name = str_dup(filename);
@@ -72,6 +74,7 @@ File *source_file_load(const char *filename, bool *already_loaded, const char **
 	const char* source_text = file_read_all(filename, &size);
 	File *file = CALLOCS(File);
 	file->file_id = vec_size(compiler.context.loaded_sources);
+	file->kind = FILE_KIND_SOURCE;
 	file->full_path = full_path;
 	file->contents = source_text;
 	file->content_len = size;

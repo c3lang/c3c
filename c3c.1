@@ -162,6 +162,29 @@ Silence unnecessary output.
 Verbose output. -v for default, -vv and -vvv gives more information.
 .RE
 .PP
+.B --stats=<none|summary|full|json>
+.RS
+Print compiler statistics after the compilation.
+.I summary
+shows the build and host information, phase timings, code by origin, memory use and output counts.
+.I full
+also lists the most instantiated generics and the largest functions and modules.
+.I json
+writes everything as JSON to
+.I stats-<date>-<time>.json
+in the current directory, adding a number if that file exists.
+-vv implies
+.IR summary ,
+use
+.I none
+to turn it off. Statistics are not produced for -E and -P.
+.RE
+.PP
+.B --stats-file=<path>
+.RS
+Write the JSON statistics to the given file. Implies --stats=json.
+.RE
+.PP
 .B -E
 .RS
 Lex only.
@@ -497,11 +520,6 @@ Show detailed backtrace on segfaults.
 .B --lsp
 .RS
 Emit data about errors suitable for a LSP.
-.RE
-.PP
-.B --print-large-functions
-.RS
-Print functions with large compile size.
 .RE
 .PP
 .B --warn-deadcode=
