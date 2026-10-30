@@ -892,6 +892,13 @@ BUILD:
 			target->output_ast = true;
 			break;
 	}
+	if (options->ast_dump_mode)
+	{
+		target->ast_dump_output = true;
+		target->emit_llvm = false;
+		target->emit_asm = false;
+		target->emit_object_files = false;
+	}
 	if (options->lsp_mode)
 	{
 		target->lsp_output = true;

@@ -69,6 +69,12 @@ static AlignSize max_alignment_vector;
 
 static void type_append_func_to_scratch(Signature *signature);
 
+void *types_struct(size_t* size) 
+{
+	*size = sizeof(t);
+	return &t;
+}
+
 void type_init_cint(void)
 {
 	type_cint = type_int_signed_by_bitsize(compiler.platform.width_c_int);
