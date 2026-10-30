@@ -1089,7 +1089,7 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->validation_level = parse_opt_select(ValidationLevel, argopt, validation_levels);
 				return;
 			}
-			if ((argopt = match_argopt("stats-file"))) // NOLINT
+			if (match_longopt("stats-file")) // NOLINT
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --stats-file needs a filename.");
 				options->stats_file = next_arg();
