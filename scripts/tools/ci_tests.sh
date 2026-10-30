@@ -522,14 +522,14 @@ run_fetch_tests() {
     write_info other ",\"checksum\":\"md5:$bad_sum\""
 
     cd "$ROOT_DIR/resources/examples"
-    run_c3c compile -O1 http_server.c3 -o fetch_registry_server
+    run_c3c compile -O0 -g0 --linker=builtin http_server.c3 -o fetch_registry_server
     local server_bin="$MY_WORK_DIR/fetch_registry_server"
     if [[ "$OS_MODE" == "windows" ]]; then server_bin="$server_bin.exe"; fi
 
     local PORT=$(( 8085 + $RANDOM % 10000 ))
     "$server_bin" -p $PORT -r "$REGISTRY" > "$MY_WORK_DIR/server.log" 2>&1 &
     local SERVER_PID=$!
-    trap 'kill $SERVER_PID 2>/dev/null || true' RETURN
+    trap 'kill -9 $SERVER_PID 2>/dev/null || true' RETURN
 
     local ready=false
     for ((i = 1; i <= 30; i++)); do
@@ -592,7 +592,7 @@ run_fetch_tests() {
         cd app
         "$C3C_BIN" project fetch
         test -f lib/vk.c3l/manifest.json
-        run_c3c build
+        run_c3c build -C
     )
 
     echo "fetch records the library with its version, and the registry unless the project has one"
