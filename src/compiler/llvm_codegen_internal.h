@@ -16,6 +16,8 @@
 extern const char *varargslots_name;
 extern const char *temp_name;
 
+#define PANIC_SLOT_COUNT 10
+
 typedef enum
 {
 	BE_VALUE,
@@ -143,6 +145,9 @@ typedef struct GenContext_
 		LLVMBasicBlockRef current_block;
 		// The panic blocks to emit at the end.
 		LLVMBasicBlockRef *panic_blocks;
+		// Stack slots shared by the panic calls in panic_slots_func.
+		LLVMValueRef panic_slots_func;
+		BEValue panic_slots[PANIC_SLOT_COUNT];
 		// Debug data
 		DebugContext debug;
 	};

@@ -33,14 +33,12 @@ fn void main()
 }
 
 /* #expect: repro.ll
-
-
 define void @repro.main() #0 {
 entry:
   %foo = alloca %Foo, align 8
   %error_var = alloca i64, align 8
   %varargslots = alloca [1 x %any], align 16
-  %indirectarg = alloca %"any[]", align 8
+  %panicarg = alloca %"any[]", align 8
   call void @llvm.memset.p0.i64(ptr align 8 %foo, i8 0, i64 80, i1 false)
   call void @repro.Foo.add_fn_a(ptr %foo, ptr @repro.a_func)
   call void @repro.Foo.add_fn_b(ptr %foo, ptr @repro.b_func)

@@ -22,7 +22,7 @@ entry:
   %error_var1 = alloca i64, align 8
   %retparam = alloca i32, align 4
   %varargslots = alloca [1 x %any], align 16
-  %indirectarg = alloca %"any[]", align 8
+  %panicarg = alloca %"any[]", align 8
   %0 = call i64 @test.xy(ptr %retparam)
   %not_err = icmp eq i64 %0, 0
   %1 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
@@ -41,18 +41,18 @@ guard_block:                                      ; preds = %assign_optional
   br label %panic_block
 
 noerr_block:                                      ; preds = %after_check
-  br label %noerr_block2
+  br label %noerr_block3
 
 panic_block:                                      ; preds = %guard_block
-  %3 = insertvalue %any undef, ptr %error_var, 0
-  %4 = insertvalue %any %3, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
-  store %any %4, ptr %varargslots, align 16
-  %5 = insertvalue %"any[]" undef, ptr %varargslots, 0
-  %"$$temp" = insertvalue %"any[]" %5, i64 1, 1
-  store %"any[]" %"$$temp", ptr %indirectarg, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 32, ptr @.func, i64 4, i32 13, ptr byval(%"any[]") align 8 %indirectarg)
+  store ptr %error_var, ptr %varargslots, align 16
+  %ptradd = getelementptr inbounds i8, ptr %varargslots, i64 8
+  store i64 ptrtoint (ptr @"$ct.fault" to i64), ptr %ptradd, align 8
+  store ptr %varargslots, ptr %panicarg, align 8
+  %ptradd2 = getelementptr inbounds i8, ptr %panicarg, i64 8
+  store i64 1, ptr %ptradd2, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg,
   unreachable
 
-noerr_block2:                                     ; preds = %noerr_block
+noerr_block3:                                     ; preds = %noerr_block
   ret void
 }

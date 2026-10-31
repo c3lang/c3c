@@ -282,7 +282,7 @@ entry:
   %retparam = alloca ptr, align 8
   %varargslots = alloca [1 x %any], align 8
   %taddr = alloca %"any[]", align 8
-  %retparam8 = alloca %"char[]", align 8
+  %retparam9 = alloca %"char[]", align 8
   store ptr null, ptr %.cachedtype, align 8
   %0 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocators.thread_allocator)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %allocator, ptr align 8 %0, i32 16, i1 false)
@@ -348,13 +348,13 @@ after_check:                                      ; preds = %match
   br label %noerr_block
 
 panic_block:                                      ; preds = %assign_optional
-  %19 = insertvalue %any undef, ptr %error_var, 0
-  %20 = insertvalue %any %19, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
-  store %any %20, ptr %varargslots, align 8
-  %21 = insertvalue %"any[]" undef, ptr %varargslots, 0
-  %"$$temp" = insertvalue %"any[]" %21, i64 1, 1
+  store ptr %error_var, ptr %varargslots, align 8
+  %ptradd5 = getelementptr inbounds i8, ptr %varargslots, i64 8
+  store i64 ptrtoint (ptr @"$ct.fault" to i64), ptr %ptradd5, align 8
+  %19 = insertvalue %"any[]" undef, ptr %varargslots, 0
+  %"$$temp" = insertvalue %"any[]" %19, i64 1, 1
   store %"any[]" %"$$temp", ptr %taddr, align 8
-  %22 = load [2 x i64], ptr %taddr, align 8
+  %20 = load [2 x i64], ptr %taddr, align 8
   call void @std.core.builtin.panicf([2 x i64]
   unreachable
 
@@ -362,31 +362,31 @@ noerr_block:                                      ; preds = %after_check
   store %"char[]" %18, ptr %buffer, align 8
   store i64 0, ptr %buffer.f, align 8
   %optval = load i64, ptr %buffer.f, align 8
-  %not_err5 = icmp eq i64 %optval, 0
-  %23 = call i1 @llvm.expect.i1(i1 %not_err5, i1 true)
-  br i1 %23, label %after_check7, label %assign_optional6
+  %not_err6 = icmp eq i64 %optval, 0
+  %21 = call i1 @llvm.expect.i1(i1 %not_err6, i1 true)
+  br i1 %21, label %after_check8, label %assign_optional7
 
-assign_optional6:                                 ; preds = %noerr_block
+assign_optional7:                                 ; preds = %noerr_block
   store i64 %optval, ptr %buffer.f, align 8
   br label %after_assign
 
-after_check7:                                     ; preds = %noerr_block
-  %24 = load [2 x i64], ptr %buffer, align 8
-  %25 = call i64 @test.fileReader(ptr %retparam8, [2 x i64] [i64 ptrtoint (ptr @.str.5 to i64), i64 13], [2 x i64] %24)
-  %not_err9 = icmp eq i64 %25, 0
-  %26 = call i1 @llvm.expect.i1(i1 %not_err9, i1 true)
-  br i1 %26, label %after_check11, label %assign_optional10
+after_check8:                                     ; preds = %noerr_block
+  %22 = load [2 x i64], ptr %buffer, align 8
+  %23 = call i64 @test.fileReader(ptr %retparam9, [2 x i64] [i64 ptrtoint (ptr @.str.5 to i64), i64 13], [2 x i64] %22)
+  %not_err10 = icmp eq i64 %23, 0
+  %24 = call i1 @llvm.expect.i1(i1 %not_err10, i1 true)
+  br i1 %24, label %after_check12, label %assign_optional11
 
-assign_optional10:                                ; preds = %after_check7
-  store i64 %25, ptr %buffer.f, align 8
+assign_optional11:                                ; preds = %after_check8
+  store i64 %23, ptr %buffer.f, align 8
   br label %after_assign
 
-after_check11:                                    ; preds = %after_check7
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %buffer, ptr align 8 %retparam8, i32 16, i1 false)
+after_check12:                                    ; preds = %after_check8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %buffer, ptr align 8 %retparam9, i32 16, i1 false)
   store i64 0, ptr %buffer.f, align 8
   br label %after_assign
 
-after_assign:                                     ; preds = %after_check11, %assign_optional10, %assign_optional6
+after_assign:                                     ; preds = %after_check12, %assign_optional11, %assign_optional7
   ret void
 }
 

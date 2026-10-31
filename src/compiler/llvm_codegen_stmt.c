@@ -1541,6 +1541,91 @@ void llvm_emit_unreachable(GenContext *c)
 	c->current_block = NULL;
 }
 
+static BEValue llvm_panic_slot(GenContext *c, int index, Type *type, AlignSize alignment, const char *name)
+{
+	ASSERT(index < PANIC_SLOT_COUNT);
+	if (c->panic_slots_func != c->cur_func.ref)
+	{
+		memset(c->panic_slots, 0, sizeof(c->panic_slots));
+		c->panic_slots_func = c->cur_func.ref;
+	}
+	BEValue *slot = &c->panic_slots[index];
+	if (!slot->value || slot->type != type_lowering(type) || slot->alignment != alignment)
+	{
+		*slot = llvm_emit_alloca_b_realign(c, type, alignment, name);
+	}
+	return *slot;
+}
+
+INLINE bool llvm_is_small_integer_struct(GenContext *c, LLVMTypeRef strukt, unsigned member_count)
+{
+	if (member_count > 4) return false;
+	for (unsigned i = 0; i < member_count; i++)
+	{
+		LLVMTypeRef field_type = LLVMStructGetTypeAtIndex(strukt, i);
+		LLVMTypeKind kind = LLVMGetTypeKind(field_type);
+		if (kind != LLVMPointerTypeKind
+			&& (kind != LLVMIntegerTypeKind || field_type == c->bool_type)) return false;
+	}
+	return true;
+}
+static void llvm_store_split(GenContext *c, BEValue *dest, BEValue *value)
+{
+	LLVMValueRef val = value->value;
+	LLVMTypeRef type = LLVMTypeOf(val);
+	if (llvm_value_is_addr(value) || LLVMGetTypeKind(type) != LLVMStructTypeKind) goto FALLBACK;
+
+	// Structs can be explicitly stored element by element to make the isel work better.
+	unsigned count = LLVMCountStructElementTypes(type);
+	if (!llvm_is_small_integer_struct(c, type, count)) goto FALLBACK;
+	LLVMValueRef fields[4] = { NULL };
+	if (LLVMIsConstant(val))
+	{
+		for (unsigned i = 0; i < count; i++) fields[i] = LLVMGetAggregateElement(val, i);
+	}
+	else
+	{
+		LLVMValueRef base = val;
+		while (LLVMIsAInsertValueInst(base))
+		{
+			if (LLVMGetNumIndices(base) != 1) goto FALLBACK;
+			unsigned index = LLVMGetIndices(base)[0];
+			if (!fields[index]) fields[index] = LLVMGetOperand(base, 1);
+			base = LLVMGetOperand(base, 0);
+		}
+		if (!LLVMIsUndef(base) && !LLVMIsPoison(base)) goto FALLBACK;
+	}
+	for (unsigned i = 0; i < count; i++)
+	{
+		if (!fields[i] || LLVMIsUndef(fields[i])) continue;
+		AlignSize alignment;
+		LLVMValueRef ptr = llvm_emit_struct_gep_raw(c, dest->value, type, (int)i, dest->alignment, &alignment);
+		llvm_store_to_ptr_raw_aligned(c, ptr, fields[i], alignment);
+	}
+	// Remove the insertvalue chain if nothing else uses it.
+	while (LLVMIsAInsertValueInst(val) && !LLVMGetFirstUse(val))
+	{
+		LLVMValueRef next = LLVMGetOperand(val, 0);
+		LLVMInstructionEraseFromParent(val);
+		val = next;
+	}
+	return;
+FALLBACK:
+	llvm_store(c, dest, value);
+}
+
+static void llvm_emit_panic_parameter(GenContext *c, LLVMValueRef *args, int *count, ABIArgInfo *info, int index, BEValue *value)
+{
+	if (info->kind != ABI_ARG_INDIRECT)
+	{
+		llvm_emit_parameter(c, args, count, info, value);
+		return;
+	}
+	BEValue indirect = llvm_panic_slot(c, index, info->original_type, info->indirect.alignment, "panicarg");
+	llvm_store_split(c, &indirect, value);
+	args[(*count)++] = indirect.value;
+}
+
 void llvm_emit_panic(GenContext *c, const char *message, SourceLocId loc, const char *fmt, BEValue *varargs)
 {
 	if (c->debug.builder) llvm_emit_debug_location(c, loc);
@@ -1577,7 +1662,7 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceLocId loc, const 
 	{
 		Type *type = type_lowering(abi_args[i]->original_type);
 		BEValue value = { .value = panic_args[i], .type = type };
-		llvm_emit_parameter(c, actual_args, &count, abi_args[i], &value);
+		llvm_emit_panic_parameter(c, actual_args, &count, abi_args[i], i, &value);
 	}
 
 	if (panicf)
@@ -1585,18 +1670,20 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceLocId loc, const 
 		int elements = vec_size(varargs);
 		Type *any_slice = type_get_slice(type_any);
 		Type *any_array = type_get_array(type_any, elements);
-		BEValue array_ref = llvm_emit_alloca_b(c, any_array, varargslots_name);
+		BEValue array_ref = elements <= 3
+				? llvm_panic_slot(c, 6 + elements, any_array, type_alloca_alignment(any_array), varargslots_name)
+				: llvm_emit_alloca_b(c, any_array, varargslots_name);
 		int vacount = vec_size(varargs);
 		for (int i = 0; i < vacount; i++)
 		{
 			BEValue slot = llvm_emit_array_gep(c, &array_ref, i);
-			llvm_store(c, &slot, &varargs[i]);
+			llvm_store_split(c, &slot, &varargs[i]);
 		}
 		BEValue value;
 		llvm_value_aggregate_two(c, &value, any_slice, array_ref.value, LLVMConstInt(c->size_type, elements, false));
 		LLVMSetValueName2(value.value, temp_name, 6);
 
-		llvm_emit_parameter(c, actual_args, &count, abi_args[4], &value);
+		llvm_emit_panic_parameter(c, actual_args, &count, abi_args[4], 4, &value);
 
 		BEValue res;
 		if (c->debug.builder) llvm_emit_debug_location(c, loc);
@@ -1644,17 +1731,19 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 	llvm_emit_block(c, panic_block);
 	vec_add(c->panic_blocks, panic_block);
 	BEValue *values = NULL;
-	if (value_1)
+	BEValue *panic_values[2] = { value_1, value_1 ? value_2 : NULL };
+	for (int i = 0; i < 2 && panic_values[i]; i++)
 	{
-		BEValue var = *value_1;
+		BEValue var = *panic_values[i];
+		llvm_value_fold_optional(c, &var);
+		if (!llvm_value_is_addr(&var))
+		{
+			BEValue temp = llvm_panic_slot(c, 5 + i, var.type, type_alloca_alignment(var.type), "taddr");
+			llvm_store(c, &temp, &var);
+			var = temp;
+		}
 		llvm_emit_any_from_value(c, &var, var.type);
 		vec_add(values, var);
-		if (value_2)
-		{
-			var = *value_2;
-			llvm_emit_any_from_value(c, &var, var.type);
-			vec_add(values, var);
-		}
 	}
 	llvm_emit_panic(c, panic_name, loc, fmt, values);
 	llvm_emit_block(c, ok_block);

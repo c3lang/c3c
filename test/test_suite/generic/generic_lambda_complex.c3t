@@ -174,10 +174,8 @@ entry:
   %error_var = alloca i64, align 8
   %indirectarg = alloca %"char[]", align 8
   %varargslots = alloca [1 x %any], align 16
-  %indirectarg1 = alloca %"any[]", align 8
-  %error_var2 = alloca i64, align 8
-  %varargslots7 = alloca [1 x %any], align 16
-  %indirectarg9 = alloca %"any[]", align 8
+  %panicarg = alloca %"any[]", align 8
+  %error_var3 = alloca i64, align 8
   store %"char[]" { ptr @.str, i64 21 }, ptr %foo_tmpl, align 8
   call void @llvm.memset.p0.i64(ptr align 8 %ft, i8 0, i64 72, i1 false)
   %0 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocators.current_temp)
@@ -198,38 +196,38 @@ after_check:                                      ; preds = %entry
   br label %noerr_block
 
 panic_block:                                      ; preds = %assign_optional
-  %3 = insertvalue %any undef, ptr %error_var, 0
-  %4 = insertvalue %any %3, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
-  store %any %4, ptr %varargslots, align 16
-  %5 = insertvalue %"any[]" undef, ptr %varargslots, 0
-  %"$$temp" = insertvalue %"any[]" %5, i64 1, 1
-  store %"any[]" %"$$temp", ptr %indirectarg1, align 8
+  store ptr %error_var, ptr %varargslots, align 16
+  %ptradd1 = getelementptr inbounds i8, ptr %varargslots, i64 8
+  store i64 ptrtoint (ptr @"$ct.fault" to i64), ptr %ptradd1, align 8
+  store ptr %varargslots, ptr %panicarg, align 8
+  %ptradd2 = getelementptr inbounds i8, ptr %panicarg, i64 8
+  store i64 1, ptr %ptradd2, align 8
   call void @std.core.builtin.panicf(ptr @.panic_msg,
   unreachable
 
 noerr_block:                                      ; preds = %after_check
-  %6 = call i64 @"abc.TextTemplate$text_test.Foo$.free"(ptr %ft)
-  %not_err3 = icmp eq i64 %6, 0
-  %7 = call i1 @llvm.expect.i1(i1 %not_err3, i1 true)
-  br i1 %7, label %after_check5, label %assign_optional4
+  %3 = call i64 @"abc.TextTemplate$text_test.Foo$.free"(ptr %ft)
+  %not_err4 = icmp eq i64 %3, 0
+  %4 = call i1 @llvm.expect.i1(i1 %not_err4, i1 true)
+  br i1 %4, label %after_check6, label %assign_optional5
 
-assign_optional4:                                 ; preds = %noerr_block
-  store i64 %6, ptr %error_var2, align 8
-  br label %panic_block6
+assign_optional5:                                 ; preds = %noerr_block
+  store i64 %3, ptr %error_var3, align 8
+  br label %panic_block7
 
-after_check5:                                     ; preds = %noerr_block
+after_check6:                                     ; preds = %noerr_block
   br label %noerr_block10
 
-panic_block6:                                     ; preds = %assign_optional4
-  %8 = insertvalue %any undef, ptr %error_var2, 0
-  %9 = insertvalue %any %8, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
-  store %any %9, ptr %varargslots7, align 16
-  %10 = insertvalue %"any[]" undef, ptr %varargslots7, 0
-  %"$$temp8" = insertvalue %"any[]" %10, i64 1, 1
-  store %"any[]" %"$$temp8", ptr %indirectarg9, align 8
+panic_block7:                                     ; preds = %assign_optional5
+  store ptr %error_var3, ptr %varargslots, align 16
+  %ptradd8 = getelementptr inbounds i8, ptr %varargslots, i64 8
+  store i64 ptrtoint (ptr @"$ct.fault" to i64), ptr %ptradd8, align 8
+  store ptr %varargslots, ptr %panicarg, align 8
+  %ptradd9 = getelementptr inbounds i8, ptr %panicarg, i64 8
+  store i64 1, ptr %ptradd9, align 8
   call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36,
   unreachable
 
-noerr_block10:                                    ; preds = %after_check5
+noerr_block10:                                    ; preds = %after_check6
   ret void
 }
