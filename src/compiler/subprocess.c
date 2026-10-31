@@ -35,9 +35,9 @@ int run_subprocess(const char *name, const char **args)
 #if PLATFORM_WINDOWS
 	// https://docs.microsoft.com/en-us/windows/win32/procthread/creating-a-child-process-with-redirected-input-and-output
 
-	STARTUPINFOA siStartInfo;
+	STARTUPINFOW siStartInfo;
 	ZeroMemory(&siStartInfo, sizeof(siStartInfo));
-	siStartInfo.cb = sizeof(STARTUPINFO);
+	siStartInfo.cb = sizeof(STARTUPINFOW);
 	// NOTE: theoretically setting NULL to std handles should not be a problem
 	// https://docs.microsoft.com/en-us/windows/console/getstdhandle?redirectedfrom=MSDN#attachdetach-behavior
 	// TODO: check for errors in GetStdHandle
@@ -83,10 +83,10 @@ int run_subprocess(const char *name, const char **args)
 
 		if (need_quoting) scratch_buffer_append_char('"');
 	}
-
-	BOOL bSuccess = CreateProcessA(
+	LPWSTR command_line = win_utf8to16(scratch_buffer_to_string());
+	BOOL bSuccess = CreateProcessW(
 		NULL,
-		scratch_buffer_to_string(),
+		command_line,
 		NULL,
 		NULL,
 		TRUE,
@@ -99,6 +99,7 @@ int run_subprocess(const char *name, const char **args)
 	if (!bSuccess)
 	{
 		eprintf("Could not create child process: %lu", GetLastError());
+		free(command_line);
 		return -1;
 	}
 
@@ -112,6 +113,7 @@ int run_subprocess(const char *name, const char **args)
 	if (result == WAIT_FAILED)
 	{
 		eprintf("Could not wait on child process: %lu", GetLastError());
+		free(command_line);
 		return -1;
 	}
 
@@ -119,11 +121,13 @@ int run_subprocess(const char *name, const char **args)
 	if (!GetExitCodeProcess(piProcInfo.hProcess, &exit_status))
 	{
 		eprintf("Could not get process exit code: %lu", GetLastError());
+		free(command_line);
 		return -1;
 	}
 
 	CloseHandle(piProcInfo.hProcess);
 
+	free(command_line);
 	return exit_status;
 #else
 	const char **args_null = NULL;
