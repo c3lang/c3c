@@ -185,8 +185,7 @@ entry:
   store %"char[]" { ptr @.str.2, i64 2 }, ptr %indirectarg, align 8
   %1 = call i64 @"abc.TextTemplate$text_test.Foo$.init"(ptr %ft, ptr %lo, i64 %hi, ptr @.str.1, i64 2, ptr byval(%"char[]") align 8 %indirectarg, ptr byval(%any) align 8 %0)
   %not_err = icmp eq i64 %1, 0
-  %2 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %2, label %after_check, label %assign_optional
+  br i1 %not_err, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %entry
   store i64 %1, ptr %error_var, align 8
@@ -206,13 +205,12 @@ panic_block:                                      ; preds = %assign_optional
   unreachable
 
 noerr_block:                                      ; preds = %after_check
-  %3 = call i64 @"abc.TextTemplate$text_test.Foo$.free"(ptr %ft)
-  %not_err4 = icmp eq i64 %3, 0
-  %4 = call i1 @llvm.expect.i1(i1 %not_err4, i1 true)
-  br i1 %4, label %after_check6, label %assign_optional5
+  %2 = call i64 @"abc.TextTemplate$text_test.Foo$.free"(ptr %ft)
+  %not_err4 = icmp eq i64 %2, 0
+  br i1 %not_err4, label %after_check6, label %assign_optional5
 
 assign_optional5:                                 ; preds = %noerr_block
-  store i64 %3, ptr %error_var3, align 8
+  store i64 %2, ptr %error_var3, align 8
   br label %panic_block7
 
 after_check6:                                     ; preds = %noerr_block

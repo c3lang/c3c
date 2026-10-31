@@ -31,7 +31,7 @@ entry:
   %error_var4 = alloca i64, align 8
   %error_var10 = alloca i64, align 8
   call void @llvm.assume(i1 true)
-  %1 = call ptr @std.core.mem.allocators.push_pool(i64 0) #4
+  %1 = call ptr @std.core.mem.allocators.push_pool(i64 0) #3
   store ptr %1, ptr %state, align 8
   store i32 %0, ptr %taddr, align 4
   %2 = insertvalue %any undef, ptr %taddr, 0
@@ -49,8 +49,7 @@ entry:
   %hi = load i64, ptr %ptradd, align 8
   %6 = call i64 @std.io.File.write(ptr %retparam, ptr %5, ptr %lo, i64 %hi)
   %not_err = icmp eq i64 %6, 0
-  %7 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %7, label %after_check, label %assign_optional
+  br i1 %not_err, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %entry
   store i64 %6, ptr %error_var, align 8
@@ -63,15 +62,14 @@ guard_block:                                      ; preds = %assign_optional
   br label %voiderr
 
 noerr_block:                                      ; preds = %after_check
-  %8 = load i64, ptr %retparam, align 8
-  store i64 %8, ptr %len, align 8
-  %9 = call i64 @std.io.File.write_byte(ptr %5, i8 zeroext 10)
-  %not_err5 = icmp eq i64 %9, 0
-  %10 = call i1 @llvm.expect.i1(i1 %not_err5, i1 true)
-  br i1 %10, label %after_check7, label %assign_optional6
+  %7 = load i64, ptr %retparam, align 8
+  store i64 %7, ptr %len, align 8
+  %8 = call i64 @std.io.File.write_byte(ptr %5, i8 zeroext 10)
+  %not_err5 = icmp eq i64 %8, 0
+  br i1 %not_err5, label %after_check7, label %assign_optional6
 
 assign_optional6:                                 ; preds = %noerr_block
-  store i64 %9, ptr %error_var4, align 8
+  store i64 %8, ptr %error_var4, align 8
   br label %guard_block8
 
 after_check7:                                     ; preds = %noerr_block
@@ -81,13 +79,12 @@ guard_block8:                                     ; preds = %assign_optional6
   br label %voiderr
 
 noerr_block9:                                     ; preds = %after_check7
-  %11 = call i64 @std.io.File.flush(ptr %5)
-  %not_err11 = icmp eq i64 %11, 0
-  %12 = call i1 @llvm.expect.i1(i1 %not_err11, i1 true)
-  br i1 %12, label %after_check13, label %assign_optional12
+  %9 = call i64 @std.io.File.flush(ptr %5)
+  %not_err11 = icmp eq i64 %9, 0
+  br i1 %not_err11, label %after_check13, label %assign_optional12
 
 assign_optional12:                                ; preds = %noerr_block9
-  store i64 %11, ptr %error_var10, align 8
+  store i64 %9, ptr %error_var10, align 8
   br label %guard_block14
 
 after_check13:                                    ; preds = %noerr_block9
@@ -97,12 +94,12 @@ guard_block14:                                    ; preds = %assign_optional12
   br label %voiderr
 
 noerr_block15:                                    ; preds = %after_check13
-  %13 = load i64, ptr %len, align 8
-  %add = add i64 %13, 1
+  %10 = load i64, ptr %len, align 8
+  %add = add i64 %10, 1
   br label %voiderr
 
 voiderr:                                          ; preds = %noerr_block15, %guard_block14, %guard_block8, %guard_block
-  %14 = load ptr, ptr %state, align 8
-  call void @std.core.mem.allocators.pop_pool(ptr %14) #4
+  %11 = load ptr, ptr %state, align 8
+  call void @std.core.mem.allocators.pop_pool(ptr %11) #3
   ret i32 2
 }

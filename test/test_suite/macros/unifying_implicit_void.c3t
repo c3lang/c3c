@@ -65,24 +65,22 @@ cache_hit:                                        ; preds = %entry
   br i1 %9, label %missing_function, label %match
 
 missing_function:                                 ; preds = %8
-  %10 = load ptr, ptr @std.core.builtin.panic, align 8
-  call void %10(ptr @.panic_msg, i64 46, ptr @.file, i64 25, ptr @.func, i64 4, i32 13) #4
+  call void @__c3_panic(ptr @.panic_loc) #4
   unreachable
 
 match:                                            ; preds = %8
-  %11 = load ptr, ptr %s, align 8
-  %12 = call i64 %fn_phi(ptr %retparam, ptr %11)
-  %not_err = icmp eq i64 %12, 0
-  %13 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %13, label %after_check, label %assign_optional
+  %10 = load ptr, ptr %s, align 8
+  %11 = call i64 %fn_phi(ptr %retparam, ptr %10)
+  %not_err = icmp eq i64 %11, 0
+  br i1 %not_err, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %match
-  store i64 %12, ptr %c.f, align 8
+  store i64 %11, ptr %c.f, align 8
   br label %after_assign
 
 after_check:                                      ; preds = %match
-  %14 = load i8, ptr %retparam, align 1
-  store i8 %14, ptr %c, align 1
+  %12 = load i8, ptr %retparam, align 1
+  store i8 %12, ptr %c, align 1
   store i64 0, ptr %c.f, align 8
   br label %after_assign
 
@@ -92,8 +90,7 @@ after_assign:                                     ; preds = %after_check, %assig
 testblock:                                        ; preds = %after_assign
   %optval = load i64, ptr %c.f, align 8
   %not_err1 = icmp eq i64 %optval, 0
-  %15 = call i1 @llvm.expect.i1(i1 %not_err1, i1 true)
-  br i1 %15, label %after_check3, label %assign_optional2
+  br i1 %not_err1, label %after_check3, label %assign_optional2
 
 assign_optional2:                                 ; preds = %testblock
   store i64 %optval, ptr %err, align 8
@@ -104,13 +101,13 @@ after_check3:                                     ; preds = %testblock
   br label %end_block
 
 end_block:                                        ; preds = %after_check3, %assign_optional2
-  %16 = load i64, ptr %err, align 8
-  %i2b = icmp ne i64 %16, 0
+  %13 = load i64, ptr %err, align 8
+  %i2b = icmp ne i64 %13, 0
   br i1 %i2b, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %end_block
-  %17 = load i64, ptr %err, align 8
-  store i64 %17, ptr %error_var, align 8
+  %14 = load i64, ptr %err, align 8
+  store i64 %14, ptr %error_var, align 8
   br label %panic_block
 
 if.exit:                                          ; preds = %end_block

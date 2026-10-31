@@ -32,8 +32,7 @@ entry:
   store i64 0, ptr %v.f, align 8
   %optval = load i64, ptr %v.f, align 8
   %not_err = icmp eq i64 %optval, 0
-  %2 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %2, label %after_check, label %assign_optional
+  br i1 %not_err, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %entry
   store i64 %optval, ptr %error_var, align 8
@@ -41,35 +40,34 @@ assign_optional:                                  ; preds = %entry
 
 after_check:                                      ; preds = %entry
   %ptradd = getelementptr inbounds i8, ptr %v, i64 8
-  %3 = load i64, ptr %ptradd, align 8
-  %4 = inttoptr i64 %3 to ptr
-  %5 = load ptr, ptr %.cachedtype, align 8
-  %6 = icmp eq ptr %4, %5
-  br i1 %6, label %cache_hit, label %cache_miss
+  %2 = load i64, ptr %ptradd, align 8
+  %3 = inttoptr i64 %2 to ptr
+  %4 = load ptr, ptr %.cachedtype, align 8
+  %5 = icmp eq ptr %3, %4
+  br i1 %5, label %cache_hit, label %cache_miss
 
 cache_miss:                                       ; preds = %after_check
-  %7 = call ptr @.dyn_search(ptr %4,
-  store ptr %7, ptr %.inlinecache, align 8
-  store ptr %4, ptr %.cachedtype, align 8
-  br label %9
+  %6 = call ptr @.dyn_search(ptr %3, i128 15174329)
+  store ptr %6, ptr %.inlinecache, align 8
+  store ptr %3, ptr %.cachedtype, align 8
+  br label %8
 
 cache_hit:                                        ; preds = %after_check
-  %8 = load ptr, ptr %.inlinecache, align 8
-  br label %9
+  %7 = load ptr, ptr %.inlinecache, align 8
+  br label %8
 
-9:                                                ; preds = %cache_hit, %cache_miss
-  %fn_phi = phi ptr [ %8, %cache_hit ], [ %7, %cache_miss ]
-  %10 = icmp eq ptr %fn_phi, null
-  br i1 %10, label %missing_function, label %match
+8:                                                ; preds = %cache_hit, %cache_miss
+  %fn_phi = phi ptr [ %7, %cache_hit ], [ %6, %cache_miss ]
+  %9 = icmp eq ptr %fn_phi, null
+  br i1 %9, label %missing_function, label %match
 
-missing_function:                                 ; preds = %9
-  %11 = load ptr, ptr @std.core.builtin.panic, align 8
-  call void %11(ptr @.panic_msg, i64 41, ptr @.file, i64 26, ptr @.func, i64 4, i32 9) #2
+missing_function:                                 ; preds = %8
+  call void @__c3_panic(ptr @.panic_loc) #2
   unreachable
 
-match:                                            ; preds = %9
-  %12 = load ptr, ptr %v, align 8
-  %13 = call i32 %fn_phi(ptr %12)
+match:                                            ; preds = %8
+  %10 = load ptr, ptr %v, align 8
+  %11 = call i32 %fn_phi(ptr %10)
   br label %noerr_block
 
 panic_block:                                      ; preds = %assign_optional
@@ -83,7 +81,7 @@ panic_block:                                      ; preds = %assign_optional
   unreachable
 
 noerr_block:                                      ; preds = %match
-  store i32 %13, ptr %x, align 4
-  %14 = load i32, ptr %x, align 4
-  ret i32 %14
+  store i32 %11, ptr %x, align 4
+  %12 = load i32, ptr %x, align 4
+  ret i32 %12
 }

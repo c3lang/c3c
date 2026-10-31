@@ -675,25 +675,48 @@ static inline LLVMValueRef llvm_emit_sub_int(GenContext *c, Type *type, LLVMValu
 }
 
 
+static void llvm_emit_alignment_check(GenContext *c, LLVMValueRef ptr, AlignSize alignment, SourceLocId loc)
+{
+	LLVMValueRef as_int = LLVMBuildPtrToInt(c->builder, ptr, c->size_type, "");
+	// The alignment is a power of two.
+	LLVMValueRef rem = LLVMBuildAnd(c->builder, as_int, llvm_const_size(c, alignment - 1), "");
+	LLVMValueRef is_not_zero = LLVMBuildICmp(c->builder, LLVMIntNE, rem, LLVMConstNull(c->size_type), "");
+	c->emitting_load_store_check = true;
+	BEValue value1;
+	BEValue value2;
+	llvm_value_set(&value1, llvm_const_size(c, alignment), type_sz);
+	llvm_value_set(&value2, rem, type_sz);
+	llvm_emit_panic_on_true(c, is_not_zero, "Unaligned pointer access detected", loc, PANIC_FMT_UNALIGNED, &value1, &value2);
+	c->emitting_load_store_check = false;
+}
+
+static bool llvm_emit_panic_index_check(GenContext *c, BEValue *index, LLVMValueRef len, SourceLocId loc)
+{
+	if (!llvm_panic_helpers_available(c) || !llvm_panic_value_can_be_used_directly(index)) return false;
+	LLVMValueRef failed = LLVMBuildICmp(c->builder, LLVMIntUGE, index->value, len, "");
+	LLVMValueRef args[2] = { index->value, len };
+	llvm_emit_panic_helper_check(c, failed, NULL, loc, PANIC_HELPER_INDEX, index->type, args, 2);
+	return true;
+}
+
 static void llvm_emit_array_bounds_check(GenContext *c, BEValue *index, LLVMValueRef array_max_index, SourceLocId loc)
 {
 	BEValue result;
 	llvm_value_rvalue(c, index);
-
-	// Negative values are not allowed.
-	if (type_is_signed(index->type))
+	Type *index_type = index->type;
+	if (type_is_signed(index_type))
 	{
-		llvm_emit_int_comp_raw(c, &result, index->type, index->type, index->value,
-		                       llvm_get_zero(c, index->type), BINARYOP_LT);
-		llvm_emit_panic_if_true(c, &result, "Negative array indexing", loc, "Negative array indexing (index was %d)", index, NULL);
+		// Optimized check for both bounds
+		if (llvm_emit_panic_index_check(c, index, array_max_index, loc)) return;
+		// Negative vals not allowed.
+		llvm_emit_int_comp_raw(c, &result, index_type, index_type, index->value, llvm_get_zero(c, index_type), BINARYOP_LT);
+		llvm_emit_panic_if_true(c, &result, "Negative array indexing", loc, PANIC_FMT_NEGATIVE_INDEX, index, NULL);
 	}
 
-	llvm_emit_int_comp_raw(c, &result, index->type, index->type,
-	                       index->value, array_max_index,
-	                       BINARYOP_GE);
+	llvm_emit_int_comp_raw(c, &result, index_type, index_type, index->value, array_max_index, BINARYOP_GE);
 	BEValue max;
-	llvm_value_set(&max, array_max_index, index->type);
-	llvm_emit_panic_if_true(c, &result, "Array index out of bounds", loc, "Array index out of bounds (array had size %d, index was %d)", &max, index);
+	llvm_value_set(&max, array_max_index, index_type);
+	llvm_emit_panic_if_true(c, &result, "Array index out of bounds", loc, PANIC_FMT_INDEX_OUT_OF_BOUNDS, &max, index);
 }
 
 static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *result, BEValue *parent, BEValue *index, SourceLocId loc)
@@ -833,18 +856,7 @@ static inline void llvm_emit_subscript(GenContext *c, BEValue *value, Expr *expr
 
 	if (!llvm_is_global_eval(c) && safe_mode_enabled() && value->alignment > 1 && !c->emitting_load_store_check && parent_type->type_kind != TYPE_ARRAY)
 	{
-		LLVMValueRef as_int = LLVMBuildPtrToInt(c->builder, value->value, c->size_type, "");
-		LLVMValueRef align = llvm_const_size(c, value->alignment);
-		LLVMValueRef rem = LLVMBuildURem(c->builder, as_int, align, "");
-		LLVMValueRef is_not_zero = LLVMBuildICmp(c->builder, LLVMIntNE, rem, LLVMConstNull(c->size_type), "");
-		c->emitting_load_store_check = true;
-		BEValue value1;
-		BEValue value2;
-		llvm_value_set(&value1, align, type_sz);
-		llvm_value_set(&value2, rem, type_sz);
-		llvm_emit_panic_on_true(c, is_not_zero, "Unaligned pointer access detected", parent_expr->loc, "Unaligned access: ptr %% %s = %s, use mem::load / mem::store for unaligned access.",
-			&value1, &value2);
-		c->emitting_load_store_check = false;
+		llvm_emit_alignment_check(c, value->value, value->alignment, parent_expr->loc);
 	}
 
 }
@@ -2393,6 +2405,34 @@ static inline void llvm_emit_pre_inc_dec(GenContext *c, BEValue *value, Expr *ex
 	llvm_emit_inc_dec_change(c, &addr, value, NULL, expr, diff, allow_wrap);
 }
 
+static void llvm_emit_panic_deref_check(GenContext *c, LLVMValueRef ptr, AlignSize alignment, Expr *inner)
+{
+	scratch_buffer_clear();
+	scratch_buffer_append("Dereference of null pointer, '");
+	loc_to_scratch(inner->loc);
+	scratch_buffer_append("' was null.");
+	const char *null_message = scratch_buffer_to_string();
+	AlignSize check_alignment = c->emitting_load_store_check ? 1 : alignment;
+	if (!llvm_panic_helpers_available(c))
+	{
+		LLVMValueRef check = LLVMBuildICmp(c->builder, LLVMIntEQ, ptr, llvm_get_zero(c, inner->type), "checknull");
+		llvm_emit_panic_on_true(c, check, null_message, inner->loc, NULL, NULL, NULL);
+		if (check_alignment > 1) llvm_emit_alignment_check(c, ptr, alignment, inner->loc);
+		return;
+	}
+
+	LLVMValueRef as_int = LLVMBuildPtrToInt(c->builder, ptr, c->size_type, "");
+	LLVMValueRef failed = LLVMBuildICmp(c->builder, LLVMIntEQ, as_int, LLVMConstNull(c->size_type), "checknull");
+	if (check_alignment > 1)
+	{
+		LLVMValueRef rem = LLVMBuildAnd(c->builder, as_int, LLVMConstInt(c->size_type, alignment - 1, false), "");
+		LLVMValueRef unaligned = LLVMBuildICmp(c->builder, LLVMIntNE, rem, LLVMConstNull(c->size_type), "");
+		failed = LLVMBuildOr(c->builder, failed, unaligned, "");
+	}
+	LLVMValueRef args[2] = { as_int, LLVMConstInt(c->size_type, alignment, false) };
+	llvm_emit_panic_helper_check(c, failed, null_message, inner->loc, PANIC_HELPER_DEREF, NULL, args, 2);
+}
+
 static inline void llvm_emit_deref(GenContext *c, BEValue *value, Expr *inner, Type *type)
 {
 	switch (inner->expr_kind)
@@ -2420,35 +2460,8 @@ static inline void llvm_emit_deref(GenContext *c, BEValue *value, Expr *inner, T
 	if (!llvm_emit_rvalue_in_block(c, value, inner)) RETURN_EMPTY_BLOCK(value);
 	AlignSize alignment = type_abi_alignment(type);
 	bool is_const = expr_is_const(inner);
-	if (is_const)
-	{
-		alignment = type_min_alignment_size((ByteSize)inner->const_expr.ptr, alignment);
-	}
-	if (safe_mode_enabled() && !is_const)
-	{
-		LLVMValueRef check = LLVMBuildICmp(c->builder, LLVMIntEQ, value->value, llvm_get_zero(c, inner->type), "checknull");
-		scratch_buffer_clear();
-		scratch_buffer_append("Dereference of null pointer, '");
-		loc_to_scratch(inner->loc);
-		scratch_buffer_append("' was null.");
-		llvm_emit_panic_on_true(c, check, scratch_buffer_to_string(), inner->loc, NULL, NULL, NULL);
-		if (alignment > 1 && !c->emitting_load_store_check)
-		{
-			LLVMValueRef as_int = LLVMBuildPtrToInt(c->builder, value->value, c->size_type, "");
-			LLVMValueRef align = llvm_const_size(c, alignment);
-			LLVMValueRef rem = LLVMBuildURem(c->builder, as_int, align, "");
-			LLVMValueRef is_not_zero = LLVMBuildICmp(c->builder, LLVMIntNE, rem, LLVMConstNull(c->size_type), "");
-			c->emitting_load_store_check = true;
-			BEValue value1;
-			BEValue value2;
-			llvm_value_set(&value1, align, type_sz);
-			llvm_value_set(&value2, rem, type_sz);
-			llvm_emit_panic_on_true(c, is_not_zero, "Unaligned pointer access detected", inner->loc, "Unaligned access: ptr %% %s = %s, use mem::load / mem::store for unaligned access.",
-				&value1, &value2);
-			c->emitting_load_store_check = false;
-		}
-
-	}
+	if (is_const) alignment = type_min_alignment_size((ByteSize)inner->const_expr.ptr, alignment);
+	if (safe_mode_enabled() && !is_const) llvm_emit_panic_deref_check(c, value->value, alignment, inner);
 	// Convert pointer to address
 	value->kind = BE_ADDRESS;
 	value->type = type_lowering(type);
@@ -2676,6 +2689,58 @@ static void llvm_emit_trap_invalid_shift(GenContext *c, LLVMValueRef value, Type
 	llvm_emit_panic_on_true(c, equal_or_greater, "Invalid shift", loc, error, &val, NULL);
 }
 
+static LLVMValueRef llvm_or(GenContext *c, LLVMValueRef left, LLVMValueRef right)
+{
+	return left ? LLVMBuildOr(c->builder, left, right, "") : right;
+}
+
+static void llvm_emit_panic_slice_check(GenContext *c, SliceCheck checks, BEValue *start, BEValue *end, BEValue *len, SourceLocId loc)
+{
+	if (!checks || !c->current_block) return;
+	Type *type = start->type;
+	bool is_signed = type_is_signed(type);
+	LLVMIntPredicate gt = is_signed ? LLVMIntSGT : LLVMIntUGT;
+	LLVMIntPredicate ge = is_signed ? LLVMIntSGE : LLVMIntUGE;
+	LLVMTypeRef int_type = llvm_get_type(c, type);
+	LLVMValueRef start_val = start->value;
+	LLVMValueRef end_val = end ? end->value : LLVMGetUndef(int_type);
+	LLVMValueRef len_val = len && len->value ? len->value : LLVMGetUndef(int_type);
+	LLVMValueRef failed = NULL;
+	if ((checks & SLICE_CHECK_START_GT_LEN) && (checks & SLICE_CHECK_START_NEGATIVE))
+	{
+		// Since len is never negative, 0 <= start <= len is a single unsigned compare.
+		failed = LLVMBuildICmp(c->builder, LLVMIntUGT, start_val, len_val, "");
+	}
+	else if (checks & SLICE_CHECK_START_GT_LEN)
+	{
+		failed = LLVMBuildICmp(c->builder, gt, start_val, len_val, "");
+	}
+	else if (checks & SLICE_CHECK_START_NEGATIVE)
+	{
+		failed = LLVMBuildICmp(c->builder, LLVMIntSLT, start_val, LLVMConstNull(int_type), "");
+	}
+	if (checks & SLICE_CHECK_LEN_NEGATIVE)
+	{
+		failed = llvm_or(c, failed, LLVMBuildICmp(c->builder, gt, start_val, end_val, ""));
+	}
+	if (checks & SLICE_CHECK_LEN_END)
+	{
+		failed = llvm_or(c, failed, LLVMBuildICmp(c->builder, gt, end_val, len_val, ""));
+	}
+	if (checks & SLICE_CHECK_RANGE_NEGATIVE)
+	{
+		LLVMValueRef end_plus_one = LLVMBuildAdd(c->builder, end_val, LLVMConstInt(int_type, 1, false), "");
+		failed = llvm_or(c, failed, LLVMBuildICmp(c->builder, gt, start_val, end_plus_one, ""));
+	}
+	if (checks & SLICE_CHECK_RANGE_END)
+	{
+		failed = llvm_or(c, failed, LLVMBuildICmp(c->builder, ge, end_val, len_val, ""));
+	}
+	LLVMValueRef args[4] = { llvm_const_int(c, type_int, checks), start_val, end_val, len_val };
+	llvm_emit_panic_helper_check(c, failed, NULL, loc, PANIC_HELPER_SLICE, type, args, 4);
+}
+
+
 static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_ref, BEValue *start_ref, BEValue *end_ref, bool *is_exclusive)
 {
 	ASSERT(slice->expr_kind == EXPR_SLICE);
@@ -2771,20 +2836,46 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 		start_index.value = llvm_emit_sub_int(c, start_index.type, len.value, start_index.value, slice->loc);
 	}
 
+	bool merge_checks = safe_mode_enabled() && !compiler.build.feature.trap_on_wrap
+		&& llvm_panic_helpers_available(c) && llvm_panic_value_can_be_used_directly(&start_index);
+	SliceCheck checks = 0;
+
 	// Check that index does not extend beyond the length.
 	if (check_end && safe_mode_enabled())
 	{
-		ASSERT(len.value);
-		BEValue exceeds_size;
-		llvm_emit_int_comp(c, &exceeds_size, &start_index, &len, BINARYOP_GT);
-		RETURN_ON_EMPTY_BLOCK_VOID();
-		llvm_emit_panic_if_true(c, &exceeds_size, "Index exceeds array len", slice->loc, "Index exceeds array length (array had size %d, index was %d).", &len, &start_index);
+		if (merge_checks)
+		{
+			checks |= SLICE_CHECK_START_GT_LEN;
+		}
+		else
+		{
+			ASSERT(len.value);
+			BEValue exceeds_size;
+			llvm_emit_int_comp(c, &exceeds_size, &start_index, &len, BINARYOP_GT);
+			RETURN_ON_EMPTY_BLOCK_VOID();
+			llvm_emit_panic_if_true(c, &exceeds_size, "Index exceeds array len", slice->loc, PANIC_FMT_SLICE_START_GT_LEN, &len, &start_index);
+		}
 	}
 
 	// Insert trap for negative start offset for non pointers.
 	if (parent_type->type_kind != TYPE_POINTER && range.range_type != RANGE_CONST_RANGE)
 	{
-		llvm_emit_trap_negative(c, exprptr(range.start), start_index.value, "Negative indexing (%d)", &start_index);
+		if (!merge_checks)
+		{
+			llvm_emit_trap_negative(c, exprptr(range.start), start_index.value, PANIC_FMT_SLICE_START_NEGATIVE, &start_index);
+		}
+		else if (!type_is_integer_unsigned(exprptr(range.start)->type))
+		{
+			checks |= SLICE_CHECK_START_NEGATIVE;
+		}
+	}
+
+	// The end expression may have side effects, so the start is checked before it is evaluated.
+	if (!has_end || range.range_type == RANGE_DYNAMIC)
+	{
+		llvm_emit_panic_slice_check(c, checks, &start_index, NULL, &len, slice->loc);
+		RETURN_ON_EMPTY_BLOCK_VOID();
+		checks = 0;
 	}
 
 	BEValue end_index;
@@ -2828,8 +2919,18 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 		}
 
 		// This will trap any bad negative index, so we're fine.
-		if (safe_mode_enabled() && !llvm_is_global_eval(c))
+		if (merge_checks && end_index.type == start_type)
 		{
+			checks |= is_len_range ? SLICE_CHECK_LEN_NEGATIVE : SLICE_CHECK_RANGE_NEGATIVE;
+			if (len.value) checks |= is_len_range ? SLICE_CHECK_LEN_END : SLICE_CHECK_RANGE_END;
+			llvm_emit_panic_slice_check(c, checks, &start_index, &end_index, &len, slice->loc);
+			RETURN_ON_EMPTY_BLOCK_VOID();
+		}
+		else if (safe_mode_enabled() && !llvm_is_global_eval(c))
+		{
+			// Start and end of different types are checked one by one.
+			llvm_emit_panic_slice_check(c, checks, &start_index, NULL, &len, slice->loc);
+			RETURN_ON_EMPTY_BLOCK_VOID();
 			BEValue excess;
 			if (is_len_range)
 			{
@@ -2838,14 +2939,14 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 				BEValue actual_end_len = end_index;
 				actual_end_len.value = llvm_emit_sub_int(c, end_index.type, end_index.value, start_index.value, slice->loc);
 				actual_end_len.type = type_sz;
-				llvm_emit_panic_if_true(c, &excess, "Negative slice length", slice->loc, "Negative value (%d) given for slice length.", &actual_end_len, NULL);
+				llvm_emit_panic_if_true(c, &excess, "Negative slice length", slice->loc, PANIC_FMT_SLICE_LEN_NEGATIVE, &actual_end_len, NULL);
 				if (len.value)
 				{
 					llvm_emit_int_comp(c, &excess, &len, &end_index, BINARYOP_LT);
 					RETURN_ON_EMPTY_BLOCK_VOID();
 					BEValue actual_end_index = end_index;
 					actual_end_index.value = llvm_emit_sub_int(c, end_index.type, end_index.value, llvm_const_size(c, 1), slice->loc);
-					llvm_emit_panic_if_true(c, &excess, "End index out of bounds", slice->loc, "End index out of bounds (end index of %d exceeds size of %d)", &actual_end_index, &len);
+					llvm_emit_panic_if_true(c, &excess, "End index out of bounds", slice->loc, PANIC_FMT_SLICE_END, &actual_end_index, &len);
 				}
 			}
 			else
@@ -2858,13 +2959,13 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 				llvm_value_set(&plus_one_end_index, val, end_index.type);
 				llvm_emit_int_comp(c, &excess, &start_index, &plus_one_end_index, BINARYOP_GT);
 				RETURN_ON_EMPTY_BLOCK_VOID();
-				llvm_emit_panic_if_true(c, &excess, "Negative size", slice->loc, "Negative size (slice was: [%d..%d])", &start_index, &end_index);
+				llvm_emit_panic_if_true(c, &excess, "Negative size", slice->loc, PANIC_FMT_SLICE_RANGE_NEGATIVE, &start_index, &end_index);
 
 				if (len.value)
 				{
 					llvm_emit_int_comp(c, &excess, &len, &end_index, BINARYOP_LE);
 					RETURN_ON_EMPTY_BLOCK_VOID();
-					llvm_emit_panic_if_true(c, &excess, "End index out of bounds", slice->loc, "End index out of bounds (end index of %d exceeds size of %d)", &end_index, &len);
+					llvm_emit_panic_if_true(c, &excess, "End index out of bounds", slice->loc, PANIC_FMT_SLICE_END, &end_index, &len);
 				}
 			}
 		}

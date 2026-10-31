@@ -23,8 +23,7 @@ entry:
   br i1 %lt, label %assert_ok, label %assert_fail
 
 assert_fail:                                      ; preds = %entry
-  %2 = load ptr, ptr @std.core.builtin.panic, align 8
-  call void %2([2 x i64] [i64 ptrtoint (ptr @.panic_msg to i64),
+  call void @__c3_panic(ptr @.panic_loc) #2
   unreachable
 
 assert_ok:                                        ; preds = %entry
@@ -41,12 +40,11 @@ entry:
   br i1 %lt, label %assert_ok, label %assert_fail
 
 assert_fail:                                      ; preds = %entry
-  %1 = load ptr, ptr @std.core.builtin.panic, align 8
-  call void %1([2 x i64] [i64 ptrtoint (ptr @.panic_msg to i64), i64 34],
+  call void @__c3_panic(ptr @.panic_loc.2) #2
   unreachable
 
 assert_ok:                                        ; preds = %entry
-  %2 = call i32 @test.test(i32 3, i32 %0)
+  %1 = call i32 @test.test(i32 3, i32 %0)
   ret i32 0
 }
 

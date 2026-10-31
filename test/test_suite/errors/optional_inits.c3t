@@ -38,8 +38,7 @@ entry:
   store i64 ptrtoint (ptr @test.MY_VAL1 to i64), ptr %x.f, align 8
   %optval = load i64, ptr %x.f, align 8
   %not_err = icmp eq i64 %optval, 0
-  %0 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %0, label %after_check, label %assign_optional
+  br i1 %not_err, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %entry
   store i64 %optval, ptr %error_var, align 8
@@ -49,8 +48,8 @@ after_check:                                      ; preds = %entry
   br label %noerr_block
 
 guard_block:                                      ; preds = %assign_optional
-  %1 = load i64, ptr %error_var, align 8
-  ret i64 %1
+  %0 = load i64, ptr %error_var, align 8
+  ret i64 %0
 
 noerr_block:                                      ; preds = %after_check
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 4 %x, i32 4, i1 false)
@@ -68,8 +67,7 @@ entry:
   store i64 0, ptr %x.f, align 8
   %optval = load i64, ptr %x.f, align 8
   %not_err = icmp eq i64 %optval, 0
-  %0 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %0, label %after_check, label %assign_optional
+  br i1 %not_err, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %entry
   store i64 %optval, ptr %error_var, align 8
@@ -79,8 +77,8 @@ after_check:                                      ; preds = %entry
   br label %noerr_block
 
 guard_block:                                      ; preds = %assign_optional
-  %1 = load i64, ptr %error_var, align 8
-  ret i64 %1
+  %0 = load i64, ptr %error_var, align 8
+  ret i64 %0
 
 noerr_block:                                      ; preds = %after_check
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 4 %x, i32 4, i1 false)

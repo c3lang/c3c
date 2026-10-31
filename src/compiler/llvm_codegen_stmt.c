@@ -1626,6 +1626,331 @@ static void llvm_emit_panic_parameter(GenContext *c, LLVMValueRef *args, int *co
 	args[(*count)++] = indirect.value;
 }
 
+// Call panic or panicf with message, file, function and line, followed by the formatting arguments.
+static void llvm_emit_panic_call(GenContext *c, LLVMValueRef *panic_args, Decl *panicf, BEValue *varargs, int vararg_count, SourceLocId loc)
+{
+	FunctionPrototype *prototype = panicf
+			? type_get_resolved_prototype(panicf->type)
+			: type_get_resolved_prototype(c->panic_var->type->canonical->pointer);
+	LLVMValueRef actual_args[16];
+	int count = 0;
+	ABIArgInfo **abi_args = prototype->abi_args;
+	for (int i = 0; i < 4; i++)
+	{
+		Type *type = type_lowering(abi_args[i]->original_type);
+		BEValue value = { .value = panic_args[i], .type = type };
+		llvm_emit_panic_parameter(c, actual_args, &count, abi_args[i], i, &value);
+	}
+
+	LLVMValueRef func;
+	if (panicf)
+	{
+		int elements = vararg_count;
+		Type *any_slice = type_get_slice(type_any);
+		Type *any_array = type_get_array(type_any, elements);
+		BEValue array_ref = elements <= 3
+				? llvm_panic_slot(c, 6 + elements, any_array, type_alloca_alignment(any_array), varargslots_name)
+				: llvm_emit_alloca_b(c, any_array, varargslots_name);
+		for (int i = 0; i < elements; i++)
+		{
+			BEValue slot = llvm_emit_array_gep(c, &array_ref, i);
+			llvm_store_split(c, &slot, &varargs[i]);
+		}
+		BEValue value;
+		llvm_value_aggregate_two(c, &value, any_slice, array_ref.value, LLVMConstInt(c->size_type, elements, false));
+		LLVMSetValueName2(value.value, temp_name, 6);
+
+		llvm_emit_panic_parameter(c, actual_args, &count, abi_args[4], 4, &value);
+		func = llvm_get_ref(c, panicf);
+	}
+	else
+	{
+		BEValue val;
+		llvm_value_set_decl(c, &val, c->panic_var);
+		llvm_value_rvalue(c, &val);
+		func = val.value;
+	}
+
+	BEValue res;
+	if (c->debug.builder) llvm_emit_debug_location(c, loc);
+	llvm_emit_raw_call(c, &res, prototype, llvm_func_type(c, prototype), func, actual_args,
+					   count, 0, NULL, false, NULL, true);
+	llvm_emit_unreachable(c);
+}
+
+
+
+
+static LLVMTypeRef llvm_panic_location_type(GenContext *c)
+{
+	LLVMTypeRef types[4] = { c->chars_type, c->chars_type, c->chars_type, llvm_get_type(c, type_uint) };
+	return LLVMStructTypeInContext(c->context, types, 4, false);
+}
+
+static LLVMValueRef llvm_emit_panic_location(GenContext *c, const char *message, SourceLocId loc)
+{
+	SourceLoc *location = sourcelocptrzero(loc);
+	File *file = source_file_by_id(location ? location->file_id : 0);
+	LLVMValueRef fields[4] = {
+			llvm_emit_string_const(c, message, ".panic_msg"),
+			llvm_emit_string_const(c, file->name, ".file"),
+			llvm_emit_string_const(c, c->cur_func.name, ".func"),
+			llvm_const_int(c, type_uint, location ? location->row : 0) };
+	LLVMValueRef panic_location = LLVMAddGlobal(c->module, llvm_panic_location_type(c), ".panic_loc");
+	LLVMSetInitializer(panic_location, LLVMConstStructInContext(c->context, fields, 4, false));
+	LLVMSetGlobalConstant(panic_location, true);
+	LLVMSetLinkage(panic_location, LLVMPrivateLinkage);
+	LLVMSetUnnamedAddress(panic_location, LLVMGlobalUnnamedAddr);
+	return panic_location;
+}
+
+static PanicHelper *llvm_get_panic_helper(GenContext *c, PanicHelperKind kind, Type **types, int type_count)
+{
+	FOREACH_REF(PanicHelper, helper, c->panic_helpers)
+	{
+		if (helper->kind != kind || helper->type_count != type_count) continue;
+		bool match = true;
+		for (int i = 0; i < type_count; i++)
+		{
+			if (helper->types[i] != types[i]) match = false;
+		}
+		if (match) return helper;
+	}
+	PanicHelper helper = { .kind = kind, .type_count = type_count };
+	LLVMTypeRef params[5] = { c->ptr_type };
+	int param_count = 1;
+	scratch_buffer_clear();
+	scratch_buffer_append(PANIC_HELPER_PREFIX);
+	switch (kind)
+	{
+		case PANIC_HELPER_PANIC:
+			break;
+		case PANIC_HELPER_PANICF:
+			scratch_buffer_append("f");
+			for (int i = 0; i < type_count; i++) params[param_count++] = llvm_get_type(c, types[i]);
+			break;
+		case PANIC_HELPER_DEREF:
+			scratch_buffer_append("_deref");
+			params[param_count++] = c->size_type;
+			params[param_count++] = c->size_type;
+			break;
+		case PANIC_HELPER_INDEX:
+			scratch_buffer_append("_index");
+			params[param_count++] = llvm_get_type(c, types[0]);
+			params[param_count++] = llvm_get_type(c, types[0]);
+			break;
+		case PANIC_HELPER_SLICE:
+			scratch_buffer_append("_slice");
+			params[param_count++] = llvm_get_type(c, type_int);
+			for (int i = 0; i < 3; i++) params[param_count++] = llvm_get_type(c, types[0]);
+			break;
+	}
+	for (int i = 0; i < type_count; i++)
+	{
+		helper.types[i] = types[i];
+		scratch_buffer_append_char('.');
+		scratch_buffer_append(types[i]->name);
+	}
+	helper.type = LLVMFunctionType(LLVMVoidTypeInContext(c->context), params, (unsigned)param_count, false);
+	// Not unnamed_addr: ld64 would hide the symbol, and the backtrace needs its name.
+	LLVMValueRef func = helper.function = LLVMAddFunction(c->module, scratch_buffer_to_string(), helper.type);
+	LLVMSetLinkage(func, LLVMLinkOnceODRLinkage);
+	llvm_set_comdat(c, func);
+	llvm_attribute_add(c, func, attribute_id.noinline, -1);
+	llvm_attribute_add(c, func, attribute_id.noreturn, -1);
+	llvm_attribute_add(c, func, attribute_id.nounwind, -1);
+	llvm_attribute_add_int(c, func, attribute_id.uwtable, UWTABLE, -1);
+	if (c->debug.enable_stacktrace) llvm_attribute_add_string(c, func, "frame-pointer", "all", -1);
+	vec_add(c->panic_helpers, helper);
+	return &c->panic_helpers[vec_size(c->panic_helpers) - 1];
+}
+
+// Call the helper with the panic location followed by args, the call ends the current block.
+static void llvm_emit_panic_helper_call(GenContext *c, const char *message, SourceLocId loc, PanicHelperKind kind,
+                                        Type **types, int type_count, LLVMValueRef *args, int arg_count)
+{
+	if (c->debug.builder) llvm_emit_debug_location(c, loc);
+	// The message may be in the scratch buffer, so emit it before the helper name is built there.
+	LLVMValueRef call_args[5] = { llvm_emit_panic_location(c, message, loc) };
+	for (int i = 0; i < arg_count; i++) call_args[i + 1] = args[i];
+	PanicHelper *helper = llvm_get_panic_helper(c, kind, types, type_count);
+	LLVMValueRef call = LLVMBuildCall2(c->builder, helper->type, helper->function, call_args, (unsigned)arg_count + 1, "");
+	llvm_attribute_add_call(c, call, attribute_id.noreturn, -1, 0);
+	llvm_attribute_add_call(c, call, attribute_id.nomerge, -1, 0);
+	llvm_emit_unreachable(c);
+}
+
+void llvm_emit_panic_helper_check(GenContext *c, LLVMValueRef failed, const char *message, SourceLocId loc,
+		PanicHelperKind kind, Type *type, LLVMValueRef *args, int arg_count)
+{
+	if (LLVMIsAConstantInt(failed) && !LLVMConstIntGetZExtValue(failed)) return;
+	BEValue check;
+	llvm_value_set(&check, failed, type_bool);
+	LLVMBasicBlockRef panic_block = llvm_basic_block_new(c, "panic");
+	LLVMBasicBlockRef ok_block = llvm_basic_block_new(c, "checkok");
+	if (compiler.build.optlevel != OPTIMIZATION_NONE) check.value = llvm_emit_expect_false(c, &check);
+	llvm_emit_cond_br(c, &check, panic_block, ok_block);
+	llvm_emit_block(c, panic_block);
+	vec_add(c->panic_blocks, panic_block);
+	llvm_emit_panic_helper_call(c, message, loc, kind, &type, type ? 1 : 0, args, arg_count);
+	llvm_emit_block(c, ok_block);
+	EMIT_SPAN(c, loc);
+}
+
+
+static BEValue llvm_panic_helper_any(GenContext *c, int index, Type *type, LLVMValueRef value)
+{
+	BEValue var = llvm_panic_slot(c, 5 + index, type, type_alloca_alignment(type), "taddr");
+	llvm_store_to_ptr_raw_aligned(c, var.value, value, var.alignment);
+	llvm_emit_any_from_value(c, &var, type);
+	return var;
+}
+
+// Panic with fmt and the values in the helper if failed is true, or always if failed is NULL.
+static void llvm_emit_panic_helper_case(GenContext *c, LLVMValueRef failed, LLVMValueRef *panic_args, const char *fmt,
+                                        Type *type, LLVMValueRef value_1, LLVMValueRef value_2)
+{
+	LLVMBasicBlockRef next_block = NULL;
+	if (failed)
+	{
+		LLVMBasicBlockRef panic_block = llvm_basic_block_new(c, "panic");
+		next_block = llvm_basic_block_new(c, "next");
+		llvm_emit_cond_br_raw(c, failed, panic_block, next_block);
+		llvm_emit_block(c, panic_block);
+	}
+	LLVMValueRef args[4] = { llvm_emit_string_const(c, fmt, ".panic_msg"), panic_args[1], panic_args[2], panic_args[3] };
+	BEValue values[2] = { llvm_panic_helper_any(c, 0, type, value_1) };
+	if (value_2) values[1] = llvm_panic_helper_any(c, 1, type, value_2);
+	llvm_emit_panic_call(c, args, c->panicf, values, value_2 ? 2 : 1, 0);
+	if (next_block) llvm_emit_block(c, next_block);
+}
+
+// Is the check part of the checks passed to the helper, and did it fail?
+static LLVMValueRef llvm_panic_helper_failed(GenContext *c, LLVMValueRef checks, int check, LLVMValueRef failed)
+{
+	LLVMValueRef bit = LLVMBuildAnd(c->builder, checks, LLVMConstInt(LLVMTypeOf(checks), (unsigned)check, false), "");
+	LLVMValueRef requested = LLVMBuildICmp(c->builder, LLVMIntNE, bit, LLVMConstNull(LLVMTypeOf(checks)), "");
+	return LLVMBuildAnd(c->builder, requested, failed, "");
+}
+
+static void llvm_emit_panic_helper_body(GenContext *c, PanicHelper *helper)
+{
+	LLVMValueRef func = helper->function;
+	LLVMValueRef panic_args[4];
+	LLVMValueRef panic_location = LLVMGetParam(func, 0);
+	LLVMTypeRef location_type = llvm_panic_location_type(c);
+	AlignSize alignment = llvm_abi_alignment(c, location_type);
+	for (int i = 0; i < 4; i++)
+	{
+		AlignSize align;
+		LLVMValueRef val = llvm_emit_struct_gep_raw(c, panic_location, location_type, i, alignment, &align);
+		panic_args[i] = llvm_load(c, LLVMStructGetTypeAtIndex(location_type, (unsigned)i), val, align, "");
+	}
+	Type *type = helper->types[0];
+	switch (helper->kind)
+	{
+		case PANIC_HELPER_PANIC:
+			llvm_emit_panic_call(c, panic_args, NULL, NULL, 0, 0);
+			return;
+		case PANIC_HELPER_PANICF:
+		{
+			BEValue values[2];
+			for (int i = 0; i < helper->type_count; i++)
+			{
+				values[i] = llvm_panic_helper_any(c, i, helper->types[i], LLVMGetParam(func, i + 1));
+			}
+			llvm_emit_panic_call(c, panic_args, c->panicf, values, helper->type_count, 0);
+			return;
+		}
+		case PANIC_HELPER_DEREF:
+		{
+			LLVMValueRef as_int = LLVMGetParam(func, 1);
+			LLVMValueRef align = LLVMGetParam(func, 2);
+			LLVMBasicBlockRef null_block = llvm_basic_block_new(c, "null");
+			LLVMBasicBlockRef unaligned_block = llvm_basic_block_new(c, "unaligned");
+			llvm_emit_cond_br_raw(c, LLVMBuildIsNull(c->builder, as_int, ""), null_block, unaligned_block);
+			llvm_emit_block(c, null_block);
+			llvm_emit_panic_call(c, panic_args, NULL, NULL, 0, 0);
+			llvm_emit_block(c, unaligned_block);
+			LLVMValueRef rem = LLVMBuildAnd(c->builder, as_int, LLVMBuildSub(c->builder, align, llvm_const_int(c, type_usz, 1), ""), "");
+			panic_args[0] = llvm_emit_string_const(c, PANIC_FMT_UNALIGNED, ".panic_msg");
+			BEValue values[2] = { llvm_panic_helper_any(c, 0, type_sz, align), llvm_panic_helper_any(c, 1, type_sz, rem) };
+			llvm_emit_panic_call(c, panic_args, c->panicf, values, 2, 0);
+			return;
+		}
+		case PANIC_HELPER_INDEX:
+		{
+			LLVMValueRef index = LLVMGetParam(func, 1);
+			LLVMValueRef len = LLVMGetParam(func, 2);
+			LLVMValueRef negative = LLVMBuildICmp(c->builder, LLVMIntSLT, index, LLVMConstNull(LLVMTypeOf(index)), "");
+			llvm_emit_panic_helper_case(c, negative, panic_args, PANIC_FMT_NEGATIVE_INDEX, type, index, NULL);
+			llvm_emit_panic_helper_case(c, NULL, panic_args, PANIC_FMT_INDEX_OUT_OF_BOUNDS, type, len, index);
+			return;
+		}
+		case PANIC_HELPER_SLICE:
+		{
+			LLVMValueRef checks = LLVMGetParam(func, 1);
+			LLVMValueRef start = LLVMGetParam(func, 2);
+			LLVMValueRef end = LLVMGetParam(func, 3);
+			LLVMValueRef len = LLVMGetParam(func, 4);
+			LLVMValueRef one = LLVMConstInt(LLVMTypeOf(start), 1, false);
+			bool is_signed = type_is_signed(type);
+			LLVMIntPredicate gt = is_signed ? LLVMIntSGT : LLVMIntUGT;
+			LLVMIntPredicate ge = is_signed ? LLVMIntSGE : LLVMIntUGE;
+			// Same order as the checks are emitted without helpers.
+			llvm_emit_panic_helper_case(c, llvm_panic_helper_failed(c, checks, SLICE_CHECK_START_GT_LEN, LLVMBuildICmp(c->builder, gt, start, len, "")),
+			                            panic_args, PANIC_FMT_SLICE_START_GT_LEN, type, len, start);
+			llvm_emit_panic_helper_case(c, llvm_panic_helper_failed(c, checks, SLICE_CHECK_START_NEGATIVE, LLVMBuildICmp(c->builder, LLVMIntSLT, start, LLVMConstNull(LLVMTypeOf(start)), "")),
+			                            panic_args, PANIC_FMT_SLICE_START_NEGATIVE, type, start, NULL);
+			llvm_emit_panic_helper_case(c, llvm_panic_helper_failed(c, checks, SLICE_CHECK_LEN_NEGATIVE, LLVMBuildICmp(c->builder, gt, start, end, "")),
+			                            panic_args, PANIC_FMT_SLICE_LEN_NEGATIVE, type, LLVMBuildSub(c->builder, end, start, ""), NULL);
+			llvm_emit_panic_helper_case(c, llvm_panic_helper_failed(c, checks, SLICE_CHECK_LEN_END, LLVMBuildICmp(c->builder, gt, end, len, "")),
+			                            panic_args, PANIC_FMT_SLICE_END, type, LLVMBuildSub(c->builder, end, one, ""), len);
+			llvm_emit_panic_helper_case(c, llvm_panic_helper_failed(c, checks, SLICE_CHECK_RANGE_NEGATIVE, LLVMBuildICmp(c->builder, gt, start, LLVMBuildAdd(c->builder, end, one, ""), "")),
+			                            panic_args, PANIC_FMT_SLICE_RANGE_NEGATIVE, type, start, end);
+			llvm_emit_panic_helper_case(c, llvm_panic_helper_failed(c, checks, SLICE_CHECK_RANGE_END, LLVMBuildICmp(c->builder, ge, end, len, "")),
+			                            panic_args, PANIC_FMT_SLICE_END, type, end, len);
+			llvm_emit_unreachable(c);
+			return;
+		}
+	}
+	UNREACHABLE_VOID
+}
+
+void llvm_emit_panic_helpers(GenContext *c)
+{
+	if (!c->panic_helpers) return;
+	FOREACH_REF(PanicHelper, helper, c->panic_helpers)
+	{
+		c->cur_func.ref = helper->function;
+		c->builder = llvm_create_function_entry(c, helper->function, &c->current_block);
+		c->first_block = c->current_block;
+		c->alloca_point = LLVMBuildAlloca(c->builder, LLVMInt32TypeInContext(c->context), "alloca_point");
+		DebugScope scope;
+		if (llvm_use_debug(c))
+		{
+			llvm_emit_debug_artificial_function(c, helper->function);
+			scope = (DebugScope) { .lexical_block = c->debug.function };
+			c->debug.block_stack = &scope;
+			// Line 0: no source location. Panics within the helper reuse it.
+			LLVMSetCurrentDebugLocation2(c->builder, LLVMDIBuilderCreateDebugLocation(c->context, 0, 0, c->debug.function, NULL));
+			c->last_emitted_loc = 0;
+		}
+		llvm_emit_panic_helper_body(c, helper);
+		if (llvm_use_debug(c))
+		{
+			c->debug.block_stack = NULL;
+			LLVMDIBuilderFinalizeSubprogram(c->debug.builder, c->debug.function);
+			c->debug.function = NULL;
+		}
+		LLVMInstructionEraseFromParent(c->alloca_point);
+		c->alloca_point = NULL;
+		LLVMDisposeBuilder(c->builder);
+	}
+	c->builder = c->global_builder;
+	c->cur_func.ref = NULL;
+}
+
 void llvm_emit_panic(GenContext *c, const char *message, SourceLocId loc, const char *fmt, BEValue *varargs)
 {
 	if (c->debug.builder) llvm_emit_debug_location(c, loc);
@@ -1641,67 +1966,23 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceLocId loc, const 
 		return;
 	}
 
+	Decl *panicf = fmt ? c->panicf : NULL;
+	if (!panicf)
+	{
+		llvm_emit_panic_helper_call(c, message, loc, PANIC_HELPER_PANIC, NULL, 0, NULL, 0);
+		return;
+	}
+
 	SourceLoc *location = sourcelocptrzero(loc);
 	File *file = source_file_by_id(location ? location->file_id : 0);
 
-	Decl *panicf = fmt ? c->panicf : NULL;
-
-	LLVMValueRef panic_args[5] = {
-			llvm_emit_string_const(c, panicf ? fmt : message, ".panic_msg"),
+	LLVMValueRef panic_args[4] = {
+			llvm_emit_string_const(c, fmt, ".panic_msg"),
 			llvm_emit_string_const(c, file->name, ".file"),
 			llvm_emit_string_const(c, c->cur_func.name, ".func"),
 			llvm_const_int(c, type_uint, location ? location->row : 0)
 	};
-	FunctionPrototype *prototype = panicf
-			? type_get_resolved_prototype(panicf->type)
-			: type_get_resolved_prototype(panic_var->type->canonical->pointer);
-	LLVMValueRef actual_args[16];
-	int count = 0;
-	ABIArgInfo **abi_args = prototype->abi_args;
-	for (int i = 0; i < 4; i++)
-	{
-		Type *type = type_lowering(abi_args[i]->original_type);
-		BEValue value = { .value = panic_args[i], .type = type };
-		llvm_emit_panic_parameter(c, actual_args, &count, abi_args[i], i, &value);
-	}
-
-	if (panicf)
-	{
-		int elements = vec_size(varargs);
-		Type *any_slice = type_get_slice(type_any);
-		Type *any_array = type_get_array(type_any, elements);
-		BEValue array_ref = elements <= 3
-				? llvm_panic_slot(c, 6 + elements, any_array, type_alloca_alignment(any_array), varargslots_name)
-				: llvm_emit_alloca_b(c, any_array, varargslots_name);
-		int vacount = vec_size(varargs);
-		for (int i = 0; i < vacount; i++)
-		{
-			BEValue slot = llvm_emit_array_gep(c, &array_ref, i);
-			llvm_store_split(c, &slot, &varargs[i]);
-		}
-		BEValue value;
-		llvm_value_aggregate_two(c, &value, any_slice, array_ref.value, LLVMConstInt(c->size_type, elements, false));
-		LLVMSetValueName2(value.value, temp_name, 6);
-
-		llvm_emit_panic_parameter(c, actual_args, &count, abi_args[4], 4, &value);
-
-		BEValue res;
-		if (c->debug.builder) llvm_emit_debug_location(c, loc);
-		llvm_emit_raw_call(c, &res, prototype, llvm_func_type(c, prototype), llvm_get_ref(c, panicf), actual_args,
-						   count, 0, NULL, false, NULL, true);
-		llvm_emit_unreachable(c);
-		return;
-	}
-
-	BEValue val;
-	llvm_value_set_decl(c, &val, panic_var);
-	llvm_value_rvalue(c, &val);
-
-	BEValue res;
-	if (c->debug.builder) llvm_emit_debug_location(c, loc);
-	llvm_emit_raw_call(c, &res, prototype, llvm_func_type(c, prototype), val.value, actual_args,
-					   count, 0, NULL, false, NULL, true);
-	llvm_emit_unreachable(c);
+	llvm_emit_panic_call(c, panic_args, panicf, varargs, vec_size(varargs), loc);
 }
 
 void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceLocId loc, const char *fmt, BEValue *value_1,
@@ -1725,27 +2006,49 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 	}
 	else
 	{
-		value->value = llvm_emit_expect_false(c, value);
+		if (compiler.build.optlevel != OPTIMIZATION_NONE) value->value = llvm_emit_expect_false(c, value);
 		llvm_emit_cond_br(c, value, panic_block, ok_block);
 	}
 	llvm_emit_block(c, panic_block);
 	vec_add(c->panic_blocks, panic_block);
-	BEValue *values = NULL;
-	BEValue *panic_values[2] = { value_1, value_1 ? value_2 : NULL };
-	for (int i = 0; i < 2 && panic_values[i]; i++)
+	BEValue values[2];
+	int count = value_1 ? (value_2 ? 2 : 1) : 0;
+	bool use_helper = fmt && llvm_panic_helpers_available(c);
+	for (int i = 0; i < count; i++)
 	{
-		BEValue var = *panic_values[i];
-		llvm_value_fold_optional(c, &var);
-		if (!llvm_value_is_addr(&var))
-		{
-			BEValue temp = llvm_panic_slot(c, 5 + i, var.type, type_alloca_alignment(var.type), "taddr");
-			llvm_store(c, &temp, &var);
-			var = temp;
-		}
-		llvm_emit_any_from_value(c, &var, var.type);
-		vec_add(values, var);
+		values[i] = *(i ? value_2 : value_1);
+		llvm_value_fold_optional(c, &values[i]);
+		if (!llvm_panic_value_can_be_used_directly(&values[i])) use_helper = false;
 	}
-	llvm_emit_panic(c, panic_name, loc, fmt, values);
+	if (use_helper)
+	{
+		Type *types[2];
+		LLVMValueRef args[2];
+		for (int i = 0; i < count; i++)
+		{
+			llvm_value_rvalue(c, &values[i]);
+			types[i] = values[i].type;
+			args[i] = values[i].value;
+		}
+		llvm_emit_panic_helper_call(c, fmt, loc, PANIC_HELPER_PANICF, types, count, args, count);
+	}
+	else
+	{
+		BEValue *varargs = NULL;
+		for (int i = 0; i < count; i++)
+		{
+			BEValue var = values[i];
+			if (!llvm_value_is_addr(&var))
+			{
+				BEValue temp = llvm_panic_slot(c, 5 + i, var.type, type_alloca_alignment(var.type), "taddr");
+				llvm_store(c, &temp, &var);
+				var = temp;
+			}
+			llvm_emit_any_from_value(c, &var, var.type);
+			vec_add(varargs, var);
+		}
+		llvm_emit_panic(c, panic_name, loc, fmt, varargs);
+	}
 	llvm_emit_block(c, ok_block);
 	EMIT_SPAN(c, loc);
 }

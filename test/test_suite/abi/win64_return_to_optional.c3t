@@ -38,8 +38,7 @@ entry:
 testblock:                                        ; preds = %entry
   %optval = load i64, ptr %texture.f, align 8
   %not_err = icmp eq i64 %optval, 0
-  %0 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %0, label %after_check, label %assign_optional
+  br i1 %not_err, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %testblock
   store i64 %optval, ptr %temp_err, align 8
@@ -50,8 +49,8 @@ after_check:                                      ; preds = %testblock
   br label %end_block
 
 end_block:                                        ; preds = %after_check, %assign_optional
-  %1 = load i64, ptr %temp_err, align 8
-  %i2b = icmp ne i64 %1, 0
+  %0 = load i64, ptr %temp_err, align 8
+  %i2b = icmp ne i64 %0, 0
   br i1 %i2b, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %end_block

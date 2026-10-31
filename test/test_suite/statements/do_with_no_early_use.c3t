@@ -59,8 +59,7 @@ testblock:                                        ; preds = %loop.cond
   store i32 %sub, ptr %i, align 4
   %6 = call i64 @test.nonzero(ptr %retparam1, i32 %sub)
   %not_err = icmp eq i64 %6, 0
-  %7 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %7, label %after_check, label %assign_optional
+  br i1 %not_err, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %testblock
   store i64 %6, ptr %temp_err, align 8
@@ -71,8 +70,8 @@ after_check:                                      ; preds = %testblock
   br label %end_block
 
 end_block:                                        ; preds = %after_check, %assign_optional
-  %8 = load i64, ptr %temp_err, align 8
-  %i2b = icmp ne i64 %8, 0
+  %7 = load i64, ptr %temp_err, align 8
+  %i2b = icmp ne i64 %7, 0
   br i1 %i2b, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %end_block
@@ -84,9 +83,9 @@ if.exit:                                          ; preds = %end_block
   br label %expr_block.exit
 
 expr_block.exit:                                  ; preds = %if.exit, %if.then
-  %9 = load i8, ptr %blockret, align 1
-  %10 = trunc i8 %9 to i1
-  br i1 %10, label %loop.body, label %loop.exit
+  %8 = load i8, ptr %blockret, align 1
+  %9 = trunc i8 %8 to i1
+  br i1 %9, label %loop.body, label %loop.exit
 
 loop.exit:                                        ; preds = %expr_block.exit
   ret i32 0

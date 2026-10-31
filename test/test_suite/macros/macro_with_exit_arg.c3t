@@ -22,8 +22,7 @@ entry:
   %panicarg = alloca %"any[]", align 8
   %0 = call i64 @test.do_thing()
   %not_err = icmp eq i64 %0, 0
-  %1 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %1, label %after_check, label %assign_optional
+  br i1 %not_err, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %entry
   store i64 %0, ptr %error_var, align 8

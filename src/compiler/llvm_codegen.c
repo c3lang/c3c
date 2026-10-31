@@ -102,7 +102,7 @@ LLVMBuilderRef llvm_create_builder(GenContext *c)
 LLVMValueRef llvm_emit_is_no_opt(GenContext *c, LLVMValueRef error_value)
 {
 	LLVMValueRef compare = LLVMBuildICmp(c->builder, LLVMIntEQ, error_value, llvm_get_zero(c, type_fault), "not_err");
-	return llvm_emit_expect_raw(c, compare);
+	return compiler.build.optlevel == OPTIMIZATION_NONE ? compare : llvm_emit_expect_raw(c, compare);
 }
 
 LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ptr, int64_t size, AlignSize align)
@@ -977,6 +977,7 @@ static void llvm_codegen_setup(void)
 	attribute_id.nnan = lookup_attribute("nnan");
 	attribute_id.noalias = lookup_attribute("noalias");
 	attribute_id.noinline = lookup_attribute("noinline");
+	attribute_id.nomerge = lookup_attribute("nomerge");
 	attribute_id.noredzone = lookup_attribute("noredzone");
 	attribute_id.noreturn = lookup_attribute("noreturn");
 	attribute_id.nounwind = lookup_attribute("nounwind");
@@ -2243,6 +2244,8 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 	}
 
 	llvm_emit_dynamic_functions(gen_context, gen_context->dynamic_functions);
+
+	llvm_emit_panic_helpers(gen_context);
 
 	llvm_emit_constructors_and_destructors(gen_context);
 

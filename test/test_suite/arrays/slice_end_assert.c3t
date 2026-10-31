@@ -17,153 +17,64 @@ entry:
   %x = alloca %"char[]", align 8
   %z = alloca i32, align 4
   %y = alloca %"char[]", align 8
-  %taddr = alloca i64, align 8
-  %taddr1 = alloca i64, align 8
-  %varargslots = alloca [2 x %any], align 16
-  %panicarg = alloca %"any[]", align 8
-  %varargslots8 = alloca [1 x %any], align 16
   store %"char[]" { ptr @.str, i64 4 }, ptr %x, align 8
   store i32 5, ptr %z, align 4
   %0 = load %"char[]", ptr %x, align 8
   %1 = extractvalue %"char[]" %0, 0
   %2 = extractvalue %"char[]" %0, 1
-  %gt = icmp sgt i64 1, %2
-  %3 = call i1 @llvm.expect.i1(i1 %gt, i1 false)
+  %3 = icmp ugt i64 1, %2
   br i1 %3, label %panic, label %checkok
 
 checkok:                                          ; preds = %entry
   %sub = sub i64 %2, 8
   %add = add i64 1, %sub
-  %gt5 = icmp sgt i64 1, %add
-  %sub6 = sub i64 %add, 1
-  %4 = call i1 @llvm.expect.i1(i1 %gt5, i1 false)
-  br i1 %4, label %panic7, label %checkok11
+  %4 = icmp sgt i64 1, %add
+  %5 = icmp sgt i64 %add, %2
+  %6 = or i1 %4, %5
+  br i1 %6, label %panic1, label %checkok2
 
-checkok11:                                        ; preds = %checkok
-  %lt = icmp slt i64 %2, %add
-  %sub12 = sub i64 %add, 1
-  %5 = call i1 @llvm.expect.i1(i1 %lt, i1 false)
-  br i1 %5, label %panic13, label %checkok18
-
-checkok18:                                        ; preds = %checkok11
+checkok2:                                         ; preds = %checkok
   %size = sub i64 %add, 1
-  %ptradd19 = getelementptr inbounds i8, ptr %1, i64 1
-  %6 = insertvalue %"char[]" undef, ptr %ptradd19, 0
-  %7 = insertvalue %"char[]" %6, i64 %size, 1
-  store %"char[]" %7, ptr %y, align 8
-  %8 = load %"char[]", ptr %x, align 8
-  %9 = extractvalue %"char[]" %8, 0
-  %10 = extractvalue %"char[]" %8, 1
-  %gt20 = icmp sgt i64 0, %10
-  %11 = call i1 @llvm.expect.i1(i1 %gt20, i1 false)
-  br i1 %11, label %panic21, label %checkok26
+  %ptradd = getelementptr inbounds i8, ptr %1, i64 1
+  %7 = insertvalue %"char[]" undef, ptr %ptradd, 0
+  %8 = insertvalue %"char[]" %7, i64 %size, 1
+  store %"char[]" %8, ptr %y, align 8
+  %9 = load %"char[]", ptr %x, align 8
+  %10 = extractvalue %"char[]" %9, 0
+  %11 = extractvalue %"char[]" %9, 1
+  %12 = icmp ugt i64 0, %11
+  br i1 %12, label %panic3, label %checkok4
 
-checkok26:                                        ; preds = %checkok18
-  %12 = load i32, ptr %z, align 4
-  %sext = sext i32 %12 to i64
-  %sub27 = sub i64 %10, %sext
-  %add28 = add i64 0, %sub27
-  %gt29 = icmp sgt i64 0, %add28
-  %sub30 = sub i64 %add28, 0
-  %13 = call i1 @llvm.expect.i1(i1 %gt29, i1 false)
-  br i1 %13, label %panic31, label %checkok34
+checkok4:                                         ; preds = %checkok2
+  %13 = load i32, ptr %z, align 4
+  %sext = sext i32 %13 to i64
+  %sub5 = sub i64 %11, %sext
+  %add6 = add i64 0, %sub5
+  %14 = icmp sgt i64 0, %add6
+  %15 = icmp sgt i64 %add6, %11
+  %16 = or i1 %14, %15
+  br i1 %16, label %panic7, label %checkok8
 
-checkok34:                                        ; preds = %checkok26
-  %lt35 = icmp slt i64 %10, %add28
-  %sub36 = sub i64 %add28, 1
-  %14 = call i1 @llvm.expect.i1(i1 %lt35, i1 false)
-  br i1 %14, label %panic37, label %checkok42
-
-checkok42:                                        ; preds = %checkok34
-  %size43 = sub i64 %add28, 0
-  %15 = insertvalue %"char[]" undef, ptr %9, 0
-  %16 = insertvalue %"char[]" %15, i64 %size43, 1
+checkok8:                                         ; preds = %checkok4
+  %size9 = sub i64 %add6, 0
+  %17 = insertvalue %"char[]" undef, ptr %10, 0
+  %18 = insertvalue %"char[]" %17, i64 %size9, 1
   ret i32 0
 
 panic:                                            ; preds = %entry
-  store i64 %2, ptr %taddr, align 8
-  store i64 1, ptr %taddr1, align 8
-  store ptr %taddr, ptr %varargslots, align 16
-  %ptradd = getelementptr inbounds i8, ptr %varargslots, i64 8
-  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd, align 8
-  %ptradd2 = getelementptr inbounds i8, ptr %varargslots, i64 16
-  store ptr %taddr1, ptr %ptradd2, align 16
-  %ptradd3 = getelementptr inbounds i8, ptr %ptradd2, i64 8
-  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd3, align 8
-  store ptr %varargslots, ptr %panicarg, align 8
-  %ptradd4 = getelementptr inbounds i8, ptr %panicarg, i64 8
-  store i64 2, ptr %ptradd4, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 61, ptr @.file, i64 19, ptr @.func, i64 4, i32 6, ptr byval(%"any[]") align 8 %panicarg) #2
+  call void @__c3_panic_slice.long(ptr @.panic_loc, i32 3, i64 1, i64 undef, i64 %2) #2
   unreachable
 
-panic7:                                           ; preds = %checkok
-  store i64 %sub6, ptr %taddr, align 8
-  store ptr %taddr, ptr %varargslots8, align 16
-  %ptradd9 = getelementptr inbounds i8, ptr %varargslots8, i64 8
-  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd9, align 8
-  store ptr %varargslots8, ptr %panicarg, align 8
-  %ptradd10 = getelementptr inbounds i8, ptr %panicarg, i64 8
-  store i64 1, ptr %ptradd10, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64 43, ptr @.file, i64 19, ptr @.func, i64 4, i32 6, ptr byval(%"any[]") align 8 %panicarg) #2
+panic1:                                           ; preds = %checkok
+  call void @__c3_panic_slice.long(ptr @.panic_loc.1, i32 12, i64 1, i64 %add, i64 %2) #2
   unreachable
 
-panic13:                                          ; preds = %checkok11
-  store i64 %sub12, ptr %taddr, align 8
-  store i64 %2, ptr %taddr1, align 8
-  store ptr %taddr, ptr %varargslots, align 16
-  %ptradd14 = getelementptr inbounds i8, ptr %varargslots, i64 8
-  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd14, align 8
-  %ptradd15 = getelementptr inbounds i8, ptr %varargslots, i64 16
-  store ptr %taddr1, ptr %ptradd15, align 16
-  %ptradd16 = getelementptr inbounds i8, ptr %ptradd15, i64 8
-  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd16, align 8
-  store ptr %varargslots, ptr %panicarg, align 8
-  %ptradd17 = getelementptr inbounds i8, ptr %panicarg, i64 8
-  store i64 2, ptr %ptradd17, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg.2, i64 60, ptr @.file, i64 19, ptr @.func, i64 4, i32 6, ptr byval(%"any[]") align 8 %panicarg) #2
+panic3:                                           ; preds = %checkok2
+  call void @__c3_panic_slice.long(ptr @.panic_loc.2, i32 3, i64 0, i64 undef, i64 %11) #2
   unreachable
 
-panic21:                                          ; preds = %checkok18
-  store i64 %10, ptr %taddr, align 8
-  store i64 0, ptr %taddr1, align 8
-  store ptr %taddr, ptr %varargslots, align 16
-  %ptradd22 = getelementptr inbounds i8, ptr %varargslots, i64 8
-  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd22, align 8
-  %ptradd23 = getelementptr inbounds i8, ptr %varargslots, i64 16
-  store ptr %taddr1, ptr %ptradd23, align 16
-  %ptradd24 = getelementptr inbounds i8, ptr %ptradd23, i64 8
-  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd24, align 8
-  store ptr %varargslots, ptr %panicarg, align 8
-  %ptradd25 = getelementptr inbounds i8, ptr %panicarg, i64 8
-  store i64 2, ptr %ptradd25, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 61, ptr @.file, i64 19, ptr @.func, i64 4, i32 7, ptr byval(%"any[]") align 8 %panicarg) #2
-  unreachable
-
-panic31:                                          ; preds = %checkok26
-  store i64 %sub30, ptr %taddr, align 8
-  store ptr %taddr, ptr %varargslots8, align 16
-  %ptradd32 = getelementptr inbounds i8, ptr %varargslots8, i64 8
-  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd32, align 8
-  store ptr %varargslots8, ptr %panicarg, align 8
-  %ptradd33 = getelementptr inbounds i8, ptr %panicarg, i64 8
-  store i64 1, ptr %ptradd33, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64 43, ptr @.file, i64 19, ptr @.func, i64 4, i32 7, ptr byval(%"any[]") align 8 %panicarg) #2
-  unreachable
-
-panic37:                                          ; preds = %checkok34
-  store i64 %sub36, ptr %taddr, align 8
-  store i64 %10, ptr %taddr1, align 8
-  store ptr %taddr, ptr %varargslots, align 16
-  %ptradd38 = getelementptr inbounds i8, ptr %varargslots, i64 8
-  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd38, align 8
-  %ptradd39 = getelementptr inbounds i8, ptr %varargslots, i64 16
-  store ptr %taddr1, ptr %ptradd39, align 16
-  %ptradd40 = getelementptr inbounds i8, ptr %ptradd39, i64 8
-  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd40, align 8
-  store ptr %varargslots, ptr %panicarg, align 8
-  %ptradd41 = getelementptr inbounds i8, ptr %panicarg, i64 8
-  store i64 2, ptr %ptradd41, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg.2, i64 60, ptr @.file, i64 19, ptr @.func, i64 4, i32 7, ptr byval(%"any[]") align 8 %panicarg) #2
+panic7:                                           ; preds = %checkok4
+  call void @__c3_panic_slice.long(ptr @.panic_loc.3, i32 12, i64 0, i64 %add6, i64 %11) #2
   unreachable
 }
 

@@ -21,17 +21,16 @@ entry:
   store i64 0, ptr %a.f, align 8
   %optval = load i64, ptr %a.f, align 8
   %not_err = icmp eq i64 %optval, 0
-  %2 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %2, label %after_check, label %assign_optional
+  br i1 %not_err, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %entry
   store i64 %optval, ptr %b.f, align 8
   br label %after_assign
 
 after_check:                                      ; preds = %entry
-  %3 = load ptr, ptr %a, align 8
-  %4 = load i32, ptr %3, align 4
-  store i32 %4, ptr %b, align 4
+  %2 = load ptr, ptr %a, align 8
+  %3 = load i32, ptr %2, align 4
+  store i32 %3, ptr %b, align 4
   store i64 0, ptr %b.f, align 8
   br label %after_assign
 

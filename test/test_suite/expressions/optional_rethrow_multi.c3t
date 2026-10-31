@@ -89,13 +89,12 @@ entry:
   %hi = load i64, ptr %ptradd1, align 8
   %2 = call i64 @test.readDoc(ptr %retparam, ptr %lo, i64 %hi)
   %not_err = icmp eq i64 %2, 0
-  %3 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %3, label %after_check, label %else_block
+  br i1 %not_err, label %after_check, label %else_block
 
 after_check:                                      ; preds = %entry
-  %4 = load ptr, ptr %retparam, align 8
-  %5 = call ptr @test.buildSummary(ptr %4)
-  store ptr %5, ptr %result, align 8
+  %3 = load ptr, ptr %retparam, align 8
+  %4 = call ptr @test.buildSummary(ptr %3)
+  store ptr %4, ptr %result, align 8
   br label %phi_block
 
 else_block:                                       ; preds = %entry
@@ -104,26 +103,21 @@ else_block:                                       ; preds = %entry
 
 phi_block:                                        ; preds = %else_block, %after_check
   %val = phi ptr [ %result, %after_check ], [ %literal, %else_block ]
-  %6 = load ptr, ptr %val, align 8
-  ret ptr %6
+  %5 = load ptr, ptr %val, align 8
+  ret ptr %5
 }
 
 define void @test.main() #0 {
 entry:
   %.anon = alloca i64, align 8
   %url = alloca %"char[]", align 8
-  %taddr = alloca i64, align 8
-  %varargslots = alloca [1 x %any], align 16
-  %panicarg = alloca %"any[]", align 8
-  %taddr4 = alloca i64, align 8
-  %varargslots5 = alloca [2 x %any], align 16
   %summary = alloca %Summary, align 8
   %result = alloca %Summary, align 8
   %0 = load i64, ptr getelementptr inbounds (i8, ptr @main.URLS, i64 8), align 8
   store i64 0, ptr %.anon, align 8
   br label %loop.cond
 
-loop.cond:                                        ; preds = %checkok16, %entry
+loop.cond:                                        ; preds = %checkok2, %entry
   %1 = load i64, ptr %.anon, align 8
   %lt = icmp slt i64 %1, %0
   br i1 %lt, label %loop.body, label %loop.exit
@@ -132,33 +126,26 @@ loop.body:                                        ; preds = %loop.cond
   %2 = load i64, ptr getelementptr inbounds (i8, ptr @main.URLS, i64 8), align 8
   %3 = load ptr, ptr @main.URLS, align 8
   %4 = load i64, ptr %.anon, align 8
-  %lt1 = icmp slt i64 %4, 0
-  %5 = call i1 @llvm.expect.i1(i1 %lt1, i1 false)
+  %5 = icmp uge i64 %4, %2
   br i1 %5, label %panic, label %checkok
 
 checkok:                                          ; preds = %loop.body
-  %ge = icmp sge i64 %4, %2
-  %6 = call i1 @llvm.expect.i1(i1 %ge, i1 false)
-  br i1 %6, label %panic3, label %checkok10
-
-checkok10:                                        ; preds = %checkok
   %ptroffset = getelementptr inbounds [16 x i8], ptr %3, i64 %4
-  %7 = ptrtoint ptr %ptroffset to i64
-  %8 = urem i64 %7, 8
-  %9 = icmp ne i64 %8, 0
-  %10 = call i1 @llvm.expect.i1(i1 %9, i1 false)
-  br i1 %10, label %panic11, label %checkok16
+  %6 = ptrtoint ptr %ptroffset to i64
+  %7 = and i64 %6, 7
+  %8 = icmp ne i64 %7, 0
+  br i1 %8, label %panic1, label %checkok2
 
-checkok16:                                        ; preds = %checkok10
+checkok2:                                         ; preds = %checkok
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %url, ptr align 8 %ptroffset, i32 16, i1 false)
   %lo = load ptr, ptr %url, align 8
-  %ptradd17 = getelementptr inbounds i8, ptr %url, i64 8
-  %hi = load i64, ptr %ptradd17, align 8
-  %11 = call ptr @test.readAndBuildSummary(ptr %lo, i64 %hi)
-  store ptr %11, ptr %result, align 8
+  %ptradd = getelementptr inbounds i8, ptr %url, i64 8
+  %hi = load i64, ptr %ptradd, align 8
+  %9 = call ptr @test.readAndBuildSummary(ptr %lo, i64 %hi)
+  store ptr %9, ptr %result, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %summary, ptr align 8 %result, i32 8, i1 false)
-  %12 = load i64, ptr %.anon, align 8
-  %addnsw = add nsw i64 %12, 1
+  %10 = load i64, ptr %.anon, align 8
+  %addnsw = add nsw i64 %10, 1
   store i64 %addnsw, ptr %.anon, align 8
   br label %loop.cond
 
@@ -166,45 +153,10 @@ loop.exit:                                        ; preds = %loop.cond
   ret void
 
 panic:                                            ; preds = %loop.body
-  store i64 %4, ptr %taddr, align 8
-  store ptr %taddr, ptr %varargslots, align 16
-  %ptradd = getelementptr inbounds i8, ptr %varargslots, i64 8
-  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd, align 8
-  store ptr %varargslots, ptr %panicarg, align 8
-  %ptradd2 = getelementptr inbounds i8, ptr %panicarg, i64 8
-  store i64 1, ptr %ptradd2, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg,
+  call void @__c3_panic_index.long(ptr @.panic_loc, i64 %4, i64 %2) #4
   unreachable
 
-panic3:                                           ; preds = %checkok
-  store i64 %2, ptr %taddr, align 8
-  store i64 %4, ptr %taddr4, align 8
-  store ptr %taddr, ptr %varargslots5, align 16
-  %ptradd6 = getelementptr inbounds i8, ptr %varargslots5, i64 8
-  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd6, align 8
-  %ptradd7 = getelementptr inbounds i8, ptr %varargslots5, i64 16
-  store ptr %taddr4, ptr %ptradd7, align 16
-  %ptradd8 = getelementptr inbounds i8, ptr %ptradd7, i64 8
-  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd8, align 8
-  store ptr %varargslots5, ptr %panicarg, align 8
-  %ptradd9 = getelementptr inbounds i8, ptr %panicarg, i64 8
-  store i64 2, ptr %ptradd9, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64 59, ptr
-  unreachable
-
-panic11:                                          ; preds = %checkok10
-  store i64 8, ptr %taddr, align 8
-  store i64 %8, ptr %taddr4, align 8
-  store ptr %taddr, ptr %varargslots5, align 16
-  %ptradd12 = getelementptr inbounds i8, ptr %varargslots5, i64 8
-  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd12, align 8
-  %ptradd13 = getelementptr inbounds i8, ptr %varargslots5, i64 16
-  store ptr %taddr4, ptr %ptradd13, align 16
-  %ptradd14 = getelementptr inbounds i8, ptr %ptradd13, i64 8
-  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd14, align 8
-  store ptr %varargslots5, ptr %panicarg, align 8
-  %ptradd15 = getelementptr inbounds i8, ptr %panicarg, i64 8
-  store i64 2, ptr %ptradd15, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg.2, i64 82,
+panic1:                                           ; preds = %checkok
+  call void @__c3_panicf.long.long(ptr @.panic_loc.1, i64 8, i64 %7) #4
   unreachable
 }

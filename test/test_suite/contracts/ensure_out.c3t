@@ -22,86 +22,39 @@ fn void main()
 
 define void @test.foo(ptr %0) #0 {
 entry:
-  %taddr = alloca i64, align 8
-  %taddr2 = alloca i64, align 8
-  %varargslots = alloca [2 x %any], align 16
-  %panicarg = alloca %"any[]", align 8
-  %checknull = icmp eq ptr %0, null
-  %1 = call i1 @llvm.expect.i1(i1 %checknull, i1 false)
-  br i1 %1, label %panic, label %checkok
+  %1 = ptrtoint ptr %0 to i64
+  %checknull = icmp eq i64 %1, 0
+  %2 = and i64 %1, 3
+  %3 = icmp ne i64 %2, 0
+  %4 = or i1 %checknull, %3
+  br i1 %4, label %panic, label %checkok
 
 checkok:                                          ; preds = %entry
-  %2 = ptrtoint ptr %0 to i64
-  %3 = urem i64 %2, 4
-  %4 = icmp ne i64 %3, 0
-  %5 = call i1 @llvm.expect.i1(i1 %4, i1 false)
-  br i1 %5, label %panic1, label %checkok6
-
-checkok6:                                         ; preds = %checkok
   store i32 1, ptr %0, align 4
-  %checknull7 = icmp eq ptr %0, null
-  %6 = call i1 @llvm.expect.i1(i1 %checknull7, i1 false)
-  br i1 %6, label %panic8, label %checkok9
+  %5 = ptrtoint ptr %0 to i64
+  %checknull1 = icmp eq i64 %5, 0
+  %6 = and i64 %5, 3
+  %7 = icmp ne i64 %6, 0
+  %8 = or i1 %checknull1, %7
+  br i1 %8, label %panic2, label %checkok3
 
-checkok9:                                         ; preds = %checkok6
-  %7 = ptrtoint ptr %0 to i64
-  %8 = urem i64 %7, 4
-  %9 = icmp ne i64 %8, 0
-  %10 = call i1 @llvm.expect.i1(i1 %9, i1 false)
-  br i1 %10, label %panic10, label %checkok15
-
-checkok15:                                        ; preds = %checkok9
-  %11 = load i32, ptr %0, align 4
-  %ne = icmp ne i32 %11, 0
+checkok3:                                         ; preds = %checkok
+  %9 = load i32, ptr %0, align 4
+  %ne = icmp ne i32 %9, 0
   br i1 %ne, label %assert_ok, label %assert_fail
 
-assert_fail:                                      ; preds = %checkok15
-  %12 = load ptr, ptr @std.core.builtin.panic, align 8
-  call void %12(ptr @.panic_msg.2, i64 29, ptr @.file, i64 13, ptr @.func, i64 3, i32 8) #2
+assert_fail:                                      ; preds = %checkok3
+  call void @__c3_panic(ptr @.panic_loc.3) #2
   unreachable
 
-assert_ok:                                        ; preds = %checkok15
+assert_ok:                                        ; preds = %checkok3
   ret void
 
 panic:                                            ; preds = %entry
-  %13 = load ptr, ptr @std.core.builtin.panic, align 8
-  call void %13(ptr @.panic_msg, i64 44, ptr @.file, i64 13, ptr @.func, i64 3, i32 9) #2
+  call void @__c3_panic_deref(ptr @.panic_loc, i64 %1, i64 4) #2
   unreachable
 
-panic1:                                           ; preds = %checkok
-  store i64 4, ptr %taddr, align 8
-  store i64 %3, ptr %taddr2, align 8
-  store ptr %taddr, ptr %varargslots, align 16
-  %ptradd = getelementptr inbounds i8, ptr %varargslots, i64 8
-  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd, align 8
-  %ptradd3 = getelementptr inbounds i8, ptr %varargslots, i64 16
-  store ptr %taddr2, ptr %ptradd3, align 16
-  %ptradd4 = getelementptr inbounds i8, ptr %ptradd3, i64 8
-  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd4, align 8
-  store ptr %varargslots, ptr %panicarg, align 8
-  %ptradd5 = getelementptr inbounds i8, ptr %panicarg, i64 8
-  store i64 2, ptr %ptradd5, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64
-  unreachable
-
-panic8:                                           ; preds = %checkok6
-  %14 = load ptr, ptr @std.core.builtin.panic, align 8
-  call void %14(ptr @.panic_msg, i64 44, ptr @.file, i64 13, ptr @.func, i64 3, i32 5) #2
-  unreachable
-
-panic10:                                          ; preds = %checkok9
-  store i64 4, ptr %taddr, align 8
-  store i64 %8, ptr %taddr2, align 8
-  store ptr %taddr, ptr %varargslots, align 16
-  %ptradd11 = getelementptr inbounds i8, ptr %varargslots, i64 8
-  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd11, align 8
-  %ptradd12 = getelementptr inbounds i8, ptr %varargslots, i64 16
-  store ptr %taddr2, ptr %ptradd12, align 16
-  %ptradd13 = getelementptr inbounds i8, ptr %ptradd12, i64 8
-  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd13, align 8
-  store ptr %varargslots, ptr %panicarg, align 8
-  %ptradd14 = getelementptr inbounds i8, ptr %panicarg, i64 8
-  store i64 2, ptr %ptradd14, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64
+panic2:                                           ; preds = %checkok
+  call void @__c3_panic_deref(ptr @.panic_loc.1, i64 %5, i64 4) #2
   unreachable
 }

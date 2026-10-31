@@ -81,12 +81,11 @@ entry:
   store i32 0, ptr %w, align 4
   %optval = load i64, ptr %w.f, align 8
   %not_err = icmp eq i64 %optval, 0
-  %18 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %18, label %after_check, label %else_block
+  br i1 %not_err, label %after_check, label %else_block
 
 after_check:                                      ; preds = %entry
-  %19 = load i32, ptr %w, align 4
-  %sext13 = sext i32 %19 to i64
+  %18 = load i32, ptr %w, align 4
+  %sext13 = sext i32 %18 to i64
   br label %phi_block
 
 else_block:                                       ; preds = %entry

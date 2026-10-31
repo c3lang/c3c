@@ -34,6 +34,7 @@ fn void main()
 
 /* #expect: repro.ll
 define void @repro.main() #0 {
+
 entry:
   %foo = alloca %Foo, align 8
   %error_var = alloca i64, align 8
@@ -44,6 +45,5 @@ entry:
   call void @repro.Foo.add_fn_b(ptr %foo, ptr @repro.b_func)
   %0 = call i64 @repro.Foo.deinit(ptr %foo)
   %not_err = icmp eq i64 %0, 0
-  %1 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %1, label %after_check, label %assign_optional
+  br i1 %not_err, label %after_check, label %assign_optional
 

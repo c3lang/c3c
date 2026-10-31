@@ -26,8 +26,7 @@ entry:
   %1 = load i64, ptr %x, align 8
   store i64 %1, ptr %a.f, align 8
   %not_err = icmp eq i64 %1, 0
-  %2 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %2, label %after_check, label %assign_optional
+  br i1 %not_err, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %entry
   store i64 %1, ptr %b.f, align 8
@@ -41,16 +40,15 @@ after_check:                                      ; preds = %entry
 after_assign:                                     ; preds = %after_check, %assign_optional
   %optval = load i64, ptr %a.f, align 8
   %not_err1 = icmp eq i64 %optval, 0
-  %3 = call i1 @llvm.expect.i1(i1 %not_err1, i1 true)
-  br i1 %3, label %after_check3, label %assign_optional2
+  br i1 %not_err1, label %after_check3, label %assign_optional2
 
 assign_optional2:                                 ; preds = %after_assign
   store i64 %optval, ptr %b.f, align 8
   br label %optional_assign_jump
 
 after_check3:                                     ; preds = %after_assign
-  %4 = load i32, ptr %a, align 4
-  store i32 %4, ptr %b, align 4
+  %2 = load i32, ptr %a, align 4
+  store i32 %2, ptr %b, align 4
   store i64 0, ptr %b.f, align 8
   br label %after_assign4
 
@@ -60,7 +58,7 @@ optional_assign_jump:                             ; preds = %assign_optional2
   br label %after_assign5
 
 after_assign4:                                    ; preds = %after_check3
-  store i32 %4, ptr %c, align 4
+  store i32 %2, ptr %c, align 4
   store i64 0, ptr %c.f, align 8
   br label %after_assign5
 

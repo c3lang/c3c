@@ -34,23 +34,21 @@ entry:
   call void @llvm.memset.p0.i64(ptr align 4 %c, i8 0, i64 120, i1 false)
   %optval = load i64, ptr %a.f, align 8
   %not_err = icmp eq i64 %optval, 0
-  %0 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %0, label %after_check, label %else_block
+  br i1 %not_err, label %after_check, label %else_block
 
 after_check:                                      ; preds = %entry
-  %1 = load i32, ptr %a, align 4
+  %0 = load i32, ptr %a, align 4
   br label %phi_block
 
 else_block:                                       ; preds = %entry
   br label %phi_block
 
 phi_block:                                        ; preds = %else_block, %after_check
-  %val = phi i32 [ %1, %after_check ], [ 1, %else_block ]
+  %val = phi i32 [ %0, %after_check ], [ 1, %else_block ]
   store i32 %val, ptr %e, align 4
   %optval1 = load i64, ptr %b.f, align 8
   %not_err2 = icmp eq i64 %optval1, 0
-  %2 = call i1 @llvm.expect.i1(i1 %not_err2, i1 true)
-  br i1 %2, label %after_check3, label %else_block4
+  br i1 %not_err2, label %after_check3, label %else_block4
 
 after_check3:                                     ; preds = %phi_block
   br label %phi_block5

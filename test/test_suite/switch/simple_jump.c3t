@@ -80,8 +80,8 @@ guard_block13:                                    ; preds = %assign_optional11
   br label %voiderr
 
 noerr_block14:                                    ; preds = %after_check12
-  %14 = load i64, ptr %len, align 8
-  %add = add i64 %14, 1
+  %11 = load i64, ptr %len, align 8
+  %add = add i64 %11, 1
   br label %voiderr
 
 voiderr:                                          ; preds = %noerr_block14, %guard_block13, %guard_block7, %guard_block

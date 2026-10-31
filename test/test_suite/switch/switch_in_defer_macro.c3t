@@ -678,7 +678,6 @@ fn void test()
 %"Trie{Token, ushort}" = type { %"List{TrieNode{Token, ushort}}" }
 %"List{TrieNode{Token, ushort}}" = type { i64, i64, %any, ptr }
 %.anon = type { %"char[]" }
-
 @"$ct.lexer_test.UintTest" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.enum.KEYWORD1 = internal constant [9 x i8] c"KEYWORD1\00", align 1
 @.enum.KEYWORD2 = internal constant [9 x i8] c"KEYWORD2\00", align 1
@@ -790,8 +789,7 @@ loop.body:                                        ; preds = %loop.cond
   %hi7 = load ptr, ptr %ptradd6, align 8
   %8 = call i64 @"lexer.Lexer$lexer_test.Token$lexer_test.Comment$.init"(ptr %lex, i64 %lo2, ptr %hi4, ptr @lexer_test.is_ident_char, i64 %lo5, ptr %hi7)
   %not_err = icmp eq i64 %8, 0
-  %9 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %9, label %after_check, label %assign_optional
+  br i1 %not_err, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %loop.body
   store i64 %8, ptr %error_var, align 8
@@ -801,34 +799,33 @@ after_check:                                      ; preds = %loop.body
   br label %noerr_block
 
 guard_block:                                      ; preds = %assign_optional
-  %10 = load i64, ptr %error_var, align 8
-  ret i64 %10
+  %9 = load i64, ptr %error_var, align 8
+  ret i64 %9
 
 noerr_block:                                      ; preds = %after_check
-  %11 = call i64 @"lexer.Lexer$lexer_test.Token$lexer_test.Comment$.next"(ptr %retparam, ptr %lex)
-  %not_err9 = icmp eq i64 %11, 0
-  %12 = call i1 @llvm.expect.i1(i1 %not_err9, i1 true)
-  br i1 %12, label %after_check11, label %assign_optional10
+  %10 = call i64 @"lexer.Lexer$lexer_test.Token$lexer_test.Comment$.next"(ptr %retparam, ptr %lex)
+  %not_err9 = icmp eq i64 %10, 0
+  br i1 %not_err9, label %after_check11, label %assign_optional10
 
 assign_optional10:                                ; preds = %noerr_block
-  store i64 %11, ptr %error_var8, align 8
+  store i64 %10, ptr %error_var8, align 8
   br label %guard_block12
 
 after_check11:                                    ; preds = %noerr_block
   br label %noerr_block13
 
 guard_block12:                                    ; preds = %assign_optional10
-  %13 = load i64, ptr %error_var8, align 8
-  ret i64 %13
+  %11 = load i64, ptr %error_var8, align 8
+  ret i64 %11
 
 noerr_block13:                                    ; preds = %after_check11
-  %14 = load i8, ptr %retparam, align 1
-  store i8 %14, ptr %kind, align 1
-  %15 = load i8, ptr %kind, align 1
-  %eq = icmp eq i8 %15, 1
+  %12 = load i8, ptr %retparam, align 1
+  store i8 %12, ptr %kind, align 1
+  %13 = load i8, ptr %kind, align 1
+  %eq = icmp eq i8 %13, 1
   call void @llvm.assume(i1 %eq)
-  %16 = load i64, ptr %.anon, align 8
-  %addnsw = add nsw i64 %16, 1
+  %14 = load i64, ptr %.anon, align 8
+  %addnsw = add nsw i64 %14, 1
   store i64 %addnsw, ptr %.anon, align 8
   br label %loop.cond
 

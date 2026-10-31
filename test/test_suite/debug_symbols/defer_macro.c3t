@@ -269,8 +269,7 @@ entry:
   store %"any[]" %"$$temp", ptr %indirectarg, align 8
   %12 = call i64 @std.io.fprintf(ptr %retparam, i64 %lo, ptr %hi, ptr @.str, i64 2, ptr byval(%"any[]") align 8 %indirectarg), !dbg !124
   %not_err = icmp eq i64 %12, 0, !dbg !124
-  %13 = call i1 @llvm.expect.i1(i1 %not_err, i1 true), !dbg !124
-  br i1 %13, label %after_check, label %assign_optional, !dbg !124
+  br i1 %not_err, label %after_check, label %assign_optional, !dbg !124
 
 assign_optional:                                  ; preds = %entry
   store i64 %12, ptr %error_var, align 8, !dbg !124
@@ -283,16 +282,15 @@ guard_block:                                      ; preds = %assign_optional
   br label %voiderr, !dbg !124
 
 noerr_block:                                      ; preds = %after_check
-  %14 = load i64, ptr %retparam, align 8, !dbg !124
-  store i64 %14, ptr %len, align 8, !dbg !124
-  %15 = load ptr, ptr %out, align 8, !dbg !125
-  %16 = call i64 @std.io.File.write_byte(ptr %15, i8 zeroext 10), !dbg !126
-  %not_err6 = icmp eq i64 %16, 0, !dbg !126
-  %17 = call i1 @llvm.expect.i1(i1 %not_err6, i1 true), !dbg !126
-  br i1 %17, label %after_check8, label %assign_optional7, !dbg !126
+  %13 = load i64, ptr %retparam, align 8, !dbg !124
+  store i64 %13, ptr %len, align 8, !dbg !124
+  %14 = load ptr, ptr %out, align 8, !dbg !125
+  %15 = call i64 @std.io.File.write_byte(ptr %14, i8 zeroext 10), !dbg !126
+  %not_err6 = icmp eq i64 %15, 0, !dbg !126
+  br i1 %not_err6, label %after_check8, label %assign_optional7, !dbg !126
 
 assign_optional7:                                 ; preds = %noerr_block
-  store i64 %16, ptr %error_var5, align 8, !dbg !126
+  store i64 %15, ptr %error_var5, align 8, !dbg !126
   br label %guard_block9, !dbg !126
 
 after_check8:                                     ; preds = %noerr_block
@@ -302,14 +300,13 @@ guard_block9:                                     ; preds = %assign_optional7
   br label %voiderr, !dbg !126
 
 noerr_block10:                                    ; preds = %after_check8
-  %18 = load ptr, ptr %out, align 8, !dbg !127
-  %19 = call i64 @std.io.File.flush(ptr %18), !dbg !127
-  %not_err12 = icmp eq i64 %19, 0, !dbg !127
-  %20 = call i1 @llvm.expect.i1(i1 %not_err12, i1 true), !dbg !127
-  br i1 %20, label %after_check14, label %assign_optional13, !dbg !127
+  %16 = load ptr, ptr %out, align 8, !dbg !127
+  %17 = call i64 @std.io.File.flush(ptr %16), !dbg !127
+  %not_err12 = icmp eq i64 %17, 0, !dbg !127
+  br i1 %not_err12, label %after_check14, label %assign_optional13, !dbg !127
 
 assign_optional13:                                ; preds = %noerr_block10
-  store i64 %19, ptr %error_var11, align 8, !dbg !127
+  store i64 %17, ptr %error_var11, align 8, !dbg !127
   br label %guard_block15, !dbg !127
 
 after_check14:                                    ; preds = %noerr_block10
@@ -319,8 +316,8 @@ guard_block15:                                    ; preds = %assign_optional13
   br label %voiderr, !dbg !127
 
 noerr_block16:                                    ; preds = %after_check14
-  %21 = load i64, ptr %len, align 8, !dbg !128
-  %add = add i64 %21, 1, !dbg !128
+  %18 = load i64, ptr %len, align 8, !dbg !128
+  %add = add i64 %18, 1, !dbg !128
   br label %voiderr, !dbg !111
 
 voiderr:                                          ; preds = %noerr_block16, %guard_block15, %guard_block9, %guard_block
@@ -475,34 +472,32 @@ cache_hit:                                        ; preds = %if.exit
   br i1 %25, label %missing_function, label %match
 
 missing_function:                                 ; preds = %24
-  %26 = load ptr, ptr @std.core.builtin.panic, align 8, !dbg !254
-  call void %26(ptr @.panic_msg, i64 44, ptr @.file,
+  call void @__c3_panic(ptr @.panic_loc) #6, !dbg !254
   unreachable, !dbg !254
 
 match:                                            ; preds = %24
-  %27 = load ptr, ptr %allocator14, align 8
-  %28 = load i64, ptr %size, align 8
-  %29 = call i64 %fn_phi(ptr %retparam, ptr %27, i64 %28, i32 0, i64 0), !dbg !254
-  %not_err = icmp eq i64 %29, 0, !dbg !254
-  %30 = call i1 @llvm.expect.i1(i1 %not_err, i1 true), !dbg !254
-  br i1 %30, label %after_check, label %assign_optional, !dbg !254
+  %26 = load ptr, ptr %allocator14, align 8
+  %27 = load i64, ptr %size, align 8
+  %28 = call i64 %fn_phi(ptr %retparam, ptr %26, i64 %27, i32 0, i64 0), !dbg !254
+  %not_err = icmp eq i64 %28, 0, !dbg !254
+  br i1 %not_err, label %after_check, label %assign_optional, !dbg !254
 
 assign_optional:                                  ; preds = %match
-  store i64 %29, ptr %error_var, align 8, !dbg !254
+  store i64 %28, ptr %error_var, align 8, !dbg !254
   br label %panic_block, !dbg !254
 
 after_check:                                      ; preds = %match
-  %31 = load ptr, ptr %retparam, align 8, !dbg !254
-  store ptr %31, ptr %blockret15, align 8, !dbg !254
+  %29 = load ptr, ptr %retparam, align 8, !dbg !254
+  store ptr %29, ptr %blockret15, align 8, !dbg !254
   br label %expr_block.exit, !dbg !254
 
 expr_block.exit:                                  ; preds = %after_check, %if.then
-  %32 = load ptr, ptr %blockret15, align 8, !dbg !254
-  %33 = load i64, ptr %elements10, align 8, !dbg !255
-  %add = add i64 0, %33, !dbg !255
+  %30 = load ptr, ptr %blockret15, align 8, !dbg !254
+  %31 = load i64, ptr %elements10, align 8, !dbg !255
+  %add = add i64 0, %31, !dbg !255
   %size18 = sub i64 %add, 0, !dbg !255
-  %34 = insertvalue %"char[][]" undef, ptr %32, 0, !dbg !255
-  %35 = insertvalue %"char[][]" %34, i64 %size18, 1, !dbg !255
+  %32 = insertvalue %"char[][]" undef, ptr %30, 0, !dbg !255
+  %33 = insertvalue %"char[][]" %32, i64 %size18, 1, !dbg !255
   br label %noerr_block, !dbg !255
 
 panic_block:                                      ; preds = %assign_optional
@@ -516,60 +511,60 @@ panic_block:                                      ; preds = %assign_optional
   unreachable, !dbg !229
 
 noerr_block:                                      ; preds = %expr_block.exit
-  store %"char[][]" %35, ptr %list5, align 8, !dbg !229
+  store %"char[][]" %33, ptr %list5, align 8, !dbg !229
     #dbg_declare(ptr %i, !256, !DIExpression(), !258)
   store i32 0, ptr %i, align 4, !dbg !259
   br label %loop.cond, !dbg !259
 
 loop.cond:                                        ; preds = %loop.exit, %noerr_block
-  %36 = load i32, ptr %i, align 4, !dbg !260
-  %37 = load i32, ptr %argc2, align 4, !dbg !261
-  %lt = icmp slt i32 %36, %37, !dbg !260
+  %34 = load i32, ptr %i, align 4, !dbg !260
+  %35 = load i32, ptr %argc2, align 4, !dbg !261
+  %lt = icmp slt i32 %34, %35, !dbg !260
   br i1 %lt, label %loop.body, label %loop.exit32, !dbg !260
 
 loop.body:                                        ; preds = %loop.cond
     #dbg_declare(ptr %arg, !262, !DIExpression(), !264)
-  %38 = load ptr, ptr %argv3, align 8, !dbg !265
-  %39 = load i32, ptr %i, align 4, !dbg !266
-  %sext21 = sext i32 %39 to i64, !dbg !266
-  %ptroffset = getelementptr inbounds [8 x i8], ptr %38, i64 %sext21, !dbg !266
-  %40 = load ptr, ptr %ptroffset, align 8, !dbg !266
-  store ptr %40, ptr %arg, align 8, !dbg !266
-  %41 = load ptr, ptr %arg, align 8, !dbg !267
+  %36 = load ptr, ptr %argv3, align 8, !dbg !265
+  %37 = load i32, ptr %i, align 4, !dbg !266
+  %sext21 = sext i32 %37 to i64, !dbg !266
+  %ptroffset = getelementptr inbounds [8 x i8], ptr %36, i64 %sext21, !dbg !266
+  %38 = load ptr, ptr %ptroffset, align 8, !dbg !266
+  store ptr %38, ptr %arg, align 8, !dbg !266
+  %39 = load ptr, ptr %arg, align 8, !dbg !267
     #dbg_declare(ptr %ptr, !268, !DIExpression(), !272)
-  %42 = load ptr, ptr %arg, align 8
-  store ptr %42, ptr %ptr, align 8
+  %40 = load ptr, ptr %arg, align 8
+  store ptr %40, ptr %ptr, align 8
     #dbg_declare(ptr %len, !274, !DIExpression(), !275)
   store i64 0, ptr %len, align 8, !dbg !275
   br label %loop.cond23, !dbg !276
 
 loop.cond23:                                      ; preds = %loop.body25, %loop.body
-  %43 = load ptr, ptr %ptr, align 8, !dbg !277
-  %44 = load i64, ptr %len, align 8, !dbg !279
-  %ptradd24 = getelementptr inbounds i8, ptr %43, i64 %44, !dbg !279
-  %45 = load i8, ptr %ptradd24, align 1, !dbg !279
-  %i2b = icmp ne i8 %45, 0, !dbg !279
+  %41 = load ptr, ptr %ptr, align 8, !dbg !277
+  %42 = load i64, ptr %len, align 8, !dbg !279
+  %ptradd24 = getelementptr inbounds i8, ptr %41, i64 %42, !dbg !279
+  %43 = load i8, ptr %ptradd24, align 1, !dbg !279
+  %i2b = icmp ne i8 %43, 0, !dbg !279
   br i1 %i2b, label %loop.body25, label %loop.exit, !dbg !279
 
 loop.body25:                                      ; preds = %loop.cond23
-  %46 = load i64, ptr %len, align 8, !dbg !280
-  %add26 = add i64 %46, 1, !dbg !280
+  %44 = load i64, ptr %len, align 8, !dbg !280
+  %add26 = add i64 %44, 1, !dbg !280
   store i64 %add26, ptr %len, align 8, !dbg !280
   br label %loop.cond23, !dbg !280
 
 loop.exit:                                        ; preds = %loop.cond23
-  %47 = load i64, ptr %len, align 8, !dbg !281
-  %add27 = add i64 0, %47, !dbg !281
+  %45 = load i64, ptr %len, align 8, !dbg !281
+  %add27 = add i64 0, %45, !dbg !281
   %size28 = sub i64 %add27, 0, !dbg !281
-  %48 = insertvalue %"char[]" undef, ptr %41, 0, !dbg !281
-  %49 = insertvalue %"char[]" %48, i64 %size28, 1, !dbg !281
-  %50 = load ptr, ptr %list5, align 8, !dbg !282
-  %51 = load i32, ptr %i, align 4, !dbg !283
-  %sext29 = sext i32 %51 to i64, !dbg !283
-  %ptroffset30 = getelementptr inbounds [16 x i8], ptr %50, i64 %sext29, !dbg !283
-  store %"char[]" %49, ptr %ptroffset30, align 8, !dbg !283
-  %52 = load i32, ptr %i, align 4, !dbg !284
-  %add31 = add i32 %52, 1, !dbg !284
+  %46 = insertvalue %"char[]" undef, ptr %39, 0, !dbg !281
+  %47 = insertvalue %"char[]" %46, i64 %size28, 1, !dbg !281
+  %48 = load ptr, ptr %list5, align 8, !dbg !282
+  %49 = load i32, ptr %i, align 4, !dbg !283
+  %sext29 = sext i32 %49 to i64, !dbg !283
+  %ptroffset30 = getelementptr inbounds [16 x i8], ptr %48, i64 %sext29, !dbg !283
+  store %"char[]" %47, ptr %ptroffset30, align 8, !dbg !283
+  %50 = load i32, ptr %i, align 4, !dbg !284
+  %add31 = add i32 %50, 1, !dbg !284
   store i32 %add31, ptr %i, align 4, !dbg !284
   br label %loop.cond, !dbg !284
 
@@ -578,31 +573,33 @@ loop.exit32:                                      ; preds = %loop.cond
   %lo = load ptr, ptr %list, align 8, !dbg !286
   %ptradd33 = getelementptr inbounds i8, ptr %list, i64 8, !dbg !286
   %hi = load i64, ptr %ptradd33, align 8, !dbg !286
-  %53 = call i32 @test.main(ptr %lo, i64 %hi), !dbg !287
-  store i32 %53, ptr %blockret, align 4, !dbg !287
-  %54 = load ptr, ptr %list, align 8, !dbg !288
-  call void @std.core.mem.free(ptr %54) #5, !dbg !290
+  %51 = call i32 @test.main(ptr %lo, i64 %hi), !dbg !287
+  store i32 %51, ptr %blockret, align 4, !dbg !287
+  %52 = load ptr, ptr %list, align 8, !dbg !288
+  call void @std.core.mem.free(ptr %52) #5, !dbg !290
   br label %expr_block.exit34, !dbg !290
 
 expr_block.exit34:                                ; preds = %loop.exit32
-  %55 = load i32, ptr %blockret, align 4, !dbg !290
-  ret i32 %55, !dbg !290
+  %53 = load i32, ptr %blockret, align 4, !dbg !290
+  ret i32 %53, !dbg !290
 }
 
 declare { i32, ptr } @attach.to_scope() #0
-
+; Function Attrs: nounwind ssp uwtable
 declare extern_weak ptr @std.core.mem.calloc(i64) #0
-
+; Function Attrs: nounwind ssp uwtable
 declare extern_weak ptr @std.io.stdout() #0
-
+; Function Attrs: nounwind ssp uwtable
 declare extern_weak i64 @std.io.fprintf(ptr, i64, ptr, ptr, i64, ptr byval(%"any[]") align 8) #0
-
+; Function Attrs: nounwind ssp uwtable
 declare extern_weak i64 @std.io.File.write_byte(ptr, i8 zeroext) #0
-
+; Function Attrs: nounwind ssp uwtable
 declare extern_weak i64 @std.io.File.flush(ptr) #0
-
+; Function Attrs: nounwind ssp uwtable
 declare { ptr, i64 } @arena_scratch_begin(ptr, i64) #0
-
+; Function Attrs: nocallback nofree nosync nounwind willreturn memory(argmem: readwrite)
+declare void @llvm.memcpy.p0.p0.i32(ptr noalias writeonly captures(none), ptr noalias readonly captures(none), i32, i1 immarg) #1
+; Function Attrs: nounwind ssp uwtable
 declare void @arena_scratch_end(ptr, i64) #0
 
 define weak ptr @.dyn_search(ptr %0, i128 %1) unnamed_addr {
@@ -647,9 +644,7 @@ no_match:                                         ; preds = %compare
 }
 
 attributes #0 = { nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }
-
 !llvm.dbg.cu = !{!6}
-
 !0 = !{i32 2, !"Dwarf Version", i32 4}
 !1 = !{i32 2, !"Debug Info Version", i32 3}
 !2 = !{i32 2, !"wchar_size", i32 4}
@@ -771,6 +766,14 @@ attributes #0 = { nounwind ssp uwtable "no-trapping-math"="true" "stack-protecto
 !118 = !DILocation
 !119 = !DILocation
 !120 = !DILocalVariable(name: "x", arg: 2, scope: !117,
+!121 = !DILocation(line: 173, column: 23, scope: !117, inlinedAt: !119)
+!122 = !DILocation(line: 189, column: 21, scope: !117, inlinedAt: !119)
+!123 = !DILocation(line: 189, column: 32, scope: !117, inlinedAt: !119)
+!124 = !DILocation(line: 189, column: 13, scope: !117, inlinedAt: !119)
+!125 = !DILocation(line: 234, column: 17, scope: !102, inlinedAt: !111)
+!126 = !DILocation(line: 234, column: 2, scope: !102, inlinedAt: !111)
+!127 = !DILocation(line: 239, column: 4, scope: !102, inlinedAt: !111)
+!128 = !DILocation(line: 241, column: 9, scope: !102, inlinedAt: !111)
 !129 = !DILocation(line: 48, column: 9, scope: !83)
 !130 = distinct !DISubprogram(name: "test2", linkageName: "test.test2", scope: !7, file: !7, line: 51, type: !131, scopeLine: 51, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !6, retainedNodes: !21)
 !131 = !DISubroutineType(types: !132)

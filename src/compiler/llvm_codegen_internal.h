@@ -10,6 +10,7 @@
 #include <llvm-c/Target.h>
 #include <llvm-c/DebugInfo.h>
 #include "dwarf.h"
+
 #include "c3_llvm.h"
 #define SLICE_MAX_UNROLL 4
 
@@ -17,6 +18,16 @@ extern const char *varargslots_name;
 extern const char *temp_name;
 
 #define PANIC_SLOT_COUNT 10
+#define PANIC_HELPER_PREFIX "__c3_panic"
+
+#define PANIC_FMT_UNALIGNED "Unaligned access: ptr %% %s = %s, use mem::load / mem::store for unaligned access."
+#define PANIC_FMT_NEGATIVE_INDEX "Negative array indexing (index was %d)"
+#define PANIC_FMT_INDEX_OUT_OF_BOUNDS "Array index out of bounds (array had size %d, index was %d)"
+#define PANIC_FMT_SLICE_START_GT_LEN "Index exceeds array length (array had size %d, index was %d)."
+#define PANIC_FMT_SLICE_START_NEGATIVE "Negative indexing (%d)"
+#define PANIC_FMT_SLICE_LEN_NEGATIVE "Negative value (%d) given for slice length."
+#define PANIC_FMT_SLICE_END "End index out of bounds (end index of %d exceeds size of %d)"
+#define PANIC_FMT_SLICE_RANGE_NEGATIVE "Negative size (slice was: [%d..%d])"
 
 typedef enum
 {
@@ -77,6 +88,35 @@ typedef struct OptionalCatch_
 	LLVMValueRef fault;
 	LLVMBasicBlockRef block;
 } OptionalCatch;
+
+typedef enum
+{
+	PANIC_HELPER_PANIC,  // (location)
+	PANIC_HELPER_PANICF, // (location, values...)
+	PANIC_HELPER_DEREF,  // (location, pointer as int, alignment)
+	PANIC_HELPER_INDEX,  // (location, index, len)
+	PANIC_HELPER_SLICE,  // (location, checks, start, end, len)
+} PanicHelperKind;
+
+typedef struct
+{
+	PanicHelperKind kind;
+	int type_count;
+	Type *types[2];
+	LLVMValueRef function;
+	LLVMTypeRef type;
+} PanicHelper;
+
+// The slice checks, in the order they are reported.
+typedef enum
+{
+	SLICE_CHECK_START_GT_LEN = 1 << 0,
+	SLICE_CHECK_START_NEGATIVE = 1 << 1,
+	SLICE_CHECK_LEN_NEGATIVE = 1 << 2,
+	SLICE_CHECK_LEN_END = 1 << 3,
+	SLICE_CHECK_RANGE_NEGATIVE = 1 << 4,
+	SLICE_CHECK_RANGE_END = 1 << 5,
+} SliceCheck;
 
 
 #define NO_CATCH (OptionalCatch) { NULL, NULL }
@@ -160,6 +200,7 @@ typedef struct GenContext_
 	LLVMTypeRef dyn_find_function_type;
 	LLVMValueRef memcmp_function;
 	LLVMTypeRef memcmp_function_type;
+	PanicHelper *panic_helpers;
 	unsigned module_size;
 	StatsEntry *timing;
 } GenContext;
@@ -298,6 +339,7 @@ typedef struct
 	unsigned nnan;            // no nans
 	unsigned noalias;         // noalias (pointer)
 	unsigned noinline;        // No function inlining
+	unsigned nomerge;         // Calls may not be merged
 	unsigned noredzone;       // No redzone for function
 	unsigned noreturn;        // No function return
 	unsigned nounwind;        // No exceptions
@@ -567,6 +609,18 @@ void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *pani
 void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceLocId loc, const char *fmt, BEValue *value_1,
 							 BEValue *value_2);
 void llvm_emit_panic(GenContext *c, const char *message, SourceLocId loc, const char *fmt, BEValue *varargs);
+INLINE bool llvm_panic_helpers_available(GenContext *c)
+{
+	return !no_panic() && c->panic_var && c->panicf && !llvm_is_global_eval(c) && c->current_block;
+}
+INLINE bool llvm_panic_value_can_be_used_directly(BEValue *value)
+{
+	Type *type = value->type;
+	return type->type_kind >= TYPE_INTEGER_FIRST && type->type_kind <= TYPE_INTEGER_LAST && type_bit_size(type) <= 64;
+}
+void llvm_emit_panic_helper_check(GenContext *c, LLVMValueRef failed, const char *message, SourceLocId loc, PanicHelperKind kind,
+								  Type *type, LLVMValueRef *args, int arg_count);
+void llvm_emit_panic_helpers(GenContext *c);
 void llvm_emit_unreachable(GenContext *c);
 void llvm_emit_assume_true(GenContext *c, BEValue *assume_true);
 LLVMValueRef llvm_emit_expect_raw(GenContext *c, LLVMValueRef expect_true);
@@ -615,6 +669,7 @@ INLINE bool llvm_use_debug_variables(GenContext *context);
 DebugScope llvm_debug_create_lexical_scope(GenContext *context, SourceLocId location);
 LLVMMetadataRef llvm_debug_current_scope(GenContext *context);
 void llvm_emit_debug_function(GenContext *c, Decl *decl);
+void llvm_emit_debug_artificial_function(GenContext *c, LLVMValueRef function);
 void llvm_emit_debug_location(GenContext *c, SourceLocId location);
 LLVMMetadataRef llvm_create_debug_location(GenContext *c, SourceLocId location);
 void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, int index, LLVMMetadataRef scope);

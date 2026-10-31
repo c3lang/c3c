@@ -70,8 +70,7 @@ entry:
   %1 = call i32 @demo.bar()
   %2 = call i64 @demo.divide(ptr %retparam, i32 %0, i32 %1)
   %not_err = icmp eq i64 %2, 0
-  %3 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %3, label %after_check, label %assign_optional
+  br i1 %not_err, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %entry
   store i64 %2, ptr %error_var, align 8
@@ -81,8 +80,8 @@ after_check:                                      ; preds = %entry
   br label %noerr_block
 
 guard_block:                                      ; preds = %assign_optional
-  %4 = load i64, ptr %error_var, align 8
-  ret i64 %4
+  %3 = load i64, ptr %error_var, align 8
+  ret i64 %3
 
 noerr_block:                                      ; preds = %after_check
   ret i64 0
@@ -98,16 +97,15 @@ entry:
   %1 = call i32 @demo.bar()
   %2 = call i64 @demo.divide(ptr %retparam, i32 %0, i32 %1)
   %not_err = icmp eq i64 %2, 0
-  %3 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %3, label %after_check, label %assign_optional
+  br i1 %not_err, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %entry
   store i64 %2, ptr %ratio.f, align 8
   br label %after_assign
 
 after_check:                                      ; preds = %entry
-  %4 = load double, ptr %retparam, align 8
-  store double %4, ptr %ratio, align 8
+  %3 = load double, ptr %retparam, align 8
+  store double %3, ptr %ratio, align 8
   store i64 0, ptr %ratio.f, align 8
   br label %after_assign
 
@@ -117,8 +115,7 @@ after_assign:                                     ; preds = %after_check, %assig
 testblock:                                        ; preds = %after_assign
   %optval = load i64, ptr %ratio.f, align 8
   %not_err1 = icmp eq i64 %optval, 0
-  %5 = call i1 @llvm.expect.i1(i1 %not_err1, i1 true)
-  br i1 %5, label %after_check3, label %assign_optional2
+  br i1 %not_err1, label %after_check3, label %assign_optional2
 
 assign_optional2:                                 ; preds = %testblock
   store i64 %optval, ptr %err, align 8
@@ -129,25 +126,25 @@ after_check3:                                     ; preds = %testblock
   br label %end_block
 
 end_block:                                        ; preds = %after_check3, %assign_optional2
-  %6 = load i64, ptr %err, align 8
-  %i2b = icmp ne i64 %6, 0
+  %4 = load i64, ptr %err, align 8
+  %i2b = icmp ne i64 %4, 0
   br i1 %i2b, label %if.then, label %if.exit5
 
 if.then:                                          ; preds = %end_block
-  %7 = load i64, ptr %err, align 8
-  %eq = icmp eq i64 %7, ptrtoint (ptr @demo.DIVISION_BY_ZERO to i64)
+  %5 = load i64, ptr %err, align 8
+  %eq = icmp eq i64 %5, ptrtoint (ptr @demo.DIVISION_BY_ZERO to i64)
   br i1 %eq, label %if.then4, label %if.exit
 
 if.then4:                                         ; preds = %if.then
-  %8 = call i32 (ptr, ...) @printf(ptr @.str)
+  %6 = call i32 (ptr, ...) @printf(ptr @.str)
   ret void
 
 if.exit:                                          ; preds = %if.then
-  %9 = call i32 (ptr, ...) @printf(ptr @.str.1)
+  %7 = call i32 (ptr, ...) @printf(ptr @.str.1)
   ret void
 
 if.exit5:                                         ; preds = %end_block
-  %10 = load double, ptr %ratio, align 8
-  %11 = call i32 (ptr, ...) @printf(ptr @.str.2, double %10)
+  %8 = load double, ptr %ratio, align 8
+  %9 = call i32 (ptr, ...) @printf(ptr @.str.2, double %8)
   ret void
 }
