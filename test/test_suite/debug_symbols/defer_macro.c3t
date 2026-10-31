@@ -597,8 +597,7 @@ declare extern_weak i64 @std.io.File.write_byte(ptr, i8 zeroext) #0
 declare extern_weak i64 @std.io.File.flush(ptr) #0
 ; Function Attrs: nounwind ssp uwtable
 declare { ptr, i64 } @arena_scratch_begin(ptr, i64) #0
-; Function Attrs: nocallback nofree nosync nounwind willreturn memory(argmem: readwrite)
-declare void @llvm.memcpy.p0.p0.i32(ptr noalias writeonly captures(none), ptr noalias readonly captures(none), i32, i1 immarg) #1
+declare void @llvm.memcpy.p0.p0.i32(ptr noalias
 ; Function Attrs: nounwind ssp uwtable
 declare void @arena_scratch_end(ptr, i64) #0
 
