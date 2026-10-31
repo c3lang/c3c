@@ -89,6 +89,8 @@
 - Added termios support for OpenBSD.
 - Add `file::open_fd` to open files directly from file descriptors.
 - Added missing `__muloti4` to compiler_rt.
+- `List.insert_at` and `List.push_front` now use a single `memmove` instead of an element-by-element shift. `List.push` has an inline fast path when there is spare capacity.
+- `List.remove_item`, `List.compact` (and the same functions on `FixedList`) are now single pass instead of quadratic.
 
 ## 0.8.5 Change list
 

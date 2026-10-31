@@ -109,7 +109,7 @@ fn sz? List.to_format(&self, Formatter* formatter) @dynamic
 
 fn void List.push(&self, Type element) @inline
 {
-	self.reserve(1);
+	if (self.size >= self.capacity) self.reserve(1);
 	self.entries[list_set_size(self, self.size + 1)] = element;
 }
 
@@ -233,11 +233,8 @@ fn void List.push_front(&self, Type type) @inline
 fn void List.insert_at(&self, sz index, Type type)
 {
 	self.reserve(1);
-	list_set_size(self, self.size + 1);
-	for (sz i = self.size - 1; i > index; i--)
-	{
-		self.entries[i] = self.entries[i - 1];
-	}
+	sz old_size = list_set_size(self, self.size + 1);
+	mem::move(&self.entries[index + 1], &self.entries[index], (old_size - index) * Type::size);
 	self.entries[index] = type;
 }
 

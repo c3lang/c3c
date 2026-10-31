@@ -55,34 +55,38 @@ macro sz list_remove_using_test(self, filter, bool $invert, ctx)
 	return size - self.size;
 }
 
+<*
+ Single pass, stable compaction: removes all null entries.
+*>
 macro sz list_compact(self)
 {
 	sz size = self.size;
-	for (sz i = size; i > 0; i--)
+	sz write = 0;
+	for (sz read = 0; read < size; read++)
 	{
-		if (self.entries[i - 1]) continue;
-		for (sz j = i; j < size; j++)
-		{
-			self.entries[j - 1] = self.entries[j];
-		}
-		self.size--;
+		if (!self.entries[read]) continue;
+		if (write != read) self.entries[write] = self.entries[read];
+		write++;
 	}
-	return size - self.size;
+	self.size = write;
+	return size - write;
 }
 
+<*
+ Single pass, stable removal of all entries equal to value.
+*>
 macro sz list_remove_item(self, value)
 {
 	sz size = self.size;
-	for (sz i = size; i > 0; i--)
+	sz write = 0;
+	for (sz read = 0; read < size; read++)
 	{
-		if (!equals(self.entries[i - 1], value)) continue;
-		for (sz j = i; j < self.size; j++)
-		{
-			self.entries[j - 1] = self.entries[j];
-		}
-		self.size--;
+		if (equals(self.entries[read], value)) continue;
+		if (write != read) self.entries[write] = self.entries[read];
+		write++;
 	}
-	return size - self.size;
+	self.size = write;
+	return size - write;
 }
 
 
