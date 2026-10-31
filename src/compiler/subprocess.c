@@ -57,31 +57,7 @@ int run_subprocess(const char *name, const char **args)
 	for (int i = 0; i < vec_size(args); i++)
 	{
 		scratch_buffer_append_char(' ');
-
-		bool need_quoting = strpbrk(args[i], "\t\v ") != NULL || args[i][0] == 0;
-		if (need_quoting) scratch_buffer_append_char('"');
-		for (int j = 0; '\0' != args[i][j]; j++)
-		{
-			switch (args[i][j])
-			{
-				default:
-					break;
-				case '\\':
-					if (args[i][j + 1] == '"')
-					{
-						scratch_buffer_append_char('\\');
-					}
-
-					break;
-				case '"':
-					scratch_buffer_append_char('\\');
-					break;
-			}
-
-			scratch_buffer_append_char(args[i][j]);
-		}
-
-		if (need_quoting) scratch_buffer_append_char('"');
+		scratch_buffer_append_cmd_argument(args[i]);
 	}
 	LPWSTR command_line = win_utf8to16(scratch_buffer_to_string());
 	BOOL bSuccess = CreateProcessW(
@@ -95,25 +71,21 @@ int run_subprocess(const char *name, const char **args)
 		NULL,
 		&siStartInfo,
 		&piProcInfo);
+	free(command_line);
 
 	if (!bSuccess)
 	{
 		eprintf("Could not create child process: %lu", GetLastError());
-		free(command_line);
 		return -1;
 	}
 
 	CloseHandle(piProcInfo.hThread);
 
-	DWORD result = WaitForSingleObject(
-			piProcInfo.hProcess, // HANDLE hHandle,
-			INFINITE // DWORD  dwMilliseconds
-	);
-
+	DWORD result = WaitForSingleObject(piProcInfo.hProcess, INFINITE);
 	if (result == WAIT_FAILED)
 	{
 		eprintf("Could not wait on child process: %lu", GetLastError());
-		free(command_line);
+		CloseHandle(piProcInfo.hProcess);
 		return -1;
 	}
 
@@ -121,13 +93,12 @@ int run_subprocess(const char *name, const char **args)
 	if (!GetExitCodeProcess(piProcInfo.hProcess, &exit_status))
 	{
 		eprintf("Could not get process exit code: %lu", GetLastError());
-		free(command_line);
+		CloseHandle(piProcInfo.hProcess);
 		return -1;
 	}
 
 	CloseHandle(piProcInfo.hProcess);
 
-	free(command_line);
 	return exit_status;
 #else
 	const char **args_null = NULL;
