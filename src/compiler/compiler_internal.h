@@ -7,7 +7,7 @@
 #include "../build/build.h"
 #include "compiler.h"
 #include "target.h"
-#include "utils/malloc.h"
+#include "../utils/malloc.h"
 #include "subprocess.h"
 #include <float.h>
 
@@ -2214,6 +2214,8 @@ extern Type *type_wildcard_optional;
 extern Type *type_string;
 extern File stdin_file;
 
+extern const char **args;
+extern int arg_count;
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 extern const char *builtin_list[NUMBER_OF_BUILTINS];
 extern const char *builtin_defines[NUMBER_OF_BUILTIN_DEFINES];
