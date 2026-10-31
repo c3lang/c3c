@@ -47,6 +47,7 @@
 - Regression for emscripten, accidentally retainin unused panic functions. #3575.
 - Compiler hangs on c3c project fetch #3562
 - Temp dirs were left behind by `c3c compile` (including unpacked `.c3l` libraries), `fetch-list`, `vendor-fetch` and the SDK fetch commands, in particular after errors. #3553
+- Fix integer overflow vulnerabilities in regex compiler (CVE-2026-107891). #3585
 - Compiler crashes when emitting line-tables debug info. #3581
 - Do not pass PIE/PIC on Windows. #3586
 - Crashes in slice->vector and ptrvec->intvec conversions.
@@ -87,6 +88,7 @@
 ### Stdlib changes
 - Added termios support for OpenBSD.
 - Add `file::open_fd` to open files directly from file descriptors.
+- Changed regex fault and flag names, removed `NOSUB`. #3585
 - Added missing `__muloti4` to compiler_rt.
 
 ## 0.8.5 Change list
