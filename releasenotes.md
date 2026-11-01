@@ -93,6 +93,8 @@
 - `List.insert_at` and `List.push_front` now use a single `memmove` instead of an element-by-element shift. `List.push` has an inline fast path when there is spare capacity.
 - `List.remove_item`, `List.compact` (and the same functions on `FixedList`) are now single pass instead of quadratic.
 - Cryptos now try to use funnel shift and rotation.
+- Added `matrix::perspective_infinite`, `matrix::perspective_reverse_z` and `matrix::perspective_infinite_reverse_z`.
+- Added `column`, `row`, `set_column` and `set_row` to `Matrix2x2`, `Matrix3x3` and `Matrix4x4`, and `scale_factors` to `Matrix3x3` and `Matrix4x4`.
 
 ## 0.8.5 Change list
 

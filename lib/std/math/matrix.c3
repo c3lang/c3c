@@ -556,6 +556,22 @@ fn Matrix4x4 perspective_reverse_z(Real fovy, Real aspect, Real z_near, Real z_f
 	} };
 }
 
+<*
+ Right-handed reversed-Z perspective with an infinite far plane (near maps to 1, infinity maps to 0), depth range [0, 1].
+
+ @require z_near > 0 : "Near plane must be positive"
+*>
+fn Matrix4x4 perspective_infinite_reverse_z(Real fovy, Real aspect, Real z_near)
+{
+	Real tan_half_fovy = math::tan(fovy / 2);
+	return (Matrix4x4) { .m = {
+		[0] = 1 / (aspect * tan_half_fovy),
+		[5] = 1 / tan_half_fovy,
+		[11] = -1,
+		[14] = z_near,
+	} };
+}
+
 // Column and row access. Storage is column-major: column c starts at m[c * N].
 
 <*
@@ -576,13 +592,13 @@ fn Real[<4>] Matrix4x4.column(&self, usz index) => {self.m[index * 4], self.m[in
 <*
  @require index < 2
 *>
-
 fn Real[<2>] Matrix2x2.row(&self, usz index) => {self.m[index], self.m[2 + index]};
+
 <*
  @require index < 3
 *>
-
 fn Real[<3>] Matrix3x3.row(&self, usz index) => {self.m[index], self.m[3 + index], self.m[6 + index]};
+
 <*
  @require index < 4
 *>
@@ -664,16 +680,25 @@ fn Matrix4x4 Matrix4x4.set_row(&self, usz index, Real[<4>] v)
 fn Real[<2>] Matrix3x3.position(&self) => { self.m02, self.m12 };
 fn Real[<3>] Matrix4x4.position(&self) => { self.m03, self.m13, self.m23 };
 
-// Per-axis scale factors: the lengths of the first three basis columns.
-fn Real[<3>] Matrix4x4.get_scale(&self)
+// Per-axis scale factors: the lengths of the first two basis columns.
+fn Real[<2>] Matrix3x3.scale_factors(&self)
 {
-  	Real[<3>] x = $$swizzle(self.m, 0, 4, 8);
-    Real[<3>] y = $$swizzle(self.m, 1, 5, 9);
-    Real[<3>] z = $$swizzle(self.m, 2, 6, 10);
-	return math::sqrt(x * x + y * y + z * z);
+	Real[<2>] r0 = $$swizzle(self.m, 0, 3);
+	Real[<2>] r1 = $$swizzle(self.m, 1, 4);
+	return math::sqrt(r0 * r0 + r1 * r1);
 }
 
-const Matrix2x2 IDENTITY2 ={ .m = { 1, 0, 0, 1 } };
+
+// Per-axis scale factors: the lengths of the first three basis columns.
+fn Real[<3>] Matrix4x4.scale_factors(&self)
+{
+	Real[<3>] r0 = $$swizzle(self.m, 0, 4, 8);
+	Real[<3>] r1 = $$swizzle(self.m, 1, 5, 9);
+	Real[<3>] r2 = $$swizzle(self.m, 2, 6, 10);
+	return math::sqrt(r0 * r0 + r1 * r1 + r2 * r2);
+}
+
+const Matrix2x2 IDENTITY2 = { .m = { 1, 0, 0, 1 } };
 const Matrix3x3 IDENTITY3 = { .m = { [0] = 1, [4] = 1, [8] = 1 } };
 const Matrix4x4 IDENTITY4 = { .m = { [0] = 1, [5] = 1, [10] = 1, [15] = 1 } };
 

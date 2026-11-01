@@ -375,14 +375,22 @@ fn void test_mat4_perspective_infinite()
 	assert(math::abs(far_away.z / far_away.w - 1) < 1e-6);
 }
 
-fn void test_mat4_position_scale()
+fn void test_mat4_perspective_infinite_reverse_z()
+{
+	double near = 0.1;
+	Matrix4 m = matrix::perspective_infinite_reverse_z(math::PI / 2, 1.0, near);
+	double[<4>] at_near = m * (double[<4>]){ 0, 0, -near, 1 };
+	double[<4>] far_away = m * (double[<4>]){ 0, 0, -1.0e9, 1 };
+	assert(math::abs(at_near.z / at_near.w - 1) < 1e-6);
+	assert(math::abs(far_away.z / far_away.w) < 1e-6);
+}
+
+fn void test_mat_scale_factors()
 {
 	Matrix4 m = matrix::IDENTITY4.scale({2, 3, 4}).translate({5, 6, 7});
-	assert(m.get_scale() == (double[<3>]){2, 3, 4});
-	Matrix4 t = matrix::IDENTITY4.translate({5, 6, 7});
-	assert(t.position() == (double[<3>]){5, 6, 7});
-	Matrix3 t3 = matrix::IDENTITY3.translate({5, 6});
-	assert(t3.position() == (double[<2>]){5, 6});
+	assert(m.scale_factors() == (double[<3>]){2, 3, 4});
+	Matrix3 s3 = matrix::IDENTITY3.scale({2, 3}).translate({5, 6});
+	assert(s3.scale_factors() == (double[<2>]){2, 3});
 }
 
 fn void test_mat_row_column()
