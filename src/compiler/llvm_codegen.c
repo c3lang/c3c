@@ -654,6 +654,8 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	if (decl->attrs_resolved && decl->attrs_resolved->section)
 	{
 		LLVMSetSection(global_ref, decl->attrs_resolved->section);
+		// Redzones would break code walking the section as an array.
+		if (compiler.build.feature.sanitize_address) LLVMSetNoSanitizeAddress(global_ref);
 	}
 	llvm_set_global_tls(decl);
 
