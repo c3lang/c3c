@@ -84,6 +84,7 @@
 - Bitstruct method did not check if field with the same name existed #3602.
 - Casting a constant string (or constant bytes) to a vector at compile time would cause a crash. #3601
 - Support unicode paths on Windows when running processes from the compiler. #3605
+- The sign of constant NaN expressions was ignored during codegen.
 
 ### Stdlib changes
 - Added termios support for OpenBSD.

@@ -4693,7 +4693,7 @@ static LLVMValueRef llvm_emit_real(LLVMTypeRef type, Float f)
 {
 	if (isnan(f.f))
 	{
-		return LLVMConstRealOfString(type, "nan");
+		return LLVMConstRealOfString(type, signbit(f.f) ? "-nan" : "nan");
 	}
 	if (isinf(f.f))
 	{
