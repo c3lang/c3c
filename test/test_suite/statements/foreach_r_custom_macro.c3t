@@ -40,7 +40,7 @@ entry:
   %.anon = alloca i64, align 8
   %f = alloca i32, align 4
   %index = alloca i64, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %i, ptr align 4 @.__const, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %i, ptr align 4 @.__const, i64 12, i1 false)
   %0 = insertvalue %"int[]" undef, ptr %i, 0
   %1 = insertvalue %"int[]" %0, i64 3, 1
   store %"int[]" %1, ptr %x, align 8

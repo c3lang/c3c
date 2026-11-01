@@ -45,16 +45,16 @@ entry:
   %retparam46 = alloca i64, align 8
   %error_var52 = alloca i64, align 8
   %error_var58 = alloca i64, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %x, ptr align 1 @test.t, i32 2, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 1 %x, ptr align 1 @test.t, i64 2, i1 false)
   %0 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %x1, ptr align 1 %x, i32 2, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %x2, ptr align 1 %x1, i32 2, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 1 %x1, ptr align 1 %x, i64 2, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 1 %x2, ptr align 1 %x1, i64 2, i1 false)
   call void @llvm.memset.p0.i64(ptr align 8 %formatter, i8 0, i64 40, i1 false)
   %1 = insertvalue %any undef, ptr %0, 0
   %2 = insertvalue %any %1, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   store %any %2, ptr %taddr, align 8
   call void @std.io.Formatter.init(ptr %formatter, ptr @std.io.out_putstream_fn, ptr %taddr)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %value, ptr align 1 %x2, i32 2, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 1 %value, ptr align 1 %x2, i64 2, i1 false)
   %3 = call i64 @std.io.Formatter.print(ptr %retparam, ptr %formatter, ptr @.str, i64 2)
   %not_err = icmp eq i64 %3, 0
   br i1 %not_err, label %after_check, label %assign_optional
@@ -177,7 +177,7 @@ noerr_block41:                                    ; preds = %after_check39
   br label %voiderr
 
 voiderr:                                          ; preds = %noerr_block41, %guard_block40, %guard_block34, %guard_block28
-  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %y, ptr align 1 @.__const, i32 2, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 1 %y, ptr align 1 @.__const, i64 2, i1 false)
   %24 = call ptr @std.io.stdout()
   %25 = call i64 @std.io.File.write(ptr %retparam46, ptr %24, ptr @.emptystr, i64 0)
   %not_err47 = icmp eq i64 %25, 0

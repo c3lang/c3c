@@ -26,14 +26,12 @@ alias HmacSha512    = Hmac{Sha512, HASH_SIZE, BLOCK_SIZE};
 alias hmac          = hmac::hash{Sha512, HASH_SIZE, BLOCK_SIZE};
 alias pbkdf2        = hmac::pbkdf2{Sha512, HASH_SIZE, BLOCK_SIZE};
 
-macro ulong ror(ulong n, int k) @local => ((n >> k) | (n << (64 - k)));
-
 macro ulong ch(ulong x, ulong y, ulong z) @local => (z ^ (x & (y ^ z)));
 macro ulong maj(ulong x, ulong y, ulong z) @local => ((x & y) | (z & (x | y)));
-macro ulong s0(ulong x) @local => (ror(x, 28) ^ ror(x, 34) ^ ror(x, 39));
-macro ulong s1(ulong x) @local => (ror(x, 14) ^ ror(x, 18) ^ ror(x, 41));
-macro ulong r0(ulong x) @local => (ror(x, 1) ^ ror(x, 8) ^ (x >> 7));
-macro ulong r1(ulong x) @local => (ror(x, 19) ^ ror(x, 61) ^ (x >> 6));
+macro ulong s0(ulong x) @local => (x.rotr(28) ^ x.rotr(34) ^ x.rotr(39));
+macro ulong s1(ulong x) @local => (x.rotr(14) ^ x.rotr(18) ^ x.rotr(41));
+macro ulong r0(ulong x) @local => (x.rotr(1) ^ x.rotr(8) ^ (x >> 7));
+macro ulong r1(ulong x) @local => (x.rotr(19) ^ x.rotr(61) ^ (x >> 6));
 
 const ulong[80] K @local = {
 	0x428a2f98d728ae22, 0x7137449123ef65cd, 0xb5c0fbcfec4d3b2f, 0xe9b5dba58189dbbc,

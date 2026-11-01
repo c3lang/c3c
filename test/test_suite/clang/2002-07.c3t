@@ -515,7 +515,7 @@ entry:
   store double %2, ptr %ptradd, align 8
   %ptradd1 = getelementptr inbounds i8, ptr %t, i64 16
   store i32 %3, ptr %ptradd1, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %0, ptr align 8 %t, i32 24, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %0, ptr align 8 %t, i64 24, i1 false)
   ret void
 }
 
@@ -600,7 +600,7 @@ entry:
 if.then:                                          ; preds = %entry
   %ptradd = getelementptr inbounds i8, ptr %0, i64 4
   %ptradd1 = getelementptr inbounds i8, ptr %r, i64 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %ptradd1, ptr align 4 %ptradd, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %ptradd1, ptr align 4 %ptradd, i64 4, i1 false)
   br label %if.exit
 
 if.exit:                                          ; preds = %if.then, %entry
@@ -634,7 +634,7 @@ entry:
   br i1 %i2b, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %entry
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %r, ptr align 8 %0, i32 24, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %r, ptr align 8 %0, i64 24, i1 false)
   br label %if.exit
 
 if.exit:                                          ; preds = %if.then, %entry

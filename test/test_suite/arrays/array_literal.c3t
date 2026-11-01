@@ -20,7 +20,7 @@ fn double test(uint x)
 define double @array_literal.test(i32 %0) #0 {
 entry:
   %student_t = alloca [30 x double], align 16
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %student_t, ptr align 16 @.__const, i32 240, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %student_t, ptr align 16 @.__const, i64 240, i1 false)
   %zext = zext i32 %0 to i64
   %ptroffset = getelementptr inbounds [8 x i8], ptr %student_t, i64 %zext
   %1 = load double, ptr %ptroffset, align 8

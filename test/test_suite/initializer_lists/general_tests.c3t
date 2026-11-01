@@ -56,7 +56,7 @@ entry:
   %sub = alloca %"int[]", align 8
   %foo = alloca %"Bar[]", align 8
   %baz = alloca [3 x %Baz], align 16
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %ffe, ptr align 8 @.__const, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %ffe, ptr align 8 @.__const, i64 8, i1 false)
   store i32 0, ptr %azz, align 4
   store i32 33, ptr %foo2, align 4
   store ptr @.str, ptr %str, align 8

@@ -53,7 +53,7 @@ assign_optional:                                  ; preds = %entry
   br label %after_assign
 
 after_check:                                      ; preds = %entry
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %v, ptr align 8 %retparam, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %v, ptr align 8 %retparam, i64 16, i1 false)
   store i64 0, ptr %v.f, align 8
   br label %after_assign
 

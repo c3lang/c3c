@@ -38,7 +38,7 @@ entry:
   store %"int[]" %"$$temp", ptr %taddr, align 8
   %1 = load [2 x i64], ptr %taddr, align 8
   %2 = call i32 @sum_us([2 x i64] %1)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x, ptr align 4 @.__const, i64 12, i1 false)
   %3 = insertvalue %"int[]" undef, ptr %x, 0
   %4 = insertvalue %"int[]" %3, i64 3, 1
   store %"int[]" %4, ptr %z, align 8

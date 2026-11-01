@@ -60,15 +60,15 @@ entry:
   %literal1 = alloca [1 x i32], align 4
   %y = alloca [2 x i8], align 1
   %literal2 = alloca [2 x i8], align 1
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal1, ptr align 4 @.__const, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %literal1, ptr align 4 @.__const, i64 4, i1 false)
   %0 = insertvalue %"int[]" undef, ptr %literal1, 0
   %1 = insertvalue %"int[]" %0, i64 1, 1
   store %"int[]" %1, ptr %literal, align 16
   %2 = insertvalue %"int[][]" undef, ptr %literal, 0
   %3 = insertvalue %"int[][]" %2, i64 1, 1
   store %"int[][]" %3, ptr %a, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %y, ptr align 1 @.bytes, i32 2, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %literal2, ptr align 1 @.__const.2, i32 2, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 1 %y, ptr align 1 @.bytes, i64 2, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 1 %literal2, ptr align 1 @.__const.2, i64 2, i1 false)
   %cmp = call i32 @memcmp(ptr %y, ptr %literal2, i64 2)
   %eq = icmp eq i32 %cmp, 0
   call void @llvm.assume(i1 %eq)
@@ -143,7 +143,7 @@ entry:
   %indirectarg160 = alloca %"any[]", align 8
   %error_var166 = alloca i64, align 8
   %error_var172 = alloca i64, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const.3, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %literal, ptr align 4 @.__const.3, i64 8, i1 false)
   %0 = insertvalue %"int[]" undef, ptr %literal, 0
   %1 = insertvalue %"int[]" %0, i64 2, 1
   store %"int[]" %1, ptr %y, align 8
@@ -290,10 +290,10 @@ noerr_block47:                                    ; preds = %after_check45
   br label %voiderr49
 
 voiderr49:                                        ; preds = %noerr_block47, %guard_block46, %guard_block40, %guard_block34
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %x50, ptr align 8 %y, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %x50, ptr align 8 %y, i64 16, i1 false)
   %30 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %x51, ptr align 8 %x50, i32 16, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %x54, ptr align 8 %x51, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %x51, ptr align 8 %x50, i64 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %x54, ptr align 8 %x51, i64 16, i1 false)
   %31 = insertvalue %any undef, ptr %30, 0
   %32 = insertvalue %any %31, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %33 = insertvalue %any undef, ptr %x54, 0
@@ -358,7 +358,7 @@ noerr_block80:                                    ; preds = %after_check78
   br label %voiderr82
 
 voiderr82:                                        ; preds = %noerr_block80, %guard_block79, %guard_block73, %guard_block67
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal83, ptr align 4 @.__const.6, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %literal83, ptr align 4 @.__const.6, i64 12, i1 false)
   %41 = insertvalue %"int[]" undef, ptr %literal83, 0
   %42 = insertvalue %"int[]" %41, i64 3, 1
   %43 = call ptr @std.io.stdout()
@@ -427,11 +427,11 @@ noerr_block112:                                   ; preds = %after_check110
   br label %voiderr114
 
 voiderr114:                                       ; preds = %noerr_block112, %guard_block111, %guard_block105, %guard_block99
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal115, ptr align 4 @.__const.8, i32 8, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x116, ptr align 4 %literal115, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %literal115, ptr align 4 @.__const.8, i64 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x116, ptr align 4 %literal115, i64 8, i1 false)
   %54 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x117, ptr align 4 %x116, i32 8, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x120, ptr align 4 %x117, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x117, ptr align 4 %x116, i64 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x120, ptr align 4 %x117, i64 8, i1 false)
   %55 = insertvalue %any undef, ptr %54, 0
   %56 = insertvalue %any %55, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %57 = insertvalue %any undef, ptr %x120, 0

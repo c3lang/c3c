@@ -79,7 +79,7 @@ entry:
   %indirectarg = alloca %"any[]", align 8
   %error_var3 = alloca i64, align 8
   %error_var9 = alloca i64, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %literal, ptr align 16 @.__const, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %literal, ptr align 16 @.__const, i64 20, i1 false)
   %0 = insertvalue %"int[]" undef, ptr %literal, 0
   %1 = insertvalue %"int[]" %0, i64 5, 1
   %2 = call ptr @std.io.stdout()
@@ -163,7 +163,7 @@ entry:
   %indirectarg = alloca %"any[]", align 8
   %error_var3 = alloca i64, align 8
   %error_var9 = alloca i64, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %literal, ptr align 16 @.__const.5, i32 28, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %literal, ptr align 16 @.__const.5, i64 28, i1 false)
   %0 = insertvalue %"int[]" undef, ptr %literal, 0
   %1 = insertvalue %"int[]" %0, i64 7, 1
   %2 = call ptr @std.io.stdout()
@@ -249,11 +249,11 @@ entry:
   %indirectarg = alloca %"any[]", align 8
   %error_var4 = alloca i64, align 8
   %error_var10 = alloca i64, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %literal, ptr align 16 @.__const.7, i32 20, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x, ptr align 16 %literal, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %literal, ptr align 16 @.__const.7, i64 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x, ptr align 16 %literal, i64 20, i1 false)
   %0 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x1, ptr align 16 %x, i32 20, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x2, ptr align 16 %x1, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x1, ptr align 16 %x, i64 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x2, ptr align 16 %x1, i64 20, i1 false)
   %1 = insertvalue %any undef, ptr %0, 0
   %2 = insertvalue %any %1, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %3 = insertvalue %any undef, ptr %x2, 0
@@ -335,11 +335,11 @@ entry:
   %indirectarg = alloca %"any[]", align 8
   %error_var4 = alloca i64, align 8
   %error_var10 = alloca i64, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %literal, ptr align 16 @.__const.9, i32 20, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x, ptr align 16 %literal, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %literal, ptr align 16 @.__const.9, i64 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x, ptr align 16 %literal, i64 20, i1 false)
   %0 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x1, ptr align 16 %x, i32 20, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x2, ptr align 16 %x1, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x1, ptr align 16 %x, i64 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x2, ptr align 16 %x1, i64 20, i1 false)
   %1 = insertvalue %any undef, ptr %0, 0
   %2 = insertvalue %any %1, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %3 = insertvalue %any undef, ptr %x2, 0

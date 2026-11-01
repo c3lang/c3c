@@ -58,6 +58,6 @@ else_block4:                                      ; preds = %phi_block
 
 phi_block5:                                       ; preds = %else_block4, %after_check3
   %val6 = phi ptr [ %b, %after_check3 ], [ %c, %else_block4 ]
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %d, ptr align 8 %val6, i32 120, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %d, ptr align 8 %val6, i64 120, i1 false)
   ret void
 }

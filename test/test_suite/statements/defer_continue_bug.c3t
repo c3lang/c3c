@@ -22,7 +22,7 @@ entry:
   %.anon = alloca i64, align 8
   %i = alloca i32, align 4
   %a = alloca i32, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x, ptr align 4 @.__const, i64 16, i1 false)
   store i64 0, ptr %.anon, align 8
   br label %loop.cond
 

@@ -70,8 +70,8 @@ entry:
   %.anon25 = alloca %Foo, align 8
   %.assign_list = alloca %Foo, align 8
   %.anon28 = alloca %Foo, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %f, ptr align 8 @.__const, i32 16, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %.anon, ptr align 8 %f, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %f, ptr align 8 @.__const, i64 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %.anon, ptr align 8 %f, i64 16, i1 false)
   %ptradd = getelementptr inbounds i8, ptr %.anon, i64 8
   %0 = load i32, ptr %.anon, align 8
   %1 = load double, ptr %ptradd, align 8
@@ -108,8 +108,8 @@ entry:
   call void @test.test2(i32 0, i32 %lo15, double %hi17)
   store i32 100, ptr %z, align 8
   %ptradd18 = getelementptr inbounds i8, ptr %z, i64 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %ptradd18, ptr align 8 %f, i32 16, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %.anon19, ptr align 8 %z, i32 24, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %ptradd18, ptr align 8 %f, i64 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %.anon19, ptr align 8 %z, i64 24, i1 false)
   %ptradd20 = getelementptr inbounds i8, ptr %.anon19, i64 8
   %2 = load i32, ptr %.anon19, align 8
   %lo21 = load i32, ptr %ptradd20, align 8
@@ -118,20 +118,20 @@ entry:
   call void @test.test2(i32 %2, i32 %lo21, double %hi23)
   store i32 100, ptr %z2, align 8
   %ptradd24 = getelementptr inbounds i8, ptr %z2, i64 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %.anon25, ptr align 8 %f, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %.anon25, ptr align 8 %f, i64 16, i1 false)
   %3 = load i32, ptr %.anon25, align 8
   store i32 %3, ptr %ptradd24, align 8
   %ptradd26 = getelementptr inbounds i8, ptr %ptradd24, i64 8
   %ptradd27 = getelementptr inbounds i8, ptr %.anon25, i64 8
   %4 = load double, ptr %ptradd27, align 8
   store double %4, ptr %ptradd26, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %.anon28, ptr align 8 %f, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %.anon28, ptr align 8 %f, i64 16, i1 false)
   %5 = load i32, ptr %.anon28, align 8
   store i32 %5, ptr %.assign_list, align 8
   %ptradd29 = getelementptr inbounds i8, ptr %.assign_list, i64 8
   %ptradd30 = getelementptr inbounds i8, ptr %.anon28, i64 8
   %6 = load double, ptr %ptradd30, align 8
   store double %6, ptr %ptradd29, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %f, ptr align 8 %.assign_list, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %f, ptr align 8 %.assign_list, i64 16, i1 false)
   ret i32 0
 }

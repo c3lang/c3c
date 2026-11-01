@@ -134,7 +134,7 @@ entry:
   %x121 = alloca i32, align 4
   %varargslots123 = alloca [2 x %any], align 16
   %retparam125 = alloca i64, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %a, ptr align 4 @.__const, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %a, ptr align 4 @.__const, i64 12, i1 false)
   store i64 0, ptr %.anon, align 8
   br label %loop.cond
 
@@ -164,7 +164,7 @@ loop.body:                                        ; preds = %loop.cond
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %a1, ptr align 4 @.__const.1, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %a1, ptr align 4 @.__const.1, i64 4, i1 false)
   store i64 0, ptr %i2, align 8
   %10 = load i32, ptr %a1, align 4
   store i32 %10, ptr %x3, align 4
@@ -176,7 +176,7 @@ loop.exit:                                        ; preds = %loop.cond
   %ptradd5 = getelementptr inbounds i8, ptr %varargslots4, i64 16
   store %any %14, ptr %ptradd5, align 16
   %15 = call i64 @std.io.printfn(ptr %retparam6, ptr @.str.2, i64 8, ptr %varargslots4, i64 2)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %a7, ptr align 16 @.__const.3, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %a7, ptr align 16 @.__const.3, i64 16, i1 false)
   store i64 0, ptr %.anon8, align 8
   br label %loop.cond9
 
@@ -206,7 +206,7 @@ loop.body11:                                      ; preds = %loop.cond9
   br label %loop.cond9
 
 loop.exit19:                                      ; preds = %loop.cond9
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %a20, ptr align 4 @.__const.5, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %a20, ptr align 4 @.__const.5, i64 8, i1 false)
   store i64 0, ptr %.anon21, align 8
   br label %loop.cond22
 
@@ -236,7 +236,7 @@ loop.body24:                                      ; preds = %loop.cond22
   br label %loop.cond22
 
 loop.exit32:                                      ; preds = %loop.cond22
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %a33, ptr align 4 @.__const.7, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %a33, ptr align 4 @.__const.7, i64 12, i1 false)
   store i64 0, ptr %.anon34, align 8
   br label %loop.cond35
 
@@ -266,7 +266,7 @@ loop.body37:                                      ; preds = %loop.cond35
   br label %loop.cond35
 
 loop.exit45:                                      ; preds = %loop.cond35
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %a46, ptr align 4 @.__const.9, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %a46, ptr align 4 @.__const.9, i64 4, i1 false)
   store i64 0, ptr %i47, align 8
   %46 = load i32, ptr %a46, align 4
   store i32 %46, ptr %x48, align 4
@@ -278,7 +278,7 @@ loop.exit45:                                      ; preds = %loop.cond35
   %ptradd50 = getelementptr inbounds i8, ptr %varargslots49, i64 16
   store %any %50, ptr %ptradd50, align 16
   %51 = call i64 @std.io.printfn(ptr %retparam51, ptr @.str.10, i64 8, ptr %varargslots49, i64 2)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %a52, ptr align 4 @.__const.11, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %a52, ptr align 4 @.__const.11, i64 8, i1 false)
   store i64 0, ptr %.anon53, align 8
   br label %loop.cond54
 
@@ -308,7 +308,7 @@ loop.body56:                                      ; preds = %loop.cond54
   br label %loop.cond54
 
 loop.exit64:                                      ; preds = %loop.cond54
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %a65, ptr align 16 @.__const.13, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %a65, ptr align 16 @.__const.13, i64 20, i1 false)
   store i64 0, ptr %.anon66, align 8
   br label %loop.cond67
 
@@ -338,7 +338,7 @@ loop.body69:                                      ; preds = %loop.cond67
   br label %loop.cond67
 
 loop.exit77:                                      ; preds = %loop.cond67
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %a78, ptr align 16 @.__const.15, i32 32, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %a78, ptr align 16 @.__const.15, i64 32, i1 false)
   store i64 0, ptr %.anon79, align 8
   br label %loop.cond80
 
@@ -368,7 +368,7 @@ loop.body82:                                      ; preds = %loop.cond80
   br label %loop.cond80
 
 loop.exit90:                                      ; preds = %loop.cond80
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %b, ptr align 16 @.__const.17, i32 28, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %b, ptr align 16 @.__const.17, i64 28, i1 false)
   store i64 0, ptr %.anon91, align 8
   br label %loop.cond92
 
@@ -398,7 +398,7 @@ loop.body94:                                      ; preds = %loop.cond92
   br label %loop.cond92
 
 loop.exit102:                                     ; preds = %loop.cond92
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %c, ptr align 16 @.__const.19, i32 32, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %c, ptr align 16 @.__const.19, i64 32, i1 false)
   store i64 0, ptr %.anon103, align 8
   br label %loop.cond104
 
@@ -428,7 +428,7 @@ loop.body106:                                     ; preds = %loop.cond104
   br label %loop.cond104
 
 loop.exit114:                                     ; preds = %loop.cond104
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %a115, ptr align 16 @.__const.21, i32 24, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %a115, ptr align 16 @.__const.21, i64 24, i1 false)
   store i64 0, ptr %.anon116, align 8
   br label %loop.cond117
 

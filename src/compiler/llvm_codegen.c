@@ -2328,11 +2328,7 @@ AlignSize llvm_abi_alignment(GenContext *c, LLVMTypeRef type)
 LLVMValueRef llvm_emit_memcpy(GenContext *c, LLVMValueRef dest, int dest_align, LLVMValueRef source, int src_align, uint64_t len)
 {
 	ASSERT(dest_align && src_align);
-	if (len <= UINT32_MAX)
-	{
-		return LLVMBuildMemCpy(c->builder, dest, dest_align, source, src_align, llvm_const_int(c, type_uint, len));
-	}
-	return LLVMBuildMemCpy(c->builder, dest, dest_align, source, src_align, llvm_const_int(c, type_ulong, len));
+	return LLVMBuildMemCpy(c->builder, dest, dest_align, source, src_align, LLVMConstInt(c->size_type, len, false));
 }
 
 TypeSize llvm_store_size(GenContext *c, LLVMTypeRef type)

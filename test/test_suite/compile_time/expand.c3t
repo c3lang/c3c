@@ -37,7 +37,7 @@ entry:
   %x = alloca %Copy, align 4
   store i32 1, ptr %a, align 4
   store i32 4, ptr %a, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x, ptr align 4 @.__const, i64 8, i1 false)
   store i32 4, ptr %x, align 4
   ret void
 }

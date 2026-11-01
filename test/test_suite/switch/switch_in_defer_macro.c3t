@@ -770,7 +770,7 @@ loop.body:                                        ; preds = %loop.cond
   %2 = load ptr, ptr %tcases, align 8
   %3 = load i64, ptr %.anon, align 8
   %ptroffset = getelementptr inbounds [24 x i8], ptr %2, i64 %3
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tc, ptr align 8 %ptroffset, i32 24, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %tc, ptr align 8 %ptroffset, i64 24, i1 false)
   call void @llvm.memset.p0.i64(ptr align 8 %br, i8 0, i64 24, i1 false)
   call void @llvm.memset.p0.i64(ptr align 8 %lex, i8 0, i64 128, i1 false)
   %lo = load ptr, ptr %tc, align 8

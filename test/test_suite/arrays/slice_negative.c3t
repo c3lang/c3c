@@ -21,7 +21,7 @@ entry:
   %y = alloca i32, align 4
   %yy = alloca i32, align 4
   %w = alloca %"int[]", align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x, ptr align 4 @.__const, i64 8, i1 false)
   %0 = insertvalue %"int[]" undef, ptr %x, 0
   %1 = insertvalue %"int[]" %0, i64 0, 1
   store %"int[]" %1, ptr %z, align 8

@@ -94,16 +94,16 @@ entry:
   %baz = alloca [3 x %Baz], align 16
   %0 = load ptr, ptr @subarrays.arrbar, align 8
   %ptradd = getelementptr inbounds i8, ptr %0, i64 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %w, ptr align 4 %ptradd, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %w, ptr align 4 %ptradd, i64 8, i1 false)
   %1 = load ptr, ptr @subarrays.arrbar, align 8
   %ptradd1 = getelementptr inbounds i8, ptr %1, i64 8
   %2 = load i32, ptr %ptradd1, align 4
   %3 = call i32 (ptr, ...) @printf(ptr @.str, i32 %2)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %literal, ptr align 4 @.__const, i64 12, i1 false)
   %4 = insertvalue %"int[]" undef, ptr %literal, 0
   %5 = insertvalue %"int[]" %4, i64 3, 1
   store %"int[]" %5, ptr %x, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal2, ptr align 4 @.__const.4, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %literal2, ptr align 4 @.__const.4, i64 12, i1 false)
   store ptr %literal2, ptr %y, align 8
   %6 = call ptr @std.io.stdout()
   %7 = call i64 @std.io.File.write(ptr %retparam, ptr %6, ptr @.str.5, i64 6)
@@ -173,7 +173,7 @@ voiderr:                                          ; preds = %noerr_block15, %gua
   %ptradd19 = getelementptr inbounds i8, ptr %19, i64 4
   %20 = load i32, ptr %ptradd19, align 4
   %21 = call i32 (ptr, ...) @printf(ptr @.str.8, i32 %20)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %ffe, ptr align 8 @.__const.9, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %ffe, ptr align 8 @.__const.9, i64 8, i1 false)
   store i32 0, ptr %azz, align 4
   store i8 0, ptr %xy, align 1
   %22 = load i8, ptr %xy, align 1

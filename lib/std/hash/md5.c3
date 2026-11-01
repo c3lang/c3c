@@ -133,7 +133,7 @@ macro @i(x, y, z)  @local => y ^ (x | ~z);
 macro void @step(#f, a, b, c, d, ptr, n, t, s) @local
 {
 	*a += #f(b, c, d) + mem::load((uint *)&ptr[n * 4], 2) + t;
-	*a = (*a << s) | ((*a & 0xffffffff) >> (32 - s));
+	*a = a.rotl((uint)s);
 	*a += b;
 }
 

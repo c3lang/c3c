@@ -30,7 +30,7 @@ entry:
   %y2.f = alloca i64, align 8
   %retparam5 = alloca i32, align 4
   %retparam9 = alloca i32, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x, ptr align 4 @.__const, i64 8, i1 false)
   store i64 0, ptr %x.f, align 8
   %0 = call i64 @test.foo(ptr %retparam)
   %not_err = icmp eq i64 %0, 0

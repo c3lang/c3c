@@ -27,7 +27,7 @@ define void @test.test(i32 %0) #0 {
 entry:
   %zonk = alloca i32, align 4
   %literal = alloca [2 x i32], align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %literal, ptr align 4 @.__const, i64 8, i1 false)
   %1 = insertvalue %"int[]" undef, ptr %literal, 0
   %2 = insertvalue %"int[]" %1, i64 2, 1
   %3 = extractvalue %"int[]" %2, 0
