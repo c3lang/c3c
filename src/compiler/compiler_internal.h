@@ -551,6 +551,7 @@ struct Signature_
 {
 	CalleeAttributes attrs;
 	bool is_macro : 1;
+	bool is_macro_body : 1;
 	bool is_at_macro : 1;
 	bool is_safemacro : 1;
 	Variadic variadic : 3;
@@ -821,7 +822,6 @@ typedef struct Decl_
 			};
 		};
 		AttrDecl attr_decl;
-		Decl** body_params;
 		Ast *ct_assert_decl;
 		Ast *ct_echo_decl;
 		Decl** ct_else_decl;

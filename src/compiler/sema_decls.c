@@ -1256,6 +1256,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 	int param_count = vec_size(params);
 	int vararg_index = sig->vararg_index;
 	bool is_macro = sig->is_macro;
+	bool is_macro_body = sig->is_macro_body;
 	bool is_macro_at_name = sig->is_at_macro || sig->is_safemacro;
 	// Check return type
 	ASSERT(sig->rtype || sig->is_macro);
@@ -1401,6 +1402,12 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		}
 		if (vararg_index < i)
 		{
+			if (is_macro_body)
+			{
+				SEMA_ERROR(param, "Varargs cannot be followed by regular parameters in a macro body.");
+				return decl_poison(param);
+			}
+
 			if (!is_macro && variadic_type == VARIADIC_RAW)
 			{
 				SEMA_ERROR(param, "C-style varargs cannot be followed by regular parameters.");
@@ -1486,7 +1493,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 					SEMA_ERROR(param, "Only regular parameters are allowed for functions.");
 					return decl_poison(param);
 				}
-				if (!is_macro_at_name)
+				if (!is_macro_at_name && !is_macro_body)
 				{
 					SEMA_ERROR(param, "Expression parameters are not allowed in function-like macros. Prefix the macro name with '@'.");
 					return decl_poison(param);
@@ -1565,6 +1572,12 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 
 		if (param->var.init_expr)
 		{
+			if (is_macro_body)
+			{
+				SEMA_ERROR(param, "Body parameters cannot use default values.");
+				return decl_poison(param);
+			}
+
 			Expr *expr = param->var.init_expr;
 			if (expr_is_const(expr))
 			{
@@ -4804,49 +4817,6 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 	return true;
 }
 
-INLINE bool sema_analyse_macro_body(SemaContext *context, Decl **body_parameters)
-{
-	int body_param_count = vec_size(body_parameters);
-	for (int i = 0; i < body_param_count; i++)
-	{
-		ASSERT(body_parameters);
-		Decl *param = body_parameters[i];
-		ASSERT(param);
-		param->resolve_status = RESOLVE_RUNNING;
-		ASSERT(param->decl_kind == DECL_VAR);
-		TypeInfo *type_info = type_infoptrzero(param->var.type_info);
-		VarDeclKind kind = param->var.kind;
-		if (param->var.init_expr)
-		{
-			RETURN_SEMA_ERROR(param->var.init_expr, "Body parameters cannot use default values.");
-		}
-		switch (kind)
-		{
-			case VARDECL_PARAM:
-			case VARDECL_PARAM_EXPR:
-			case VARDECL_PARAM_CT:
-			case VARDECL_PARAM_CT_TYPE:
-				if (!type_info) break;
-				if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
-				break;
-			case VARDECL_CONST:
-			case VARDECL_GLOBAL:
-			case VARDECL_LOCAL:
-			case VARDECL_MEMBER:
-			case VARDECL_BITMEMBER:
-			case VARDECL_LOCAL_CT:
-			case VARDECL_LOCAL_CT_TYPE:
-			case VARDECL_UNWRAPPED:
-			case VARDECL_REWRAPPED:
-			case VARDECL_ERASE:
-				UNREACHABLE
-		}
-		if (!sema_check_param_uniqueness_and_type(context, body_parameters, param, i)) return false;
-		param->resolve_status = RESOLVE_DONE;
-	}
-	return true;
-}
-
 static inline bool sema_check_body_const(SemaContext *context, Ast *body)
 {
 	while (body)
@@ -4926,15 +4896,17 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 	Signature *sig = &decl->func_decl.signature;
 	if (!sema_analyse_signature(context, sig, decl_find_target_if_method(decl), decl)) return false;
 
-	DeclId body_param = decl->func_decl.body_param;
+	Decl* body_param = declptrzero(decl->func_decl.body_param);
 	if (!decl->func_decl.signature.is_at_macro && body_param && !sig->is_safemacro)
 	{
 		RETURN_SEMA_ERROR(decl, "Names of macros with a trailing body must start with '@'.");
 	}
-	Decl **body_parameters = body_param ? declptr(body_param)->body_params : NULL;
-	if (!sema_analyse_macro_body(context, body_parameters)) return false;
+
+	Signature* body_sig = body_param ? &body_param->func_decl.signature : NULL;
+	if (body_sig && body_sig->params && !sema_analyse_signature(context, body_sig, NULL, body_param)) return false;
+
 	bool pure = false;
-	if (!sema_analyse_doc_header(context, decl->docs, sig->params, body_parameters,
+	if (!sema_analyse_doc_header(context, decl->docs, sig->params, body_sig ? body_sig->params : NULL,
 	                             &pure, sig->variadic == VARIADIC_RAW)) return false;
 	if (decl->func_decl.type_parent)
 	{
@@ -4945,7 +4917,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 	if (always_const)
 	{
 		if (typeget(sig->rtype) == type_void) RETURN_SEMA_ERROR(decl, "'@const' macros may not return 'void', they should always return a constant value.");
-		if (body_parameters) RETURN_SEMA_ERROR(decl, "'@const' macros cannot have body parameters.");
+		if (body_sig) RETURN_SEMA_ERROR(decl, "'@const' macros cannot have body parameters.");
 		Ast *body = astptr(decl->func_decl.body);
 		ASSERT(body->ast_kind == AST_COMPOUND_STMT);
 		body = astptrzero(body->compound_stmt.first_stmt);

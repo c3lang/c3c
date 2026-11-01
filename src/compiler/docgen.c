@@ -308,7 +308,7 @@ static void emit_param_json(JsonEmitter *e, Module *module, Decl *p)
 	{
 		json_write_prop_string(e, "kind", "body_param");
 		json_write_prop_key(e, "params");
-		emit_params_json(e, module, p->body_params);
+		emit_params_json(e, module, p->func_decl.signature.params);
 	}
 	else
 	{
