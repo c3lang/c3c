@@ -89,22 +89,7 @@ fn bool List.is_initialized(&self) @inline => self.allocator != null && self.all
 
 fn sz? List.to_format(&self, Formatter* formatter) @dynamic
 {
-	switch (self.size)
-	{
-		case 0:
-			return formatter.print("[]")!;
-		case 1:
-			return formatter.printf("[%s]", self.entries[0])!;
-		default:
-			sz n = formatter.print("[")!;
-			foreach (i, element : self.entries[:self.size])
-			{
-				if (i != 0) n += formatter.print(", ")!;
-				n += formatter.printf("%s", element)!;
-			}
-			n += formatter.print("]")!;
-			return n;
-	}
+	return formatter.printf("%s", self.entries[:self.size]);
 }
 
 fn void List.push(&self, Type element) @inline
