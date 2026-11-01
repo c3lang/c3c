@@ -1105,7 +1105,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_EXPR(copy->include.filename);
 			break;
 		case DECL_BODYPARAM:
-			MACRO_COPY_DECL_LIST(copy->body_params);
+			copy_signature_deep(c, &copy->func_decl.signature);
 			break;
 		case DECL_UNION:
 		case DECL_STRUCT:

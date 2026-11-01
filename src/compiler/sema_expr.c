@@ -1659,12 +1659,6 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 	switch (kind)
 	{
 		case VARDECL_PARAM:
-			// foo
-			if (expr_is_named_param(arg))
-			{
-				// This only happens in body arguments
-				RETURN_SEMA_ERROR(arg, "Named arguments are not supported for body parameters.");
-			}
 			if (!sema_analyse_expr_rhs_param(context, type, arg, no_match_ref)) return false;
 			if (IS_OPTIONAL(arg)) *optional_ref = true;
 			switch (sema_resolve_storage_type(context, arg->type))
@@ -2231,8 +2225,13 @@ SPLAT_NORMAL:;
 
 			// We have named parameters, that will add some restrictions.
 			has_named = true;
-
 			Decl *param = params[index];
+
+			if(callee->signature->is_macro_body)
+			{
+				RETURN_SEMA_FUNC_ERROR(callee->definition, arg, "Named arguments are not supported for body parameters.", param->name);
+			}
+
 			// 8d. We might actually be finding the typed vararg at the end,
 			//     this is an error.
 			if (param->var.vararg)
@@ -3027,8 +3026,10 @@ static inline void sema_update_link_from_macro(SemaContext *context, ResolvedAtt
 static inline bool sema_analyse_macro_body_params(SemaContext *context, Decl *decl, Expr *call_expr, Decl **body_params, bool *no_match_ref)
 {
 	int body_params_count = vec_size(body_params);
-	Decl **macro_body_params = decl->func_decl.body_param ? declptr(decl->func_decl.body_param)->body_params : NULL;
-	int expected_body_params = vec_size(macro_body_params);
+	Signature* body_signature = decl->func_decl.body_param ? &declptr(decl->func_decl.body_param)->func_decl.signature : NULL;
+	int expected_body_params = body_signature ? vec_size(body_signature->params) : 0;
+	bool variadic = body_signature && body_signature->variadic != VARIADIC_NONE;
+	if (variadic) expected_body_params -= 1;
 
 	// Too many parameters
 	if (expected_body_params > body_params_count)
@@ -3038,32 +3039,56 @@ static inline bool sema_analyse_macro_body_params(SemaContext *context, Decl *de
 	}
 
 	// Too few parameters
-	if (expected_body_params < body_params_count)
+	if (expected_body_params < body_params_count && !variadic)
 	{
 		if (no_match_ref) goto NO_MATCH_REF;
 		RETURN_SEMA_ERROR(call_expr, "Too many parameters for the macro body, expected %d.", expected_body_params);
 	}
 
-	for (int j = 0; j < expected_body_params; j++)
+	for (int j = 0; j < body_params_count; j++)
 	{
-		Decl *body_param = macro_body_params[j];
-		ASSERT_SPAN(call_expr, body_param->resolve_status == RESOLVE_DONE);
+		Decl *body_param;
+		bool variadic_param = variadic && j >= body_signature->vararg_index;
+		if (variadic_param)
+		{
+			if (body_signature->variadic == VARIADIC_RAW) body_param = NULL;
+			else body_param = body_signature->params[body_signature->vararg_index];
+		}
+		else body_param = body_signature->params[j];
+
+		ASSERT_SPAN(call_expr, !body_param || body_param->resolve_status == RESOLVE_DONE);
 		Decl *body_arg = body_params[j];
 
 		// Check type mismatch
-		VarDeclKind kind_of_expected = body_param->var.kind;
-		if (kind_of_expected != body_arg->var.kind)
-		{
+		if(body_param) {
+			VarDeclKind kind_of_expected = body_param->var.kind;
+			if (kind_of_expected != body_arg->var.kind)
+			{
+				switch (kind_of_expected)
+				{
+					case VARDECL_PARAM_CT_TYPE:
+						RETURN_SEMA_FUNC_ERROR(decl, body_arg, "Expected a type argument.");
+					case VARDECL_PARAM_EXPR:
+						RETURN_SEMA_FUNC_ERROR(decl, body_arg, "Expected an expression argument.");
+					case VARDECL_PARAM_CT:
+						RETURN_SEMA_FUNC_ERROR(decl, body_arg, "Expected a compile time ('$') argument.");
+					case VARDECL_PARAM:
+						RETURN_SEMA_FUNC_ERROR(decl, body_arg, "Expected a regular argument.");
+					default:
+						UNREACHABLE
+				}
+			}
+
+			// No type checking
 			switch (kind_of_expected)
 			{
 				case VARDECL_PARAM_CT_TYPE:
-					RETURN_SEMA_FUNC_ERROR(decl, body_arg, "Expected a type argument.");
-				case VARDECL_PARAM_EXPR:
-					RETURN_SEMA_FUNC_ERROR(decl, body_arg, "Expected an expression argument.");
+					continue;
 				case VARDECL_PARAM_CT:
-					RETURN_SEMA_FUNC_ERROR(decl, body_arg, "Expected a compile time ('$') argument.");
+				case VARDECL_PARAM_EXPR:
 				case VARDECL_PARAM:
-					RETURN_SEMA_FUNC_ERROR(decl, body_arg, "Expected a regular argument.");
+					// Optional typing
+					break;
 				default:
 					UNREACHABLE
 			}
@@ -3075,38 +3100,27 @@ static inline bool sema_analyse_macro_body_params(SemaContext *context, Decl *de
 			RETURN_SEMA_ERROR(body_arg->var.init_expr, "Macro body parameters should never have default values.");
 		}
 
-		// No type checking
-		switch (kind_of_expected)
-		{
-			case VARDECL_PARAM_CT_TYPE:
-				continue;
-			case VARDECL_PARAM_CT:
-			case VARDECL_PARAM_EXPR:
-			case VARDECL_PARAM:
-				// Optional typing
-				break;
-			default:
-				UNREACHABLE
-		}
-
-		// Check type
-		TypeInfo *expected_type_info = vartype(body_param);
+		TypeInfo *expected_type_info = body_param ? vartype(body_param) : NULL;
 		TypeInfo *type_info = vartype(body_arg);
 
 		// Check the body argument type
 		if (type_info && !sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
 
 		Type *type = type_info ? type_info->type : NULL;
+		Type *expected_type = expected_type_info ? expected_type_info->type : NULL;
+
+		// If we're checking against a variadic parameter we need to get the base type.
+		if (expected_type && variadic_param) expected_type = expected_type->array.base;
 
 		// Infer the type if needed
-		if (!type && expected_type_info) type = expected_type_info->type;
+		if (!type && expected_type) type = expected_type;
 
 		// Check that types match, no conversion, just look at the canonical type.
-		if (type && expected_type_info && type->canonical != expected_type_info->type->canonical)
+		if (type && expected_type && type->canonical != expected_type->canonical)
 		{
 			if (no_match_ref) goto NO_MATCH_REF;
 			RETURN_SEMA_ERROR(type_info, "This parameter should be %s but was %s",
-								  type_quoted_error_string(expected_type_info->type),
+								  type_quoted_error_string(expected_type),
 								  type_quoted_error_string(type));
 		}
 
@@ -3513,38 +3527,39 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 		PRINT_ERROR_AT(call, "Nested expansion is not possible.");
 		return false;
 	}
-	if (call_expr->va_is_splat)
-	{
-		PRINT_ERROR_AT(call, "Expanding parameters is not allowed for macro invocations.");
-	}
-	// Theoretically we could support named arguments, but that's unnecessary.
-	int expressions = vec_size(call_expr->arguments);
-	Decl **body_parameters = body_decl->body_params;
-	if (expressions != vec_size(body_parameters))
-	{
-		PRINT_ERROR_AT(call, "Expected %d parameter(s) to %s.", vec_size(body_parameters), body_decl->name);
-		return false;
-	}
-	Expr **args = call_expr->arguments;
 
 	Decl **params = macro_context->yield_params;
+	Signature callee_signature = {
+		.params = params,
+		.is_macro_body = true,
+		.is_macro = true,
+	};
+	CalledDeclContext callee = {
+			.macro = true,
+			.call_location = call->loc,
+			.name = macro->name,
+			.params = params,
+			.definition = macro,
+			.block_parameter = NULL,
+			.signature = &callee_signature,
+			.struct_var = NULL,
+	};
 
 	bool has_optional_arg = false;
+	if (!sema_call_evaluate_arguments(macro_context, &callee, call, &has_optional_arg, no_match_ref)) return false;
+	if (has_optional_arg)
+	{
+		sema_error_at(macro_context, call->loc, "Optional arguments are not permitted in a body invocation.");
+		return false;
+	}
+
+	Expr **args = call_expr->arguments;
 
 	// Evaluate the expressions.
-	for (int i = 0; i < expressions; i++)
+	int arg_count = vec_size(args);
+	for (int i = 0; i < arg_count; i++)
 	{
 		Decl *param = params[i];
-		Expr *expr = args[i];
-		if (!sema_analyse_parameter(macro_context, expr, param, body_decl, &has_optional_arg, no_match_ref, true, false))
-		{
-			return false;
-		}
-		if (has_optional_arg)
-		{
-			sema_error_at(macro_context, expr->loc, "Optional arguments are not permitted in a body invocation.");
-			return false;
-		}
 		switch (param->var.kind)
 		{
 			case VARDECL_PARAM_EXPR:
