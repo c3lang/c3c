@@ -25,7 +25,7 @@ define { ptr, i64 } @test.x() #0 {
 entry:
   %a = alloca %"Union2[]", align 8
   %literal = alloca [1 x %Union2], align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %literal, ptr align 4 @.__const, i64 4, i1 false)
   %0 = insertvalue %"Union2[]" undef, ptr %literal, 0
   %1 = insertvalue %"Union2[]" %0, i64 1, 1
   store %"Union2[]" %1, ptr %a, align 8

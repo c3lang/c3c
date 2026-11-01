@@ -84,6 +84,7 @@
 - Bitstruct method did not check if field with the same name existed #3602.
 - Casting a constant string (or constant bytes) to a vector at compile time would cause a crash. #3601
 - Support unicode paths on Windows when running processes from the compiler. #3605
+- Fixes to i128 compiler_rt.
 
 ### Stdlib changes
 - Added termios support for OpenBSD.
@@ -91,6 +92,7 @@
 - Added missing `__muloti4` to compiler_rt.
 - `List.insert_at` and `List.push_front` now use a single `memmove` instead of an element-by-element shift. `List.push` has an inline fast path when there is spare capacity.
 - `List.remove_item`, `List.compact` (and the same functions on `FixedList`) are now single pass instead of quadratic.
+- Cryptos now try to use funnel shift and rotation.
 
 ## 0.8.5 Change list
 

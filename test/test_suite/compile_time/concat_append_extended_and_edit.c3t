@@ -229,11 +229,11 @@ noerr_block34:                                    ; preds = %after_check32
   br label %voiderr36
 
 voiderr36:                                        ; preds = %noerr_block34, %guard_block33, %guard_block27, %guard_block21
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const, i32 12, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 %literal, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %literal, ptr align 4 @.__const, i64 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x, ptr align 4 %literal, i64 12, i1 false)
   %12 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x37, ptr align 4 %x, i32 12, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x40, ptr align 4 %x37, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x37, ptr align 4 %x, i64 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x40, ptr align 4 %x37, i64 12, i1 false)
   %13 = insertvalue %any undef, ptr %12, 0
   %14 = insertvalue %any %13, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %15 = insertvalue %any undef, ptr %x40, 0
@@ -298,11 +298,11 @@ noerr_block59:                                    ; preds = %after_check57
   br label %voiderr61
 
 voiderr61:                                        ; preds = %noerr_block59, %guard_block58, %guard_block52, %guard_block46
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal62, ptr align 4 @.__const.3, i32 12, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x63, ptr align 4 %literal62, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %literal62, ptr align 4 @.__const.3, i64 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x63, ptr align 4 %literal62, i64 12, i1 false)
   %23 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x64, ptr align 4 %x63, i32 12, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x67, ptr align 4 %x64, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x64, ptr align 4 %x63, i64 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x67, ptr align 4 %x64, i64 12, i1 false)
   %24 = insertvalue %any undef, ptr %23, 0
   %25 = insertvalue %any %24, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %26 = insertvalue %any undef, ptr %x67, 0
@@ -433,11 +433,11 @@ noerr_block124:                                   ; preds = %after_check122
   br label %voiderr126
 
 voiderr126:                                       ; preds = %noerr_block124, %guard_block123, %guard_block117, %guard_block111
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %literal127, ptr align 16 @.__const.6, i32 20, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x128, ptr align 16 %literal127, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %literal127, ptr align 16 @.__const.6, i64 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x128, ptr align 16 %literal127, i64 20, i1 false)
   %45 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x129, ptr align 16 %x128, i32 20, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x132, ptr align 16 %x129, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x129, ptr align 16 %x128, i64 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x132, ptr align 16 %x129, i64 20, i1 false)
   %46 = insertvalue %any undef, ptr %45, 0
   %47 = insertvalue %any %46, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %48 = insertvalue %any undef, ptr %x132, 0
@@ -737,10 +737,10 @@ entry:
   %error_var657 = alloca i64, align 8
   %error_var663 = alloca i64, align 8
   call void @llvm.memset.p0.i64(ptr align 16 %literal, i8 0, i64 32, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x, ptr align 16 %literal, i32 32, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x, ptr align 16 %literal, i64 32, i1 false)
   %0 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x1, ptr align 16 %x, i32 32, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x2, ptr align 16 %x1, i32 32, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x1, ptr align 16 %x, i64 32, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x2, ptr align 16 %x1, i64 32, i1 false)
   %1 = insertvalue %any undef, ptr %0, 0
   %2 = insertvalue %any %1, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %3 = insertvalue %any undef, ptr %x2, 0
@@ -814,10 +814,10 @@ voiderr:                                          ; preds = %noerr_block15, %gua
   store i32 1, ptr %ptradd19, align 4
   %ptradd20 = getelementptr inbounds i8, ptr %literal16, i64 16
   store i32 2, ptr %ptradd20, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x21, ptr align 16 %literal16, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x21, ptr align 16 %literal16, i64 20, i1 false)
   %11 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x22, ptr align 16 %x21, i32 20, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x25, ptr align 16 %x22, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x22, ptr align 16 %x21, i64 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x25, ptr align 16 %x22, i64 20, i1 false)
   %12 = insertvalue %any undef, ptr %11, 0
   %13 = insertvalue %any %12, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %14 = insertvalue %any undef, ptr %x25, 0
@@ -882,11 +882,11 @@ noerr_block51:                                    ; preds = %after_check49
   br label %voiderr53
 
 voiderr53:                                        ; preds = %noerr_block51, %guard_block50, %guard_block44, %guard_block38
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %literal54, ptr align 16 @.__const.10, i32 20, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x55, ptr align 16 %literal54, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %literal54, ptr align 16 @.__const.10, i64 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x55, ptr align 16 %literal54, i64 20, i1 false)
   %22 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x56, ptr align 16 %x55, i32 20, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x59, ptr align 16 %x56, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x56, ptr align 16 %x55, i64 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x59, ptr align 16 %x56, i64 20, i1 false)
   %23 = insertvalue %any undef, ptr %22, 0
   %24 = insertvalue %any %23, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %25 = insertvalue %any undef, ptr %x59, 0
@@ -951,11 +951,11 @@ noerr_block85:                                    ; preds = %after_check83
   br label %voiderr87
 
 voiderr87:                                        ; preds = %noerr_block85, %guard_block84, %guard_block78, %guard_block72
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %literal88, ptr align 16 @.__const.12, i32 32, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x89, ptr align 16 %literal88, i32 32, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %literal88, ptr align 16 @.__const.12, i64 32, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x89, ptr align 16 %literal88, i64 32, i1 false)
   %33 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x90, ptr align 16 %x89, i32 32, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x93, ptr align 16 %x90, i32 32, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x90, ptr align 16 %x89, i64 32, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x93, ptr align 16 %x90, i64 32, i1 false)
   %34 = insertvalue %any undef, ptr %33, 0
   %35 = insertvalue %any %34, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %36 = insertvalue %any undef, ptr %x93, 0
@@ -1029,10 +1029,10 @@ voiderr121:                                       ; preds = %noerr_block119, %gu
   store i32 0, ptr %ptradd125, align 4
   %ptradd126 = getelementptr inbounds i8, ptr %literal122, i64 16
   store i32 0, ptr %ptradd126, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x127, ptr align 16 %literal122, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x127, ptr align 16 %literal122, i64 20, i1 false)
   %44 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x128, ptr align 16 %x127, i32 20, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x131, ptr align 16 %x128, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x128, ptr align 16 %x127, i64 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x131, ptr align 16 %x128, i64 20, i1 false)
   %45 = insertvalue %any undef, ptr %44, 0
   %46 = insertvalue %any %45, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %47 = insertvalue %any undef, ptr %x131, 0
@@ -1097,11 +1097,11 @@ noerr_block157:                                   ; preds = %after_check155
   br label %voiderr159
 
 voiderr159:                                       ; preds = %noerr_block157, %guard_block156, %guard_block150, %guard_block144
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %literal160, ptr align 16 @.__const.15, i32 16, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x161, ptr align 16 %literal160, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %literal160, ptr align 16 @.__const.15, i64 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x161, ptr align 16 %literal160, i64 16, i1 false)
   %55 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x162, ptr align 16 %x161, i32 16, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x165, ptr align 16 %x162, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x162, ptr align 16 %x161, i64 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x165, ptr align 16 %x162, i64 16, i1 false)
   %56 = insertvalue %any undef, ptr %55, 0
   %57 = insertvalue %any %56, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %58 = insertvalue %any undef, ptr %x165, 0
@@ -1179,10 +1179,10 @@ voiderr193:                                       ; preds = %noerr_block191, %gu
   store i32 1, ptr %ptradd199, align 4
   %ptradd200 = getelementptr inbounds i8, ptr %literal194, i64 24
   store i32 0, ptr %ptradd200, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x201, ptr align 16 %literal194, i32 28, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x201, ptr align 16 %literal194, i64 28, i1 false)
   %66 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x202, ptr align 16 %x201, i32 28, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x205, ptr align 16 %x202, i32 28, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x202, ptr align 16 %x201, i64 28, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x205, ptr align 16 %x202, i64 28, i1 false)
   %67 = insertvalue %any undef, ptr %66, 0
   %68 = insertvalue %any %67, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %69 = insertvalue %any undef, ptr %x205, 0
@@ -1247,11 +1247,11 @@ noerr_block231:                                   ; preds = %after_check229
   br label %voiderr233
 
 voiderr233:                                       ; preds = %noerr_block231, %guard_block230, %guard_block224, %guard_block218
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %literal234, ptr align 16 @.__const.18, i32 32, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x235, ptr align 16 %literal234, i32 32, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %literal234, ptr align 16 @.__const.18, i64 32, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x235, ptr align 16 %literal234, i64 32, i1 false)
   %77 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x236, ptr align 16 %x235, i32 32, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x239, ptr align 16 %x236, i32 32, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x236, ptr align 16 %x235, i64 32, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x239, ptr align 16 %x236, i64 32, i1 false)
   %78 = insertvalue %any undef, ptr %77, 0
   %79 = insertvalue %any %78, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %80 = insertvalue %any undef, ptr %x239, 0
@@ -1329,10 +1329,10 @@ voiderr267:                                       ; preds = %noerr_block265, %gu
   store i32 1, ptr %ptradd273, align 4
   %ptradd274 = getelementptr inbounds i8, ptr %literal268, i64 24
   store i32 2, ptr %ptradd274, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x275, ptr align 16 %literal268, i32 28, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x275, ptr align 16 %literal268, i64 28, i1 false)
   %88 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x276, ptr align 16 %x275, i32 28, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x279, ptr align 16 %x276, i32 28, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x276, ptr align 16 %x275, i64 28, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x279, ptr align 16 %x276, i64 28, i1 false)
   %89 = insertvalue %any undef, ptr %88, 0
   %90 = insertvalue %any %89, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %91 = insertvalue %any undef, ptr %x279, 0
@@ -1405,10 +1405,10 @@ voiderr307:                                       ; preds = %noerr_block305, %gu
   store i32 99, ptr %ptradd310, align 4
   %ptradd311 = getelementptr inbounds i8, ptr %literal308, i64 32
   store i32 1, ptr %ptradd311, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x312, ptr align 16 %literal308, i32 40, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x312, ptr align 16 %literal308, i64 40, i1 false)
   %99 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x313, ptr align 16 %x312, i32 40, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x316, ptr align 16 %x313, i32 40, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x313, ptr align 16 %x312, i64 40, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x316, ptr align 16 %x313, i64 40, i1 false)
   %100 = insertvalue %any undef, ptr %99, 0
   %101 = insertvalue %any %100, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %102 = insertvalue %any undef, ptr %x316, 0
@@ -1473,11 +1473,11 @@ noerr_block342:                                   ; preds = %after_check340
   br label %voiderr344
 
 voiderr344:                                       ; preds = %noerr_block342, %guard_block341, %guard_block335, %guard_block329
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %literal345, ptr align 16 @.__const.22, i32 16, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x346, ptr align 16 %literal345, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %literal345, ptr align 16 @.__const.22, i64 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x346, ptr align 16 %literal345, i64 16, i1 false)
   %110 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x347, ptr align 16 %x346, i32 16, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x350, ptr align 16 %x347, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x347, ptr align 16 %x346, i64 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x350, ptr align 16 %x347, i64 16, i1 false)
   %111 = insertvalue %any undef, ptr %110, 0
   %112 = insertvalue %any %111, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %113 = insertvalue %any undef, ptr %x350, 0
@@ -1542,11 +1542,11 @@ noerr_block376:                                   ; preds = %after_check374
   br label %voiderr378
 
 voiderr378:                                       ; preds = %noerr_block376, %guard_block375, %guard_block369, %guard_block363
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %literal379, ptr align 16 @.__const.24, i32 16, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x380, ptr align 16 %literal379, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %literal379, ptr align 16 @.__const.24, i64 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x380, ptr align 16 %literal379, i64 16, i1 false)
   %121 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x381, ptr align 16 %x380, i32 16, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x384, ptr align 16 %x381, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x381, ptr align 16 %x380, i64 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x384, ptr align 16 %x381, i64 16, i1 false)
   %122 = insertvalue %any undef, ptr %121, 0
   %123 = insertvalue %any %122, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %124 = insertvalue %any undef, ptr %x384, 0
@@ -1620,10 +1620,10 @@ voiderr412:                                       ; preds = %noerr_block410, %gu
   store i32 98, ptr %ptradd416, align 4
   %ptradd417 = getelementptr inbounds i8, ptr %literal413, i64 16
   store i32 91, ptr %ptradd417, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x418, ptr align 16 %literal413, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x418, ptr align 16 %literal413, i64 20, i1 false)
   %132 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x419, ptr align 16 %x418, i32 20, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x422, ptr align 16 %x419, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x419, ptr align 16 %x418, i64 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x422, ptr align 16 %x419, i64 20, i1 false)
   %133 = insertvalue %any undef, ptr %132, 0
   %134 = insertvalue %any %133, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %135 = insertvalue %any undef, ptr %x422, 0
@@ -1688,11 +1688,11 @@ noerr_block448:                                   ; preds = %after_check446
   br label %voiderr450
 
 voiderr450:                                       ; preds = %noerr_block448, %guard_block447, %guard_block441, %guard_block435
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %literal451, ptr align 16 @.__const.27, i32 20, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x452, ptr align 16 %literal451, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %literal451, ptr align 16 @.__const.27, i64 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x452, ptr align 16 %literal451, i64 20, i1 false)
   %143 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x453, ptr align 16 %x452, i32 20, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x456, ptr align 16 %x453, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x453, ptr align 16 %x452, i64 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x456, ptr align 16 %x453, i64 20, i1 false)
   %144 = insertvalue %any undef, ptr %143, 0
   %145 = insertvalue %any %144, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %146 = insertvalue %any undef, ptr %x456, 0
@@ -1757,11 +1757,11 @@ noerr_block482:                                   ; preds = %after_check480
   br label %voiderr484
 
 voiderr484:                                       ; preds = %noerr_block482, %guard_block481, %guard_block475, %guard_block469
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %literal485, ptr align 16 @.__const.29, i32 28, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x486, ptr align 16 %literal485, i32 28, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %literal485, ptr align 16 @.__const.29, i64 28, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x486, ptr align 16 %literal485, i64 28, i1 false)
   %154 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x487, ptr align 16 %x486, i32 28, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x490, ptr align 16 %x487, i32 28, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x487, ptr align 16 %x486, i64 28, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x490, ptr align 16 %x487, i64 28, i1 false)
   %155 = insertvalue %any undef, ptr %154, 0
   %156 = insertvalue %any %155, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %157 = insertvalue %any undef, ptr %x490, 0
@@ -1839,10 +1839,10 @@ voiderr518:                                       ; preds = %noerr_block516, %gu
   store i32 98, ptr %ptradd524, align 4
   %ptradd525 = getelementptr inbounds i8, ptr %literal519, i64 24
   store i32 91, ptr %ptradd525, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x526, ptr align 16 %literal519, i32 28, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x526, ptr align 16 %literal519, i64 28, i1 false)
   %165 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x527, ptr align 16 %x526, i32 28, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x530, ptr align 16 %x527, i32 28, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x527, ptr align 16 %x526, i64 28, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x530, ptr align 16 %x527, i64 28, i1 false)
   %166 = insertvalue %any undef, ptr %165, 0
   %167 = insertvalue %any %166, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %168 = insertvalue %any undef, ptr %x530, 0
@@ -1926,10 +1926,10 @@ voiderr558:                                       ; preds = %noerr_block556, %gu
   store i32 0, ptr %ptradd567, align 4
   %ptradd568 = getelementptr inbounds i8, ptr %ptradd565, i64 4
   store i32 5, ptr %ptradd568, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x569, ptr align 16 %literal559, i32 36, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x569, ptr align 16 %literal559, i64 36, i1 false)
   %176 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x570, ptr align 16 %x569, i32 36, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x573, ptr align 16 %x570, i32 36, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x570, ptr align 16 %x569, i64 36, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x573, ptr align 16 %x570, i64 36, i1 false)
   %177 = insertvalue %any undef, ptr %176, 0
   %178 = insertvalue %any %177, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %179 = insertvalue %any undef, ptr %x573, 0
@@ -1999,10 +1999,10 @@ voiderr601:                                       ; preds = %noerr_block599, %gu
   store i32 11, ptr %ptradd603, align 4
   %ptradd604 = getelementptr inbounds i8, ptr %literal602, i64 8
   store i32 0, ptr %ptradd604, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x605, ptr align 4 %literal602, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x605, ptr align 4 %literal602, i64 12, i1 false)
   %187 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x606, ptr align 4 %x605, i32 12, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x609, ptr align 4 %x606, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x606, ptr align 4 %x605, i64 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x609, ptr align 4 %x606, i64 12, i1 false)
   %188 = insertvalue %any undef, ptr %187, 0
   %189 = insertvalue %any %188, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %190 = insertvalue %any undef, ptr %x609, 0
@@ -2067,11 +2067,11 @@ noerr_block635:                                   ; preds = %after_check633
   br label %voiderr637
 
 voiderr637:                                       ; preds = %noerr_block635, %guard_block634, %guard_block628, %guard_block622
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 4 @.__const.34, i32 4, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x638, ptr align 4 %y, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %y, ptr align 4 @.__const.34, i64 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x638, ptr align 4 %y, i64 4, i1 false)
   %198 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x639, ptr align 4 %x638, i32 4, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x642, ptr align 4 %x639, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x639, ptr align 4 %x638, i64 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x642, ptr align 4 %x639, i64 4, i1 false)
   %199 = insertvalue %any undef, ptr %198, 0
   %200 = insertvalue %any %199, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %201 = insertvalue %any undef, ptr %x642, 0

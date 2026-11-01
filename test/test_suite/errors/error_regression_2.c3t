@@ -299,8 +299,8 @@ if.exit:                                          ; preds = %entry
   br i1 %6, label %if.then5, label %if.exit6
 
 if.then5:                                         ; preds = %if.exit
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const, i32 8, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %0, ptr align 8 %literal, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %literal, ptr align 8 @.__const, i64 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %0, ptr align 8 %literal, i64 8, i1 false)
   ret i64 0
 
 if.exit6:                                         ; preds = %if.exit
@@ -312,8 +312,8 @@ if.exit6:                                         ; preds = %if.exit
   br i1 %8, label %if.then10, label %if.exit16
 
 if.then10:                                        ; preds = %if.exit6
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal13, ptr align 8 @.__const.3, i32 8, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %value, ptr align 8 %literal13, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %literal13, ptr align 8 @.__const.3, i64 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %value, ptr align 8 %literal13, i64 8, i1 false)
   %9 = call ptr @std.core.mem.malloc(i64 8) #2
   store ptr %9, ptr %temp, align 8
   %10 = load ptr, ptr %temp, align 8
@@ -326,7 +326,7 @@ if.then14:                                        ; preds = %if.then10
 
 if.exit15:                                        ; preds = %if.then10
   %11 = load ptr, ptr %temp, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %11, ptr align 8 %value, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %11, ptr align 8 %value, i64 8, i1 false)
   br label %noerr_block
 
 guard_block:                                      ; preds = %if.then14
@@ -336,7 +336,7 @@ guard_block:                                      ; preds = %if.then14
 noerr_block:                                      ; preds = %if.exit15
   %13 = load ptr, ptr %temp, align 8
   store ptr %13, ptr %literal12, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %0, ptr align 8 %literal12, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %0, ptr align 8 %literal12, i64 8, i1 false)
   ret i64 0
 
 if.exit16:                                        ; preds = %if.exit6
@@ -362,7 +362,7 @@ if.then29:                                        ; preds = %if.then20
 
 if.exit30:                                        ; preds = %if.then20
   %18 = load ptr, ptr %temp27, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %18, ptr align 8 %value26, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %18, ptr align 8 %value26, i64 16, i1 false)
   br label %noerr_block32
 
 guard_block31:                                    ; preds = %if.then29
@@ -372,7 +372,7 @@ guard_block31:                                    ; preds = %if.then29
 noerr_block32:                                    ; preds = %if.exit30
   %20 = load ptr, ptr %temp27, align 8
   store ptr %20, ptr %literal24, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %value33, ptr align 8 %literal24, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %value33, ptr align 8 %literal24, i64 8, i1 false)
   %21 = call ptr @std.core.mem.malloc(i64 8) #2
   store ptr %21, ptr %temp34, align 8
   %22 = load ptr, ptr %temp34, align 8
@@ -385,7 +385,7 @@ if.then36:                                        ; preds = %noerr_block32
 
 if.exit37:                                        ; preds = %noerr_block32
   %23 = load ptr, ptr %temp34, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %23, ptr align 8 %value33, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %23, ptr align 8 %value33, i64 8, i1 false)
   br label %noerr_block39
 
 guard_block38:                                    ; preds = %if.then36
@@ -395,7 +395,7 @@ guard_block38:                                    ; preds = %if.then36
 noerr_block39:                                    ; preds = %if.exit37
   %25 = load ptr, ptr %temp34, align 8
   store ptr %25, ptr %literal22, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %0, ptr align 8 %literal22, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %0, ptr align 8 %literal22, i64 8, i1 false)
   ret i64 0
 
 if.exit40:                                        ; preds = %if.exit16
@@ -447,7 +447,7 @@ if.then56:                                        ; preds = %if.exit44
 
 if.exit57:                                        ; preds = %if.exit44
   %44 = load ptr, ptr %temp54, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %44, ptr align 8 %value53, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %44, ptr align 8 %value53, i64 16, i1 false)
   br label %noerr_block59
 
 guard_block58:                                    ; preds = %if.then56
@@ -457,7 +457,7 @@ guard_block58:                                    ; preds = %if.then56
 noerr_block59:                                    ; preds = %if.exit57
   %46 = load ptr, ptr %temp54, align 8
   store ptr %46, ptr %literal51, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %value60, ptr align 8 %literal51, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %value60, ptr align 8 %literal51, i64 8, i1 false)
   %47 = call ptr @std.core.mem.malloc(i64 8) #2
   store ptr %47, ptr %temp61, align 8
   %48 = load ptr, ptr %temp61, align 8
@@ -470,7 +470,7 @@ if.then63:                                        ; preds = %noerr_block59
 
 if.exit64:                                        ; preds = %noerr_block59
   %49 = load ptr, ptr %temp61, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %49, ptr align 8 %value60, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %49, ptr align 8 %value60, i64 8, i1 false)
   br label %noerr_block66
 
 guard_block65:                                    ; preds = %if.then63
@@ -480,7 +480,7 @@ guard_block65:                                    ; preds = %if.then63
 noerr_block66:                                    ; preds = %if.exit64
   %51 = load ptr, ptr %temp61, align 8
   store ptr %51, ptr %literal49, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %0, ptr align 8 %literal49, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %0, ptr align 8 %literal49, i64 8, i1 false)
   ret i64 0
 }
 
@@ -536,7 +536,7 @@ after_check:                                      ; preds = %entry
   br label %phi_block
 
 else_block:                                       ; preds = %entry
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.7, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %literal, ptr align 8 @.__const.7, i64 16, i1 false)
   br label %phi_block
 
 phi_block:                                        ; preds = %else_block, %after_check
@@ -690,7 +690,7 @@ loop.body:                                        ; preds = %loop.cond
   %2 = load ptr, ptr @main.URLS, align 8
   %3 = load i64, ptr %.anon, align 8
   %ptroffset = getelementptr inbounds [16 x i8], ptr %2, i64 %3
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %url, ptr align 8 %ptroffset, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %url, ptr align 8 %ptroffset, i64 16, i1 false)
   %ptradd = getelementptr inbounds i8, ptr %url, i64 8
   %4 = load i64, ptr %ptradd, align 8
   %trunc = trunc i64 %4 to i32
@@ -701,7 +701,7 @@ loop.body:                                        ; preds = %loop.cond
   %hi = load i64, ptr %ptradd1, align 8
   %7 = call { ptr, i8 } @test.readAndBuildSummary(ptr %lo, i64 %hi)
   store { ptr, i8 } %7, ptr %result, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %summary, ptr align 8 %result, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %summary, ptr align 8 %result, i64 16, i1 false)
   %8 = call i32 (ptr, ...) @printf(ptr @.str.20)
   %9 = load ptr, ptr @__stdoutp, align 8
   call void @test.Summary.print(ptr %summary, ptr %9)

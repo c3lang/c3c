@@ -52,7 +52,7 @@ guard_block:                                      ; preds = %assign_optional
   ret i64 %0
 
 noerr_block:                                      ; preds = %after_check
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 4 %x, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %y, ptr align 4 %x, i64 4, i1 false)
   ret i64 0
 }
 
@@ -81,7 +81,7 @@ guard_block:                                      ; preds = %assign_optional
   ret i64 %0
 
 noerr_block:                                      ; preds = %after_check
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 4 %x, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %y, ptr align 4 %x, i64 4, i1 false)
   ret i64 0
 }
 

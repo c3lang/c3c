@@ -98,7 +98,7 @@ after_check:                                      ; preds = %entry
   br label %phi_block
 
 else_block:                                       ; preds = %entry
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %literal, ptr align 8 @.__const, i64 8, i1 false)
   br label %phi_block
 
 phi_block:                                        ; preds = %else_block, %after_check
@@ -137,13 +137,13 @@ checkok:                                          ; preds = %loop.body
   br i1 %8, label %panic1, label %checkok2
 
 checkok2:                                         ; preds = %checkok
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %url, ptr align 8 %ptroffset, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %url, ptr align 8 %ptroffset, i64 16, i1 false)
   %lo = load ptr, ptr %url, align 8
   %ptradd = getelementptr inbounds i8, ptr %url, i64 8
   %hi = load i64, ptr %ptradd, align 8
   %9 = call ptr @test.readAndBuildSummary(ptr %lo, i64 %hi)
   store ptr %9, ptr %result, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %summary, ptr align 8 %result, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %summary, ptr align 8 %result, i64 8, i1 false)
   %10 = load i64, ptr %.anon, align 8
   %addnsw = add nsw i64 %10, 1
   store i64 %addnsw, ptr %.anon, align 8

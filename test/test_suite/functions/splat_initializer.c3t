@@ -50,17 +50,17 @@ entry:
   %t = alloca %ParentType, align 4
   %d = alloca %ChildType, align 4
   %e = alloca %ChildType, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %some_p, ptr align 4 @.__const, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %some_p, ptr align 4 @.__const, i64 16, i1 false)
   call void @llvm.memset.p0.i64(ptr align 4 %c, i8 0, i64 36, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %c, ptr align 4 %some_p, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %c, ptr align 4 %some_p, i64 16, i1 false)
   %ptradd = getelementptr inbounds i8, ptr %c, i64 4
   store i32 7, ptr %ptradd, align 4
   %ptradd1 = getelementptr inbounds i8, ptr %c, i64 16
   store i32 8, ptr %ptradd1, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %t, ptr align 4 %some_p, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %t, ptr align 4 %some_p, i64 16, i1 false)
   %ptradd2 = getelementptr inbounds i8, ptr %t, i64 4
   store i32 343, ptr %ptradd2, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %d, ptr align 4 @test.gc, i32 36, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %e, ptr align 4 @test.gc2, i32 36, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %d, ptr align 4 @test.gc, i64 36, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %e, ptr align 4 @test.gc2, i64 36, i1 false)
   ret void
 }

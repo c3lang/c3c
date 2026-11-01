@@ -94,10 +94,10 @@ entry:
   %literal5 = alloca [2 x i32], align 4
   %literal6 = alloca [2 x i32], align 4
   %taddr7 = alloca <2 x i32>, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %abc, ptr align 4 @.__const, i32 8, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %defg, ptr align 4 @.__const.1, i32 8, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 4 @.__const.2, i32 8, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %y2, ptr align 16 @.__const.3, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %abc, ptr align 4 @.__const, i64 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %defg, ptr align 4 @.__const.1, i64 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %y, ptr align 4 @.__const.2, i64 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %y2, ptr align 16 @.__const.3, i64 16, i1 false)
   %0 = insertvalue %any undef, ptr %y, 0
   %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.a1$a2$int" to i64), 1
   store %any %1, ptr %varargslots, align 16
@@ -115,16 +115,16 @@ entry:
   %ptradd3 = getelementptr inbounds i8, ptr %varargslots, i64 48
   store %any %7, ptr %ptradd3, align 16
   %8 = call i64 @std.io.printfn(ptr %retparam, ptr @.str.4, i64 14, ptr %varargslots, i64 4)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const.5, i32 8, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal4, ptr align 4 @.__const.6, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %literal, ptr align 4 @.__const.5, i64 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %literal4, ptr align 4 @.__const.6, i64 8, i1 false)
   %9 = insertvalue %"int[]" undef, ptr %literal4, 0
   %10 = insertvalue %"int[]" %9, i64 2, 1
   %11 = load i64, ptr %literal, align 4
   store <2 x i32> <i32 5, i32 6>, ptr %taddr, align 8
   %12 = load double, ptr %taddr, align 8
   call void @test.test(i64 %11, ptr %literal4, i64 2, double %12)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal5, ptr align 4 @.__const.7, i32 8, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal6, ptr align 4 @.__const.8, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %literal5, ptr align 4 @.__const.7, i64 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %literal6, ptr align 4 @.__const.8, i64 8, i1 false)
   %13 = insertvalue %"int[]" undef, ptr %literal6, 0
   %14 = insertvalue %"int[]" %13, i64 2, 1
   %15 = load i64, ptr %literal5, align 4

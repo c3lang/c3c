@@ -138,7 +138,7 @@ entry:
   %3 = insertvalue %any %2, i64 ptrtoint (ptr @"$ct.int" to i64), 1
   store %any %3, ptr %varargslots, align 16
   %4 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 12, ptr %varargslots, i64 1)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %literal, ptr align 8 @.__const, i64 16, i1 false)
   %lo2 = load i32, ptr %literal, align 8
   %ptradd3 = getelementptr inbounds i8, ptr %literal, i64 8
   %hi4 = load ptr, ptr %ptradd3, align 8
@@ -148,7 +148,7 @@ entry:
   %7 = insertvalue %any %6, i64 ptrtoint (ptr @"$ct.int" to i64), 1
   store %any %7, ptr %varargslots5, align 16
   %8 = call i64 @std.io.printfn(ptr %retparam7, ptr @.str.1, i64 12, ptr %varargslots5, i64 1)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal8, ptr align 8 @.__const.2, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %literal8, ptr align 8 @.__const.2, i64 16, i1 false)
   %lo9 = load i32, ptr %literal8, align 8
   %ptradd10 = getelementptr inbounds i8, ptr %literal8, i64 8
   %hi11 = load ptr, ptr %ptradd10, align 8
@@ -183,7 +183,7 @@ after_check19:                                    ; preds = %entry, %after_check
   %23 = insertvalue %any %22, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
   store %any %23, ptr %varargslots24, align 16
   %24 = call i64 @std.io.printfn(ptr %retparam26, ptr @.str.6, i64 9, ptr %varargslots24, i64 1)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal29, ptr align 8 @.__const.7, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %literal29, ptr align 8 @.__const.7, i64 16, i1 false)
   %lo30 = load i32, ptr %literal29, align 8
   %ptradd31 = getelementptr inbounds i8, ptr %literal29, i64 8
   %hi32 = load ptr, ptr %ptradd31, align 8

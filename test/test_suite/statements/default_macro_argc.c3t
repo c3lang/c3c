@@ -132,10 +132,10 @@ noerr_block13:                                    ; preds = %after_check11
 voiderr:                                          ; preds = %noerr_block13, %guard_block12, %guard_block6, %guard_block
   store i32 123, ptr getelementptr inbounds (i8, ptr @test.x, i64 4), align 4
   call void @test.testme()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @test.x, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x, ptr align 4 @test.x, i64 8, i1 false)
   %6 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x14, ptr align 4 %x, i32 8, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x17, ptr align 4 %x14, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x14, ptr align 4 %x, i64 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x17, ptr align 4 %x14, i64 8, i1 false)
   %7 = insertvalue %any undef, ptr %6, 0
   %8 = insertvalue %any %7, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %9 = insertvalue %any undef, ptr %x17, 0
@@ -255,10 +255,10 @@ noerr_block59:                                    ; preds = %after_check57
 voiderr61:                                        ; preds = %noerr_block59, %guard_block58, %guard_block52, %guard_block46
   store i32 12, ptr getelementptr inbounds (i8, ptr @test2.x, i64 4), align 4
   call void @test2.testme()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x62, ptr align 4 @test2.x, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x62, ptr align 4 @test2.x, i64 8, i1 false)
   %23 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x63, ptr align 4 %x62, i32 8, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x66, ptr align 4 %x63, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x63, ptr align 4 %x62, i64 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x66, ptr align 4 %x63, i64 8, i1 false)
   %24 = insertvalue %any undef, ptr %23, 0
   %25 = insertvalue %any %24, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   %26 = insertvalue %any undef, ptr %x66, 0

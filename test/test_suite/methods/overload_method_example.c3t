@@ -24,9 +24,9 @@ entry:
   %self = alloca %Word, align 4
   %other = alloca i16, align 2
   %literal = alloca %Word, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %a, ptr align 4 @.__const, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %a, ptr align 4 @.__const, i64 4, i1 false)
   store i16 2, ptr %b, align 2
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %self, ptr align 4 %a, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %self, ptr align 4 %a, i64 4, i1 false)
   %0 = load i16, ptr %b, align 2
   store i16 %0, ptr %other, align 2
   %1 = load i32, ptr %self, align 4
@@ -34,6 +34,6 @@ entry:
   %zext = zext i16 %2 to i32
   %add = add i32 %1, %zext
   store i32 %add, ptr %literal, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %c, ptr align 4 %literal, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %c, ptr align 4 %literal, i64 4, i1 false)
   ret i32 0
 }

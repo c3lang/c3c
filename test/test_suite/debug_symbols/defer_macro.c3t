@@ -339,7 +339,7 @@ entry:
   %hi = load i64, ptr %ptradd, align 8, !dbg !155
   %0 = call { ptr, i64 } @arena_scratch_begin(ptr %lo, i64 %hi), !dbg !156
   store { ptr, i64 } %0, ptr %result, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %scratch, ptr align 8 %result, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %scratch, ptr align 8 %result, i64 16, i1 false)
     #dbg_declare(ptr %scratch1, !157, !DIExpression(), !158)
   %1 = load ptr, ptr %scratch, align 8, !dbg !159
   store ptr %1, ptr %scratch1, align 8, !dbg !159
@@ -407,7 +407,7 @@ entry:
   store i64 %sext, ptr %elements, align 8
   %7 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocators.thread_allocator), !dbg !200
     #dbg_declare(ptr %allocator, !201, !DIExpression(), !211)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %allocator, ptr align 8 %7, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %allocator, ptr align 8 %7, i64 16, i1 false)
     #dbg_declare(ptr %elements7, !213, !DIExpression(), !214)
   %8 = load i64, ptr %elements, align 8
   store i64 %8, ptr %elements7, align 8
@@ -418,7 +418,7 @@ entry:
   %ge = icmp sge i64 %10, 0, !dbg !218
   call void @llvm.assume(i1 %ge), !dbg !218
     #dbg_declare(ptr %allocator9, !219, !DIExpression(), !228)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %allocator9, ptr align 8 %allocator, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %allocator9, ptr align 8 %allocator, i64 16, i1 false)
     #dbg_declare(ptr %elements10, !230, !DIExpression(), !231)
   %11 = load i64, ptr %elements7, align 8
   store i64 %11, ptr %elements10, align 8
@@ -429,7 +429,7 @@ entry:
   %ge13 = icmp sge i64 %13, 0, !dbg !235
   call void @llvm.assume(i1 %ge13), !dbg !235
     #dbg_declare(ptr %allocator14, !236, !DIExpression(), !240)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %allocator14, ptr align 8 %allocator9, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %allocator14, ptr align 8 %allocator9, i64 16, i1 false)
   %14 = load i64, ptr %elements10, align 8, !dbg !242
   %mul = mul i64 16, %14, !dbg !243
     #dbg_declare(ptr %size, !244, !DIExpression(), !245)
@@ -569,7 +569,7 @@ loop.exit:                                        ; preds = %loop.cond23
   br label %loop.cond, !dbg !284
 
 loop.exit32:                                      ; preds = %loop.cond
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %list, ptr align 8 %list5, i32 16, i1 false), !dbg !285
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %list, ptr align 8 %list5, i64 16, i1 false), !dbg !285
   %lo = load ptr, ptr %list, align 8, !dbg !286
   %ptradd33 = getelementptr inbounds i8, ptr %list, i64 8, !dbg !286
   %hi = load i64, ptr %ptradd33, align 8, !dbg !286
@@ -597,7 +597,7 @@ declare extern_weak i64 @std.io.File.write_byte(ptr, i8 zeroext) #0
 declare extern_weak i64 @std.io.File.flush(ptr) #0
 ; Function Attrs: nounwind ssp uwtable
 declare { ptr, i64 } @arena_scratch_begin(ptr, i64) #0
-declare void @llvm.memcpy.p0.p0.i32(ptr noalias
+declare void @llvm.memcpy.p0.p0.i64(ptr noalias
 ; Function Attrs: nounwind ssp uwtable
 declare void @arena_scratch_end(ptr, i64) #0
 
