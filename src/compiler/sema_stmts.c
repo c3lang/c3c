@@ -3122,6 +3122,8 @@ bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement)
 	{
 		RETURN_SEMA_ERROR(message, "Expected a constant value.");
 	}
+	statement->ast_kind = AST_NOP_STMT;
+	if (compiler.build.lsp_output) return true;
 	const char *prefix = compiler.build.echo_prefix ? compiler.build.echo_prefix : "c3c:";
 	while (prefix[0] != 0)
 	{
@@ -3172,7 +3174,6 @@ bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement)
 		expr_const_to_scratch_buffer(&message->const_expr);
 	}
 	puts(scratch_buffer_to_string());
-	statement->ast_kind = AST_NOP_STMT;
 	return true;
 }
 

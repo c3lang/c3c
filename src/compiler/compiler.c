@@ -1723,6 +1723,7 @@ static void set_env_var(const char *name, const char *value)
 void execute_scripts(void)
 {
 	if (!vec_size(compiler.build.exec)) return;
+	if (compiler.build.lsp_output) return;
 	if (compiler.build.trust_level < TRUST_FULL)
 	{
 		error_exit("This target has 'exec' directives, to run it trust level must be set to '--trust=full'.");
@@ -2117,7 +2118,7 @@ void compile(void)
 	}
 	symtab_init(compiler.build.symtab_size);
 	compiler.build.sources = target_expand_source_names(NULL, compiler.build.source_dirs, c3_suffix_list, &compiler.build.object_files, &compiler.build.llvm_ir_files, 3, true);
-	if (compiler.build.build_test && compiler.build.test_source_dirs)
+	if (compiler.build.build_test && compiler.build.type == TARGET_TYPE_TEST && compiler.build.test_source_dirs)
 	{
 		const char **test_sources = target_expand_source_names(NULL, compiler.build.test_source_dirs, c3_suffix_list, &compiler.build.object_files, &compiler.build.llvm_ir_files, 3, true);
 		FOREACH(const char *, file, test_sources) vec_add(compiler.build.sources, file);
