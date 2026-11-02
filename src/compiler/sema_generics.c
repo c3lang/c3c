@@ -350,7 +350,6 @@ FOUND:;
 			if (!sema_analyse_decl(context, symbol)) return poisoned_decl;
 		}
 	}
-	unit_register_external_symbol(context, symbol);
 	return symbol;
 
 }

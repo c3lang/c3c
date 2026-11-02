@@ -325,6 +325,7 @@ struct Type_
 {
 	TypeKind type_kind;
 	bool is_live;
+	Module *traced_module;
 	CanonicalType *canonical;
 	const char *name;
 	Type **type_cache;
@@ -2546,7 +2547,6 @@ const char *get_exe_extension(void);
 
 CompilationUnit * unit_create(File *file);
 void unit_register_global_decl(CompilationUnit *unit, Decl *decl);
-void unit_register_external_symbol(SemaContext *context, Decl *decl);
 void setup_exec_paths(const char **old_dir_ref, const char **script_dir_ref, const char **exec_dir_ref);
 
 bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import, bool is_non_recursive);
@@ -2725,6 +2725,7 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 
 bool sema_analyse_expr_rvalue(SemaContext *context, Expr *expr);
 bool sema_cast_const(Expr *expr);
+void sema_fold_global_init(Expr *init);
 
 bool sema_expr_check_discard(SemaContext *context, Expr *expr);
 bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr, bool *no_match_ref);

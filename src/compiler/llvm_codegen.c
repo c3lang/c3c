@@ -563,18 +563,6 @@ void llvm_set_internal_linkage(LLVMValueRef alloc)
 	LLVMSetVisibility(alloc, LLVMDefaultVisibility);
 }
 
-Expr *llvm_fold_init_expr(Expr *expr)
-{
-	while (expr && expr->expr_kind == EXPR_IDENTIFIER)
-	{
-		Decl *inner_decl = decl_flatten(expr->ident_expr);
-		if (inner_decl->decl_kind != DECL_VAR) break;
-		if (inner_decl->var.kind != VARDECL_CONST) break;
-		expr = inner_decl->var.init_expr;
-	}
-	return expr;
-}
-
 void llvm_set_private_declaration(LLVMValueRef alloc)
 {
 	LLVMSetLinkage(alloc, LLVMPrivateLinkage);
@@ -595,7 +583,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 
 	Type *var_type = type_lowering(decl->type);
 
-	Expr *init_expr = llvm_fold_init_expr(decl->var.init_expr);
+	Expr *init_expr = decl->var.init_expr;
 
 	if (init_expr && init_expr->expr_kind != EXPR_OPTIONAL)
 	{
@@ -2129,8 +2117,6 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 	gencontext_init(gen_context, module, shared_context);
 	gencontext_begin_module(gen_context);
 
-	bool only_used = strip_unused();
-
 	FOREACH(CompilationUnit *, unit, module->units)
 	{
 		gencontext_init_file_emit(gen_context, unit);
@@ -2139,25 +2125,25 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 
 		FOREACH(Decl *, method, unit->methods)
 		{
-			if (only_used && !method->is_live) continue;
+			if (!method->is_live) continue;
 			llvm_emit_function_decl(gen_context, method);
 		}
 
 		FOREACH(Decl *, type_decl, unit->types)
 		{
-			if (only_used && !type_decl->is_live) continue;
+			if (!type_decl->is_live) continue;
 			llvm_emit_type_decls(gen_context, type_decl);
 		}
 
 		FOREACH(Decl *, enum_decl, unit->enums)
 		{
-			if (only_used && !enum_decl->is_live) continue;
+			if (!enum_decl->is_live) continue;
 			llvm_emit_type_decls(gen_context, enum_decl);
 		}
 
 		FOREACH(Decl *, func, unit->functions)
 		{
-			if (only_used && !func->is_live) continue;
+			if (!func->is_live) continue;
 			if (func->func_decl.attr_test)
 			{
 				if (!compiler.build.build_test) continue;
@@ -2174,7 +2160,7 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 
 		FOREACH(Decl *, func, unit->lambdas)
 		{
-			if (only_used && !func->is_live) continue;
+			if (!func->is_live) continue;
 			has_elements = true;
 			llvm_emit_function_decl(gen_context, func);
 		}
@@ -2196,14 +2182,14 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 
 		FOREACH(Decl *, var, unit->vars)
 		{
-			if (only_used && !var->is_live) continue;
+			if (!var->is_live) continue;
 			has_elements = true;
 			llvm_get_ref(gen_context, var);
 		}
 
 		FOREACH(Decl *, var, unit->vars)
 		{
-			if (only_used && !var->is_live) continue;
+			if (!var->is_live) continue;
 			has_elements = true;
 			llvm_emit_global_variable_init(gen_context, var);
 		}
@@ -2212,7 +2198,7 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 		{
 			if (decl->func_decl.attr_test && !compiler.build.build_test) continue;
 			if (decl->func_decl.attr_benchmark && !compiler.build.build_benchmark) continue;
-			if (only_used && !decl->is_live) continue;
+			if (!decl->is_live) continue;
 			if (decl->func_decl.body)
 			{
 				has_elements = true;
@@ -2222,7 +2208,7 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 
 		FOREACH(Decl *, func, unit->lambdas)
 		{
-			if (only_used && !func->is_live) continue;
+			if (!func->is_live) continue;
 			has_elements = true;
 			llvm_emit_function_body(gen_context, func);
 		}
@@ -2235,7 +2221,7 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 
 		FOREACH(Decl *, decl, unit->methods)
 		{
-			if (only_used && !decl->is_live) continue;
+			if (!decl->is_live) continue;
 			if (!decl->func_decl.body) continue;
 			has_elements = true;
 			llvm_emit_function_body(gen_context, decl);
