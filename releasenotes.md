@@ -88,6 +88,7 @@
 - Using a const from another module that refers to a private symbol would fail to link in some cases e.g. `static List{int} g = list::ONHEAP{int};`.
 - Reading an enum associated value at runtime from another module would fail to link if it referred to a private symbol.
 - A function only used in an `@ensure` could be stripped when it wasn't the first statement to run on return, failing to link.
+- The sign of constant NaN expressions was ignored during codegen.
 
 ### Stdlib changes
 - Added termios support for OpenBSD.

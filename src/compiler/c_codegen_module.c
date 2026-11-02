@@ -416,7 +416,7 @@ void c_emit_const_float_literal(GenContext *c, double f)
 {
 	if (isnan(f))
 	{
-		PRINT("__c3_nan");
+		PRINT(signbit(f) ? "(-__c3_nan)" : "__c3_nan");
 		return;
 	}
 	if (isinf(f))
