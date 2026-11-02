@@ -105,15 +105,6 @@ bool context_is_macro(SemaContext *context)
 	return context->call_env.current_function && context->call_env.current_function->func_decl.in_macro; // NOLINT
 }
 
-void unit_register_external_symbol(SemaContext *context, Decl *decl)
-{
-	decl = decl_flatten(decl);
-	if (decl->is_external_visible) return;
-	Module *active_module = context->current_macro ? context->original_module : context->compilation_unit->module;
-	if (decl->unit->module == active_module) return;
-	decl->is_external_visible = true;
-}
-
 INLINE void weak_visibility_mismatch(Decl *weak_symbol, Decl *other_symbol)
 {
 	print_error_at(weak_symbol->loc, "The weak symbol '%s' has another definition with a different, visibility.", weak_symbol->name);

@@ -541,10 +541,7 @@ RESOLVE_LAMBDA:;
 	assign_testfn();
 	assign_benchfn();
 
-	if (strip_unused())
-	{
-		sema_trace_liveness();
-	}
+	sema_trace_liveness();
 }
 
 void sema_context_init(SemaContext *context, CompilationUnit *unit)

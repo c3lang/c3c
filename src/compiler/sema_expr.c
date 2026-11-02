@@ -294,7 +294,7 @@ Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, SubscriptIndex *index
 	{
 		goto OUT_OF_RANGE;
 	}
-	int idx = index_val.i.low;
+	int idx = (int)index_val.i.low;
 	if (index->start_from_end) idx = (int)args - idx;
 	if (idx < 0 || idx >= args) goto OUT_OF_RANGE;
 	return context->macro_varargs[idx];
@@ -950,6 +950,14 @@ CHECK_INNER:
 	RETURN_SEMA_ERROR(inner, "'in' parameters may not be assigned to.");
 }
 
+void sema_fold_global_init(Expr *init)
+{
+	if (init->expr_kind != EXPR_IDENTIFIER) return;
+	Decl *decl = decl_flatten(init->ident_expr);
+	if (decl->decl_kind != DECL_VAR || decl->var.kind != VARDECL_CONST || decl->is_extern) return;
+	expr_replace(init, copy_expr_single(decl->var.init_expr));
+}
+
 static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 {
 	Decl *decl = expr->ident_expr;
@@ -1370,7 +1378,6 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	}
 	sema_display_deprecated_warning_on_use(context, decl, expr->loc);
 
-	unit_register_external_symbol(context, decl);
 	decl_used(decl);
 	decl = decl_flatten(decl);
 	decl_used(decl);
@@ -3265,7 +3272,8 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 				initializer_list->initializer_list = exprs;
 				literal->expr_compound_literal.type_info = vartype(param);
 				literal->expr_compound_literal.initializer = initializer_list;
-				if (!sema_analyse_expr_rvalue(context, args[i] = literal)) return false;
+				args[i] = literal;
+				if (!sema_analyse_expr_rvalue(context, literal)) return false;
 			}
 		}
 		param->var.init_expr = args[i];
@@ -3965,7 +3973,8 @@ static inline bool sema_call_analyse_member_get(SemaContext *context, Expr *expr
 	// Constant fold the get
 	if (target_kind == TYPE_ENUM && sema_cast_const(inner) && expr_is_const_enum(inner))
 	{
-		expr_replace(expr, copy_expr_single(inner->const_expr.enum_val->enum_constant.associated[index]));
+		Decl *enum_val = inner->const_expr.enum_val;
+		expr_replace(expr, copy_expr_single(enum_val->enum_constant.associated[index]));
 		return true;
 	}
 	expr->expr_kind = target_kind == TYPE_BITSTRUCT ? EXPR_BITACCESS : EXPR_ACCESS_RESOLVED;
@@ -7308,7 +7317,6 @@ CHECK_DEEPER:
 		expr->type = method->type ? type_add_optional(method->type, optional) : NULL;
 		expr->access_resolved_expr = (ExprResolvedAccess) { .parent = current_parent, .ref = method };
 		expr->expr_kind = EXPR_ACCESS_RESOLVED;
-		if (method->decl_kind == DECL_FUNC) unit_register_external_symbol(context, method);
 		return true;
 	}
 
@@ -7348,11 +7356,6 @@ FOUND_MEMBER_REFLECT:
 			member = value;
 			inf = parent_decl;
 		}
-	}
-
-	if (member && member->decl_kind == DECL_FUNC)
-	{
-		unit_register_external_symbol(context, member);
 	}
 
 	// 11. If we didn't find a match...
@@ -11478,10 +11481,6 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 		Decl *decl_cached = sema_find_cached_lambda(context, flat, decl, ct_lambda_parameters);
 		if (decl_cached)
 		{
-			if (context->unit->module != context->compilation_unit->module)
-			{
-				decl_cached->is_external_visible = true;
-			}
 			expr->type = type_get_func_ptr(decl_cached->type);
 			expr_rewrite_const_ref(expr, decl_cached);
 			return true;
@@ -11556,10 +11555,6 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	decl->name = scratch_buffer_copy();
 	decl->extname = decl->name;
 	decl->type = type_new_func(decl, sig);
-	if (context->unit->module != context->compilation_unit->module)
-	{
-		decl->is_external_visible = true;
-	}
 	bool erase_decl = false;
 	if (!sema_analyse_func_macro(context, decl, ATTR_FUNC, &erase_decl)) return false;
 	if (erase_decl)
@@ -11580,9 +11575,6 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 		decl->func_decl.in_macro = true;
 	}
 	decl->alignment = type_alloca_alignment(decl->type);
-	// We will actually compile this into any module using it (from a macro) by necessity,
-	// so we'll declare it as weak and externally visible.
-	unit_register_external_symbol(context, decl);
 
 	if (context->generic_instance)
 	{
@@ -11598,7 +11590,6 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 		{
 			decl_read(d);
 		}
-		decl_flatten(decl)->is_external_visible = true;
 		vec_add(unit->module->lambdas_to_evaluate, decl);
 	}
 	else
@@ -13235,7 +13226,6 @@ bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *meth
 		}
 	}
 	ASSERT_SPAN(method_call, first == type_no_optional(parent->type)->canonical);
-	unit_register_external_symbol(context, method_decl);
 	if (!sema_expr_analyse_general_call(context, method_call, method_decl, parent, false,
 										NULL)) return expr_poison(method_call);
 	method_call->resolve_status = RESOLVE_DONE;
