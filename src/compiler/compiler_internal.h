@@ -3568,6 +3568,7 @@ INLINE bool type_is_user_defined(Type *type)
 
 static inline DeclId type_find_generic(Type *type)
 {
+	type = type_no_optional(type);
 	Type *canonical = type->canonical;
 	while (type->type_kind == TYPE_POINTER)
 	{
