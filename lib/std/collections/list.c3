@@ -122,12 +122,9 @@ fn Type? List.pop_first(&self)
 <*
  @require index < self.size && index >= 0 : "Index out of bounds"
 *>
-fn void List.remove_at(&self, sz index)
+fn void List.remove_at(&self, sz index) @inline
 {
-	sz new_size = self.size - 1;
-	defer @list_set_size(self, new_size);
-	if (!new_size || index == new_size) return;
-	self.entries[index .. new_size - 1] = self.entries[index + 1 .. new_size];
+	list_remove_at{Type::alignment}((ListPrivate*)self, index, ELEMENT_SIZE);
 }
 
 <*
@@ -574,4 +571,14 @@ fn void list_free(ListPrivate* self, sz element_size, sz alignment)
 	self.capacity = 0;
 	self.size = 0;
 	self.entries = null;
+}
+
+fn void list_remove_at(ListPrivate* self, sz index, sz element_size) <ALIGNMENT>
+{
+	sz new_size = self.size - 1;
+	defer list_set_size(self, new_size, element_size);
+	if (!new_size || index == new_size) return;
+	void* start = self.entries + index * element_size;
+	sz tail_size = new_size - index;
+	mem::move(start, start + element_size, tail_size * element_size, ALIGNMENT, ALIGNMENT);
 }
