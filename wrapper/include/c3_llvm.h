@@ -55,6 +55,7 @@ typedef struct
 		bool asan_use_after_return;
 		bool asan_use_global_dstor;
 		bool hwaddress_sanitize;
+		bool fuzzer;
 	} sanitizer;
 	struct
 	{
