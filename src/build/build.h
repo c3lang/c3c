@@ -278,6 +278,7 @@ typedef struct BuildOptions_
 	bool benchmark_mode;
 	bool test_mode;
 	bool lsp_mode;
+	bool ast_dump_mode;
 	bool no_entry;
 	bool no_obj;
 	bool keep_object_files;
@@ -442,6 +443,7 @@ typedef struct
 	bool benchmark_output;
 	bool test_output;
 	bool lsp_output;
+	bool ast_dump_output;
 	bool docgen;
 	bool docgen_json_out;
 	bool docgen_append;
