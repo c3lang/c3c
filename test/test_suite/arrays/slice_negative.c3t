@@ -12,8 +12,6 @@ fn void main()
 }
 
 /* #expect: test.ll
-
-
 define void @test.main() #0 {
 entry:
   %x = alloca [2 x i32], align 4
@@ -51,11 +49,10 @@ checkok3:                                         ; preds = %checkok
   ret void
 
 panic:                                            ; preds = %entry
-  call void @__c3_panic_slice.long(ptr @.panic_loc, i32 3, i64 %sext, i64 undef, i64 2) #3
+  call void @std.core.runtime.panics.slice.long.long.long.long(ptr @.panic_str, ptr @.panic_str.1, i32 9, i64 3, i64 %sext, i64 undef, i64 2) #3
   unreachable
 
 panic2:                                           ; preds = %checkok
-  call void @__c3_panic_slice.long(ptr @.panic_loc.1, i32 48, i64 %sext, i64 %sext1, i64 2) #3
+  call void @std.core.runtime.panics.slice.long.long.long.long(ptr @.panic_str, ptr @.panic_str.1, i32 9, i64 48, i64 %sext, i64 %sext1, i64 2) #3
   unreachable
 }
-

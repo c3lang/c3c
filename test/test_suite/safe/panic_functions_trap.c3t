@@ -1,0 +1,22 @@
+// #target: macos-aarch64
+// #safe: yes
+// #opt: --panic-msg=no
+// #opt: --show-backtrace=no
+module test;
+
+fn int div_zero(int a, int b) @export("div_zero") => a / b;
+fn int index_int(int[] a, int i) @export("index_int") => a[i];
+fn void assert_args(int x) @export("assert_args") { assert(x > 0, "bad %d", x); }
+fn int main() { return 0; }
+
+/* #expect: test.ll
+
+define i32 @div_zero(i32 %0, i32 %1)
+call void @llvm.trap()
+define i32 @index_int([2 x i64] %0, i32 %1)
+call void @llvm.trap()
+call void @llvm.trap()
+call void @llvm.trap()
+define void @assert_args(i32 %0)
+call void @llvm.trap()
+define i32 @main()

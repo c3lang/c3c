@@ -16,7 +16,6 @@ fn void main()
 }
 
 /* #expect: test.ll
-
 define void @test.main() #0 {
 entry:
   %a = alloca i32, align 4
@@ -74,34 +73,40 @@ checkok22:                                        ; preds = %checkok19
   ret void
 
 panic:                                            ; preds = %entry
-  call void @__c3_panicf.int(ptr @.panic_loc, i32 %0) #2
+  %4 = sext i32 %0 to i64
+  call void @std.core.runtime.panics.enum_negative.long(ptr @.panic_str, ptr @.panic_str.1, i32 7, ptr @.panic_str.2, i64 %4) #2
   unreachable
 
 panic1:                                           ; preds = %checkok
-  call void @__c3_panicf.int(ptr @.panic_loc.2, i32 %0) #2
+  %5 = sext i32 %0 to i64
+  call void @std.core.runtime.panics.enum_range.long.long(ptr @.panic_str, ptr @.panic_str.1, i32 7, ptr @.panic_str.2, i64 %5, i64 0) #2
   unreachable
 
 panic4:                                           ; preds = %checkok2
-  call void @__c3_panicf.long(ptr @.panic_loc.3, i64 %1) #2
+  call void @std.core.runtime.panics.enum_negative.long(ptr @.panic_str, ptr @.panic_str.1, i32 9, ptr @.panic_str.2, i64 %1) #2
   unreachable
 
 panic7:                                           ; preds = %checkok5
-  call void @__c3_panicf.long(ptr @.panic_loc.4, i64 %1) #2
+  call void @std.core.runtime.panics.enum_range.long.long(ptr @.panic_str, ptr @.panic_str.1, i32 9, ptr @.panic_str.2, i64 %1, i64 0) #2
   unreachable
 
 panic11:                                          ; preds = %checkok8
-  call void @__c3_panicf.int(ptr @.panic_loc.5, i32 %2) #2
+  %6 = sext i32 %2 to i64
+  call void @std.core.runtime.panics.enum_negative.long(ptr @.panic_str, ptr @.panic_str.1, i32 11, ptr @.panic_str.2, i64 %6) #2
   unreachable
 
 panic14:                                          ; preds = %checkok12
-  call void @__c3_panicf.int(ptr @.panic_loc.6, i32 %2) #2
+  %7 = sext i32 %2 to i64
+  call void @std.core.runtime.panics.enum_range.long.long(ptr @.panic_str, ptr @.panic_str.1, i32 11, ptr @.panic_str.2, i64 %7, i64 0) #2
   unreachable
 
 panic18:                                          ; preds = %checkok15
-  call void @__c3_panicf.int(ptr @.panic_loc.7, i32 %3) #2
+  %8 = sext i32 %3 to i64
+  call void @std.core.runtime.panics.enum_negative.long(ptr @.panic_str, ptr @.panic_str.1, i32 13, ptr @.panic_str.2, i64 %8) #2
   unreachable
 
 panic21:                                          ; preds = %checkok19
-  call void @__c3_panicf.int(ptr @.panic_loc.8, i32 %3) #2
+  %9 = sext i32 %3 to i64
+  call void @std.core.runtime.panics.enum_range.long.long(ptr @.panic_str, ptr @.panic_str.1, i32 13, ptr @.panic_str.2, i64 %9, i64 0) #2
   unreachable
 }

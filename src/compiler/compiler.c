@@ -48,6 +48,49 @@ Vmem sourceloc_arena;
 
 const char* c3_suffix_list[3] = { ".c3", ".c3t", ".c3i" };
 
+const PanicFunctionDescriptor panic_fn_desc[PANIC_FN_COUNT] = {
+	[PANIC_FN_MESSAGE] = { "message", .text_count = 1 },
+	[PANIC_FN_ASSERT] = { "assert", "Assert \"%s\" failed.", "Assert failed", .text_count = 1 },
+	[PANIC_FN_ASSERT_VIOLATION] = { "assert_violation", "Assert violation" },
+	[PANIC_FN_ASSERT_ARGS] = { "assert_args", NULL, "Assert violation", .text_count = 1, .value_count = 1 },
+	[PANIC_FN_REQUIRE] = { "require", "@require \"%s\" violated.", "@require violated", .text_count = 1 },
+	[PANIC_FN_REQUIRE_MESSAGE] = { "require_message", "@require \"%s\" violated: '%s'.", "@require violated", .text_count = 2 },
+	[PANIC_FN_ENSURE] = { "ensure", "@ensure \"%s\" violated.", "@ensure violated", .text_count = 1 },
+	[PANIC_FN_ENSURE_MESSAGE] = { "ensure_message", "@ensure \"%s\" violated: '%s'.", "@ensure violated", .text_count = 2 },
+	[PANIC_FN_REF_PARAM] = { "ref_param", "Reference parameter '%s' was passed a null pointer argument.", "Reference parameter was passed a null pointer argument.", .text_count = 1 },
+	[PANIC_FN_REF_ARG] = { "ref_arg", "Passed null to a ref ('&') parameter." },
+	[PANIC_FN_NULL_METHOD] = { "null_method", "Called a method on a null value." },
+	[PANIC_FN_NULL_POINTER] = { "null_pointer", "Dereference of null pointer, '%s' was null.", "Dereference of null pointer", .text_count = 1 },
+	[PANIC_FN_DEREF] = { "deref", .text_count = 1, .value_count = 2 },
+	[PANIC_FN_NULL_FUNCTION] = { "null_function", "Calling null function pointer, '%s' was null.", "Calling null function pointer", .text_count = 1 },
+	[PANIC_FN_NO_METHOD] = { "no_method", "No method '%s' could be found on target", "No method could be found on target", .text_count = 1 },
+	[PANIC_FN_ADD_OVERFLOW] = { "add_overflow", "Addition overflow" },
+	[PANIC_FN_SUB_OVERFLOW] = { "sub_overflow", "Subtraction overflow" },
+	[PANIC_FN_MUL_OVERFLOW] = { "mul_overflow", "Integer multiplication overflow" },
+	[PANIC_FN_NEG_OVERFLOW] = { "neg_overflow", "Signed negation overflow" },
+	[PANIC_FN_DIV_ZERO] = { "div_zero", "Division by zero." },
+	[PANIC_FN_REM_ZERO] = { "rem_zero", "% by zero." },
+	[PANIC_FN_INFINITE_LOOP] = { "infinite_loop", "Infinite loop found" },
+	[PANIC_FN_ACCESS_INNER] = { "access_inner", "Attempted to access 'inner' on non composite type" },
+	[PANIC_FN_ACCESS_NAMES] = { "access_names", "Attempted to access 'names' on non enum/fault type." },
+	[PANIC_FN_ACCESS_LEN] = { "access_len", "Attempted to access 'len' on non array type" },
+	[PANIC_FN_UNALIGNED] = { "unaligned", "Unaligned access: ptr %% %s = %s, use mem::load / mem::store for unaligned access.", "Unaligned pointer access detected", .value_count = 2 },
+	[PANIC_FN_UNWRAP] = { "unwrap", "Unexpected fault '%s' was unwrapped!", "Force unwrap failed!", .value_count = 1 },
+	[PANIC_FN_SHIFT] = { "shift", "Shift amount out of range (was %s).", "Invalid shift", .value_count = 1 },
+	[PANIC_FN_INDEX] = { "index", .value_count = 2 },
+	[PANIC_FN_INDEX_NEGATIVE] = { "index_negative", "Negative array indexing (index was %d)", "Negative array indexing", .value_count = 1 },
+	[PANIC_FN_INDEX_BOUNDS] = { "index_bounds", "Array index out of bounds (array had size %d, index was %d)", "Array index out of bounds", .value_count = 2 },
+	[PANIC_FN_SLICE] = { "slice", .value_count = 4 },
+	[PANIC_FN_SLICE_START] = { "slice_start", "Index exceeds array length (array had size %d, index was %d).", "Index exceeds array len", .value_count = 2 },
+	[PANIC_FN_SLICE_START_NEGATIVE] = { "slice_start_negative", "Negative indexing (%d)", "Negative value", .value_count = 1 },
+	[PANIC_FN_SLICE_LEN_NEGATIVE] = { "slice_len_negative", "Negative value (%d) given for slice length.", "Negative slice length", .value_count = 1 },
+	[PANIC_FN_SLICE_END] = { "slice_end", "End index out of bounds (end index of %d exceeds size of %d)", "End index out of bounds", .value_count = 2 },
+	[PANIC_FN_SLICE_RANGE_NEGATIVE] = { "slice_range_negative", "Negative size (slice was: [%d..%d])", "Negative size", .value_count = 2 },
+	[PANIC_FN_SLICE_COPY] = { "slice_copy", "Slice copy length mismatch (%d != %d).", "Length mismatch", .value_count = 2 },
+	[PANIC_FN_ENUM_NEGATIVE] = { "enum_negative", "Attempt to convert a negative value (%d) to enum '%s' failed.", "Attempt to convert negative value to enum failed.", .text_count = 1, .value_count = 1 },
+	[PANIC_FN_ENUM_RANGE] = { "enum_range", "Attempting to convert %d to enum '%s' failed as the value exceeds the max ordinal (%d).", "Failed integer to enum conversion", .text_count = 1, .value_count = 2 },
+};
+
 
 static const char *out_name(void)
 {
@@ -689,7 +732,7 @@ void compiler_compile(void)
 	const char *output_exe = NULL;
 	const char *output_static = NULL;
 	const char *output_dynamic = NULL;
-	if (!compiler.build.test_output && !compiler.build.benchmark_output)
+	if (!compiler.build.test_output)
 	{
 		switch (compiler.build.type)
 		{
@@ -2105,7 +2148,7 @@ INLINE void update_feature_flags(void)
 	if (compiler.build.feature.sanitize_address) add_feat("ASAN");
 	if (compiler.build.feature.sanitize_memory) add_feat("MSAN");
 	if (compiler.build.feature.sanitize_thread) add_feat("TSAN");
-	if (compiler.build.feature.panic_level != PANIC_OFF) add_feat("PRINT_PANIC");
+	if (!no_panic()) add_feat("PRINT_PANIC");
 }
 
 void compile(void)

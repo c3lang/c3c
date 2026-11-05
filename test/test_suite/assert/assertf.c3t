@@ -14,7 +14,6 @@ fn void main()
   %i = alloca i64, align 8
   %taddr = alloca i64, align 8
   %varargslots = alloca [2 x %any], align 16
-  %panicarg = alloca %"any[]", align 8
   store i64 0, ptr %i, align 8
   br label %loop.cond
 
@@ -29,9 +28,13 @@ loop.body:                                        ; preds = %loop.cond
   br i1 %ne, label %assert_ok, label %assert_fail
 
 assert_fail:                                      ; preds = %loop.body
-  %2 = load i64, ptr %i, align 8
-  %mul = mul i64 %2, 2
+  %2 = insertvalue %any undef, ptr %i, 0
+  %3 = insertvalue %any %2, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
+  %4 = load i64, ptr %i, align 8
+  %mul = mul i64 %4, 2
   store i64 %mul, ptr %taddr, align 8
+  %5 = insertvalue %any undef, ptr %taddr, 0
+  %6 = insertvalue %any %5, i64 ptrtoint (ptr @"$ct.long" to i64), 1
   store ptr %i, ptr %varargslots, align 16
   %ptradd = getelementptr inbounds i8, ptr %varargslots, i64 8
   store i64 ptrtoint (ptr @"$ct.ulong" to i64), ptr %ptradd, align 8
@@ -39,17 +42,15 @@ assert_fail:                                      ; preds = %loop.body
   store ptr %taddr, ptr %ptradd1, align 16
   %ptradd2 = getelementptr inbounds i8, ptr %ptradd1, i64 8
   store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd2, align 8
-  store ptr %varargslots, ptr %panicarg, align 8
-  %ptradd3 = getelementptr inbounds i8, ptr %panicarg, i64 8
-  store i64 2, ptr %ptradd3, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg,
+  %7 = insertvalue %"any[]" undef, ptr %varargslots, 0
+  %8 = insertvalue %"any[]" %7, i64 2, 1
+  call void @"std.core.runtime.panics.assert_args.sa$any$"(ptr @.panic_str, ptr @.panic_str.1, i32 7, ptr @.panic_str.2, %"any[]" %8) #2
   unreachable
 
 assert_ok:                                        ; preds = %loop.body
-  %3 = load i64, ptr %i, align 8
-  %add = add i64 %3, 1
+  %9 = load i64, ptr %i, align 8
+  %add = add i64 %9, 1
   store i64 %add, ptr %i, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
-

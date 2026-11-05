@@ -68,7 +68,6 @@ void gencontext_begin_module(GenContext *c)
 	codegen_setup_object_names(c->code_module, &c->base_name, &c->ir_filename, &c->asm_filename, &c->object_filename);
 	DEBUG_LOG("Emit module %s.", c->code_module->name->module);
 	c->panic_var = compiler.context.panic_var;
-	c->panicf = compiler.context.panicf;
 	c->module = LLVMModuleCreateWithNameInContext(c->code_module->name->module, c->context);
 	c->machine = llvm_target_machine_create();
 
@@ -133,7 +132,6 @@ void gencontext_begin_module(GenContext *c)
 	LLVMTypeRef memcmp_types[3] = {c->ptr_type, c->ptr_type, c->size_type };
 	c->memcmp_function_type = LLVMFunctionType(cint_type, memcmp_types, 3, false);
 	if (c->panic_var) c->panic_var->backend_ref = NULL;
-	if (c->panicf) c->panicf->backend_ref = NULL;
 	bool is_win = compiler.build.arch_os_target == WINDOWS_X64 || compiler.build.arch_os_target == WINDOWS_AARCH64;
 	bool is_codeview = compiler.build.feature.win_debug != WIN_DEBUG_DWARF && is_win;
 	if (is_codeview)

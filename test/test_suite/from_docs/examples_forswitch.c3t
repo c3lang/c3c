@@ -88,7 +88,6 @@ fn void demo_enum(Height h)
     }
 }
 /* #expect: examples.ll
-
 define void @examples.example_for() #0 {
 entry:
   %i = alloca i32, align 4
@@ -109,10 +108,9 @@ loop.body:                                        ; preds = %loop.cond
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
-  call void @__c3_panic(ptr @.panic_loc)
+  call void @std.core.runtime.panics.infinite_loop(ptr @.panic_str, ptr @.panic_str.1, i32 14) #2
   unreachable
 }
-
 
 define void @examples.demo_enum(i32 %0) #0 {
 entry:
@@ -176,7 +174,7 @@ switch.entry:                                     ; preds = %entry
 
 switch.case:                                      ; preds = %switch.entry, %switch.entry
   %2 = call ptr @std.io.stdout()
-  %3 = call i64 @std.io.File.write(ptr %retparam, ptr %2, ptr @.str.1, i64 8)
+  %3 = call i64 @std.io.File.write(ptr %retparam, ptr %2, ptr @.str.2, i64 8)
   %not_err = icmp eq i64 %3, 0
   br i1 %not_err, label %after_check, label %assign_optional
 
@@ -232,7 +230,7 @@ voiderr:                                          ; preds = %noerr_block13, %gua
 
 switch.case14:                                    ; preds = %switch.entry
   %8 = call ptr @std.io.stdout()
-  %9 = call i64 @std.io.File.write(ptr %retparam18, ptr %8, ptr @.str.2, i64 4)
+  %9 = call i64 @std.io.File.write(ptr %retparam18, ptr %8, ptr @.str.3, i64 4)
   %not_err19 = icmp eq i64 %9, 0
   br i1 %not_err19, label %after_check21, label %assign_optional20
 
@@ -300,7 +298,7 @@ switch.entry39:                                   ; preds = %switch.exit
 
 switch.case40:                                    ; preds = %switch.entry39, %switch.entry39
   %15 = call ptr @std.io.stdout()
-  %16 = call i64 @std.io.File.write(ptr %retparam44, ptr %15, ptr @.str.3, i64 8)
+  %16 = call i64 @std.io.File.write(ptr %retparam44, ptr %15, ptr @.str.4, i64 8)
   %not_err45 = icmp eq i64 %16, 0
   br i1 %not_err45, label %after_check47, label %assign_optional46
 
@@ -356,7 +354,7 @@ voiderr63:                                        ; preds = %noerr_block61, %gua
 
 switch.case64:                                    ; preds = %switch.entry39
   %21 = call ptr @std.io.stdout()
-  %22 = call i64 @std.io.File.write(ptr %retparam68, ptr %21, ptr @.str.4, i64 4)
+  %22 = call i64 @std.io.File.write(ptr %retparam68, ptr %21, ptr @.str.5, i64 4)
   %not_err69 = icmp eq i64 %22, 0
   br i1 %not_err69, label %after_check71, label %assign_optional70
 
@@ -427,7 +425,7 @@ switch.case91:                                    ; preds = %switch.entry90
 
 switch.case92:                                    ; preds = %switch.entry90
   %28 = call ptr @std.io.stdout()
-  %29 = call i64 @std.io.File.write(ptr %retparam96, ptr %28, ptr @.str.5, i64 6)
+  %29 = call i64 @std.io.File.write(ptr %retparam96, ptr %28, ptr @.str.6, i64 6)
   %not_err97 = icmp eq i64 %29, 0
   br i1 %not_err97, label %after_check99, label %assign_optional98
 
@@ -517,7 +515,7 @@ switch.entry123:                                  ; preds = %switch.exit121
 switch.case124:                                   ; preds = %switch.entry123
   store i32 1, ptr %a, align 4
   %36 = call ptr @std.io.stdout()
-  %37 = call i64 @std.io.File.write(ptr %retparam128, ptr %36, ptr @.str.6, i64 1)
+  %37 = call i64 @std.io.File.write(ptr %retparam128, ptr %36, ptr @.str.7, i64 1)
   %not_err129 = icmp eq i64 %37, 0
   br i1 %not_err129, label %after_check131, label %assign_optional130
 
@@ -574,7 +572,7 @@ voiderr147:                                       ; preds = %noerr_block145, %gu
 switch.case148:                                   ; preds = %switch.entry123, %voiderr147
   store i32 2, ptr %a149, align 4
   %42 = call ptr @std.io.stdout()
-  %43 = call i64 @std.io.File.write(ptr %retparam153, ptr %42, ptr @.str.7, i64 1)
+  %43 = call i64 @std.io.File.write(ptr %retparam153, ptr %42, ptr @.str.8, i64 1)
   %not_err154 = icmp eq i64 %43, 0
   br i1 %not_err154, label %after_check156, label %assign_optional155
 
@@ -630,7 +628,7 @@ voiderr172:                                       ; preds = %noerr_block170, %gu
 
 switch.case173:                                   ; preds = %switch.entry123, %voiderr172
   %48 = call ptr @std.io.stdout()
-  %49 = call i64 @std.io.File.write(ptr %retparam177, ptr %48, ptr @.str.8, i64 1)
+  %49 = call i64 @std.io.File.write(ptr %retparam177, ptr %48, ptr @.str.9, i64 1)
   %not_err178 = icmp eq i64 %49, 0
   br i1 %not_err178, label %after_check180, label %assign_optional179
 
