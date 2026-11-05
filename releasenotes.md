@@ -125,6 +125,7 @@
 - Add an optional `level` to `std::compression::gzip` `compress`, `compress_stream` and `GzipWriter.init` (sets XFL per RFC 1952); the default is unchanged.
 - Add an optional `level` to `std::compression::zip` `ZipArchive.open_writer` and `ZipArchive.write_file` (DEFLATE only); the default is unchanged.
 - Fix several `std::compression::zip` problems: `open` and `recover` closed the file twice on errors, `open` failed on ZIP64 archives with a comment or exactly 65535 entries, rejected data after the end record, and silently dropped entries after a broken central directory header. `recover` now reads ZIP64 local headers, `extract` verifies the CRC32 and no longer overwrites the modification time, `ZipEntryReader.seek` rejects negative positions, and the central directory flags match the local header.
+- Add `std::compression::zlib` (RFC 1950): `compress`, `compress_stream`, `uncompress`, `uncompress_stream`, `ZlibWriter` and `ZlibReader`. Streams with a preset dictionary are not supported.
 
 ## 0.8.5 Change list
 
