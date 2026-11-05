@@ -625,3 +625,154 @@ fn void test_inflate_large_output_growth()
 	assert(out.len == original.len, "Length mismatch");
 	assert((String)out == (String)original, "Data mismatch");
 }
+
+fn void test_deflate_incompressible_data_is_stored()
+{
+	// Pseudo random bytes cannot be compressed: the output may only grow by the stored block headers.
+	sz len = 200_000;
+	char[] original = mem::malloc(len)[:len];
+	defer free(original.ptr);
+	ulong x = 88172645463325252;
+	foreach (&c : original)
+	{
+		x ^= x << 13;
+		x ^= x >> 7;
+		x ^= x << 17;
+		*c = (char)(x >> 24);
+	}
+	char[] compressed = deflate::compress(mem, original)!!;
+	defer free(compressed.ptr);
+	assert(compressed.len <= original.len + 64, "Incompressible data must not expand beyond the stored block overhead");
+	char[] out = deflate::decompress(mem, compressed)!!;
+	defer free(out.ptr);
+	assert((String)out == (String)original, "Data mismatch");
+}
+
+fn void test_deflate_mixed_compressible_and_random_blocks()
+{
+	// Compressible text, then random bytes, then text again: only the middle should be stored.
+	sz text_len = 150_000;
+	sz random_len = 300_000;
+	sz len = text_len * 2 + random_len;
+	char[] original = mem::malloc(len)[:len];
+	defer free(original.ptr);
+	ulong x = 1234567;
+	foreach (i, &c : original)
+	{
+		if (i >= text_len && i < text_len + random_len)
+		{
+			x ^= x << 13;
+			x ^= x >> 7;
+			x ^= x << 17;
+			*c = (char)(x >> 24);
+		}
+		else
+		{
+			*c = (char)('a' + (i * 7 / 13) % 5);
+		}
+	}
+	char[] compressed = deflate::compress(mem, original)!!;
+	defer free(compressed.ptr);
+	assert(compressed.len < random_len + random_len / 10, "Text parts should compress well");
+	char[] out = deflate::decompress(mem, compressed)!!;
+	defer free(out.ptr);
+	assert((String)out == (String)original, "Data mismatch");
+}
+
+// Compressible pseudo text.
+macro char[] level_test_data(sz len)
+{
+	String[*] words = { "alpha ", "beta ", "gamma ", "delta ", "epsilon ", "zeta ", "eta ", "theta ", "iota ", "kappa " };
+	char[] data = mem::malloc(len)[:len];
+	ulong x = 99991;
+	sz pos = 0;
+	while (pos < len)
+	{
+		x ^= x << 13;
+		x ^= x >> 7;
+		x ^= x << 17;
+		String w = words[(x >> 20) % words.len];
+		foreach (c : w)
+		{
+			if (pos == len) break;
+			data[pos++] = c;
+		}
+	}
+	return data;
+}
+
+fn void test_deflate_all_levels_roundtrip()
+{
+	char[] original = level_test_data(100_000);
+	defer free(original.ptr);
+	for (int level = deflate::MIN_LEVEL; level <= deflate::MAX_LEVEL; level++)
+	{
+		char[] compressed = deflate::compress(mem, original, level)!!;
+		defer free(compressed.ptr);
+		char[] out = deflate::decompress(mem, compressed)!!;
+		defer free(out.ptr);
+		assert((String)out == (String)original, "Data mismatch");
+	}
+}
+
+fn void test_deflate_higher_level_is_smaller()
+{
+	char[] original = level_test_data(200_000);
+	defer free(original.ptr);
+	char[] fast = deflate::compress(mem, original, deflate::MIN_LEVEL)!!;
+	defer free(fast.ptr);
+	char[] best = deflate::compress(mem, original, deflate::MAX_LEVEL)!!;
+	defer free(best.ptr);
+	assert(best.len < fast.len, "The highest level must beat the lowest");
+	char[] def = deflate::compress(mem, original)!!;
+	defer free(def.ptr);
+	char[] def4 = deflate::compress(mem, original, deflate::DEFAULT_LEVEL)!!;
+	defer free(def4.ptr);
+	assert((String)def == (String)def4, "Omitting the level must select DEFAULT_LEVEL");
+}
+
+fn void test_deflate_levels_short_inputs()
+{
+	// Just above the size where the fixed-code shortcut stops being used, with runs that end exactly at the end of the data.
+	for (int level = deflate::MIN_LEVEL; level <= deflate::MAX_LEVEL; level++)
+	{
+		for (sz len = 120; len < 300; len++)
+		{
+			char[] original = mem::malloc(len)[:len];
+			defer free(original.ptr);
+			foreach (i, &c : original) *c = (char)('a' + (i % 7 == 3 ? i % 5 : i % 3));
+			char[] compressed = deflate::compress(mem, original, level)!!;
+			defer free(compressed.ptr);
+			char[] out = deflate::decompress(mem, compressed)!!;
+			defer free(out.ptr);
+			assert((String)out == (String)original, "Data mismatch");
+		}
+	}
+}
+
+fn void test_deflate_level_streaming_small_writes()
+{
+	// Lazy matching keeps one position pending between writes.
+	char[] original = level_test_data(150_000);
+	defer free(original.ptr);
+	foreach (int level : { 1, 6, 9 })
+	{
+		ByteWriter writer;
+		writer.tinit();
+		Deflater* deflater = mem::tnew(Deflater);
+		deflater.init(mem, &writer, level);
+		sz pos = 0;
+		sz step = 1;
+		while (pos < original.len)
+		{
+			sz n = math::min(step, original.len - pos);
+			deflater.write(original[pos:n])!!;
+			pos += n;
+			step = step % 3001 + 1 + step / 7;
+		}
+		deflater.close()!!;
+		char[] out = deflate::decompress(mem, writer.array_view())!!;
+		defer free(out.ptr);
+		assert((String)out == (String)original, "Data mismatch");
+	}
+}

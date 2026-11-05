@@ -4,7 +4,10 @@
  API:
  - fn char[]? decompress(Allocator allocator, char[] input)
  - fn void?   decompress_stream(InStream input, OutStream output)
- - fn char[]? compress(Allocator allocator, char[] input, )
+ - fn void?   compress_stream(Allocator allocator, InStream input, OutStream output, int level = DEFAULT_LEVEL)
+ - fn char[]? compress(Allocator allocator, char[] input, int level = DEFAULT_LEVEL)
+   `level` runs from MIN_LEVEL (1, fastest) to MAX_LEVEL (9, smallest output).
+ - struct Deflater: stateful compressor (use `init`, `write`, then `close`).
  - struct Inflater: InStream for pull-based decompression (use `init` then `read`).
 *>
 module std::compression::deflate;
@@ -16,9 +19,17 @@ const int MAX_MATCH = 258;
 const uint WINDOW_SIZE = 32768;
 const uint HASH_SIZE = 32768;
 const uint HASH_MASK = HASH_SIZE - 1;
-const int MAX_CHAIN = 16;
-const int GOOD_MATCH = 32;
-const int NICE_MATCH = 128;
+const int MIN_LEVEL = 1;       // fastest
+const int MAX_LEVEL = 9;       // best compression
+const int DEFAULT_LEVEL = 4;
+
+// Per level search effort. `lazy` is the longest match for which the next position is still searched for
+// a longer one; 0 selects greedy matching.
+const ushort[10] LEVEL_CHAIN = { 0, 2, 4, 8, 16, 16, 32, 64, 128, 512 };
+const ushort[10] LEVEL_GOOD = { 0, 8, 8, 16, 32, 8, 8, 16, 32, 64 };
+const ushort[10] LEVEL_NICE = { 0, 16, 32, 64, 128, 32, 128, 128, 258, 258 };
+const ushort[10] LEVEL_LAZY = { 0, 0, 0, 0, 0, 16, 16, 32, 64, 258 };
+const int TOO_FAR = 4096;      // a match of length 3 further away than this costs more than three literals
 
 excuse
 {
@@ -27,10 +38,11 @@ excuse
 	INVALID_STATE
 }
 
-fn void? compress_stream(Allocator allocator, InStream input, OutStream output)
+
+fn void? compress_stream(Allocator allocator, InStream input, OutStream output, int level = DEFAULT_LEVEL)
 {
 	Deflater* deflater = alloc::new(allocator, Deflater);
-	deflater.init(allocator, output);
+	deflater.init(allocator, output, level);
 	defer {
 		(void)deflater.close();
 		alloc::free(allocator, deflater);
@@ -67,14 +79,35 @@ struct Deflater (OutStream)
 	uint strstart;
 	uint match_pos;
 	bool hash_ready;
+	int max_chain;
+	int good_match;
+	int nice_match;
+	int max_lazy;
+	bool pending;      // lazy matching: the position before `match_pos` is waiting for a decision
+	int prev_len;      // the match found at that position (0 if none)
+	int prev_dist;
+	char[] source;      // the complete input when it is known (in-memory compress), used for stored blocks
+	sz block_origin;    // offset in `source` where the current block starts
+	sz block_bytes;     // input bytes covered by the tokens of the current block
 	sz total_in;
 	sz total_out;
 	bool closed;
 }
 
-fn void Deflater.init(&self, Allocator allocator, OutStream output = null)
+<*
+ @param allocator : `The allocator for the compressor state.`
+ @param output : `Where compressed data is written.`
+ @param level : `MIN_LEVEL (fastest) to MAX_LEVEL (smallest output).`
+ @require level >= MIN_LEVEL && level <= MAX_LEVEL
+*>
+fn void Deflater.init(&self, Allocator allocator, OutStream output = null, int level = DEFAULT_LEVEL)
 {
 	*self = {};
+	self.max_chain = LEVEL_CHAIN[level];
+	self.good_match = LEVEL_GOOD[level];
+	self.nice_match = LEVEL_NICE[level];
+	self.max_lazy = LEVEL_LAZY[level];
+	deflate_init_tables();
 	self.allocator = allocator;
 	self.output = output;
 	self.head = alloc::alloc_array(allocator, uint, HASH_SIZE);
@@ -163,6 +196,15 @@ fn void? Deflater.scan_matches(&self, bool final)
 	Token[] tokens = self.tokens;
 	sz tcount = self.token_count;
 	sz max_t = self.max_tokens;
+	sz bbytes = self.block_bytes;
+
+	int max_chain = self.max_chain;
+	int good_match = self.good_match;
+	int nice_match = self.nice_match;
+	int max_lazy = self.max_lazy;
+	bool pending = self.pending;
+	int prev_len = self.prev_len;
+	int prev_dist = self.prev_dist;
 
 	uint hash = self.hash;
 	uint strstart = self.strstart;
@@ -181,45 +223,55 @@ fn void? Deflater.scan_matches(&self, bool final)
 			head[hash] = strstart;
 			prev[strstart & 0x7FFF] = match_head;
 
-			int chain_len = 0;
-			uint curr = match_head;
-
-			while (curr != 0xFFFFFFFF && strstart - curr < WINDOW_SIZE && chain_len < MAX_CHAIN)
+			// With lazy matching the previous position already has a match: only a longer one is interesting,
+			// and a good enough one is not worth looking past.
+			if (!pending || prev_len < max_lazy)
 			{
-				chain_len++;
-				sz curr_rel = (sz)(curr - win_offset);
+				int floor_len = prev_len >= MIN_MATCH ? prev_len : 0;
+				int chain = max_chain;
+				if (floor_len >= good_match) chain >>= 2;
+				best_len = floor_len;
+				int chain_len = 0;
+				uint curr = match_head;
 
-				if (pos + best_len < wfill && input[curr_rel + best_len] == input[pos + best_len])
+				while (curr != 0xFFFFFFFF && strstart - curr < WINDOW_SIZE && chain_len < chain)
 				{
-					if (best_len < 3 || mem::load((ushort*)&input[pos + best_len - 1], 1) == mem::load((ushort*)&input[curr_rel + best_len - 1], 1))
+					chain_len++;
+					sz curr_rel = (sz)(curr - win_offset);
+
+					if (pos + best_len < wfill && input[curr_rel + best_len] == input[pos + best_len])
 					{
-						int match_l = 0;
-						while (match_l + 8 <= MAX_MATCH && pos + match_l + 8 <= wfill)
+						if (best_len < 3 || mem::load((ushort*)&input[pos + best_len - 1], 1) == mem::load((ushort*)&input[curr_rel + best_len - 1], 1))
 						{
-							if (mem::load((ulong*)&input[curr_rel + match_l], 1) == mem::load((ulong*)&input[pos + match_l], 1))
+							int match_l = 0;
+							while (match_l + 8 <= MAX_MATCH && pos + match_l + 8 <= wfill)
 							{
-								match_l += 8;
+								if (mem::load((ulong*)&input[curr_rel + match_l], 1) == mem::load((ulong*)&input[pos + match_l], 1))
+								{
+									match_l += 8;
+								}
+								else { break; }
 							}
-							else { break; }
-						}
 
-						while (match_l < MAX_MATCH &&
-							   pos + match_l < wfill &&
-							   input[curr_rel + match_l] == input[pos + match_l])
-						{
-							match_l++;
-						}
+							while (match_l < MAX_MATCH &&
+								   pos + match_l < wfill &&
+								   input[curr_rel + match_l] == input[pos + match_l])
+							{
+								match_l++;
+							}
 
-						if (match_l >= MIN_MATCH && match_l > best_len)
-						{
-							best_len = match_l;
-							best_dist = (int)(pos - curr_rel);
-							if (best_len >= NICE_MATCH) break;
+							if (match_l >= MIN_MATCH && match_l > best_len)
+							{
+								best_len = match_l;
+								best_dist = (int)(pos - curr_rel);
+								if (best_len >= nice_match) break;
+							}
 						}
 					}
+					curr = prev[curr & 0x7FFF];
+					if (best_len >= good_match) chain_len++;
 				}
-				curr = prev[curr & 0x7FFF];
-				if (best_len >= GOOD_MATCH) chain_len++;
+				if (best_len == floor_len) best_len = 0;
 			}
 		}
 		else if (!final)
@@ -227,76 +279,108 @@ fn void? Deflater.scan_matches(&self, bool final)
 			break;
 		}
 
-		if (best_len >= MIN_MATCH)
+		if (best_len == MIN_MATCH && best_dist > TOO_FAR) best_len = 0;
+
+		// Decide what to emit now. A match starts at `pos`, or at `pos - 1` when the pending match wins.
+		int m_len = 0;
+		int m_dist = 0;
+		long lit_at = -1;
+		long next_pos = pos + 1;
+		if (max_lazy == 0)
 		{
-			int len_code;
-			switch (best_len)
+			if (best_len >= MIN_MATCH)
 			{
-				case 3..10:   len_code = 257 + best_len - 3;
-				case 11..18:  len_code = 265 + (best_len - 11) / 2;
-				case 19..34:  len_code = 269 + (best_len - 19) / 4;
-				case 35..66:  len_code = 273 + (best_len - 35) / 8;
-				case 67..130: len_code = 277 + (best_len - 67) / 16;
-				case 131..257:len_code = 281 + (best_len - 131) / 32;
-				default:      len_code = 285;
+				m_len = best_len;
+				m_dist = best_dist;
+				next_pos = pos + best_len;
 			}
-			lfreqs[len_code]++;
-
-			int dist_code;
-			switch (best_dist)
+			else
 			{
-				case 1..4:     dist_code = best_dist - 1;
-				case 5..8:     dist_code = 4 + (best_dist - 5) / 2;
-				case 9..16:    dist_code = 6 + (best_dist - 9) / 4;
-				case 17..32:   dist_code = 8 + (best_dist - 17) / 8;
-				case 33..64:   dist_code = 10 + (best_dist - 33) / 16;
-				case 65..128:  dist_code = 12 + (best_dist - 65) / 32;
-				case 129..256: dist_code = 14 + (best_dist - 129) / 64;
-				case 257..512: dist_code = 16 + (best_dist - 257) / 128;
-				case 513..1024: dist_code = 18 + (best_dist - 513) / 256;
-				case 1025..2048: dist_code = 20 + (best_dist - 1025) / 512;
-				case 2049..4096: dist_code = 22 + (best_dist - 2049) / 1024;
-				case 4097..8192: dist_code = 24 + (best_dist - 4097) / 2048;
-				case 8193..16384: dist_code = 26 + (best_dist - 8193) / 4096;
-				default:          dist_code = 28 + (best_dist - 16385) / 8192;
+				lit_at = pos;
 			}
-			dfreqs[dist_code]++;
-			tokens[tcount++] = { (ushort)best_len, (ushort)best_dist };
-
-			int limit = best_len - 1;
-			for (int k = 0; k < limit; k++)
-			{
-				pos++;
-				strstart++;
-				if (pos + 2 < wfill)
-				{
-					hash = ((hash << 5) ^ (uint)input[pos + 2]) & HASH_MASK;
-					uint m_h = head[hash];
-					head[hash] = strstart;
-					prev[strstart & 0x7FFF] = m_h;
-				}
-			}
-			pos++;
-			strstart++;
+		}
+		else if (pending && prev_len >= MIN_MATCH && best_len == 0)
+		{
+			m_len = prev_len;
+			m_dist = prev_dist;
+			next_pos = pos - 1 + prev_len;
+			pending = false;
+			prev_len = 0;
 		}
 		else
 		{
-			lfreqs[(uint)input[pos]]++;
-			tokens[tcount++] = { (ushort)input[pos], 0 };
-			pos++;
-			strstart++;
+			if (pending) lit_at = pos - 1;
+			pending = true;
+			prev_len = best_len;
+			prev_dist = best_dist;
 		}
+
+		if (lit_at >= 0)
+		{
+			lfreqs[(uint)input[lit_at]]++;
+			tokens[tcount++] = { (ushort)input[lit_at], 0 };
+			bbytes++;
+		}
+		if (m_len > 0)
+		{
+			lfreqs[257 + len_code_table[m_len]]++;
+			dfreqs[dist_code_of((uint)m_dist)]++;
+			tokens[tcount++] = { (ushort)m_len, (ushort)m_dist };
+			bbytes += m_len;
+		}
+
+		// Add the positions that were skipped over to the hash chains.
+		uint ss = strstart;
+		for (long q = pos + 1; q < next_pos; q++)
+		{
+			ss++;
+			if (q + 2 < wfill)
+			{
+				hash = ((hash << 5) ^ (uint)input[q + 2]) & HASH_MASK;
+				uint m_h = head[hash];
+				head[hash] = ss;
+				prev[ss & 0x7FFF] = m_h;
+			}
+		}
+		strstart += (uint)(next_pos - pos);
+		pos = next_pos;
 
 		if (tcount >= max_t)
 		{
 			self.token_count = tcount;
+			self.block_bytes = bbytes;
 			self.emit_block(false)!;
 			tcount = 0;
+			bbytes = 0;
 		}
+	}
+
+	// At the very end only a literal can still be pending: nothing is left to extend a match.
+	if (final && pending)
+	{
+		if (prev_len >= MIN_MATCH)
+		{
+			lfreqs[257 + len_code_table[prev_len]]++;
+			dfreqs[dist_code_of((uint)prev_dist)]++;
+			tokens[tcount++] = { (ushort)prev_len, (ushort)prev_dist };
+			bbytes += prev_len;
+		}
+		else
+		{
+			lfreqs[(uint)input[pos - 1]]++;
+			tokens[tcount++] = { (ushort)input[pos - 1], 0 };
+			bbytes++;
+		}
+		pending = false;
+		prev_len = 0;
 	}
 
 	// Write back hot fields
 	self.token_count = tcount;
+	self.block_bytes = bbytes;
+	self.pending = pending;
+	self.prev_len = prev_len;
+	self.prev_dist = prev_dist;
 	self.hash = hash;
 	self.strstart = strstart;
 	self.match_pos = (uint)pos;
@@ -317,6 +401,10 @@ fn void? Deflater.emit_block(&self, bool final) => @pool()
 	foreach (f : self.dist_freqs) d_sum += f;
 	if (d_sum == 0) self.dist_freqs[0] = 1;
 	dist_huff.build_from_freqs(self.dist_freqs[..], 15);
+
+	sz saved_len = self.bwriter.len;
+	ulong saved_buffer = self.bwriter.buffer;
+	int saved_nbits = self.bwriter.nbits;
 
 	self.bwriter.write_bits(final ? 1 : 0, 1);
 	self.bwriter.write_bits(2, 2); // BTYPE=2 (Dynamic Huffman)
@@ -373,6 +461,23 @@ fn void? Deflater.emit_block(&self, bool final) => @pool()
 	// Write the actual compressed data tokens
 	_write_compressed_tokens(self, &lit_codes, &dist_codes);
 
+	// Incompressible data: when stored blocks are smaller, replace the block just written.
+	if (self.source.len > 0 && self.block_bytes > 0)
+	{
+		sz dynamic_bits = (self.bwriter.len - saved_len) * 8 + self.bwriter.nbits - saved_nbits;
+		sz stored_blocks = (self.block_bytes + 65534) / 65535;
+		sz stored_bits = (self.block_bytes + stored_blocks * 5) * 8;
+		if (stored_bits < dynamic_bits)
+		{
+			self.bwriter.len = saved_len;
+			self.bwriter.buffer = saved_buffer;
+			self.bwriter.nbits = saved_nbits;
+			self.bwriter.write_stored(self.source[self.block_origin:self.block_bytes], final);
+		}
+	}
+	self.block_origin += self.block_bytes;
+	self.block_bytes = 0;
+
 	if (final)
 	{
 		char[] compressed = self.bwriter.finish();
@@ -398,11 +503,14 @@ fn void? Deflater.emit_block(&self, bool final) => @pool()
 
 <*
  Compress data using the DEFLATE algorithm, this uses the temp allocator
+
  @param input : `The data to compress.`
  @param allocator : `The allocator to use.`
+ @param level : `MIN_LEVEL (fastest) to MAX_LEVEL (smallest output), DEFAULT_LEVEL if omitted.`
  @return `The compressed data.`
+ @require level >= MIN_LEVEL && level <= MAX_LEVEL
 *>
-fn char[]? compress(Allocator allocator, char[] input) => @pool()
+fn char[]? compress(Allocator allocator, char[] input, int level = DEFAULT_LEVEL) => @pool()
 {
 	if (input.len == 0)
 	{
@@ -431,8 +539,9 @@ fn char[]? compress(Allocator allocator, char[] input) => @pool()
 	}
 
 	Deflater* deflater = mem::tnew(Deflater);
-	deflater.init(allocator);
+	deflater.init(allocator, null, level);
 	defer deflater.free();
+	deflater.source = input;
 
 	deflater.write(input)!;
 	deflater.scan_matches(true)!;
@@ -446,8 +555,6 @@ fn char[]? compress(Allocator allocator, char[] input) => @pool()
 
 /*-----------------------------------------------------------------------------*/
 
-Huffman lit_fixed_global @private;
-Huffman dist_fixed_global @private;
 Code[288] fixed_lit_codes_global @private;
 Code[32] fixed_dist_codes_global @private;
 bool fixed_built_global @private;
@@ -457,8 +564,9 @@ fn void ensure_fixed_codes_built() @private
 {
 	if (fixed_lit_codes_global[0].len != 0) return;
 	gen_fixed_codes(&fixed_lit_codes_global);
-	for (uint i = 0; i < 32; i++) { fixed_dist_codes_global[i] = { (ushort)i, 5 }; }
+	for (uint i = 0; i < 32; i++) { fixed_dist_codes_global[i] = { (ushort)i, 5, (ushort)bits::reverse(i << 27) }; }
 }
+
 
 struct BitWriter @private
 {
@@ -481,31 +589,79 @@ fn void BitWriter.init(&self, Allocator allocator, sz initial_cap)
 	self.nbits = 0;
 }
 
-fn void BitWriter.write_bits(&self, uint value, int count)
+// Bits are collected in a 64 bit buffer that is flushed 32 bits at a time. At most 31 bits are pending between calls.
+fn void BitWriter.write_bits(&self, uint value, int count) @inline
 {
 	self.buffer |= (ulong)(value & ((1u << count) - 1u)) << self.nbits;
 	self.nbits += count;
-	while (self.nbits >= 8)
+	if (self.nbits >= 32) self.flush32();
+}
+
+fn void BitWriter.flush32(&self)
+{
+	if (self.len + 4 > self.data.len) self.grow(4);
+	uint w = (uint)self.buffer;
+	char* dst = &self.data[self.len];
+	dst[0] = (char)w;
+	dst[1] = (char)(w >> 8);
+	dst[2] = (char)(w >> 16);
+	dst[3] = (char)(w >> 24);
+	self.len += 4;
+	self.buffer >>= 32;
+	self.nbits -= 32;
+}
+
+// Make room for at least `extra` more bytes.
+fn void BitWriter.grow(&self, sz extra)
+{
+	sz new_cap = self.data.len;
+	if (new_cap < 1024) new_cap = 1024;
+	while (new_cap < self.len + extra)
 	{
-		if (self.len >= self.data.len)
+		if (new_cap > sz::max / 2)
 		{
-			sz new_cap = self.data.len;
-			if (new_cap < 1024) new_cap = 1024;
-			while (new_cap <= self.len)
-			{
-				if (new_cap > sz::max / 2)
-				{
-					new_cap = self.len + 1;
-					break;
-				}
-				new_cap *= 2;
-			}
-			self.data = alloc::realloc_array(self.allocator, self.data.ptr, char, new_cap);
+			new_cap = self.len + extra;
+			break;
 		}
-		self.data[self.len++] = (char)(self.buffer & 0xFF);
+		new_cap *= 2;
+	}
+	self.data = alloc::realloc_array(self.allocator, self.data.ptr, char, new_cap);
+}
+
+// Pad with zero bits to the next byte boundary and flush every pending whole byte.
+fn void BitWriter.align(&self)
+{
+	if (self.nbits & 7) self.write_bits(0, 8 - (self.nbits & 7));
+	while (self.nbits > 0)
+	{
+		if (self.len >= self.data.len) self.grow(1);
+		self.data[self.len++] = (char)self.buffer;
 		self.buffer >>= 8;
 		self.nbits -= 8;
 	}
+}
+
+// Write `raw` as stored blocks (BTYPE=0, at most 65535 bytes each).
+fn void BitWriter.write_stored(&self, char[] raw, bool final)
+{
+	sz pos = 0;
+	do
+	{
+		sz n = math::min(raw.len - pos, (sz)65535);
+		bool last = final && pos + n == raw.len;
+		self.write_bits(last ? 1 : 0, 1);
+		self.write_bits(0, 2);
+		self.align();
+		if (self.len + n + 4 > self.data.len) self.grow(n + 4);
+		self.data[self.len++] = (char)n;
+		self.data[self.len++] = (char)(n >> 8);
+		self.data[self.len++] = (char)~n;
+		self.data[self.len++] = (char)(~n >> 8);
+		mem::copy(&self.data[self.len], &raw[pos], n);
+		self.len += n;
+		pos += n;
+	}
+	while (pos < raw.len);
 }
 
 fn void BitWriter.write_huffman(&self, uint code, int len)
@@ -516,9 +672,12 @@ fn void BitWriter.write_huffman(&self, uint code, int len)
 
 fn char[] BitWriter.finish(&self)
 {
-	if (self.nbits > 0)
+	while (self.nbits > 0)
 	{
-		self.write_bits(0, 8 - self.nbits);
+		if (self.len >= self.data.len) self.grow(1);
+		self.data[self.len++] = (char)self.buffer;
+		self.buffer >>= 8;
+		self.nbits = self.nbits > 8 ? self.nbits - 8 : 0;
 	}
 	return self.data[:self.len];
 }
@@ -728,24 +887,29 @@ fn void gen_canonical_codes(Code* codes, char[] blen) @private
 	ushort[16] bl_count; foreach (len : blen) { if (len > 0) bl_count[len]++; }
 	ushort[16] next_code; ushort code = 0; bl_count[0] = 0;
 	for (int bits = 1; bits <= 15; bits++) { code = (code + bl_count[bits - 1]) << 1; next_code[bits] = code; }
-	foreach (uint n, len : blen) { if (len != 0) { uint c = next_code[len]; codes[n].code = (ushort)c; codes[n].len = (ushort)len; next_code[len]++; } else { codes[n].code = 0; codes[n].len = 0; } }
-}
-
-fn void build_fixed_huffman(Huffman* lit, Huffman* dist) @private
-{
-	char[288] lit_lens;
-	for (uint i = 0; i <= 143; i++) lit_lens[i] = 8;
-	for (uint i = 144; i <= 255; i++) lit_lens[i] = 9;
-	for (uint i = 256; i <= 279; i++) lit_lens[i] = 7;
-	for (uint i = 280; i <= 287; i++) lit_lens[i] = 8;
-	lit.build(&lit_lens);
-	char[32] dist_lens; dist_lens[..] = 5; dist.build(&dist_lens);
+	foreach (uint n, len : blen)
+	{
+		if (len == 0)
+		{
+			codes[n].code = 0;
+			codes[n].len = 0;
+			codes[n].rcode = 0;
+			continue;
+		}
+		uint c = next_code[len];
+		codes[n].code = (ushort)c;
+		codes[n].len = (ushort)len;
+		// Deflate sends Huffman codes starting with the most significant bit, the bit writer is LSB first.
+		codes[n].rcode = (ushort)bits::reverse(c << (32 - len));
+		next_code[len]++;
+	}
 }
 
 struct Code @private
 {
 	ushort code;
 	ushort len;
+	ushort rcode; // `code` bit-reversed, ready to be written LSB first
 }
 
 fn void gen_fixed_codes(Code* codes) @private
@@ -759,7 +923,22 @@ fn void gen_fixed_codes(Code* codes) @private
 	for (uint i = 0; i < 288; i++) { if (lens[i] > 0) bl_count[lens[i]]++; }
 	ushort[16] next_code; ushort code = 0; bl_count[0] = 0;
 	for (int bits = 1; bits <= 15; bits++) { code = (code + bl_count[bits - 1]) << 1; next_code[bits] = code; }
-	for (uint n = 0; n < 288; n++) { uint len = lens[n]; if (len != 0) { uint c = next_code[len]; codes[n].code = (ushort)c; codes[n].len = (ushort)len; next_code[len]++; } else { codes[n].code = 0; codes[n].len = 0; } }
+	for (uint n = 0; n < 288; n++)
+	{
+		uint len = lens[n];
+		if (len == 0)
+		{
+			codes[n].code = 0;
+			codes[n].len = 0;
+			codes[n].rcode = 0;
+			continue;
+		}
+		uint c = next_code[len];
+		codes[n].code = (ushort)c;
+		codes[n].len = (ushort)len;
+		codes[n].rcode = (ushort)bits::reverse(c << (32 - len));
+		next_code[len]++;
+	}
 }
 
 const ushort[31] LENGTH_BASE @private = { 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258, 0, 0 };
@@ -768,61 +947,66 @@ const ushort[32] DIST_BASE @private = { 1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49,
 const char[32] DIST_EXTRA @private = { 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 0, 0 };
 const uint[19] ORDER @private = { 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 };
 
-fn void _encode_match_len(uint b_len, uint* code, int* extra_bits, uint* extra) @local
+// Length (3..258) to length code index (0..28), and distance (1..32768) to distance code.
+char[259] len_code_table @private;
+char[256] dist_code_small @private;
+char[256] dist_code_large @private;
+
+fn void deflate_init_tables() @private
 {
-	switch (b_len)
-	{
-		case 3..10:   *code = 257u + b_len - 3u; *extra_bits = 0; *extra = 0;
-		case 11..18:  *code = 265u + (b_len - 11u) / 2; *extra_bits = 1; *extra = (b_len - 11u) % 2;
-		case 19..34:  *code = 269u + (b_len - 19u) / 4; *extra_bits = 2; *extra = (b_len - 19u) % 4;
-		case 35..66:  *code = 273u + (b_len - 35u) / 8; *extra_bits = 3; *extra = (b_len - 35u) % 8;
-		case 67..130: *code = 277u + (b_len - 67u) / 16; *extra_bits = 4; *extra = (b_len - 67u) % 16;
-		case 131..257:*code = 281u + (b_len - 131u) / 32; *extra_bits = 5; *extra = (b_len - 131u) % 32;
-		default:      *code = 285u; *extra_bits = 0; *extra = 0;
-	}
+	static OnceFlag once;
+	once.call(fn void() {
+		for (int c = 0; c < 29; c++)
+		{
+			int first = LENGTH_BASE[c];
+			int last = c == 28 ? 258 : first + (1 << LENGTH_EXTRA[c]) - 1;
+			for (int l = first; l <= last; l++) len_code_table[l] = (char)c;
+		}
+		// code 28 (258) must win over the last range of code 27, which does not include 258.
+		for (int c = 0; c < 30; c++)
+		{
+			int first = DIST_BASE[c];
+			int last = first + (1 << DIST_EXTRA[c]) - 1;
+			for (int d = first; d <= last; d++)
+			{
+				if (d <= 256)
+				{
+					dist_code_small[d - 1] = (char)c;
+				}
+				else
+				{
+					dist_code_large[(d - 1) >> 7] = (char)c;
+				}
+			}
+		}
+	});
 }
 
-fn void _encode_match_dist(uint b_dist, uint* code, int* extra_bits, uint* extra) @local
+fn uint dist_code_of(uint dist) @private @inline
 {
-	switch (b_dist)
-	{
-		case 1..4:     *code = b_dist - 1u; *extra_bits = 0; *extra = 0;
-		case 5..8:     *code = 4u + (b_dist - 5u) / 2u; *extra_bits = 1; *extra = (b_dist - 5u) % 2;
-		case 9..16:    *code = 6u + (b_dist - 9u) / 4u; *extra_bits = 2; *extra = (b_dist - 9u) % 4;
-		case 17..32:   *code = 8u + (b_dist - 17u) / 8u; *extra_bits = 3; *extra = (b_dist - 17u) % 8;
-		case 33..64:   *code = 10u + (b_dist - 33u) / 16u; *extra_bits = 4; *extra = (b_dist - 33u) % 16;
-		case 65..128:  *code = 12u + (b_dist - 65u) / 32u; *extra_bits = 5; *extra = (b_dist - 65u) % 32;
-		case 129..256: *code = 14u + (b_dist - 129u) / 64u; *extra_bits = 6; *extra = (b_dist - 129u) % 64;
-		case 257..512: *code = 16u + (b_dist - 257u) / 128u; *extra_bits = 7; *extra = (b_dist - 257u) % 128;
-		case 513..1024: *code = 18u + (b_dist - 513u) / 256; *extra_bits = 8; *extra = (b_dist - 513u) % 256;
-		case 1025..2048: *code = 20u + (b_dist - 1025u) / 512; *extra_bits = 9; *extra = (b_dist - 1025u) % 512;
-		case 2049..4096: *code = 22u + (b_dist - 2049u) / 1024; *extra_bits = 10; *extra = (b_dist - 2049u) % 1024;
-		case 4097..8192: *code = 24u + (b_dist - 4097u) / 2048; *extra_bits = 11; *extra = (b_dist - 4097u) % 2048;
-		case 8193..16384: *code = 26u + (b_dist - 8193u) / 4096; *extra_bits = 12; *extra = (b_dist - 8193u) % 4096;
-		default:          *code = 28u + (b_dist - 16385u) / 8192; *extra_bits = 13; *extra = (b_dist - 16385u) % 8192;
-	}
+	return dist <= 256 ? dist_code_small[dist - 1] : dist_code_large[(dist - 1) >> 7];
 }
 
 fn void _write_compressed_tokens(Deflater* self, Code* lit_codes, Code* dist_codes) @local
 {
+	BitWriter* bw = &self.bwriter;
 	foreach (t : self.tokens[:self.token_count])
 	{
+		if (bw.len + 16 > bw.data.len) bw.grow(16);
 		if (t.dist == 0)
 		{
-			self.bwriter.write_huffman(lit_codes[t.val].code, lit_codes[t.val].len);
+			Code c = lit_codes[t.val];
+			bw.write_bits(c.rcode, c.len);
+			continue;
 		}
-		else
-		{
-			uint len_code; int len_extra_bits; uint len_extra;
-			_encode_match_len(t.val, &len_code, &len_extra_bits, &len_extra);
-			self.bwriter.write_huffman(lit_codes[len_code].code, lit_codes[len_code].len);
-			if (len_extra_bits > 0) self.bwriter.write_bits(len_extra, len_extra_bits);
-
-			uint dist_c; int dist_extra_b; uint dist_ex;
-			_encode_match_dist(t.dist, &dist_c, &dist_extra_b, &dist_ex);
-			self.bwriter.write_huffman(dist_codes[dist_c].code, dist_codes[dist_c].len);
-			if (dist_extra_b > 0) self.bwriter.write_bits(dist_ex, dist_extra_b);
-		}
+		uint li = len_code_table[t.val];
+		Code lc = lit_codes[257 + li];
+		uint leb = LENGTH_EXTRA[li];
+		bw.write_bits((uint)lc.rcode | (((uint)t.val - LENGTH_BASE[li]) << lc.len), (int)(lc.len + leb));
+		uint di = dist_code_of(t.dist);
+		Code dc = dist_codes[di];
+		uint deb = DIST_EXTRA[di];
+		bw.write_bits((uint)dc.rcode | (((uint)t.dist - DIST_BASE[di]) << dc.len), (int)(dc.len + deb));
 	}
 }
 
