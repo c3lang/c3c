@@ -34,8 +34,8 @@ entry:
   %foo = alloca %Map, align 8
   %result = alloca %"char[]", align 8
   %0 = call ptr @"std.collections.list.List$a3$int$.tinit"(ptr @test.x, i64 16)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 4 @.__const, i32 12, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %coerce, ptr align 4 %y, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %y, ptr align 4 @.__const, i64 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %coerce, ptr align 4 %y, i64 12, i1 false)
   %lo = load i64, ptr %coerce, align 8
   %ptradd = getelementptr inbounds i8, ptr %coerce, i64 8
   %hi = load i32, ptr %ptradd, align 8

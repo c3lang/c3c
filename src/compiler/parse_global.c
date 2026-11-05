@@ -3188,7 +3188,7 @@ static bool parse_doc_direct_comment(ParseContext *c, const char **out_str)
 /**
  * contract ::= expression_list (':'? STRING)?
  */
-static inline bool parse_doc_contract(ParseContext *c, Expr ***list_ref, const char *prefix, SourceLocId *linked_to_param_ref)
+static inline bool parse_doc_contract(ParseContext *c, Expr ***list_ref, SourceLocId *linked_to_param_ref)
 {
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CONTRACT);
 	const char *start = c->lexer.data.lex_start;
@@ -3207,10 +3207,8 @@ static inline bool parse_doc_contract(ParseContext *c, Expr ***list_ref, const c
 	if (end > c->data.lex_start) end = c->data.lex_start;
 	while (is_space(end[-1])) end--;
 	scratch_buffer_clear();
-	scratch_buffer_append(prefix);
-	scratch_buffer_append(" \"");
 	scratch_buffer_append_remove_space(start, (int)(end - start));
-	scratch_buffer_append("\" violated");
+	expr->contract_expr.expr_string = scratch_buffer_copy();
 	bool docs_to_comment = false;
 	if (parse_docs_to_comment(c))
 	{
@@ -3223,20 +3221,14 @@ static inline bool parse_doc_contract(ParseContext *c, Expr ***list_ref, const c
 	}
 	if (tok_is(c, TOKEN_STRING))
 	{
-		scratch_buffer_append(": '");
+		scratch_buffer_clear();
 		if (!parse_joined_strings(c, NULL, NULL)) return false;
-		scratch_buffer_append("'.");
 		expr->contract_expr.comment = scratch_buffer_copy();
 		if (!docs_to_comment)
 		{
 			PRINT_ERROR_AT(expr, "Expected a ':' before the description.");
 			return false;
 		}
-	}
-	else
-	{
-		scratch_buffer_append(".");
-		expr->contract_expr.expr_string = scratch_buffer_copy();
 	}
 	vec_add(*list_ref, expr);
 	return true;
@@ -3403,7 +3395,7 @@ static bool parse_contracts(ParseContext *c, ContractDescription *contracts_ref)
 				contracts_ref->has_contracts = true;
 			}
 			SourceLocId linked_to_param = 0;
-			if (!parse_doc_contract(c, &contracts_ref->requires, "@require", &linked_to_param)) return false;
+			if (!parse_doc_contract(c, &contracts_ref->requires, &linked_to_param)) return false;
 			if (linked_to_param && !contracts_ref->first_variable_require) contracts_ref->first_variable_require = linked_to_param;
 			goto END;
 		}
@@ -3476,7 +3468,7 @@ static bool parse_contracts(ParseContext *c, ContractDescription *contracts_ref)
 				contracts_ref->first_contract = loc;
 				contracts_ref->has_contracts = true;
 			}
-			if (!parse_doc_contract(c, &contracts_ref->ensures, "@ensure", NULL)) return false;
+			if (!parse_doc_contract(c, &contracts_ref->ensures, NULL)) return false;
 		}
 		else if (name == kw_at_pure)
 		{

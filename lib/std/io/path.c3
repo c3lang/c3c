@@ -137,7 +137,7 @@ macro bool? mkdir(path, bool recursive = false, MkdirPermissions permissions = N
 macro bool? rmdir(path)
 {
 	$if $Typeof(path) == String:
-		@pool() { return _rmdir(temp(path)); };
+		@pool() { return _rmdir(tnew(path)); };
 	$else
 		return _rmdir(path);
 	$endif

@@ -520,7 +520,7 @@ static bool contains_whitespace_or_quotes(const char *string)
 void scratch_buffer_append_cmd_argument(const char *string)
 {
 #if PLATFORM_WINDOWS
-	if (contains_whitespace_or_quotes(string))
+	if (!string[0] || contains_whitespace_or_quotes(string))
 	{
 		scratch_buffer_append_double_quoted(string);
 	}

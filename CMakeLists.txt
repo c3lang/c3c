@@ -505,6 +505,7 @@ add_executable(c3c
         src/compiler/bigint.c
         src/compiler/codegen_general.c
         src/compiler/compiler.c
+        src/compiler/compiler_stats.c
         src/compiler/compiler.h
         src/compiler/subprocess.c
         src/compiler/subprocess.h
@@ -558,6 +559,7 @@ add_executable(c3c
         src/utils/file_utils.c
         src/utils/find_msvc.c
         src/utils/malloc.c
+        src/utils/stats.c
         src/utils/stringutils.c
         src/utils/taskqueue.c
         src/utils/json.c

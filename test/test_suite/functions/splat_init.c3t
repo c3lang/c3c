@@ -26,7 +26,7 @@ entry:
   %ptradd = getelementptr inbounds i8, ptr %z, i64 4
   %1 = call i64 @splat.test()
   store i64 %1, ptr %result, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %.anon, ptr align 4 %result, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %.anon, ptr align 4 %result, i64 8, i1 false)
   %2 = load i32, ptr %.anon, align 4
   store i32 %2, ptr %ptradd, align 4
   %ptradd1 = getelementptr inbounds i8, ptr %z, i64 8

@@ -25,8 +25,8 @@ entry:
   %foo = alloca %Event, align 4
   %bar = alloca %Event, align 4
   %taddr = alloca %Event, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %foo, ptr align 4 @.__const, i32 4, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %bar, ptr align 4 @.__const.1, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %foo, ptr align 4 @.__const, i64 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %bar, ptr align 4 @.__const.1, i64 4, i1 false)
   %i2b = icmp ne i32 %0, 0
   br i1 %i2b, label %cond.lhs, label %cond.rhs
 

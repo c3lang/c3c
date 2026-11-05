@@ -9,12 +9,10 @@
 typedef struct SymtabEntry_
 {
 	struct SymtabEntry_* next;
-	const char *value;
-	uint16_t key_len;
-	TokenType type : 16;
-	uint32_t hash;
-	uint32_t index;
 	const char* symbol;
+	uint32_t index;
+	uint32_t key_len;
+	TokenType type;
 } SymtabEntry;
 
 typedef struct
@@ -153,6 +151,7 @@ void symtab_init(uint32_t capacity)
 	builtin_defines[BUILTIN_DEF_LINE] = KW_DEF("LINE");
 	builtin_defines[BUILTIN_DEF_LINE_RAW] = KW_DEF("LINE_RAW");
 	builtin_defines[BUILTIN_DEF_MODULE] = KW_DEF("MODULE");
+	builtin_defines[BUILTIN_DEF_PANIC_FN] = KW_DEF("PANIC_FN");
 	builtin_defines[BUILTIN_DEF_TIME] = KW_DEF("TIME");
 	builtin_defines[BUILTIN_DEF_BENCHMARK_NAMES] = KW_DEF("BENCHMARK_NAMES");
 	builtin_defines[BUILTIN_DEF_BENCHMARK_FNS] = KW_DEF("BENCHMARK_FNS");
@@ -622,7 +621,7 @@ void htable_init(HTable *table, uint32_t initial_size)
 	ASSERT(initial_size && "Size must be larger than 0");
 	size_t size = next_highest_power_of_2(initial_size);
 
-	size_t mem_size = initial_size * sizeof(HTEntry);
+	size_t mem_size = size * sizeof(HTEntry *);
 	table->entries = calloc_arena(mem_size);
 
 	table->mask = size - 1;
@@ -681,7 +680,7 @@ void pathtable_init(PathTable *table, uint32_t initial_size)
 	ASSERT(initial_size && "Size must be larger than 0");
 	size_t size = next_highest_power_of_2(initial_size);
 
-	size_t mem_size = initial_size * sizeof(PathTableEntry);
+	size_t mem_size = size * sizeof(PathTableEntry *);
 	table->entries = calloc_arena(mem_size);
 
 	table->mask = size - 1;
@@ -698,7 +697,7 @@ void pathtable_set(PathTable *table, Decl *value)
 	PathTableEntry *entry = *entry_ref;
 	if (!entry)
 	{
-		entry = CALLOCS(HTEntry);
+		entry = CALLOCS(PathTableEntry);
 		entry->short_path = short_path;
 		entry->name = name;
 		entry->value = value;
@@ -716,7 +715,7 @@ void pathtable_set(PathTable *table, Decl *value)
 		entry = entry->next;
 	} while (entry);
 
-	entry = CALLOCS(HTEntry);
+	entry = CALLOCS(PathTableEntry);
 	entry->short_path = short_path;
 	entry->name = name;
 	entry->value = value;

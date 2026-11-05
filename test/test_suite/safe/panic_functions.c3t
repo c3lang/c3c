@@ -1,0 +1,738 @@
+// #target: macos-aarch64
+// #safe: yes
+module test;
+
+enum Color : int { RED, GREEN }
+interface Greeter { fn void greet(); }
+struct Thing { int a; }
+faultdef BAD;
+alias VoidFn = fn void();
+
+macro void Thing.touch_macro(&self) { self.a++; }
+<* @param [&in] p *>
+macro int ref_macro(int* p) => *p;
+<* @param [&in] p *>
+fn int ref_fn(int* p) @export("ref_fn") => *p;
+<* @require x > 0 *>
+fn void contract_require(int x) @export("contract_require") { }
+<* @require x > 0 : "x must be positive" *>
+fn void contract_require_message(int x) @export("contract_require_message") { }
+<* @ensure return > 0 *>
+fn int contract_ensure(int x) @export("contract_ensure") => x;
+<* @ensure return > 0 : "must be positive" *>
+fn int contract_ensure_message(int x) @export("contract_ensure_message") => x;
+
+fn void assert_plain(int x) @export("assert_plain") { assert(x > 0); }
+fn void assert_message(int x) @export("assert_message") { assert(x > 0, "plain message"); }
+fn void assert_violation() @test @export("assert_violation") { assert(false); }
+fn void assert_args(int x) @export("assert_args") { assert(x > 0, "bad %d", x); }
+fn void null_method(Thing* t) @export("null_method") { t.touch_macro(); }
+fn void ref_arg(int* p) @export("ref_arg") { ref_macro(p); }
+fn int deref(int* p) @export("deref") => *p;
+fn char deref_byte(char* p) @export("deref_byte") => *p;
+fn void null_function(VoidFn f) @export("null_function") { f(); }
+fn void no_method(any a) @export("no_method") { Greeter g = (Greeter)a; g.greet(); }
+fn int div_zero(int a, int b) @export("div_zero") => a / b;
+fn int rem_zero(int a, int b) @export("rem_zero") => a % b;
+fn void infinite_loop() @export("infinite_loop") { for (;;) {} }
+fn void access_inner(typeid t) @export("access_inner") { (void)t.inner; }
+fn void access_names(typeid t) @export("access_names") { (void)t.names; }
+fn void access_len(typeid t) @export("access_len") { (void)t.len; }
+fn int? fails() @export("fails") => BAD~;
+fn int unwrap() @export("unwrap") => fails()!!;
+fn int shift_int(int a, int b) @export("shift_int") => a << b;
+fn ichar shift_ichar(ichar a, ichar b) @export("shift_ichar") => a << b;
+fn uint shift_uint(uint a, uint b) @export("shift_uint") => a >> b;
+fn long shift_long(long a, long b) @export("shift_long") => a << b;
+fn int128 shift_int128(int128 a, int128 b) @export("shift_int128") => a << b;
+fn uint128 shift_uint128(uint128 a, uint128 b) @export("shift_uint128") => a >> b;
+fn int[<2>] shift_vec(int[<2>] a, int[<2>] b) @export("shift_vec") => a << b;
+fn uint[<2>] shift_uvec(uint[<2>] a, uint[<2>] b) @export("shift_uvec") => a << b;
+fn int index_int(int[] a, int i) @export("index_int") => a[i];
+fn int index_uint(int[] a, uint i) @export("index_uint") => a[i];
+fn int index_ichar(int[3]* a, ichar i) @export("index_ichar") => (*a)[i];
+fn int[] slice_start(int[] a, int i) @export("slice_start") => a[i..];
+fn int[] slice_range(int[] a, int i, int j) @export("slice_range") => a[i..j];
+fn int[] slice_len(int[] a, int i, int j) @export("slice_len") => a[i:j];
+fn void slice_copy(int[] a, int[] b) @export("slice_copy") { a[..] = b[..]; }
+fn Color enum_int(int x) @export("enum_int") => (Color)x;
+fn Color enum_uint(uint x) @export("enum_uint") => (Color)x;
+fn Color enum_int128(int128 x) @export("enum_int128") => (Color)x;
+fn Color enum_uint128(uint128 x) @export("enum_uint128") => (Color)x;
+fn int main() { return 0; }
+
+/* #expect: test.ll
+
+@.panic_str = private unnamed_addr constant <{ i32, [19 x i8] }> <{ i32 18, [19 x i8] c"panic_functions.c3\00" }>
+@.panic_str.1 = private unnamed_addr constant <{ i32, [7 x i8] }> <{ i32 6, [7 x i8] c"ref_fn\00" }>
+@.panic_str.2 = private unnamed_addr constant <{ i32, [2 x i8] }> <{ i32 1, [2 x i8] c"p\00" }>
+@.panic_str.3 = private unnamed_addr constant <{ i32, [17 x i8] }> <{ i32 16, [17 x i8] c"contract_require\00" }>
+@.panic_str.4 = private unnamed_addr constant <{ i32, [6 x i8] }> <{ i32 5, [6 x i8] c"x > 0\00" }>
+@.panic_str.5 = private unnamed_addr constant <{ i32, [25 x i8] }> <{ i32 24, [25 x i8] c"contract_require_message\00" }>
+@.panic_str.6 = private unnamed_addr constant <{ i32, [19 x i8] }> <{ i32 18, [19 x i8] c"x must be positive\00" }>
+@.panic_str.7 = private unnamed_addr constant <{ i32, [16 x i8] }> <{ i32 15, [16 x i8] c"contract_ensure\00" }>
+@.panic_str.8 = private unnamed_addr constant <{ i32, [11 x i8] }> <{ i32 10, [11 x i8] c"return > 0\00" }>
+@.panic_str.9 = private unnamed_addr constant <{ i32, [24 x i8] }> <{ i32 23, [24 x i8] c"contract_ensure_message\00" }>
+@.panic_str.10 = private unnamed_addr constant <{ i32, [17 x i8] }> <{ i32 16, [17 x i8] c"must be positive\00" }>
+@.panic_str.11 = private unnamed_addr constant <{ i32, [13 x i8] }> <{ i32 12, [13 x i8] c"assert_plain\00" }>
+@.panic_str.12 = private unnamed_addr constant <{ i32, [15 x i8] }> <{ i32 14, [15 x i8] c"assert_message\00" }>
+@.panic_str.13 = private unnamed_addr constant <{ i32, [14 x i8] }> <{ i32 13, [14 x i8] c"plain message\00" }>
+@.panic_str.14 = private unnamed_addr constant <{ i32, [12 x i8] }> <{ i32 11, [12 x i8] c"assert_args\00" }>
+@.panic_str.15 = private unnamed_addr constant <{ i32, [7 x i8] }> <{ i32 6, [7 x i8] c"bad %d\00" }>
+@.panic_str.16 = private unnamed_addr constant <{ i32, [12 x i8] }> <{ i32 11, [12 x i8] c"null_method\00" }>
+@.panic_str.17 = private unnamed_addr constant <{ i32, [8 x i8] }> <{ i32 7, [8 x i8] c"ref_arg\00" }>
+@.panic_str.18 = private unnamed_addr constant <{ i32, [6 x i8] }> <{ i32 5, [6 x i8] c"deref\00" }>
+@.panic_str.19 = private unnamed_addr constant <{ i32, [11 x i8] }> <{ i32 10, [11 x i8] c"deref_byte\00" }>
+@.panic_str.20 = private unnamed_addr constant <{ i32, [14 x i8] }> <{ i32 13, [14 x i8] c"null_function\00" }>
+@.panic_str.21 = private unnamed_addr constant <{ i32, [2 x i8] }> <{ i32 1, [2 x i8] c"f\00" }>
+@.panic_str.22 = private unnamed_addr constant <{ i32, [10 x i8] }> <{ i32 9, [10 x i8] c"no_method\00" }>
+@.panic_str.23 = private unnamed_addr constant <{ i32, [6 x i8] }> <{ i32 5, [6 x i8] c"greet\00" }>
+@.panic_str.24 = private unnamed_addr constant <{ i32, [9 x i8] }> <{ i32 8, [9 x i8] c"div_zero\00" }>
+@.panic_str.25 = private unnamed_addr constant <{ i32, [9 x i8] }> <{ i32 8, [9 x i8] c"rem_zero\00" }>
+@.panic_str.26 = private unnamed_addr constant <{ i32, [14 x i8] }> <{ i32 13, [14 x i8] c"infinite_loop\00" }>
+@.panic_str.27 = private unnamed_addr constant <{ i32, [13 x i8] }> <{ i32 12, [13 x i8] c"access_inner\00" }>
+@.panic_str.28 = private unnamed_addr constant <{ i32, [13 x i8] }> <{ i32 12, [13 x i8] c"access_names\00" }>
+@.panic_str.29 = private unnamed_addr constant <{ i32, [11 x i8] }> <{ i32 10, [11 x i8] c"access_len\00" }>
+@.panic_str.30 = private unnamed_addr constant <{ i32, [7 x i8] }> <{ i32 6, [7 x i8] c"unwrap\00" }>
+@.panic_str.31 = private unnamed_addr constant <{ i32, [10 x i8] }> <{ i32 9, [10 x i8] c"shift_int\00" }>
+@.panic_str.32 = private unnamed_addr constant <{ i32, [12 x i8] }> <{ i32 11, [12 x i8] c"shift_ichar\00" }>
+@.panic_str.33 = private unnamed_addr constant <{ i32, [11 x i8] }> <{ i32 10, [11 x i8] c"shift_uint\00" }>
+@.panic_str.34 = private unnamed_addr constant <{ i32, [11 x i8] }> <{ i32 10, [11 x i8] c"shift_long\00" }>
+@.panic_str.35 = private unnamed_addr constant <{ i32, [13 x i8] }> <{ i32 12, [13 x i8] c"shift_int128\00" }>
+@.panic_str.36 = private unnamed_addr constant <{ i32, [14 x i8] }> <{ i32 13, [14 x i8] c"shift_uint128\00" }>
+@.panic_str.37 = private unnamed_addr constant <{ i32, [10 x i8] }> <{ i32 9, [10 x i8] c"shift_vec\00" }>
+@.panic_str.38 = private unnamed_addr constant <{ i32, [11 x i8] }> <{ i32 10, [11 x i8] c"shift_uvec\00" }>
+@.panic_str.39 = private unnamed_addr constant <{ i32, [10 x i8] }> <{ i32 9, [10 x i8] c"index_int\00" }>
+@.panic_str.40 = private unnamed_addr constant <{ i32, [11 x i8] }> <{ i32 10, [11 x i8] c"index_uint\00" }>
+@.panic_str.41 = private unnamed_addr constant <{ i32, [12 x i8] }> <{ i32 11, [12 x i8] c"index_ichar\00" }>
+@.panic_str.42 = private unnamed_addr constant <{ i32, [2 x i8] }> <{ i32 1, [2 x i8] c"a\00" }>
+@.panic_str.43 = private unnamed_addr constant <{ i32, [12 x i8] }> <{ i32 11, [12 x i8] c"slice_start\00" }>
+@.panic_str.44 = private unnamed_addr constant <{ i32, [12 x i8] }> <{ i32 11, [12 x i8] c"slice_range\00" }>
+@.panic_str.45 = private unnamed_addr constant <{ i32, [10 x i8] }> <{ i32 9, [10 x i8] c"slice_len\00" }>
+@.panic_str.46 = private unnamed_addr constant <{ i32, [11 x i8] }> <{ i32 10, [11 x i8] c"slice_copy\00" }>
+@.panic_str.47 = private unnamed_addr constant <{ i32, [9 x i8] }> <{ i32 8, [9 x i8] c"enum_int\00" }>
+@.panic_str.48 = private unnamed_addr constant <{ i32, [6 x i8] }> <{ i32 5, [6 x i8] c"Color\00" }>
+@.panic_str.49 = private unnamed_addr constant <{ i32, [10 x i8] }> <{ i32 9, [10 x i8] c"enum_uint\00" }>
+@.panic_str.50 = private unnamed_addr constant <{ i32, [12 x i8] }> <{ i32 11, [12 x i8] c"enum_int128\00" }>
+@.panic_str.51 = private unnamed_addr constant <{ i32, [13 x i8] }> <{ i32 12, [13 x i8] c"enum_uint128\00" }>
+
+define i32 @ref_fn(ptr %0)
+call void @std.core.runtime.panics.ref_param(ptr @.panic_str, ptr @.panic_str.1, i32 13, ptr @.panic_str.2)
+call void @std.core.runtime.panics.deref.long.long(ptr @.panic_str, ptr @.panic_str.1, i32 13, ptr @.panic_str.2, i64 %2, i64 4)
+define void @contract_require(i32 %0)
+call void @std.core.runtime.panics.require(ptr @.panic_str, ptr @.panic_str.3, i32 14, ptr @.panic_str.4)
+define void @contract_require_message(i32 %0)
+call void @std.core.runtime.panics.require_message(ptr @.panic_str, ptr @.panic_str.5, i32 16, ptr @.panic_str.4, ptr @.panic_str.6)
+define i32 @contract_ensure(i32 %0)
+call void @std.core.runtime.panics.ensure(ptr @.panic_str, ptr @.panic_str.7, i32 19, ptr @.panic_str.8)
+define i32 @contract_ensure_message(i32 %0)
+call void @std.core.runtime.panics.ensure_message(ptr @.panic_str, ptr @.panic_str.9, i32 21, ptr @.panic_str.8, ptr @.panic_str.10)
+define void @assert_plain(i32 %0)
+call void @std.core.runtime.panics.assert(ptr @.panic_str, ptr @.panic_str.11, i32 23, ptr @.panic_str.4)
+define void @assert_message(i32 %0)
+call void @std.core.runtime.panics.message(ptr @.panic_str, ptr @.panic_str.12, i32 24, ptr @.panic_str.13)
+define void @assert_args(i32 %0)
+call void @"std.core.runtime.panics.assert_args.sa$any$"(ptr @.panic_str, ptr @.panic_str.14, i32 26, ptr @.panic_str.15, %"any[]" %4)
+define void @null_method(ptr %0)
+call void @std.core.runtime.panics.null_method(ptr @.panic_str, ptr @.panic_str.16, i32 9)
+define void @ref_arg(ptr %0)
+call void @std.core.runtime.panics.ref_arg(ptr @.panic_str, ptr @.panic_str.17, i32 11)
+call void @std.core.runtime.panics.deref.long.long(ptr @.panic_str, ptr @.panic_str.17, i32 11, ptr @.panic_str.2, i64 %1, i64 4)
+define i32 @deref(ptr %0)
+call void @std.core.runtime.panics.deref.long.long(ptr @.panic_str, ptr @.panic_str.18, i32 29, ptr @.panic_str.2, i64 %1, i64 4)
+define zeroext i8 @deref_byte(ptr %0)
+call void @std.core.runtime.panics.deref.long.long(ptr @.panic_str, ptr @.panic_str.19, i32 30, ptr @.panic_str.2, i64 %1, i64 1)
+define void @null_function(ptr %0)
+call void @std.core.runtime.panics.null_function(ptr @.panic_str, ptr @.panic_str.20, i32 31, ptr @.panic_str.21)
+define void @no_method([2 x i64] %0)
+call void @std.core.runtime.panics.no_method(ptr @.panic_str, ptr @.panic_str.22, i32 32, ptr @.panic_str.23)
+define i32 @div_zero(i32 %0, i32 %1)
+call void @std.core.runtime.panics.div_zero(ptr @.panic_str, ptr @.panic_str.24, i32 33)
+define i32 @rem_zero(i32 %0, i32 %1)
+call void @std.core.runtime.panics.rem_zero(ptr @.panic_str, ptr @.panic_str.25, i32 34)
+define void @infinite_loop()
+call void @std.core.runtime.panics.infinite_loop(ptr @.panic_str, ptr @.panic_str.26, i32 35)
+define void @access_inner(i64 %0)
+call void @std.core.runtime.panics.access_inner(ptr @.panic_str, ptr @.panic_str.27, i32 36)
+define void @access_names(i64 %0)
+call void @std.core.runtime.panics.access_names(ptr @.panic_str, ptr @.panic_str.28, i32 37)
+define void @access_len(i64 %0)
+call void @std.core.runtime.panics.access_len(ptr @.panic_str, ptr @.panic_str.29, i32 38)
+define i64 @fails(ptr %0)
+define i32 @unwrap()
+call void @std.core.runtime.panics.unwrap.fault(ptr @.panic_str, ptr @.panic_str.30, i32 40, i64 %1)
+define i32 @shift_int(i32 %0, i32 %1)
+call void @std.core.runtime.panics.shift.long(ptr @.panic_str, ptr @.panic_str.31, i32 41, i64 %3)
+call void @std.core.runtime.panics.shift.long(ptr @.panic_str, ptr @.panic_str.31, i32 41, i64 %4)
+define signext i8 @shift_ichar(i8 signext %0, i8 signext %1)
+call void @std.core.runtime.panics.shift.long(ptr @.panic_str, ptr @.panic_str.32, i32 42, i64 %3)
+call void @std.core.runtime.panics.shift.long(ptr @.panic_str, ptr @.panic_str.32, i32 42, i64 %4)
+define i32 @shift_uint(i32 %0, i32 %1)
+call void @std.core.runtime.panics.shift.ulong(ptr @.panic_str, ptr @.panic_str.33, i32 43, i64 %3)
+define i64 @shift_long(i64 %0, i64 %1)
+call void @std.core.runtime.panics.shift.long(ptr @.panic_str, ptr @.panic_str.34, i32 44, i64 %1)
+call void @std.core.runtime.panics.shift.long(ptr @.panic_str, ptr @.panic_str.34, i32 44, i64 %1)
+define i128 @shift_int128(i128 %0, i128 %1)
+call void @std.core.runtime.panics.shift.int128(ptr @.panic_str, ptr @.panic_str.35, i32 45, i128 %1)
+call void @std.core.runtime.panics.shift.int128(ptr @.panic_str, ptr @.panic_str.35, i32 45, i128 %1)
+define i128 @shift_uint128(i128 %0, i128 %1)
+call void @std.core.runtime.panics.shift.uint128(ptr @.panic_str, ptr @.panic_str.36, i32 46, i128 %1)
+define i64 @shift_vec(i64 %0, i64 %1)
+call void @std.core.runtime.panics.shift.long(ptr @.panic_str, ptr @.panic_str.37, i32 47, i64 %14)
+call void @std.core.runtime.panics.shift.long(ptr @.panic_str, ptr @.panic_str.37, i32 47, i64 %15)
+define i64 @shift_uvec(i64 %0, i64 %1)
+call void @std.core.runtime.panics.shift.ulong(ptr @.panic_str, ptr @.panic_str.38, i32 48, i64 %13)
+define i32 @index_int([2 x i64] %0, i32 %1)
+call void @std.core.runtime.panics.index.long.long(ptr @.panic_str, ptr @.panic_str.39, i32 49, i64 %sext, i64 %2)
+call void @std.core.runtime.panics.unaligned.long.long(ptr @.panic_str, ptr @.panic_str.39, i32 49, i64 4, i64 %6)
+define i32 @index_uint([2 x i64] %0, i32 %1)
+call void @std.core.runtime.panics.index.long.long(ptr @.panic_str, ptr @.panic_str.40, i32 50, i64 %zext, i64 %2)
+call void @std.core.runtime.panics.unaligned.long.long(ptr @.panic_str, ptr @.panic_str.40, i32 50, i64 4, i64 %6)
+define i32 @index_ichar(ptr %0, i8 signext %1)
+call void @std.core.runtime.panics.deref.long.long(ptr @.panic_str, ptr @.panic_str.41, i32 51, ptr @.panic_str.42, i64 %2, i64 4)
+call void @std.core.runtime.panics.index.long.long(ptr @.panic_str, ptr @.panic_str.41, i32 51, i64 %sext, i64 3)
+define [2 x i64] @slice_start([2 x i64] %0, i32 %1)
+call void @std.core.runtime.panics.slice.long.long.long.long(ptr @.panic_str, ptr @.panic_str.43, i32 52, i64 3, i64 %sext, i64 undef, i64 %4)
+define [2 x i64] @slice_range([2 x i64] %0, i32 %1, i32 %2)
+call void @std.core.runtime.panics.slice.long.long.long.long(ptr @.panic_str, ptr @.panic_str.44, i32 53, i64 3, i64 %sext, i64 undef, i64 %5)
+call void @std.core.runtime.panics.slice.long.long.long.long(ptr @.panic_str, ptr @.panic_str.44, i32 53, i64 48, i64 %sext, i64 %sext1, i64 %5)
+define [2 x i64] @slice_len([2 x i64] %0, i32 %1, i32 %2)
+call void @std.core.runtime.panics.slice.long.long.long.long(ptr @.panic_str, ptr @.panic_str.45, i32 54, i64 3, i64 %sext, i64 undef, i64 %5)
+call void @std.core.runtime.panics.slice.long.long.long.long(ptr @.panic_str, ptr @.panic_str.45, i32 54, i64 12, i64 %sext, i64 %add, i64 %5)
+define void @slice_copy([2 x i64] %0, [2 x i64] %1)
+call void @std.core.runtime.panics.slice.long.long.long.long(ptr @.panic_str, ptr @.panic_str.46, i32 55, i64 3, i64 0, i64 undef, i64 %4)
+call void @std.core.runtime.panics.slice.long.long.long.long(ptr @.panic_str, ptr @.panic_str.46, i32 55, i64 3, i64 0, i64 undef, i64 %10)
+call void @std.core.runtime.panics.slice_copy.long.long(ptr @.panic_str, ptr @.panic_str.46, i32 55, i64 %17, i64 %16)
+define i32 @enum_int(i32 %0)
+call void @std.core.runtime.panics.enum_negative.long(ptr @.panic_str, ptr @.panic_str.47, i32 56, ptr @.panic_str.48, i64 %1)
+call void @std.core.runtime.panics.enum_range.long.long(ptr @.panic_str, ptr @.panic_str.47, i32 56, ptr @.panic_str.48, i64 %2, i64 1)
+define i32 @enum_uint(i32 %0)
+call void @std.core.runtime.panics.enum_range.ulong.ulong(ptr @.panic_str, ptr @.panic_str.49, i32 57, ptr @.panic_str.48, i64 %1, i64 1)
+define i32 @enum_int128(i128 %0)
+call void @std.core.runtime.panics.enum_negative.int128(ptr @.panic_str, ptr @.panic_str.50, i32 58, ptr @.panic_str.48, i128 %0)
+call void @std.core.runtime.panics.enum_range.int128.int128(ptr @.panic_str, ptr @.panic_str.50, i32 58, ptr @.panic_str.48, i128 %0, i128 1)
+define i32 @enum_uint128(i128 %0)
+call void @std.core.runtime.panics.enum_range.uint128.uint128(ptr @.panic_str, ptr @.panic_str.51, i32 59, ptr @.panic_str.48, i128 %0, i128 1)
+define i32 @main()
+define weak ptr @.dyn_search(ptr %0, i128 %1) unnamed_addr
+
+/* #expect: std.core.runtime.panics.ll
+
+@.panic_msg = internal constant [56 x i8] c"Reference parameter was passed a null pointer argument.\00"
+@.panic_msg.1 = internal constant [61 x i8] c"Reference parameter '%s' was passed a null pointer argument.\00"
+@.panic_msg.2 = internal constant [28 x i8] c"Dereference of null pointer\00"
+@.panic_msg.3 = internal constant [44 x i8] c"Dereference of null pointer, '%s' was null.\00"
+@.panic_msg.4 = internal constant [34 x i8] c"Unaligned pointer access detected\00"
+@.panic_msg.5 = internal constant [83 x i8] c"Unaligned access: ptr %% %s = %s, use mem::load / mem::store for unaligned access.\00"
+@.panic_msg.6 = internal constant [18 x i8] c"@require violated\00"
+@.panic_msg.7 = internal constant [24 x i8] c"@require \22%s\22 violated.\00"
+@.panic_msg.8 = internal constant [30 x i8] c"@require \22%s\22 violated: '%s'.\00"
+@.panic_msg.9 = internal constant [17 x i8] c"@ensure violated\00"
+@.panic_msg.10 = internal constant [23 x i8] c"@ensure \22%s\22 violated.\00"
+@.panic_msg.11 = internal constant [29 x i8] c"@ensure \22%s\22 violated: '%s'.\00"
+@.panic_msg.12 = internal constant [14 x i8] c"Assert failed\00"
+@.panic_msg.13 = internal constant [20 x i8] c"Assert \22%s\22 failed.\00"
+@.panic_msg.14 = internal constant [17 x i8] c"Assert violation\00"
+@.panic_msg.15 = internal constant [33 x i8] c"Called a method on a null value.\00"
+@.panic_msg.16 = internal constant [38 x i8] c"Passed null to a ref ('&') parameter.\00"
+@.panic_msg.17 = internal constant [30 x i8] c"Calling null function pointer\00"
+@.panic_msg.18 = internal constant [46 x i8] c"Calling null function pointer, '%s' was null.\00"
+@.panic_msg.19 = internal constant [35 x i8] c"No method could be found on target\00"
+@.panic_msg.20 = internal constant [40 x i8] c"No method '%s' could be found on target\00"
+@.panic_msg.21 = internal constant [18 x i8] c"Division by zero.\00"
+@.panic_msg.22 = internal constant [11 x i8] c"% by zero.\00"
+@.panic_msg.23 = internal constant [20 x i8] c"Infinite loop found\00"
+@.panic_msg.24 = internal constant [50 x i8] c"Attempted to access 'inner' on non composite type\00"
+@.panic_msg.25 = internal constant [52 x i8] c"Attempted to access 'names' on non enum/fault type.\00"
+@.panic_msg.26 = internal constant [44 x i8] c"Attempted to access 'len' on non array type\00"
+@.panic_msg.27 = internal constant [21 x i8] c"Force unwrap failed!\00"
+@.panic_msg.28 = internal constant [37 x i8] c"Unexpected fault '%s' was unwrapped!\00"
+@.panic_msg.29 = internal constant [14 x i8] c"Invalid shift\00"
+@.panic_msg.30 = internal constant [36 x i8] c"Shift amount out of range (was %s).\00"
+@.panic_msg.31 = internal constant [24 x i8] c"Negative array indexing\00"
+@.panic_msg.32 = internal constant [39 x i8] c"Negative array indexing (index was %d)\00"
+@.panic_msg.33 = internal constant [26 x i8] c"Array index out of bounds\00"
+@.panic_msg.34 = internal constant [60 x i8] c"Array index out of bounds (array had size %d, index was %d)\00"
+@.panic_msg.35 = internal constant [24 x i8] c"Index exceeds array len\00"
+@.panic_msg.36 = internal constant [62 x i8] c"Index exceeds array length (array had size %d, index was %d).\00"
+@.panic_msg.37 = internal constant [15 x i8] c"Negative value\00"
+@.panic_msg.38 = internal constant [23 x i8] c"Negative indexing (%d)\00"
+@.panic_msg.39 = internal constant [22 x i8] c"Negative slice length\00"
+@.panic_msg.40 = internal constant [44 x i8] c"Negative value (%d) given for slice length.\00"
+@.panic_msg.41 = internal constant [24 x i8] c"End index out of bounds\00"
+@.panic_msg.42 = internal constant [61 x i8] c"End index out of bounds (end index of %d exceeds size of %d)\00"
+@.panic_msg.43 = internal constant [14 x i8] c"Negative size\00"
+@.panic_msg.44 = internal constant [36 x i8] c"Negative size (slice was: [%d..%d])\00"
+@.panic_msg.45 = internal constant [16 x i8] c"Length mismatch\00"
+@.panic_msg.46 = internal constant [39 x i8] c"Slice copy length mismatch (%d != %d).\00"
+@.panic_msg.47 = internal constant [50 x i8] c"Attempt to convert negative value to enum failed.\00"
+@.panic_msg.48 = internal constant [62 x i8] c"Attempt to convert a negative value (%d) to enum '%s' failed.\00"
+@.panic_msg.49 = internal constant [34 x i8] c"Failed integer to enum conversion\00"
+@.panic_msg.50 = internal constant [88 x i8] c"Attempting to convert %d to enum '%s' failed as the value exceeds the max ordinal (%d).\00"
+
+define weak void @std.core.runtime.panics.ref_param(ptr %0, ptr %1, i32 %2, ptr %3)
+  %20 = insertvalue %any %19, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  call void %26([2 x i64] [i64 ptrtoint (ptr @.panic_msg to i64), i64 55], [2 x i64] %23, [2 x i64] %24, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.1 to i64), i64 60], [2 x i64] %25)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.deref.long.long(ptr %0, ptr %1, i32 %2, ptr %3, i64 %4, i64 %5)
+  %21 = icmp eq i64 %4, 0
+  br i1 %21, label %null, label %unaligned
+null:                                             ; preds = %entry
+  store %"char[]" %20, ptr %taddr, align 8
+  %22 = insertvalue %any undef, ptr %taddr, 0
+  %23 = insertvalue %any %22, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  store ptr %taddr, ptr %varargslots, align 8
+  %ptradd = getelementptr inbounds i8, ptr %varargslots, i64 8
+  store i64 ptrtoint (ptr @"$ct.String" to i64), ptr %ptradd, align 8
+  %24 = insertvalue %"any[]" undef, ptr %varargslots, 0
+  %25 = insertvalue %"any[]" %24, i64 1, 1
+  store %"char[]" %10, ptr %taddr1, align 8
+  %26 = load [2 x i64], ptr %taddr1, align 8
+  store %"char[]" %15, ptr %taddr2, align 8
+  %27 = load [2 x i64], ptr %taddr2, align 8
+  store %"any[]" %25, ptr %taddr3, align 8
+  %28 = load [2 x i64], ptr %taddr3, align 8
+  %29 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %29([2 x i64] [i64 ptrtoint (ptr @.panic_msg.2 to i64), i64 27], [2 x i64] %26, [2 x i64] %27, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.3 to i64), i64 43], [2 x i64] %28)
+  call void @llvm.trap()
+  unreachable
+unaligned:                                        ; preds = %entry
+  %30 = sub i64 %5, 1
+  %31 = and i64 %4, %30
+  store i64 %5, ptr %taddr4, align 8
+  %32 = insertvalue %any undef, ptr %taddr4, 0
+  %33 = insertvalue %any %32, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store i64 %31, ptr %taddr5, align 8
+  %34 = insertvalue %any undef, ptr %taddr5, 0
+  %35 = insertvalue %any %34, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store ptr %taddr4, ptr %varargslots6, align 8
+  %ptradd7 = getelementptr inbounds i8, ptr %varargslots6, i64 8
+  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd7, align 8
+  %ptradd8 = getelementptr inbounds i8, ptr %varargslots6, i64 16
+  store ptr %taddr5, ptr %ptradd8, align 8
+  %ptradd9 = getelementptr inbounds i8, ptr %ptradd8, i64 8
+  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd9, align 8
+  %36 = insertvalue %"any[]" undef, ptr %varargslots6, 0
+  %37 = insertvalue %"any[]" %36, i64 2, 1
+  store %"char[]" %10, ptr %taddr10, align 8
+  %38 = load [2 x i64], ptr %taddr10, align 8
+  store %"char[]" %15, ptr %taddr11, align 8
+  %39 = load [2 x i64], ptr %taddr11, align 8
+  store %"any[]" %37, ptr %taddr12, align 8
+  %40 = load [2 x i64], ptr %taddr12, align 8
+  %41 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %41([2 x i64] [i64 ptrtoint (ptr @.panic_msg.4 to i64), i64 33], [2 x i64] %38, [2 x i64] %39, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.5 to i64), i64 82], [2 x i64] %40)
+  call void @llvm.trap()
+  unreachable
+
+define weak void @std.core.runtime.panics.require(ptr %0, ptr %1, i32 %2, ptr %3)
+  %20 = insertvalue %any %19, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  call void %26([2 x i64] [i64 ptrtoint (ptr @.panic_msg.6 to i64), i64 17], [2 x i64] %23, [2 x i64] %24, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.7 to i64), i64 23], [2 x i64] %25)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.require_message(ptr %0, ptr %1, i32 %2, ptr %3, ptr %4)
+  %26 = insertvalue %any %25, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  %28 = insertvalue %any %27, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  call void %34([2 x i64] [i64 ptrtoint (ptr @.panic_msg.6 to i64), i64 17], [2 x i64] %31, [2 x i64] %32, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.8 to i64), i64 29], [2 x i64] %33)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.ensure(ptr %0, ptr %1, i32 %2, ptr %3)
+  %20 = insertvalue %any %19, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  call void %26([2 x i64] [i64 ptrtoint (ptr @.panic_msg.9 to i64), i64 16], [2 x i64] %23, [2 x i64] %24, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.10 to i64), i64 22], [2 x i64] %25)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.ensure_message(ptr %0, ptr %1, i32 %2, ptr %3, ptr %4)
+  %26 = insertvalue %any %25, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  %28 = insertvalue %any %27, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  call void %34([2 x i64] [i64 ptrtoint (ptr @.panic_msg.9 to i64), i64 16], [2 x i64] %31, [2 x i64] %32, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.11 to i64), i64 28], [2 x i64] %33)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.assert(ptr %0, ptr %1, i32 %2, ptr %3)
+  %20 = insertvalue %any %19, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  call void %26([2 x i64] [i64 ptrtoint (ptr @.panic_msg.12 to i64), i64 13], [2 x i64] %23, [2 x i64] %24, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.13 to i64), i64 19], [2 x i64] %25)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.message(ptr %0, ptr %1, i32 %2, ptr %3)
+  store %"char[]" %18, ptr %taddr, align 8
+  %19 = load [2 x i64], ptr %taddr, align 8
+  store %"char[]" %8, ptr %taddr1, align 8
+  %20 = load [2 x i64], ptr %taddr1, align 8
+  store %"char[]" %13, ptr %taddr2, align 8
+  %21 = load [2 x i64], ptr %taddr2, align 8
+  %22 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %22([2 x i64] %19, [2 x i64] %20, [2 x i64] %21, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+  call void @llvm.trap()
+  unreachable
+
+define weak void @"std.core.runtime.panics.assert_args.sa$any$"(ptr %0, ptr %1, i32 %2, ptr %3, %"any[]" %4)
+  store %"char[]" %9, ptr %taddr, align 8
+  %20 = load [2 x i64], ptr %taddr, align 8
+  store %"char[]" %14, ptr %taddr1, align 8
+  %21 = load [2 x i64], ptr %taddr1, align 8
+  store %"char[]" %19, ptr %taddr2, align 8
+  %22 = load [2 x i64], ptr %taddr2, align 8
+  store %"any[]" %4, ptr %taddr3, align 8
+  %23 = load [2 x i64], ptr %taddr3, align 8
+  %24 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %24([2 x i64] [i64 ptrtoint (ptr @.panic_msg.14 to i64), i64 16], [2 x i64] %20, [2 x i64] %21, i32 %2, [2 x i64] %22, [2 x i64] %23)
+  call void @llvm.trap()
+  unreachable
+
+define weak void @std.core.runtime.panics.null_method(ptr %0, ptr %1, i32 %2)
+  call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.15 to i64), i64 32], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.ref_arg(ptr %0, ptr %1, i32 %2)
+  call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.16 to i64), i64 37], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.null_function(ptr %0, ptr %1, i32 %2, ptr %3)
+  %20 = insertvalue %any %19, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  call void %26([2 x i64] [i64 ptrtoint (ptr @.panic_msg.17 to i64), i64 29], [2 x i64] %23, [2 x i64] %24, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.18 to i64), i64 45], [2 x i64] %25)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.no_method(ptr %0, ptr %1, i32 %2, ptr %3)
+  %20 = insertvalue %any %19, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  call void %26([2 x i64] [i64 ptrtoint (ptr @.panic_msg.19 to i64), i64 34], [2 x i64] %23, [2 x i64] %24, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.20 to i64), i64 39], [2 x i64] %25)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.div_zero(ptr %0, ptr %1, i32 %2)
+  call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.21 to i64), i64 17], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.rem_zero(ptr %0, ptr %1, i32 %2)
+  call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.22 to i64), i64 10], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.infinite_loop(ptr %0, ptr %1, i32 %2)
+  call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.23 to i64), i64 19], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.access_inner(ptr %0, ptr %1, i32 %2)
+  call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.24 to i64), i64 49], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.access_names(ptr %0, ptr %1, i32 %2)
+  call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.25 to i64), i64 51], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.access_len(ptr %0, ptr %1, i32 %2)
+  call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.26 to i64), i64 43], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.unwrap.fault(ptr %0, ptr %1, i32 %2, i64 %3)
+  %15 = insertvalue %any %14, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
+  call void %21([2 x i64] [i64 ptrtoint (ptr @.panic_msg.27 to i64), i64 20], [2 x i64] %18, [2 x i64] %19, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.28 to i64), i64 36], [2 x i64] %20)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.shift.long(ptr %0, ptr %1, i32 %2, i64 %3)
+  %15 = insertvalue %any %14, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  call void %21([2 x i64] [i64 ptrtoint (ptr @.panic_msg.29 to i64), i64 13], [2 x i64] %18, [2 x i64] %19, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.30 to i64), i64 35], [2 x i64] %20)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.shift.ulong(ptr %0, ptr %1, i32 %2, i64 %3)
+  %15 = insertvalue %any %14, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
+  call void %21([2 x i64] [i64 ptrtoint (ptr @.panic_msg.29 to i64), i64 13], [2 x i64] %18, [2 x i64] %19, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.30 to i64), i64 35], [2 x i64] %20)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.shift.int128(ptr %0, ptr %1, i32 %2, i128 %3)
+  %15 = insertvalue %any %14, i64 ptrtoint (ptr @"$ct.int128" to i64), 1
+  call void %21([2 x i64] [i64 ptrtoint (ptr @.panic_msg.29 to i64), i64 13], [2 x i64] %18, [2 x i64] %19, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.30 to i64), i64 35], [2 x i64] %20)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.shift.uint128(ptr %0, ptr %1, i32 %2, i128 %3)
+  %15 = insertvalue %any %14, i64 ptrtoint (ptr @"$ct.uint128" to i64), 1
+  call void %21([2 x i64] [i64 ptrtoint (ptr @.panic_msg.29 to i64), i64 13], [2 x i64] %18, [2 x i64] %19, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.30 to i64), i64 35], [2 x i64] %20)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.index.long.long(ptr %0, ptr %1, i32 %2, i64 %3, i64 %4)
+  %15 = icmp slt i64 %3, 0
+  br i1 %15, label %panic, label %next
+panic:                                            ; preds = %entry
+  store i64 %3, ptr %taddr, align 8
+  %16 = insertvalue %any undef, ptr %taddr, 0
+  %17 = insertvalue %any %16, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store ptr %taddr, ptr %varargslots, align 8
+  %ptradd = getelementptr inbounds i8, ptr %varargslots, i64 8
+  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd, align 8
+  %18 = insertvalue %"any[]" undef, ptr %varargslots, 0
+  %19 = insertvalue %"any[]" %18, i64 1, 1
+  store %"char[]" %9, ptr %taddr1, align 8
+  %20 = load [2 x i64], ptr %taddr1, align 8
+  store %"char[]" %14, ptr %taddr2, align 8
+  %21 = load [2 x i64], ptr %taddr2, align 8
+  store %"any[]" %19, ptr %taddr3, align 8
+  %22 = load [2 x i64], ptr %taddr3, align 8
+  %23 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %23([2 x i64] [i64 ptrtoint (ptr @.panic_msg.31 to i64), i64 23], [2 x i64] %20, [2 x i64] %21, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.32 to i64), i64 38], [2 x i64] %22)
+  call void @llvm.trap()
+  unreachable
+next:                                             ; preds = %entry
+  store i64 %4, ptr %taddr, align 8
+  %24 = insertvalue %any undef, ptr %taddr, 0
+  %25 = insertvalue %any %24, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store i64 %3, ptr %taddr4, align 8
+  %26 = insertvalue %any undef, ptr %taddr4, 0
+  %27 = insertvalue %any %26, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store ptr %taddr, ptr %varargslots5, align 8
+  %ptradd6 = getelementptr inbounds i8, ptr %varargslots5, i64 8
+  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd6, align 8
+  %ptradd7 = getelementptr inbounds i8, ptr %varargslots5, i64 16
+  store ptr %taddr4, ptr %ptradd7, align 8
+  %ptradd8 = getelementptr inbounds i8, ptr %ptradd7, i64 8
+  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd8, align 8
+  %28 = insertvalue %"any[]" undef, ptr %varargslots5, 0
+  %29 = insertvalue %"any[]" %28, i64 2, 1
+  store %"char[]" %9, ptr %taddr9, align 8
+  %30 = load [2 x i64], ptr %taddr9, align 8
+  store %"char[]" %14, ptr %taddr10, align 8
+  %31 = load [2 x i64], ptr %taddr10, align 8
+  store %"any[]" %29, ptr %taddr11, align 8
+  %32 = load [2 x i64], ptr %taddr11, align 8
+  %33 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %33([2 x i64] [i64 ptrtoint (ptr @.panic_msg.33 to i64), i64 25], [2 x i64] %30, [2 x i64] %31, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.34 to i64), i64 59], [2 x i64] %32)
+  call void @llvm.trap()
+  unreachable
+
+define weak void @std.core.runtime.panics.unaligned.long.long(ptr %0, ptr %1, i32 %2, i64 %3, i64 %4)
+  %16 = insertvalue %any %15, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  %18 = insertvalue %any %17, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  call void %24([2 x i64] [i64 ptrtoint (ptr @.panic_msg.4 to i64), i64 33], [2 x i64] %21, [2 x i64] %22, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.5 to i64), i64 82], [2 x i64] %23)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.slice.long.long.long.long(ptr %0, ptr %1, i32 %2, i64 %3, i64 %4, i64 %5, i64 %6)
+  %17 = icmp sgt i64 %4, %6
+  %18 = and i64 %3, 1
+  %19 = icmp ne i64 %18, 0
+  %20 = and i1 %19, %17
+  br i1 %20, label %panic, label %next
+panic:                                            ; preds = %entry
+  store i64 %6, ptr %taddr, align 8
+  %21 = insertvalue %any undef, ptr %taddr, 0
+  %22 = insertvalue %any %21, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store i64 %4, ptr %taddr1, align 8
+  %23 = insertvalue %any undef, ptr %taddr1, 0
+  %24 = insertvalue %any %23, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store ptr %taddr, ptr %varargslots, align 8
+  %ptradd = getelementptr inbounds i8, ptr %varargslots, i64 8
+  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd, align 8
+  %ptradd2 = getelementptr inbounds i8, ptr %varargslots, i64 16
+  store ptr %taddr1, ptr %ptradd2, align 8
+  %ptradd3 = getelementptr inbounds i8, ptr %ptradd2, i64 8
+  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd3, align 8
+  %25 = insertvalue %"any[]" undef, ptr %varargslots, 0
+  %26 = insertvalue %"any[]" %25, i64 2, 1
+  store %"char[]" %11, ptr %taddr4, align 8
+  %27 = load [2 x i64], ptr %taddr4, align 8
+  store %"char[]" %16, ptr %taddr5, align 8
+  %28 = load [2 x i64], ptr %taddr5, align 8
+  store %"any[]" %26, ptr %taddr6, align 8
+  %29 = load [2 x i64], ptr %taddr6, align 8
+  %30 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %30([2 x i64] [i64 ptrtoint (ptr @.panic_msg.35 to i64), i64 23], [2 x i64] %27, [2 x i64] %28, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.36 to i64), i64 61], [2 x i64] %29)
+  call void @llvm.trap()
+  unreachable
+next:                                             ; preds = %entry
+  %31 = icmp slt i64 %4, 0
+  %32 = and i64 %3, 2
+  %33 = icmp ne i64 %32, 0
+  %34 = and i1 %33, %31
+  br i1 %34, label %panic7, label %next13
+panic7:                                           ; preds = %next
+  store i64 %4, ptr %taddr, align 8
+  %35 = insertvalue %any undef, ptr %taddr, 0
+  %36 = insertvalue %any %35, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store ptr %taddr, ptr %varargslots8, align 8
+  %ptradd9 = getelementptr inbounds i8, ptr %varargslots8, i64 8
+  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd9, align 8
+  %37 = insertvalue %"any[]" undef, ptr %varargslots8, 0
+  %38 = insertvalue %"any[]" %37, i64 1, 1
+  store %"char[]" %11, ptr %taddr10, align 8
+  %39 = load [2 x i64], ptr %taddr10, align 8
+  store %"char[]" %16, ptr %taddr11, align 8
+  %40 = load [2 x i64], ptr %taddr11, align 8
+  store %"any[]" %38, ptr %taddr12, align 8
+  %41 = load [2 x i64], ptr %taddr12, align 8
+  %42 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %42([2 x i64] [i64 ptrtoint (ptr @.panic_msg.37 to i64), i64 14], [2 x i64] %39, [2 x i64] %40, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.38 to i64), i64 22], [2 x i64] %41)
+  call void @llvm.trap()
+  unreachable
+  %48 = insertvalue %any undef, ptr %taddr, 0
+  %49 = insertvalue %any %48, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store ptr %taddr, ptr %varargslots8, align 8
+  %ptradd15 = getelementptr inbounds i8, ptr %varargslots8, i64 8
+  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd15, align 8
+  %50 = insertvalue %"any[]" undef, ptr %varargslots8, 0
+  %51 = insertvalue %"any[]" %50, i64 1, 1
+  store %"char[]" %11, ptr %taddr16, align 8
+  %52 = load [2 x i64], ptr %taddr16, align 8
+  store %"char[]" %16, ptr %taddr17, align 8
+  %53 = load [2 x i64], ptr %taddr17, align 8
+  store %"any[]" %51, ptr %taddr18, align 8
+  %54 = load [2 x i64], ptr %taddr18, align 8
+  %55 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %55([2 x i64] [i64 ptrtoint (ptr @.panic_msg.39 to i64), i64 21], [2 x i64] %52, [2 x i64] %53, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.40 to i64), i64 43], [2 x i64] %54)
+  call void @llvm.trap()
+  unreachable
+  %61 = insertvalue %any undef, ptr %taddr, 0
+  %62 = insertvalue %any %61, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store i64 %6, ptr %taddr1, align 8
+  %63 = insertvalue %any undef, ptr %taddr1, 0
+  %64 = insertvalue %any %63, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store ptr %taddr, ptr %varargslots, align 8
+  %ptradd21 = getelementptr inbounds i8, ptr %varargslots, i64 8
+  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd21, align 8
+  %ptradd22 = getelementptr inbounds i8, ptr %varargslots, i64 16
+  store ptr %taddr1, ptr %ptradd22, align 8
+  %ptradd23 = getelementptr inbounds i8, ptr %ptradd22, i64 8
+  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd23, align 8
+  %65 = insertvalue %"any[]" undef, ptr %varargslots, 0
+  %66 = insertvalue %"any[]" %65, i64 2, 1
+  store %"char[]" %11, ptr %taddr24, align 8
+  %67 = load [2 x i64], ptr %taddr24, align 8
+  store %"char[]" %16, ptr %taddr25, align 8
+  %68 = load [2 x i64], ptr %taddr25, align 8
+  store %"any[]" %66, ptr %taddr26, align 8
+  %69 = load [2 x i64], ptr %taddr26, align 8
+  %70 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %70([2 x i64] [i64 ptrtoint (ptr @.panic_msg.41 to i64), i64 23], [2 x i64] %67, [2 x i64] %68, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.42 to i64), i64 60], [2 x i64] %69)
+  call void @llvm.trap()
+  unreachable
+next27:                                           ; preds = %next19
+  %71 = add i64 %5, 1
+  %72 = icmp sgt i64 %4, %71
+  %73 = and i64 %3, 16
+  %74 = icmp ne i64 %73, 0
+  %75 = and i1 %74, %72
+  br i1 %75, label %panic28, label %next35
+panic28:                                          ; preds = %next27
+  store i64 %4, ptr %taddr, align 8
+  %76 = insertvalue %any undef, ptr %taddr, 0
+  %77 = insertvalue %any %76, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store i64 %5, ptr %taddr1, align 8
+  %78 = insertvalue %any undef, ptr %taddr1, 0
+  %79 = insertvalue %any %78, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store ptr %taddr, ptr %varargslots, align 8
+  %ptradd29 = getelementptr inbounds i8, ptr %varargslots, i64 8
+  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd29, align 8
+  %ptradd30 = getelementptr inbounds i8, ptr %varargslots, i64 16
+  store ptr %taddr1, ptr %ptradd30, align 8
+  %ptradd31 = getelementptr inbounds i8, ptr %ptradd30, i64 8
+  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd31, align 8
+  %80 = insertvalue %"any[]" undef, ptr %varargslots, 0
+  %81 = insertvalue %"any[]" %80, i64 2, 1
+  store %"char[]" %11, ptr %taddr32, align 8
+  %82 = load [2 x i64], ptr %taddr32, align 8
+  store %"char[]" %16, ptr %taddr33, align 8
+  %83 = load [2 x i64], ptr %taddr33, align 8
+  store %"any[]" %81, ptr %taddr34, align 8
+  %84 = load [2 x i64], ptr %taddr34, align 8
+  %85 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %85([2 x i64] [i64 ptrtoint (ptr @.panic_msg.43 to i64), i64 13], [2 x i64] %82, [2 x i64] %83, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.44 to i64), i64 35], [2 x i64] %84)
+  call void @llvm.trap()
+  unreachable
+next35:                                           ; preds = %next27
+  %86 = icmp sge i64 %5, %6
+  %87 = and i64 %3, 32
+  %88 = icmp ne i64 %87, 0
+  %89 = and i1 %88, %86
+  br i1 %89, label %panic36, label %next43
+panic36:                                          ; preds = %next35
+  store i64 %5, ptr %taddr, align 8
+  %90 = insertvalue %any undef, ptr %taddr, 0
+  %91 = insertvalue %any %90, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store i64 %6, ptr %taddr1, align 8
+  %92 = insertvalue %any undef, ptr %taddr1, 0
+  %93 = insertvalue %any %92, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store ptr %taddr, ptr %varargslots, align 8
+  %ptradd37 = getelementptr inbounds i8, ptr %varargslots, i64 8
+  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd37, align 8
+  %ptradd38 = getelementptr inbounds i8, ptr %varargslots, i64 16
+  store ptr %taddr1, ptr %ptradd38, align 8
+  %ptradd39 = getelementptr inbounds i8, ptr %ptradd38, i64 8
+  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd39, align 8
+  %94 = insertvalue %"any[]" undef, ptr %varargslots, 0
+  %95 = insertvalue %"any[]" %94, i64 2, 1
+  store %"char[]" %11, ptr %taddr40, align 8
+  %96 = load [2 x i64], ptr %taddr40, align 8
+  store %"char[]" %16, ptr %taddr41, align 8
+  %97 = load [2 x i64], ptr %taddr41, align 8
+  store %"any[]" %95, ptr %taddr42, align 8
+  %98 = load [2 x i64], ptr %taddr42, align 8
+  %99 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %99([2 x i64] [i64 ptrtoint (ptr @.panic_msg.41 to i64), i64 23], [2 x i64] %96, [2 x i64] %97, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.42 to i64), i64 60], [2 x i64] %98)
+  call void @llvm.trap()
+  unreachable
+next43:                                           ; preds = %next35
+  store i64 %4, ptr %taddr, align 8
+  %100 = insertvalue %any undef, ptr %taddr, 0
+  %101 = insertvalue %any %100, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store i64 %5, ptr %taddr1, align 8
+  %102 = insertvalue %any undef, ptr %taddr1, 0
+  %103 = insertvalue %any %102, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store ptr %taddr, ptr %varargslots, align 8
+  %ptradd44 = getelementptr inbounds i8, ptr %varargslots, i64 8
+  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd44, align 8
+  %ptradd45 = getelementptr inbounds i8, ptr %varargslots, i64 16
+  store ptr %taddr1, ptr %ptradd45, align 8
+  %ptradd46 = getelementptr inbounds i8, ptr %ptradd45, i64 8
+  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd46, align 8
+  %104 = insertvalue %"any[]" undef, ptr %varargslots, 0
+  %105 = insertvalue %"any[]" %104, i64 2, 1
+  store %"char[]" %11, ptr %taddr47, align 8
+  %106 = load [2 x i64], ptr %taddr47, align 8
+  store %"char[]" %16, ptr %taddr48, align 8
+  %107 = load [2 x i64], ptr %taddr48, align 8
+  store %"any[]" %105, ptr %taddr49, align 8
+  %108 = load [2 x i64], ptr %taddr49, align 8
+  %109 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %109([2 x i64] [i64 ptrtoint (ptr @.panic_msg.43 to i64), i64 13], [2 x i64] %106, [2 x i64] %107, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.44 to i64), i64 35], [2 x i64] %108)
+  call void @llvm.trap()
+  unreachable
+
+define weak void @std.core.runtime.panics.slice_copy.long.long(ptr %0, ptr %1, i32 %2, i64 %3, i64 %4)
+  %16 = insertvalue %any %15, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  %18 = insertvalue %any %17, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  call void %24([2 x i64] [i64 ptrtoint (ptr @.panic_msg.45 to i64), i64 15], [2 x i64] %21, [2 x i64] %22, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.46 to i64), i64 38], [2 x i64] %23)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.enum_negative.long(ptr %0, ptr %1, i32 %2, ptr %3, i64 %4)
+  %21 = insertvalue %any %20, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  %23 = insertvalue %any %22, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  call void %29([2 x i64] [i64 ptrtoint (ptr @.panic_msg.47 to i64), i64 49], [2 x i64] %26, [2 x i64] %27, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.48 to i64), i64 61], [2 x i64] %28)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.enum_range.long.long(ptr %0, ptr %1, i32 %2, ptr %3, i64 %4, i64 %5)
+  %22 = insertvalue %any %21, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  %24 = insertvalue %any %23, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  %26 = insertvalue %any %25, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  call void %32([2 x i64] [i64 ptrtoint (ptr @.panic_msg.49 to i64), i64 33], [2 x i64] %29, [2 x i64] %30, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.50 to i64), i64 87], [2 x i64] %31)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.enum_range.ulong.ulong(ptr %0, ptr %1, i32 %2, ptr %3, i64 %4, i64 %5)
+  %22 = insertvalue %any %21, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
+  %24 = insertvalue %any %23, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  %26 = insertvalue %any %25, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
+  call void %32([2 x i64] [i64 ptrtoint (ptr @.panic_msg.49 to i64), i64 33], [2 x i64] %29, [2 x i64] %30, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.50 to i64), i64 87], [2 x i64] %31)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.enum_negative.int128(ptr %0, ptr %1, i32 %2, ptr %3, i128 %4)
+  %21 = insertvalue %any %20, i64 ptrtoint (ptr @"$ct.int128" to i64), 1
+  %23 = insertvalue %any %22, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  call void %29([2 x i64] [i64 ptrtoint (ptr @.panic_msg.47 to i64), i64 49], [2 x i64] %26, [2 x i64] %27, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.48 to i64), i64 61], [2 x i64] %28)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.enum_range.int128.int128(ptr %0, ptr %1, i32 %2, ptr %3, i128 %4, i128 %5)
+  %22 = insertvalue %any %21, i64 ptrtoint (ptr @"$ct.int128" to i64), 1
+  %24 = insertvalue %any %23, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  %26 = insertvalue %any %25, i64 ptrtoint (ptr @"$ct.int128" to i64), 1
+  call void %32([2 x i64] [i64 ptrtoint (ptr @.panic_msg.49 to i64), i64 33], [2 x i64] %29, [2 x i64] %30, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.50 to i64), i64 87], [2 x i64] %31)
+  call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.enum_range.uint128.uint128(ptr %0, ptr %1, i32 %2, ptr %3, i128 %4, i128 %5)
+  %22 = insertvalue %any %21, i64 ptrtoint (ptr @"$ct.uint128" to i64), 1
+  %24 = insertvalue %any %23, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  %26 = insertvalue %any %25, i64 ptrtoint (ptr @"$ct.uint128" to i64), 1
+  call void %32([2 x i64] [i64 ptrtoint (ptr @.panic_msg.49 to i64), i64 33], [2 x i64] %29, [2 x i64] %30, i32 %2, [2 x i64] [i64 ptrtoint (ptr @.panic_msg.50 to i64), i64 87], [2 x i64] %31)
+  call void @llvm.trap()

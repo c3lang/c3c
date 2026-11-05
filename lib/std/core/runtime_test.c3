@@ -100,10 +100,24 @@ fn void sig_segmentation_fault(CInt i, void*, void* context) @local @feat(POSIX)
 	panic_test("Segmentation fault", "Unknown", "Unknown", 1, posix::stack_instruction(context));
 }
 
-fn void test_panic(String message, String file, String function, int line) @local
+fn void test_panic(String summary, String file, String function, int line, String fmt, any[] args) @local
 {
-	panic_test(message, file, function, line);
+	if (fmt.len)
+	{
+		@stack_mem(512; Allocator smem)
+		{
+			DString s;
+			s.init(smem);
+			s.appendf(fmt, ...args);
+			panic_test(s.str_view(), file, function, line);
+		};
+	}
+	else
+	{
+		panic_test(summary, file, function, line);
+	}
 }
+
 fn void panic_test(String message, String file, String function, int line, void* extra_trace = null) @local
 {
 	if (test_context.is_in_panic) return;

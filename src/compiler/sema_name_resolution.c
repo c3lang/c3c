@@ -889,7 +889,6 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 		SEMA_NOTE(found, "'%s' is defined here.", found->name);
 		return false;
 	}
-	if (found->decl_kind != DECL_ALIAS) unit_register_external_symbol(context, found);
 	if (found->is_template)
 	{
 		if (name_resolve->is_parameterized) return true;

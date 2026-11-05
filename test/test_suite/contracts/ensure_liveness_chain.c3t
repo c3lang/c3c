@@ -1,0 +1,32 @@
+// #target: macos-aarch64
+// #safe: yes
+// #opt: --strip-unused=yes
+module test;
+
+fn bool first(int x) => x >= 0;
+fn bool second(int x) => x < 10;
+fn bool after_defer(int x) => x != 5;
+fn void cleanup() { }
+
+<*
+ @ensure first(return)
+ @ensure second(return)
+*>
+fn int several() { return 0; }
+
+<*
+ @ensure after_defer(return)
+*>
+fn int with_defer()
+{
+	defer cleanup();
+	return 0;
+}
+
+fn int main() => several() + with_defer();
+
+/* #expect: test.ll
+
+define zeroext i8 @test.first(i32 %0)
+define zeroext i8 @test.second(i32 %0)
+define zeroext i8 @test.after_defer(i32 %0)

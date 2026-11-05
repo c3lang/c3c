@@ -18,10 +18,10 @@ JmpBuf test_buf;
 bool panicked = false;
 String panic_msg;
 
-fn void test_panic_handler(String message, String file, String function, int line)
+fn void test_panic_handler(String summary, String file, String function, int line, String fmt, any[] args)
 {
 	panicked = true;
-	panic_msg = message;
+	panic_msg = fmt.len ? string::tformat(fmt, ...args) : summary.tcopy();
 	libc::longjmp(&test_buf, 1);
 }
 

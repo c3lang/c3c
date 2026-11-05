@@ -116,6 +116,8 @@ void *ccalloc(size_t size, size_t elements);
 void memory_init(size_t max_mem);
 void memory_release(void);
 
+
+
 #define ptrid(ptr_) ((((uintptr_t)(ptr_)) - arena_zero) / 16)
 #define idptr(id_) ((void*)(((uintptr_t)id_) * 16 + arena_zero))
 void *calloc_arena(size_t mem);
@@ -138,12 +140,15 @@ static inline void *malloc_arena(size_t len)
 }
 #endif
 void free_arena(void);
-void print_arena_status(void);
+void arena_stats(size_t *memory, int *allocations, size_t *string_memory, int *string_allocations);
 void run_arena_allocator_tests(void);
 bool taskqueue_run(int threads, Task **task_list);
 void lock_acquire(void);
 void lock_release(void);
 int cpus(void);
+const char *host_os_name(void);
+const char *host_cpu_name(void);
+int64_t host_memory(void);
 const char *date_get(void);
 const char *time_get(void);
 

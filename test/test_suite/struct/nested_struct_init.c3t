@@ -52,8 +52,8 @@ define void @foo.main() #0 {
 entry:
   %m = alloca %Matrix2x2, align 4
   %m2 = alloca %Matrix2x2_b, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %m, ptr align 4 @.__const, i32 16, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %m2, ptr align 4 @.__const.5, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %m, ptr align 4 @.__const, i64 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %m2, ptr align 4 @.__const.5, i64 16, i1 false)
   %0 = load float, ptr %m, align 4
   %fpfpext = fpext float %0 to double
   %ptradd = getelementptr inbounds i8, ptr %m, i64 4

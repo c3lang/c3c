@@ -51,7 +51,7 @@ entry:
   store i32 0, ptr %ptradd, align 4
   %ptradd2 = getelementptr inbounds i8, ptr %z, i64 8
   store i32 0, ptr %ptradd2, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %coerce, ptr align 4 %z, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %coerce, ptr align 4 %z, i64 12, i1 false)
   %lo = load i64, ptr %coerce, align 8
   %ptradd3 = getelementptr inbounds i8, ptr %coerce, i64 8
   %hi = load i32, ptr %ptradd3, align 8
@@ -62,7 +62,7 @@ entry:
   store i32 %add4, ptr %.anon, align 4
   %8 = load i32, ptr %.anon, align 4
   call void @test.Foo.set(ptr %z, i64 1, i32 %8)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %coerce6, ptr align 4 %z, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %coerce6, ptr align 4 %z, i64 12, i1 false)
   %lo7 = load i64, ptr %coerce6, align 8
   %ptradd8 = getelementptr inbounds i8, ptr %coerce6, i64 8
   %hi9 = load i32, ptr %ptradd8, align 8

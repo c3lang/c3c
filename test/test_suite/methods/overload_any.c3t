@@ -32,9 +32,9 @@ entry:
   %ptradd = getelementptr inbounds i8, ptr %args, i64 8
   store i64 %1, ptr %ptradd, align 8
   %2 = call ptr @std.io.stdout()
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %self, ptr align 8 %2, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %self, ptr align 8 %2, i64 8, i1 false)
   %3 = call i64 @std.io.File.write(ptr %retparam, ptr %self, ptr @.str, i64 12)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %self2, ptr align 8 %self, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %self2, ptr align 8 %self, i64 8, i1 false)
   %4 = insertvalue %any undef, ptr %self2, 0
   %5 = insertvalue %any %4, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
   store i32 3, ptr %taddr, align 4
@@ -49,7 +49,7 @@ entry:
   %hi = load ptr, ptr %ptradd6, align 8
   store %"any[]" %"$$temp", ptr %indirectarg, align 8
   %9 = call i64 @std.io.fprintf(ptr %retparam4, i64 %lo, ptr %hi, ptr @.str.1, i64 2, ptr byval(%"any[]") align 8 %indirectarg)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %self7, ptr align 8 %self2, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %self7, ptr align 8 %self2, i64 8, i1 false)
   %10 = call i64 @std.io.File.write(ptr %retparam9, ptr %self7, ptr @.str.2, i64 1)
   ret i32 0
 }

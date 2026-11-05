@@ -1918,6 +1918,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 			{
 				RETURN_SEMA_ERROR(arg, "Associated values must be constant expressions.");
 			}
+			sema_fold_global_init(arg);
 		}
 		enum_value->resolve_status = RESOLVE_DONE;
 	}
@@ -5319,6 +5320,7 @@ static bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, 
 		}
 		if (!sema_analyse_expr_rvalue(context, init_expr)) return false;
 		if (check_defined || global_level_var || !type_is_aggregate(init_expr->type)) sema_cast_const(init_expr);
+		if (global_level_var) sema_fold_global_init(init_expr);
 		if (global_level_var && !expr_is_runtime_const(init_expr))
 		{
 			if (check_defined) return *check_defined = true, false;
@@ -5447,6 +5449,7 @@ static bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, 
 		}
 		if (!success) goto EXIT_OK;
 		if (global_level_var || !type_is_aggregate(init->type)) sema_cast_const(init);
+		if (global_level_var) sema_fold_global_init(init);
 		if (expr_is_const(init))
 		{
 			init->const_expr.is_hex = false;
@@ -5601,11 +5604,6 @@ static inline bool sema_analyse_alias(SemaContext *context, Decl *decl, bool *er
 	if (symbol->visibility == VISIBLE_LOCAL && decl->visibility < VISIBLE_LOCAL)
 	{
 		RETURN_SEMA_ERROR(decl, "A local symbol like '%s' may not be aliased to 'private' or 'public' visibility, please change it to at least be '@private'", symbol->name);
-	}
-	// If the symbol is more hidden than the alias, then we must increase the visibility.
-	if (decl_is_externally_visible(decl) && !decl_is_externally_visible(symbol))
-	{
-		symbol->is_external_visible = true;
 	}
 	return true;
 }

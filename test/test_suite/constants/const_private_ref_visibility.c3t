@@ -1,0 +1,104 @@
+// #target: macos-aarch64
+module foo;
+
+struct Pair
+{
+	int a;
+	int b;
+}
+
+struct Holder
+{
+	int* ptr;
+}
+
+int via_var @private = 1;
+int via_local @local = 2;
+int via_chain @private = 3;
+int via_struct @private = 4;
+int via_enum @private = 5;
+int via_enum_const @private = 6;
+int[4] via_elem @private = { 1, 2, 3, 4 };
+int[4] via_slice @private = { 1, 2, 3, 4 };
+int[4] via_slice_chain @private = { 1, 2, 3, 4 };
+Pair via_member @private = { 1, 2 };
+int only_local_use @private = 7;
+
+fn int via_fn() @private => 8;
+
+const int VIA_CONST @private = 9;
+const Pair VIA_CONST_MEMBER @private = { 10, 11 };
+const int LOCAL_SCALAR @private = 12;
+
+const int* VAR = &via_var;
+const int* LOCAL = &via_local;
+const int* CHAIN_INNER = &via_chain;
+const int* CHAIN = CHAIN_INNER;
+const Holder STRUCT = { &via_struct };
+const int* ELEM = &via_elem[1];
+const int* MEMBER = &via_member.b;
+const int[] SLICE = &via_slice;
+const int[] SLICE_CHAIN = &via_slice_chain;
+const FN = &via_fn;
+const int* CONST_ADDR = &VIA_CONST;
+const int* CONST_MEMBER_ADDR = &VIA_CONST_MEMBER.b;
+
+enum Col : int (int* ptr)
+{
+	RED { &via_enum },
+	BLUE { &via_enum_const }
+}
+
+const Col THE_COL = BLUE;
+
+const int* ONLY_LOCAL = &only_local_use;
+const int SCALAR = LOCAL_SCALAR;
+
+fn int local_uses()
+{
+	int* p = ONLY_LOCAL;
+	return *p + LOCAL_SCALAR;
+}
+
+module test;
+import foo;
+
+alias FnPtr = fn int();
+
+const int[] MY_SLICE = foo::SLICE_CHAIN;
+int[] global_slice = foo::SLICE;
+int[] global_slice_chain = MY_SLICE;
+
+fn int main()
+{
+	int* a = foo::VAR;
+	int* b = foo::LOCAL;
+	int* c = foo::CHAIN;
+	static foo::Holder holder = foo::STRUCT;
+	int* d = foo::Col.RED.ptr;
+	int* e = foo::THE_COL.ptr;
+	int* f = foo::ELEM;
+	int* g = foo::MEMBER;
+	static FnPtr fn_ptr = foo::FN;
+	int* h = foo::CONST_ADDR;
+	int* i = foo::CONST_MEMBER_ADDR;
+	return *a + *b + *c + *holder.ptr + *d + *e + *f + *g + fn_ptr() + *h + *i
+		+ global_slice[0] + global_slice_chain[0] + foo::local_uses() + foo::SCALAR;
+}
+
+/* #expect: foo.ll
+
+@foo.via_var = global i32 1, align 4
+= global i32 2, align 4
+@foo.via_chain = global i32 3, align 4
+@foo.via_struct = global i32 4, align 4
+@foo.via_enum = global i32 5, align 4
+@foo.via_enum_const = global i32 6, align 4
+@foo.via_elem = local_unnamed_addr global [4 x i32] [i32 1, i32 2, i32 3, i32 4], align 4
+@foo.via_slice = global [4 x i32] [i32 1, i32 2, i32 3, i32 4], align 4
+@foo.via_slice_chain = global [4 x i32] [i32 1, i32 2, i32 3, i32 4], align 4
+@foo.via_member = global %Pair { i32 1, i32 2 }, align 4
+@foo.only_local_use = internal global i32 7, align 4
+@foo.VIA_CONST = constant i32 9, align 4
+@foo.VIA_CONST_MEMBER = constant %Pair { i32 10, i32 11 }, align 4
+define i32 @foo.via_fn()

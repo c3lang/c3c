@@ -133,6 +133,18 @@ void llvm_emit_debug_function(GenContext *c, Decl *decl)
 
 }
 
+void llvm_emit_debug_artificial_function(GenContext *c, LLVMValueRef function)
+{
+	size_t len;
+	const char *name = LLVMGetValueName2(function, &len);
+	LLVMMetadataRef file = c->debug.file.debug_file;
+	LLVMMetadataRef debug_type = LLVMDIBuilderCreateSubroutineType(c->debug.builder, file, NULL, 0, LLVMDIFlagZero);
+	c->debug.function = LLVMDIBuilderCreateFunction(c->debug.builder, file, name, len, name, len, file, 0, debug_type,
+	                                                false, true, 0, LLVMDIFlagArtificial | LLVMDIFlagNoReturn, // NOLINT
+	                                                compiler.build.optlevel != OPTIMIZATION_NONE);
+	LLVMSetSubprogram(function, c->debug.function);
+}
+
 static void llvm_emit_debug_value(GenContext *c, LLVMValueRef value, LLVMMetadataRef debug_val, unsigned row, unsigned col, LLVMMetadataRef scope)
 {
 	LLVMDIBuilderInsertDbgValueRecordAtEnd(c->debug.builder, value, debug_val,

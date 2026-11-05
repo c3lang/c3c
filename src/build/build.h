@@ -237,7 +237,6 @@ typedef struct BuildOptions_
 	bool test_noleak;
 	bool test_show_output;
 	bool benchmark_csv_report;
-	bool print_large_functions;
 	const char *custom_linker_path;
 	uint32_t symtab_size;
 	unsigned version;
@@ -276,7 +275,6 @@ typedef struct BuildOptions_
 	AutoVectorization slp_vectorization;
 	bool emit_llvm;
 	bool emit_asm;
-	bool benchmark_mode;
 	bool test_mode;
 	bool lsp_mode;
 	bool no_entry;
@@ -304,6 +302,8 @@ typedef struct BuildOptions_
 	bool macos_list_sdks, macos_fetch_sdk_list;
 	const char **fetch_sdk_archs;
 	int verbosity_level;
+	StatsMode stats_mode;
+	const char *stats_file;
 	const char *panicfn;
 	const char *benchfn;
 	const char *testfn;
@@ -438,7 +438,6 @@ typedef struct
 	bool delete_after_run;
 	bool generate_benchmark_runner;
 	bool generate_test_runner;
-	bool benchmark_output;
 	bool test_output;
 	bool lsp_output;
 	bool docgen;
@@ -464,9 +463,11 @@ typedef struct
 	bool print_linking;
 	bool no_entry;
 	bool kernel_build;
-	bool print_stats;
+	StatsMode stats;
+	const char *stats_file;
+	bool collect_stats;
+	bool collect_stats_lists;
 	bool single_threaded;
-	bool print_large_functions;
 	int build_threads;
 	TrustLevel trust_level;
 	OptimizationSetting optsetting;

@@ -803,7 +803,32 @@ bool analyse_func_body(SemaContext *context, Decl *decl)
 	// Don't analyse functions that are benchmarks.
 	if (decl->func_decl.attr_benchmark && !compiler.build.build_benchmark) return true;
 
-	if (!sema_analyse_function_body(context, decl, 0)) return decl_poison(decl);
+	if (!compiler.build.collect_stats)
+	{
+		if (!sema_analyse_function_body(context, decl, 0)) return decl_poison(decl);
+		return true;
+	}
+	// Bodies of new generic instances are analysed while analysing the body that uses them,
+	// so subtract the time spent in nested bodies to get the time for this body alone.
+	double outer_nested_time = compiler.stats.nested_analysis_time;
+	compiler.stats.nested_analysis_time = 0;
+	// Analysing a generic function body is part of the generic instantiation time.
+	bool is_generic = decl->is_templated && !compiler.stats.generic_depth;
+	if (is_generic) compiler.stats.generic_depth++;
+	BenchTime start = benchstart();
+	bool success = sema_analyse_function_body(context, decl, 0);
+	double elapsed = benchmark(start);
+	if (is_generic)
+	{
+		compiler.stats.generic_depth--;
+		compiler.stats.generic_time += elapsed;
+	}
+	if (compiler.build.collect_stats_lists)
+	{
+		vec_add(compiler.stats.function_analysis_times, ((FunctionAnalysisTime) { .decl = decl, .time = elapsed - compiler.stats.nested_analysis_time }));
+	}
+	compiler.stats.nested_analysis_time = outer_nested_time + elapsed;
+	if (!success) return decl_poison(decl);
 	return true;
 }
 
