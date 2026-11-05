@@ -1,0 +1,10 @@
+module main;
+import std::io;
+
+const char[<*>] ARRAY = "Hello, World! ";
+
+
+fn void main()
+{
+	io::printn(ARRAY);
+}

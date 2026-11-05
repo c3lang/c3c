@@ -44,6 +44,7 @@ fn int panic_print_backtrace_count(BacktraceList backtrace, int backtraces_to_ig
 			case function_name == "std.core.builtin.print_backtrace":
 			case function_name == "std.core.builtin.default_panic":
 			case function_name == "std.core.builtin.panicf":
+			case function_name.starts_with("std.core.runtime.panics."):
 			case function_name.starts_with("std.core.runtime.panic_test."):
 			case function_name.starts_with("std.core.runtime.test_panic."):
 			case function_name == "__GI___sigaction":
@@ -116,17 +117,18 @@ fn bool print_backtrace(String message, int backtraces_to_ignore, void *added_ba
 	return true;
 }
 
-fn void default_panic(String message, String file, String function, int line) @feat(LINUX, DARWIN, OPENBSD, WIN32)
+fn void panic_print_short(String message, String file, String function, int line) @private
 {
-	in_panic = true;
-	$if $defined(io::stderr) && env::PANIC_MSG:
-		if (!print_backtrace(message, 2))
+	$if $defined(io::eprint, io::eprintf, io::eprintn):
+		io::eprint(env::WASM ? "ERROR: '" : "\nERROR: '");
+		io::eprint(message);
+		if (file.len)
 		{
-			io::eprintfn("\nERROR: '%s', in %s (%s:%d)", message, function, file, line);
+			io::eprintfn("', in %s (%s:%d)", function, file, line);
+			return;
 		}
+		io::eprintn("'");
 	$endif
-	$$trap();
-
 }
 
 macro void abort(String string = "Unrecoverable error reached", ...) @format(0) @builtin @noreturn
@@ -135,53 +137,57 @@ macro void abort(String string = "Unrecoverable error reached", ...) @format(0) 
 	$$trap();
 }
 
-bool in_panic @private = false;
-
-fn void default_panic(String message, String file, String function, int line) @weak
+fn void print_panic(String message, String file, String function, int line)
 {
-	$if $defined(io::stderr) && env::PANIC_MSG && !env::EMSCRIPTEN:
+	$if $defined(print_backtrace):
+		if (!file.len || !print_backtrace(message, 2)) panic_print_short(message, file, function, line);
+	$else
+		panic_print_short(message, file, function, line);
+	$endif
+}
+
+fn void default_panic(String summary, String file, String function, int line, String fmt, any[] args)
+{
+	$if ($feat(PRINT_PANIC) && $defined(io::eprintf, io::eprint, io::eprintn)):
 		if (in_panic)
 		{
-			io::eprintn("Panic inside of panic.");
+			io::eprint("Panic inside of panic: ");
+			io::eprintn(summary);
 			$$trap();
-			return;
 		}
 		in_panic = true;
-		$if $defined(io::stderr):
-			io::eprint("\nERROR: '");
-			io::eprint(message);
-			io::eprintfn("', in %s (%s:%d)", function, file, line);
+		$if $defined(DString):
+			if (fmt.len)
+			{
+				@stack_mem(512; Allocator smem)
+				{
+					DString s;
+					s.init(smem);
+					s.appendf(fmt, ...args);
+					print_panic(s.str_view(), file, function, line);
+				};
+			}
+			else
+			{
+				print_panic(summary, file, function, line);
+			}
+		$else
+			print_panic(summary, file, function, line);
 		$endif
-		in_panic = false;
 	$endif
 	$$trap();
 }
 
-alias PanicFn = fn void(String message, String file, String function, int line);
 
-PanicFn panic = &default_panic;
+bool in_panic @private = false;
+
+alias PanicFn = fn void(String summary, String file, String function, int line, String fmt, any[] args);
+
+PanicFn panic = $$PANIC_FN;
 
 fn void panicf(String fmt, String file, String function, int line, args...)
 {
-	$if $defined(io::stderr) && env::PANIC_MSG && !env::EMSCRIPTEN:
-		if (in_panic)
-		{
-			io::eprint("Panic inside of panic: ");
-			io::eprintn(fmt);
-			return;
-		}
-		in_panic = true;
-		@stack_mem(512; Allocator allocator)
-		{
-			DString s;
-			s.init(allocator);
-			s.appendf(fmt, ...args);
-			in_panic = false;
-			panic(s.str_view(), file, function, line);
-		};
-	$else
-		panic(fmt, file, function, line);
-	$endif
+	panic(args.len ? "Panic" : fmt, file, function, line, fmt, args);
 }
 
 <*
@@ -213,7 +219,7 @@ import libc, std::io, std::os::posix;
 
 fn void sig_panic(String message)
 {
-	default_panic(message, "???", "???", 0);
+	default_panic(message, "???", "???", 0, "", {});
 }
 
 fn void sig_bus_error(CInt i, void* info, void* context)

@@ -28,7 +28,7 @@ static inline bool sema_defer_has_try_or_catch(AstId defer_top, AstId defer_bott
 static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *statement);
 static inline bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement);
 static inline bool sema_analyse_for_cond(SemaContext *context, ExprId *cond_ref, bool *infinite);
-static inline bool assert_create_from_contract(SemaContext *context, Expr *directive, AstId **asserts, SourceLocId evaluation_location, SourceLocId* arg_loc_map);
+static inline bool assert_create_from_contract(SemaContext *context, Expr *directive, bool is_ensure, AstId **asserts, SourceLocId evaluation_location, SourceLocId* arg_loc_map);
 static bool sema_analyse_asm_string_stmt(SemaContext *context, Ast *stmt);
 static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond);
 static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr);
@@ -211,10 +211,10 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 			if (!message_expr)
 			{
 				scratch_buffer_clear();
-				scratch_buffer_append("Assert \"");
 				loc_to_scratch(expr->loc);
-				scratch_buffer_append("\" failed.");
-				message_expr = expr_new_const_string(expr->loc, scratch_buffer_copy());
+				statement->assert_stmt.panic_function = PANIC_FN_ASSERT;
+				statement->assert_stmt.panic_text[0] = scratch_buffer_copy();
+				message_expr = expr_new_const_string(expr->loc, str_printf(panic_fn_desc[PANIC_FN_ASSERT].format, statement->assert_stmt.panic_text[0]));
 				statement->assert_stmt.message = exprid(message_expr);
 			}
 			return true;
@@ -434,13 +434,26 @@ static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond)
 
 // --- Sema analyse stmts
 
+static PanicFunction contract_panic_function(Expr *contract, bool is_ensure)
+{
+	if (contract->contract_expr.comment) return is_ensure ? PANIC_FN_ENSURE_MESSAGE : PANIC_FN_REQUIRE_MESSAGE;
+	return is_ensure ? PANIC_FN_ENSURE : PANIC_FN_REQUIRE;
+}
+
+const char *contract_to_message(Expr *contract, bool is_ensure)
+{
+	return str_printf(panic_fn_desc[contract_panic_function(contract, is_ensure)].format, contract->contract_expr.expr_string, contract->contract_expr.comment);
+}
+
 /**
  * Turn a "require" or "ensure" into a contract in the callee.
  */
-static inline bool assert_create_from_contract(SemaContext *context, Expr *directive, AstId **asserts, SourceLocId evaluation_location, SourceLocId* arg_loc_map)
+static inline bool assert_create_from_contract(SemaContext *context, Expr *directive, bool is_ensure, AstId **asserts, SourceLocId evaluation_location, SourceLocId* arg_loc_map)
 {
 	Expr *declexpr = directive->contract_expr.decl_exprs;
 	ASSERT(declexpr->expr_kind == EXPR_EXPRESSION_LIST);
+	const char *comment = contract_to_message(directive, is_ensure);
+	PanicFunction panic_function = contract_panic_function(directive, is_ensure);
 	FOREACH(Expr *, expr, declexpr->expression_list)
 	{
 		if (expr->expr_kind == EXPR_DECL) RETURN_SEMA_ERROR(expr, "Only expressions are allowed in contracts.");
@@ -451,8 +464,6 @@ static inline bool assert_create_from_contract(SemaContext *context, Expr *direc
 		{
 			expr->loc = arg_loc_map[directive->contract_expr.param.index];
 		}
-		const char *comment = directive->contract_expr.comment;
-		if (!comment) comment = directive->contract_expr.expr_string;
 		if (expr_is_const_bool(expr))
 		{
 			if (expr->const_expr.b) continue;
@@ -469,6 +480,9 @@ static inline bool assert_create_from_contract(SemaContext *context, Expr *direc
 		assert->assert_stmt.expr = exprid(expr);
 		Expr *comment_expr = expr_new_const_string(assert->loc, comment);
 		assert->assert_stmt.message = exprid(comment_expr);
+		assert->assert_stmt.panic_function = panic_function;
+		assert->assert_stmt.panic_text[0] = directive->contract_expr.expr_string;
+		assert->assert_stmt.panic_text[1] = directive->contract_expr.comment;
 		ast_append(asserts, assert);
 	}
 	return true;
@@ -588,9 +602,7 @@ static bool sema_analyse_macro_constant_ensures(SemaContext *context, Expr *ret_
 				// Skipping non-const.
 				if (result == COND_MISSING) continue;
 				if (result == COND_TRUE) continue;
-				const char *comment = directive->contract_expr.comment;
-				if (!comment) comment = directive->contract_expr.expr_string;
-				SEMA_ERROR(ret_expr, "%s", comment);
+				SEMA_ERROR(ret_expr, "%s", contract_to_message(directive, true));
 				success = false;
 				goto END;
 			}
@@ -792,7 +804,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 			bool success;
 			SCOPE_START_WITH_FLAGS(SCOPE_ENSURE, statement->loc);
 			{
-				success = assert_create_from_contract(context, copy_expr_single(ensure), &append_id, statement->loc, NULL);
+				success = assert_create_from_contract(context, copy_expr_single(ensure), true, &append_id, statement->loc, NULL);
 			}
 			SCOPE_END;
 			if (!success) return false;
@@ -3410,7 +3422,7 @@ bool sema_analyse_contracts(SemaContext *context, Decl *contract, Expr **require
 
 	FOREACH(Expr *, require, requires)
 	{
-		if (!assert_create_from_contract(context, require, asserts, call_loc, arg_loc_map)) return false;
+		if (!assert_create_from_contract(context, require, false, asserts, call_loc, arg_loc_map)) return false;
 	}
 	if (!has_ensures) return true;
 	FOREACH(Expr *, ensure, ensures)

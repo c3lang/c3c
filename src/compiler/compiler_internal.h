@@ -229,6 +229,7 @@ typedef struct
 typedef struct
 {
 	FileId file_id;
+	FileKind kind;
 	const char *contents;
 	size_t content_len;
 	char *name;
@@ -324,6 +325,7 @@ struct Type_
 {
 	TypeKind type_kind;
 	bool is_live;
+	Module *traced_module;
 	CanonicalType *canonical;
 	const char *name;
 	Type **type_cache;
@@ -1633,9 +1635,11 @@ typedef struct
 typedef struct
 {
 	bool is_ensure;
+	PanicFunction panic_function : 8;
 	ExprId message;
 	ExprId expr;
 	Expr **args;
+	const char *panic_text[PANIC_FN_MAX_TEXTS];
 } AstAssertStmt;
 
 
@@ -2052,6 +2056,98 @@ typedef struct
 
 typedef struct
 {
+	Decl *decl;
+	double time;
+} FunctionAnalysisTime;
+
+typedef enum
+{
+	STATS_ORIGIN_USER,
+	STATS_ORIGIN_STDLIB,
+	STATS_ORIGIN_RUNTIME,
+	STATS_ORIGIN_GENERATED,
+	STATS_ORIGIN_NONE,
+} StatsOrigin;
+
+#define STATS_ORIGINS STATS_ORIGIN_NONE
+
+// A row in one of the statistics lists, the fields used depend on the list.
+typedef struct
+{
+	const char *name;
+	int id;
+	StatsOrigin origin;
+	int instances;
+	int64_t instructions;
+	int64_t lines;
+	double analysis_time;
+	double ir_gen_time;
+	double codegen_time;
+} StatsEntry;
+
+// The top entries of a list, the rest are summed up in "other".
+typedef struct
+{
+	StatsEntry *top;
+	StatsEntry other;
+	int other_count;
+	StatsEntry total;
+} StatsList;
+
+typedef struct
+{
+	int files;
+	int64_t lines;
+	int functions;
+	int64_t ir_instructions;
+	double codegen_time;
+} StatsOriginTotals;
+
+typedef struct
+{
+	double init_time;
+	double parsing_time;
+	double sema_time;
+	double ir_gen_time;
+	double codegen_time;
+	double link_time;
+	double generic_time;
+	int generic_depth;
+	double nested_analysis_time;
+	double codegen_thread_time;
+	int codegen_tasks;
+	int codegen_threads;
+	const char *linker;
+	int source_files;
+	int64_t source_lines;
+	int functions;
+	int types;
+	int generic_instances;
+	int64_t ir_instructions;
+	int64_t object_size;
+	StatsOriginTotals origins[STATS_ORIGINS];
+	int64_t ast_memory;
+	int64_t decl_memory;
+	int64_t expr_memory;
+	int64_t type_info_memory;
+	int64_t sourceloc_memory;
+	FunctionAnalysisTime *function_analysis_times;
+	StatsList generic_list;
+	StatsList generic_function_list;
+	StatsList function_list;
+	StatsList module_size_list;
+	StatsList module_time_list;
+	bool printed;
+} CompilerStats;
+
+typedef struct
+{
+	PanicFunction id;
+	Type *types[PANIC_FN_MAX_VALUES];
+} PanicVariant;
+
+typedef struct
+{
 	bool should_print_environment;
 	bool should_print_asm;
 	Ansi ansi;
@@ -2082,7 +2178,8 @@ typedef struct
 	Path std_module_path;
 	Type *string_type;
 	Decl *panic_var;
-	Decl *panicf;
+	Decl *panic_fn;
+	PanicVariant *panic_variants;
 	Decl *io_error_file_not_found;
 	Decl *main;
 	Decl *decl_stack[MAX_GLOBAL_DECL_STACK];
@@ -2096,6 +2193,7 @@ typedef struct
 	PlatformTarget platform;
 	Linking linking;
 	GlobalContext context;
+	CompilerStats stats;
 	const char *obj_output;
 	int generic_depth;
 	double exec_time;
@@ -2124,6 +2222,18 @@ extern Type *type_cuint;
 extern Type *type_chars;
 extern Type *type_wildcard_optional;
 extern Type *type_string;
+typedef struct
+{
+	const char *name;
+	const char *format;
+	const char *summary;
+	int text_count;
+	int value_count;
+} PanicFunctionDescriptor;
+
+#define PANIC_MODULE_NAME "std::core::runtime::panics"
+extern const PanicFunctionDescriptor panic_fn_desc[PANIC_FN_COUNT];
+
 extern File stdin_file;
 
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
@@ -2222,7 +2332,27 @@ INLINE Type *typeget(TypeInfoId id_)
 
 INLINE bool no_panic(void)
 {
-	return compiler.build.feature.panic_level == PANIC_OFF;
+	return compiler.build.feature.panic_level == PANIC_OFF && compiler.build.show_backtrace == SHOW_BACKTRACE_OFF;
+}
+
+INLINE bool panic_use_format(void)
+{
+	return compiler.build.feature.panic_level != PANIC_OFF && compiler.platform.os != OS_TYPE_EMSCRIPTEN;
+}
+
+INLINE int panic_fn_text_count(PanicFunction id)
+{
+	return panic_use_format() || id == PANIC_FN_MESSAGE ? panic_fn_desc[id].text_count : 0;
+}
+
+INLINE int panic_fn_value_count(PanicFunction id)
+{
+	return panic_use_format() ? panic_fn_desc[id].value_count : 0;
+}
+
+INLINE bool panic_use_location(void)
+{
+	return compiler.build.show_backtrace != SHOW_BACKTRACE_OFF;
 }
 
 INLINE bool safe_mode_enabled(void)
@@ -2431,6 +2561,13 @@ bool llvm_codegen_ir_file(void *context, const char **out_name);
 const char *tilde_codegen(void *context);
 void **c_gen(Module** modules, int module_count);
 void **llvm_gen(Module** modules, int module_count);
+void llvm_collect_module_times(void);
+void compiler_print_stats(void);
+void stats_list_add(StatsList *list, StatsEntry entry, bool in_top);
+StatsOrigin stats_module_origin(Module *module);
+int64_t stats_physical_lines(File *file);
+void stats_collect_after_sema(void);
+void stats_collect_object_size(const char **obj_files, int count);
 void **tilde_gen(Module** modules, int module_count);
 
 void header_gen(Module **modules, int module_count);
@@ -2451,7 +2588,6 @@ const char *get_exe_extension(void);
 
 CompilationUnit * unit_create(File *file);
 void unit_register_global_decl(CompilationUnit *unit, Decl *decl);
-void unit_register_external_symbol(SemaContext *context, Decl *decl);
 void setup_exec_paths(const char **old_dir_ref, const char **script_dir_ref, const char **exec_dir_ref);
 
 bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import, bool is_non_recursive);
@@ -2630,6 +2766,7 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 
 bool sema_analyse_expr_rvalue(SemaContext *context, Expr *expr);
 bool sema_cast_const(Expr *expr);
+void sema_fold_global_init(Expr *init);
 
 bool sema_expr_check_discard(SemaContext *context, Expr *expr);
 bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr, bool *no_match_ref);
@@ -2644,6 +2781,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_defi
 bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement);
 bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement);
 bool sema_analyse_statement(SemaContext *context, Ast *statement);
+const char *contract_to_message(Expr *contract, bool is_ensure);
 
 bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type *left_type, Expr *right,
                                          bool is_unwrapped_var, bool is_declaration, bool *failed_ref);
@@ -2656,6 +2794,7 @@ bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl
 void sema_expr_convert_enum_to_int(Expr *expr);
 Decl *sema_decl_stack_resolve_symbol(const char *symbol);
 Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *interned_name);
+Decl *sema_panic_fn(SemaContext *context);
 Decl *sema_resolve_type_method(SemaContext *context, CanonicalType *type, const char *method_name);
 Decl *sema_resolve_method(Decl *type, const char *method_name);
 Decl *sema_resolve_method_only(Decl *type, const char *method_name);
@@ -3472,6 +3611,7 @@ INLINE bool type_is_user_defined(Type *type)
 
 static inline DeclId type_find_generic(Type *type)
 {
+	type = type_no_optional(type);
 	Type *canonical = type->canonical;
 	while (type->type_kind == TYPE_POINTER)
 	{

@@ -75,6 +75,13 @@ static const char *linker_kind[3] = {
 	[LINKER_TYPE_CUSTOM] = "custom"
 };
 
+static const char *stats_modes[4] = {
+	[STATS_NONE] = "none",
+	[STATS_SUMMARY] = "summary",
+	[STATS_FULL] = "full",
+	[STATS_JSON] = "json",
+};
+
 static const char *on_off[2] = {
 	[0] = "no",
 	[1] = "yes",

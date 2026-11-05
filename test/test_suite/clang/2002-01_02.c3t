@@ -319,7 +319,7 @@ entry:
   store i64 %0, ptr %a, align 8
   %ptradd = getelementptr inbounds i8, ptr %a, i64 8
   store i32 %1, ptr %ptradd, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tempcoerce, ptr align 8 %a, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %tempcoerce, ptr align 8 %a, i64 12, i1 false)
   %2 = load { i64, i32 }, ptr %tempcoerce, align 8
   ret { i64, i32 } %2
 }
@@ -337,7 +337,7 @@ entry:
 ; Function Attrs:
 define void @test.test7(ptr noalias sret(%STest2) align 8 %0, ptr byval(%STest2) align 8 %1) #0 {
 entry:
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %0, ptr align 8 %1, i32 24, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %0, ptr align 8 %1, i64 24, i1 false)
   ret void
 }
 

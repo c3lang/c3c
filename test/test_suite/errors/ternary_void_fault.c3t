@@ -25,8 +25,7 @@ testblock:                                        ; preds = %entry
 cond.lhs:                                         ; preds = %testblock
   %1 = call i64 @test.x()
   %not_err = icmp eq i64 %1, 0
-  %2 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %2, label %after_check, label %assign_optional
+  br i1 %not_err, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %cond.lhs
   store i64 %1, ptr %f, align 8
@@ -36,13 +35,12 @@ after_check:                                      ; preds = %cond.lhs
   br label %cond.phi
 
 cond.rhs:                                         ; preds = %testblock
-  %3 = call i64 @test.x()
-  %not_err1 = icmp eq i64 %3, 0
-  %4 = call i1 @llvm.expect.i1(i1 %not_err1, i1 true)
-  br i1 %4, label %after_check3, label %assign_optional2
+  %2 = call i64 @test.x()
+  %not_err1 = icmp eq i64 %2, 0
+  br i1 %not_err1, label %after_check3, label %assign_optional2
 
 assign_optional2:                                 ; preds = %cond.rhs
-  store i64 %3, ptr %f, align 8
+  store i64 %2, ptr %f, align 8
   br label %end_block
 
 after_check3:                                     ; preds = %cond.rhs
@@ -53,13 +51,13 @@ cond.phi:                                         ; preds = %after_check3, %afte
   br label %end_block
 
 end_block:                                        ; preds = %cond.phi, %assign_optional2, %assign_optional
-  %5 = load i64, ptr %f, align 8
-  %i2b = icmp ne i64 %5, 0
+  %3 = load i64, ptr %f, align 8
+  %i2b = icmp ne i64 %3, 0
   br i1 %i2b, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %end_block
-  %6 = load i64, ptr %f, align 8
-  store i64 %6, ptr %blockret, align 8
+  %4 = load i64, ptr %f, align 8
+  store i64 %4, ptr %blockret, align 8
   br label %expr_block.exit
 
 if.exit:                                          ; preds = %end_block

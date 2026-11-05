@@ -22,6 +22,6 @@ fn void test1()
 define void @test.test1() #0 {
 entry:
   %p = alloca %Point, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %p, ptr align 4 @.__const, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %p, ptr align 4 @.__const, i64 8, i1 false)
   ret void
 }

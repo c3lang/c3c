@@ -75,8 +75,8 @@ macro uint128 @__udivmodti4(uint128 a, uint128 b, bool $return_rem)
 			$endif
 		}
 		sr = (int)$$clz(d.high) - (int)$$clz(n.high);
-		// 0 <= sr <= n_udword_bits - 2 or sr large
-		if (sr > 64 - 2)
+		// 0 <= sr <= n_udword_bits - 2 or sr large, negative sr means d > n
+		if ((uint)sr > 64 - 2)
 		{
 			$if $return_rem:
 				return n.all;
@@ -134,8 +134,8 @@ macro uint128 @__udivmodti4(uint128 a, uint128 b, bool $return_rem)
 		else
 		{
 			sr = (int)$$clz(d.high) - (int)$$clz(n.high);
-			// 0 <= sr <= n_udword_bits - 1 or sr large
-			if (sr > 64 - 1)
+			// 0 <= sr <= n_udword_bits - 1 or sr large, negative sr means d > n
+			if ((uint)sr > 64 - 1)
 			{
 				$if $return_rem:
 					return n.all;
@@ -245,16 +245,17 @@ fn int128 __ashrti3(int128 a, uint b) @cname("__ashrti3") @weak @nostrip
 {
 	Int128bits result;
 	result.all = (uint128)a;
+	// The high part is shifted as signed, so that the sign is extended.
 	if (b >= 64)
 	{
-		result.low = result.high >> (b - 64);
-		result.high = result.high >> 63;
+		result.low = (ulong)((long)result.high >> (b - 64));
+		result.high = (ulong)((long)result.high >> 63);
 	}
 	else
 	{
 		if (b == 0) return a;
 		result.low = result.high << (64 - b) | (result.low >> b);
-		result.high  = result.high >> b;
+		result.high  = (ulong)((long)result.high >> b);
 	}
 	return (int128)result.all;
 }

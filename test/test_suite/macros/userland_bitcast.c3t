@@ -101,7 +101,7 @@ entry:
   %ptradd3 = getelementptr inbounds i8, ptr %z, i64 6
   store i16 0, ptr %ptradd3, align 2
   store i16 %0, ptr %z, align 2
-  call void @llvm.memcpy.p0.p0.i32(ptr align 2 %expr, ptr align 2 %z, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 2 %expr, ptr align 2 %z, i64 8, i1 false)
   store ptr %expr, ptr %b, align 8
   store ptr %x, ptr %to, align 8
   store i64 0, ptr %i, align 8

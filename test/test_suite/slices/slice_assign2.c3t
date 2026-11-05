@@ -28,15 +28,15 @@ entry:
   %x = alloca [3 x %Foo], align 16
   %tempval = alloca %Foo, align 8
   %y = alloca [3 x %Bar], align 16
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x, ptr align 16 @.__const, i32 72, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x, ptr align 16 @.__const, i64 72, i1 false)
   %ptradd = getelementptr inbounds i8, ptr %x, i64 24
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tempval, ptr align 8 %ptradd, i32 24, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %x, ptr align 8 %tempval, i32 24, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %tempval, ptr align 8 %ptradd, i64 24, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %x, ptr align 8 %tempval, i64 24, i1 false)
   %ptradd1 = getelementptr inbounds i8, ptr %x, i64 24
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %ptradd1, ptr align 8 %tempval, i32 24, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %ptradd1, ptr align 8 %tempval, i64 24, i1 false)
   %ptradd2 = getelementptr inbounds i8, ptr %x, i64 48
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %ptradd2, ptr align 8 %tempval, i32 24, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %y, ptr align 16 @.__const.1, i32 48, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %ptradd2, ptr align 8 %tempval, i64 24, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %y, ptr align 16 @.__const.1, i64 48, i1 false)
   %ptradd3 = getelementptr inbounds i8, ptr %y, i64 16
   %0 = load %Bar, ptr %ptradd3, align 16
   store %Bar %0, ptr %y, align 16

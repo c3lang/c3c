@@ -209,7 +209,7 @@ loop.body:                                        ; preds = %loop.cond
   %4 = load ptr, ptr %y, align 8
   %5 = load i64, ptr %.anon, align 8
   %ptroffset = getelementptr inbounds [16 x i8], ptr %4, i64 %5
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %element, ptr align 8 %ptroffset, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %element, ptr align 8 %ptroffset, i64 16, i1 false)
   %lo = load i64, ptr %element, align 8
   %ptradd2 = getelementptr inbounds i8, ptr %element, i64 8
   %hi = load ptr, ptr %ptradd2, align 8
@@ -333,9 +333,9 @@ if.exit15:                                        ; preds = %if.then14, %if.exit
   call void @foo.test(i64 %lo29, ptr %hi31)
   call void (ptr, ...) @printf(ptr @.str.9)
   store ptr null, ptr %df, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %varargslots, ptr align 8 %x, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %varargslots, ptr align 8 %x, i64 16, i1 false)
   %ptradd32 = getelementptr inbounds i8, ptr %varargslots, i64 16
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %ptradd32, ptr align 8 %x, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %ptradd32, ptr align 8 %x, i64 16, i1 false)
   store double 1.000000e+00, ptr %taddr33, align 8
   %20 = insertvalue %any undef, ptr %taddr33, 0
   %21 = insertvalue %any %20, i64 ptrtoint (ptr @"$ct.double" to i64), 1

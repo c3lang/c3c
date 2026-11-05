@@ -2605,7 +2605,7 @@ static void expr_rewrite_bytes_to_const_initializer(Expr *expr, Type *target_typ
 {
 	Type *flat_vec = type_flatten(target_type);
 	Type *base = type_flatten(flat_vec->array.base);
-	ConstInitializer **inits = MALLOC(sizeof(ConstInitializer*) * expr->const_expr.bytes.len);
+	ConstInitializer **inits = VECNEW(ConstInitializer*, expr->const_expr.bytes.len);
 	for (int i = 0; i < expr->const_expr.bytes.len; i++)
 	{
 		Expr *conv_expr;
@@ -2619,7 +2619,7 @@ static void expr_rewrite_bytes_to_const_initializer(Expr *expr, Type *target_typ
 		}
 
 		ConstInitializer *init = const_init_new_value(conv_expr);
-		inits[i] = init;
+		vec_add(inits, init);
 	}
 	ASSERT(inits);
 	Type *type = type_get_vector(base, flat_vec->type_kind, expr->const_expr.bytes.len);

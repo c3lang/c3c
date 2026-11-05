@@ -1,0 +1,21 @@
+// #target: macos-aarch64
+// #safe: yes
+// #file: panics.c3
+module std::core::runtime::panics;
+
+fn int hello() @export("panics_hello") => 42;
+
+// #file: test.c3
+module test;
+import std::core::runtime::panics;
+
+fn int main(String[] args)
+{
+	assert(args.len > 5);
+	return panics::hello();
+}
+
+/* #expect: std.core.runtime.panics.ll
+
+define weak i32 @panics_hello()
+define weak void @std.core.runtime.panics.assert(

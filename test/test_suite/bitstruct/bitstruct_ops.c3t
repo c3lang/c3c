@@ -179,7 +179,7 @@ entry:
   %47 = load i104, ptr %b2, align 1
   %and28 = and i104 %46, %47
   store i104 %and28, ptr %0, align 1
-  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %b3, ptr align 1 %0, i32 13, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 1 %b3, ptr align 1 %0, i64 13, i1 false)
   %48 = load i8, ptr %b3, align 1
   %49 = trunc i8 %48 to i1
   %50 = zext i1 %49 to i8
@@ -210,7 +210,7 @@ entry:
   %64 = load i104, ptr %b3, align 1
   %bnot39 = xor i104 %64, -1
   store i104 %bnot39, ptr %1, align 1
-  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %b3, ptr align 1 %1, i32 13, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 1 %b3, ptr align 1 %1, i64 13, i1 false)
   %65 = load i8, ptr %b3, align 1
   %66 = trunc i8 %65 to i1
   %67 = zext i1 %66 to i8
@@ -243,7 +243,7 @@ entry:
   %82 = load i104, ptr %taddr50, align 1
   %xor51 = xor i104 %81, %82
   store i104 %xor51, ptr %2, align 1
-  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %b3, ptr align 1 %2, i32 13, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 1 %b3, ptr align 1 %2, i64 13, i1 false)
   %83 = load i8, ptr %b3, align 1
   %84 = trunc i8 %83 to i1
   %85 = zext i1 %84 to i8

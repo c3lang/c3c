@@ -35,8 +35,8 @@ define i32 @main() #0 {
 entry:
   %literal = alloca %Vec3, align 4
   %coerce = alloca %Vec3, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const, i32 12, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %coerce, ptr align 4 %literal, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %literal, ptr align 4 @.__const, i64 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %coerce, ptr align 4 %literal, i64 12, i1 false)
   %lo = load <2 x float>, ptr %coerce, align 8
   %ptradd = getelementptr inbounds i8, ptr %coerce, i64 8
   %hi = load float, ptr %ptradd, align 8
