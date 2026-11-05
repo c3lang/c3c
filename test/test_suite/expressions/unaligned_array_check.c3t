@@ -13,8 +13,6 @@ fn int main()
 }
 
 /* #expect: test.ll
-
-
 define i32 @main() #0 {
 entry:
   %x = alloca [35 x i8], align 16
@@ -29,7 +27,7 @@ entry:
   br i1 %ne, label %assert_ok, label %assert_fail
 
 assert_fail:                                      ; preds = %entry
-  call void @__c3_panic(ptr @.panic_loc) #3
+  call void @std.core.runtime.panics.ref_arg(ptr @.panic_str, ptr @.panic_str.1, i32 243) #3
   unreachable
 
 assert_ok:                                        ; preds = %entry
@@ -50,6 +48,6 @@ checkok:                                          ; preds = %assert_ok
   ret i32 0
 
 panic:                                            ; preds = %assert_ok
-  call void @__c3_panicf.long.long(ptr @.panic_loc.3, i64 8, i64 %2) #3
+  call void @std.core.runtime.panics.unaligned.long.long(ptr @.panic_str.2, ptr @.panic_str.1, i32 8, i64 8, i64 %2) #3
   unreachable
 }

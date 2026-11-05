@@ -552,7 +552,6 @@ void sema_trace_liveness(void)
 		sema_trace_decl_liveness(NULL, compiler.context.main);
 	}
 	sema_trace_decl_liveness(NULL, compiler.context.panic_var);
-	sema_trace_decl_liveness(NULL, compiler.context.panicf);
 	bool keep_all = !strip_unused();
 	bool keep_tests = compiler.build.build_test;
 	bool keep_benchmarks = compiler.build.build_benchmark;

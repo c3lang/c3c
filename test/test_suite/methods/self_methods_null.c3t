@@ -10,7 +10,6 @@ fn int main()
     return 0;
 }
 /* #expect: test.ll
-
 define void @test.Foo.test(ptr %0) #0 {
 entry:
   %1 = icmp eq ptr %0, null
@@ -20,6 +19,6 @@ checkok:                                          ; preds = %entry
   ret void
 
 panic:                                            ; preds = %entry
-  call void @__c3_panic(ptr @.panic_loc)
+  call void @std.core.runtime.panics.ref_param(ptr @.panic_str, ptr @.panic_str.1, i32 3, ptr @.panic_str.2) #2
   unreachable
 }

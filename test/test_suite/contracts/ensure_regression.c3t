@@ -20,7 +20,6 @@ fn int main()
 }
 
 /* #expect: test.ll
-
 define { ptr, i64 } @test.test(ptr %0, i64 %1, i64 %2) #0 {
 entry:
   %buf = alloca %"char[]", align 8
@@ -37,7 +36,7 @@ if.then:                                          ; preds = %entry
   br i1 %eq1, label %assert_ok, label %assert_fail
 
 assert_fail:                                      ; preds = %if.then
-  call void @__c3_panic(ptr @.panic_loc) #3
+  call void @std.core.runtime.panics.ensure(ptr @.panic_str, ptr @.panic_str.1, i32 8, ptr @.panic_str.2) #3
   unreachable
 
 assert_ok:                                        ; preds = %if.then
@@ -53,7 +52,7 @@ if.exit:                                          ; preds = %entry
   br i1 %eq3, label %assert_ok5, label %assert_fail4
 
 assert_fail4:                                     ; preds = %if.exit
-  call void @__c3_panic(ptr @.panic_loc.1) #3
+  call void @std.core.runtime.panics.ensure(ptr @.panic_str, ptr @.panic_str.1, i32 9, ptr @.panic_str.2) #3
   unreachable
 
 assert_ok5:                                       ; preds = %if.exit
@@ -73,4 +72,3 @@ entry:
   store { ptr, i64 } %2, ptr %result, align 8
   ret i32 0
 }
-

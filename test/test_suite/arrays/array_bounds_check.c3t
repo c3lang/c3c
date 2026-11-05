@@ -42,37 +42,21 @@ loop.exit:                                        ; preds = %loop.cond
   ret void
 
 panic:                                            ; preds = %loop.body
-  store i64 %1, ptr %taddr, align 8
-  %8 = extractvalue %"char[]" %4, 0
-  %9 = extractvalue %"char[]" %4, 1
-  %10 = extractvalue %"char[]" %5, 0
-  %11 = extractvalue %"char[]" %5, 1
-  store ptr %taddr, ptr %varargslots, align 16
-  %ptradd3 = getelementptr inbounds i8, ptr %varargslots, i64 8
-  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd3, align 8
-  store ptr %varargslots, ptr %panicarg, align 8
-  %ptradd4 = getelementptr inbounds i8, ptr %panicarg, i64 8
-  store i64 1, ptr %ptradd4, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 38, ptr %8, i64 %9, ptr %10, i64 %11, i32 %6, ptr byval(%"any[]") align 8 %panicarg) #3
-  unreachable
-
-next:                                             ; preds = %entry
-  store i64 %2, ptr %taddr, align 8
-  store i64 %1, ptr %taddr5, align 8
-  %12 = extractvalue %"char[]" %4, 0
-  %13 = extractvalue %"char[]" %4, 1
-  %14 = extractvalue %"char[]" %5, 0
-  %15 = extractvalue %"char[]" %5, 1
-  store ptr %taddr, ptr %varargslots6, align 16
-  %ptradd7 = getelementptr inbounds i8, ptr %varargslots6, i64 8
-  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd7, align 8
-  %ptradd8 = getelementptr inbounds i8, ptr %varargslots6, i64 16
-  store ptr %taddr5, ptr %ptradd8, align 16
-  %ptradd9 = getelementptr inbounds i8, ptr %ptradd8, i64 8
-  store i64 ptrtoint (ptr @"$ct.long" to i64), ptr %ptradd9, align 8
-  store ptr %varargslots6, ptr %panicarg, align 8
-  %ptradd10 = getelementptr inbounds i8, ptr %panicarg, i64 8
-  store i64 2, ptr %ptradd10, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64 59, ptr %12, i64 %13, ptr %14, i64 %15, i32 %6, ptr byval(%"any[]") align 8 %panicarg) #3
+  call void @std.core.runtime.panics.index.long.long(ptr @.panic_str, ptr @.panic_str.1, i32 15, i64 %1, i64 2) #2
   unreachable
 }
+
+; Function Attrs: nounwind ssp uwtable
+define i32 @main(i32 %0, ptr %1) #0 {
+entry:
+  call void @testing.main()
+  ret i32 0
+}
+
+declare void @std.core.runtime.panics.index.long.long(ptr, ptr, i32, i64, i64) #1
+
+/* #expect: std.core.runtime.panics.ll
+
+c"Negative array indexing (index was %d)\00"
+c"Array index out of bounds (array had size %d, index was %d)\00"
+define weak void @std.core.runtime.panics.index.long.long(ptr %0, ptr %1, i32 %2, i64 %3, i64 %4) #0 {

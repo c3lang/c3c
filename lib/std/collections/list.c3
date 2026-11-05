@@ -400,21 +400,23 @@ fn bool List.contains(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 <*
  @param [&inout] self : "The list to remove elements from"
  @param value : "The value to remove"
+ @param unordered : "Do not preserve ordering"
  @return "true if the value was found"
 *>
-fn bool List.remove_last_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
+fn bool List.remove_last_item(&self, Type value, bool unordered = false) @if(ELEMENT_IS_EQUATABLE)
 {
-	return @ok(self.remove_at(self.rindex_of(value)));
+	return @ok(unordered ? self.remove_unordered_at(self.rindex_of(value)) : self.remove_at(self.rindex_of(value)));
 }
 
 <*
  @param [&inout] self : "The list to remove elements from"
  @param value : "The value to remove"
+ @param unordered : "Do not preserve ordering"
  @return "true if the value was found"
 *>
-fn bool List.remove_first_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
+fn bool List.remove_first_item(&self, Type value, bool unordered = false) @if(ELEMENT_IS_EQUATABLE)
 {
-	return @ok(self.remove_at(self.index_of(value)));
+	return @ok(unordered ? self.remove_unordered_at(self.index_of(value)) : self.remove_at(self.index_of(value)));
 }
 <*
  @param [&inout] self : "The list to remove elements from"

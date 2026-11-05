@@ -39,7 +39,6 @@ fn void main()
 }
 
 /* #expect: test.ll
-
 define i64 @test.readDoc(ptr %0, ptr %1, i64 %2) #0 {
 entry:
   %.anon = alloca %"char[]", align 8
@@ -153,10 +152,10 @@ loop.exit:                                        ; preds = %loop.cond
   ret void
 
 panic:                                            ; preds = %loop.body
-  call void @__c3_panic_index.long(ptr @.panic_loc, i64 %4, i64 %2) #4
+  call void @std.core.runtime.panics.index.long.long(ptr @.panic_str, ptr @.panic_str.1, i32 33, i64 %4, i64 %2) #4
   unreachable
 
 panic1:                                           ; preds = %checkok
-  call void @__c3_panicf.long.long(ptr @.panic_loc.1, i64 8, i64 %7) #4
+  call void @std.core.runtime.panics.unaligned.long.long(ptr @.panic_str, ptr @.panic_str.1, i32 33, i64 8, i64 %7) #4
   unreachable
 }

@@ -348,10 +348,11 @@ void c_emit_panic(GenContext *c, const char *message, SourceLocId loc, Expr **ar
 	uint32_t line = location ? location->row : 0;
 
 	int num_args = vec_size(args);
-	if (num_args > 0 && compiler.context.panicf)
+	const char *summary = num_args ? panic_fn_desc[PANIC_FN_ASSERT_VIOLATION].format : (message ? message : "");
+	VariableId arr_var = 0;
+	if (num_args)
 	{
-		Decl *panicf = compiler.context.panicf;
-		VariableId arr_var = c_emit_alloca_array(c, type_any, num_args);
+		arr_var = c_emit_alloca_array(c, type_any, num_args);
 		for (int i = 0; i < num_args; i++)
 		{
 			CValue arg_val = {0};
@@ -361,26 +362,23 @@ void c_emit_panic(GenContext *c, const char *message, SourceLocId loc, Expr **ar
 			snprintf(slot, sizeof(slot), "___var_%d[%d]", arr_var, i);
 			c_emit_assign_to_any(c, slot, &arg_val);
 		}
-		c_emit_function_decl(c, panicf, false);
-		PRINTF("%s((__c3_slice_uint8_t){(uint8_t*)", c_get_decl_name(panicf));
-		c_emit_string_literal(c, message ? message : "", message ? (ArrayIndex)strlen(message) : 0);
-		PRINTF(", %zu}, (__c3_slice_uint8_t){(uint8_t*)", message ? strlen(message) : 0);
-		c_emit_string_literal(c, filename, (ArrayIndex)strlen(filename));
-		PRINTF(", %zu}, (__c3_slice_uint8_t){(uint8_t*)", strlen(filename));
-		c_emit_string_literal(c, funcname, (ArrayIndex)strlen(funcname));
-		PRINTF(", %zu}, %u, (__c3_slice___c3_any__){ .ptr = ___var_%d, .len = %d }); __c3_abort();\n",
-		       strlen(funcname), line, arr_var, num_args);
-		return;
 	}
-
 	const char *panic_name = c_get_decl_name(panic_var);
-	PRINTF("if (%s) { ((void (*)(__c3_slice_uint8_t, __c3_slice_uint8_t, __c3_slice_uint8_t, int32_t))%s)((__c3_slice_uint8_t){(uint8_t*)", panic_name, panic_name);
-	c_emit_string_literal(c, message ? message : "", message ? (ArrayIndex)strlen(message) : 0);
-	PRINTF(", %zu}, (__c3_slice_uint8_t){(uint8_t*)", message ? strlen(message) : 0);
+	PRINTF("if (%s) { ((void (*)(__c3_slice_uint8_t, __c3_slice_uint8_t, __c3_slice_uint8_t, int32_t, __c3_slice_uint8_t, __c3_slice___c3_any__))%s)((__c3_slice_uint8_t){(uint8_t*)", panic_name, panic_name);
+	c_emit_string_literal(c, summary, (ArrayIndex)strlen(summary));
+	PRINTF(", %zu}, (__c3_slice_uint8_t){(uint8_t*)", strlen(summary));
 	c_emit_string_literal(c, filename, (ArrayIndex)strlen(filename));
 	PRINTF(", %zu}, (__c3_slice_uint8_t){(uint8_t*)", strlen(filename));
 	c_emit_string_literal(c, funcname, (ArrayIndex)strlen(funcname));
-	PRINTF(", %zu}, %u); } __c3_abort();\n", strlen(funcname), line);
+	PRINTF(", %zu}, %u, ", strlen(funcname), line);
+	if (num_args)
+	{
+		PRINT("(__c3_slice_uint8_t){(uint8_t*)");
+		c_emit_string_literal(c, message, (ArrayIndex)strlen(message));
+		PRINTF(", %zu}, (__c3_slice___c3_any__){ .ptr = ___var_%d, .len = %d }); } __c3_abort();\n", strlen(message), arr_var, num_args);
+		return;
+	}
+	PRINT("(__c3_slice_uint8_t){0}, (__c3_slice___c3_any__){0}); } __c3_abort();\n");
 }
 
 static void c_traverse_decl(GenContext *c, Decl *d, CDeclVisitor visitor, void *userdata)

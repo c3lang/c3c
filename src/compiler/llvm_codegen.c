@@ -74,11 +74,10 @@ static void gencontext_init(GenContext *context, Module *module, LLVMContextRef 
 	{
 		context->context = LLVMContextCreate();
 	}
-	if (debug_log)
-	{
-		LLVMContextSetDiagnosticHandler(context->context, &diagnostics_handler, context);
-	}
-	if (!compiler.build.emit_llvm && !compiler.build.test_output && !compiler.build.benchmark_output ) LLVMContextSetDiscardValueNames(context->context, true);
+
+	if (debug_log) LLVMContextSetDiagnosticHandler(context->context, &diagnostics_handler, context);
+	if (!compiler.build.emit_llvm && !compiler.build.test_output) LLVMContextSetDiscardValueNames(context->context, true);
+
 	context->code_module = module;
 }
 
@@ -1735,6 +1734,23 @@ INLINE GenContext *llvm_gen_benchmarks(Module** modules, int module_count, LLVMC
 	return c;
 }
 
+static void llvm_finish_module(GenContext *c)
+{
+	if (llvm_use_debug(c))
+	{
+		LLVMDIBuilderFinalize(c->debug.builder);
+		LLVMDisposeDIBuilder(c->debug.builder);
+	}
+
+	if (compiler.build.test_output)
+	{
+		//  If it's in test then we want to serialize the IR before it is optimized.
+		bool success = gencontext_print_llvm_ir(c) && gencontext_verify_ir(c);
+		if (!success) exit_compiler(EXIT_FAILURE);
+	}
+}
+
+
 static int gen_context_cmp(const void* c1, const void* c2)
 {
 	GenContext *ctx1 = *((GenContext**)c1);
@@ -1810,6 +1826,80 @@ static GenContext *llvm_gen_module_with_stats(Module *module, LLVMContextRef sha
 	return context;
 }
 
+static void llvm_emit_panic_function(GenContext *c, PanicVariant *variant)
+{
+	LLVMValueRef func = llvm_get_panic_function(c, variant->id, variant->types);
+	llvm_set_weak(c, func);
+	c->cur_func.ref = func;
+	c->builder = llvm_create_function_entry(c, func, &c->current_block);
+	c->first_block = c->current_block;
+	c->alloca_point = LLVMBuildAlloca(c->builder, LLVMInt32TypeInContext(c->context), "alloca_point");
+	DebugScope scope;
+	if (llvm_use_debug(c))
+	{
+		llvm_emit_debug_artificial_function(c, func);
+		scope = (DebugScope) { .lexical_block = c->debug.function };
+		c->debug.block_stack = &scope;
+		LLVMSetCurrentDebugLocation2(c->builder, LLVMDIBuilderCreateDebugLocation(c->context, 0, 0, c->debug.function, NULL));
+		c->last_emitted_loc = 0;
+	}
+	llvm_emit_panic_function_body(c, variant->id, variant->types, func);
+	if (llvm_use_debug(c))
+	{
+		c->debug.block_stack = NULL;
+		LLVMDIBuilderFinalizeSubprogram(c->debug.builder, c->debug.function);
+		c->debug.function = NULL;
+	}
+	LLVMInstructionEraseFromParent(c->alloca_point);
+	c->alloca_point = NULL;
+	LLVMDisposeBuilder(c->builder);
+}
+
+INLINE GenContext *llvm_gen_panic_functions(LLVMContextRef shared_context)
+{
+	Path *path = path_create_from_string(PANIC_MODULE_NAME, sizeof(PANIC_MODULE_NAME) - 1, 0);
+	Module *module = compiler_find_or_create_module(path);
+	CompilationUnit *unit = compiler.context.core_unit;
+
+	GenContext *c = cmalloc(sizeof(GenContext));
+	gencontext_init(c, module, shared_context);
+	gencontext_begin_module(c);
+	gencontext_init_file_emit(c, unit);
+	c->debug.compile_unit = unit->llvm.debug_compile_unit;
+	c->debug.file = (DebugFile){ .debug_file = unit->llvm.debug_file, .file_id = unit->file->file_id };
+
+	for (int i = 0; i < vec_size(compiler.context.panic_variants); i++)
+	{
+		llvm_emit_panic_function(c, &compiler.context.panic_variants[i]);
+	}
+	c->builder = c->global_builder;
+	c->cur_func.ref = NULL;
+
+	llvm_finish_module(c);
+	c->module_size = LLVMGetModuleInstructionCount(c->module);
+
+	return c;
+}
+
+static GenContext *llvm_find_panic_module(GenContext **gen_contexts)
+{
+	FOREACH(GenContext *, c, gen_contexts)
+	{
+		if (str_eq(c->code_module->name->module, PANIC_MODULE_NAME)) return c;
+	}
+	return NULL;
+}
+
+static void llvm_merge_panic_module(GenContext *real_module, GenContext *generated)
+{
+	LLVMLinkModules2(real_module->module, generated->module);
+	gencontext_destroy(generated);
+	real_module->module_size = LLVMGetModuleInstructionCount(real_module->module);
+	if (compiler.build.test_output)
+	{
+		if (!gencontext_print_llvm_ir(real_module) || !gencontext_verify_ir(real_module)) exit_compiler(EXIT_FAILURE);
+	}
+}
 static int function_size_cmp(const void *a, const void *b)
 {
 	int x = ((const FunctionSize *)a)->instructions;
@@ -2005,6 +2095,11 @@ void llvm_collect_module_times(void)
 	}
 }
 
+static bool llvm_should_emit_panic_module(void)
+{
+	return vec_size(compiler.context.panic_variants) > 0;
+}
+
 void **llvm_gen(Module** modules, int module_count)
 {
 	if (!module_count) return NULL;
@@ -2030,6 +2125,12 @@ void **llvm_gen(Module** modules, int module_count)
 		{
 			BenchTime start = benchstart();
 			GenContext *generated = llvm_gen_tests(modules, module_count, context);
+			vec_add(gen_contexts, llvm_stats_add_context(generated, STATS_ORIGIN_GENERATED, benchmark(start)));
+		}
+		if (llvm_should_emit_panic_module())
+		{
+			BenchTime start = benchstart();
+			GenContext *generated = llvm_gen_panic_functions(context);
 			vec_add(gen_contexts, llvm_stats_add_context(generated, STATS_ORIGIN_GENERATED, benchmark(start)));
 		}
 		int count = vec_size(gen_contexts);
@@ -2079,6 +2180,20 @@ void **llvm_gen(Module** modules, int module_count)
 		BenchTime start = benchstart();
 			GenContext *generated = llvm_gen_tests(modules, module_count, NULL);
 			vec_add(gen_contexts, llvm_stats_add_context(generated, STATS_ORIGIN_GENERATED, benchmark(start)));
+	}
+	if (llvm_should_emit_panic_module())
+	{
+		BenchTime start = benchstart();
+		GenContext *real_module = llvm_find_panic_module(gen_contexts);
+		GenContext *generated = llvm_gen_panic_functions(real_module ? real_module->context : NULL);
+		if (real_module)
+		{
+			llvm_merge_panic_module(real_module, generated);
+		}
+		else
+		{
+			vec_add(gen_contexts, llvm_stats_add_context(generated, STATS_ORIGIN_GENERATED, benchmark(start)));
+		}
 	}
 	int contexts_count = vec_size(gen_contexts);
 	qsort(gen_contexts, contexts_count, sizeof(void*), &gen_context_cmp);
@@ -2233,26 +2348,15 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 
 	llvm_emit_dynamic_functions(gen_context, gen_context->dynamic_functions);
 
-	llvm_emit_panic_helpers(gen_context);
-
 	llvm_emit_constructors_and_destructors(gen_context);
 
-	if (llvm_use_debug(gen_context))
-	{
-		LLVMDIBuilderFinalize(gen_context->debug.builder);
-		LLVMDisposeDIBuilder(gen_context->debug.builder);
-	}
-
-	// If it's in test or benchmark, then we want to serialize the IR before it is optimized.
-	if (compiler.build.test_output || compiler.build.benchmark_output)
-	{
-		bool success = gencontext_print_llvm_ir(gen_context) && gencontext_verify_ir(gen_context);
-		if (!success) exit_compiler(EXIT_FAILURE);
-	}
+	llvm_finish_module(gen_context);
 	if (!has_elements) return NULL;
 	gen_context->module_size = LLVMGetModuleInstructionCount(gen_context->module);
 	return gen_context;
 }
+
+
 
 void llvm_attribute_add_int(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute, uint64_t val, int index)
 {

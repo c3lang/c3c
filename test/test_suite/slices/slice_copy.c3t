@@ -11,7 +11,6 @@ fn int main()
 }
 
 /* #expect: test.ll
-
 define i32 @main() #0 {
 entry:
   %str = alloca %"char[]", align 8
@@ -39,14 +38,14 @@ checkok4:                                         ; preds = %checkok2
   ret i32 0
 
 panic:                                            ; preds = %entry
-  call void @__c3_panic_slice.long(ptr @.panic_loc, i32 1, i64 0, i64 undef, i64 %2) #4
+  call void @std.core.runtime.panics.slice.long.long.long.long(ptr @.panic_str, ptr @.panic_str.2, i32 7, i64 1, i64 0, i64 undef, i64 %2) #4
   unreachable
 
 panic1:                                           ; preds = %checkok
-  call void @__c3_panicf.long.long(ptr @.panic_loc.2, i64 2, i64 %2) #4
+  call void @std.core.runtime.panics.slice_end.long.long(ptr @.panic_str, ptr @.panic_str.2, i32 7, i64 2, i64 %2) #4
   unreachable
 
 panic3:                                           ; preds = %checkok2
-  call void @__c3_panicf.long.long(ptr @.panic_loc.4, i64 %7, i64 3) #4
+  call void @std.core.runtime.panics.slice_copy.long.long(ptr @.panic_str, ptr @.panic_str.2, i32 7, i64 %7, i64 3) #4
   unreachable
 }

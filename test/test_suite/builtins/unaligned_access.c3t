@@ -37,7 +37,7 @@ checkok:                                          ; preds = %entry
   br i1 %ne, label %assert_ok, label %assert_fail
 
 assert_fail:                                      ; preds = %checkok
-  call void @__c3_panic(ptr @.panic_loc.3) #2
+  call void @std.core.runtime.panics.ref_arg(ptr @.panic_str.3, ptr @.panic_str.1, i32 243) #2
   unreachable
 
 assert_ok:                                        ; preds = %checkok
@@ -61,7 +61,7 @@ checkok12:                                        ; preds = %assert_ok
   br i1 %ne14, label %assert_ok16, label %assert_fail15
 
 assert_fail15:                                    ; preds = %checkok12
-  call void @__c3_panic(ptr @.panic_loc.5) #2
+  call void @std.core.runtime.panics.ref_arg(ptr @.panic_str.3, ptr @.panic_str.1, i32 259) #2
   unreachable
 
 assert_ok16:                                      ; preds = %checkok12
@@ -81,22 +81,19 @@ checkok19:                                        ; preds = %assert_ok16
   ret i32 0
 
 panic:                                            ; preds = %entry
-  call void @__c3_panic_deref(ptr @.panic_loc, i64 %1, i64 4) #2
+  call void @std.core.runtime.panics.deref.long.long(ptr @.panic_str, ptr @.panic_str.1, i32 9, ptr @.panic_str.2, i64 %1, i64 4) #2
   unreachable
 
 panic11:                                          ; preds = %assert_ok
-  call void @__c3_panic_deref(ptr @.panic_loc.4, i64 %11, i64 4) #2
+  call void @std.core.runtime.panics.deref.long.long(ptr @.panic_str, ptr @.panic_str.1, i32 11, ptr @.panic_str.2, i64 %11, i64 4) #2
   unreachable
 
 panic18:                                          ; preds = %assert_ok16
-  call void @__c3_panic_deref(ptr @.panic_loc.6, i64 %19, i64 4) #2
+  call void @std.core.runtime.panics.deref.long.long(ptr @.panic_str, ptr @.panic_str.1, i32 13, ptr @.panic_str.2, i64 %19, i64 4) #2
   unreachable
 }
-; Function Attrs: noinline noreturn nounwind uwtable
-define linkonce_odr void @__c3_panic_deref(ptr %0, i64 %1, i64 %2) #1 {
+/* #expect: std.core.runtime.panics.ll
 
-entry:
-  %taddr = alloca i64, align 8
-  %taddr3 = alloca i64, align 8
-  %varargslots = alloca [2 x %any], align 16
-  %panicarg = alloca %"any[]", align 8
+c"Dereference of null pointer, '%s' was null.\00"
+c"Unaligned access: ptr %% %s = %s, use mem::load / mem::store for unaligned access.\00"
+define weak void @std.core.runtime.panics.deref.long.long(ptr %0, ptr %1, i32 %2, ptr %3, i64 %4, i64 %5) #0 {

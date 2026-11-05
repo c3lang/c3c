@@ -1,0 +1,16 @@
+// #target: emscripten
+// #safe: yes
+module test;
+
+fn void main(String[] args)
+{
+	assert(args.len > 5);
+}
+
+/* #expect: test.ll
+
+call void @std.core.runtime.panics.assert(ptr @.panic_str, ptr @.panic_str.1, i32 5)
+
+/* #expect: std.core.runtime.panics.ll
+
+@.panic_msg = internal constant [14 x i8] c"Assert failed\00", align 1

@@ -166,16 +166,13 @@ fn void main()
 }
 
 /* #expect: text_test.ll
-
 define void @text_test.main() #0 {
 entry:
   %foo_tmpl = alloca %"char[]", align 8
   %ft = alloca %"TextTemplate{Foo}", align 8
   %error_var = alloca i64, align 8
   %indirectarg = alloca %"char[]", align 8
-  %varargslots = alloca [1 x %any], align 16
-  %panicarg = alloca %"any[]", align 8
-  %error_var3 = alloca i64, align 8
+  %error_var1 = alloca i64, align 8
   store %"char[]" { ptr @.str, i64 21 }, ptr %foo_tmpl, align 8
   call void @llvm.memset.p0.i64(ptr align 8 %ft, i8 0, i64 72, i1 false)
   %0 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocators.current_temp)
@@ -195,37 +192,24 @@ after_check:                                      ; preds = %entry
   br label %noerr_block
 
 panic_block:                                      ; preds = %assign_optional
-  store ptr %error_var, ptr %varargslots, align 16
-  %ptradd1 = getelementptr inbounds i8, ptr %varargslots, i64 8
-  store i64 ptrtoint (ptr @"$ct.fault" to i64), ptr %ptradd1, align 8
-  store ptr %varargslots, ptr %panicarg, align 8
-  %ptradd2 = getelementptr inbounds i8, ptr %panicarg, i64 8
-  store i64 1, ptr %ptradd2, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg,
+  %2 = load i64, ptr %error_var, align 8
+  call void @std.core.runtime.panics.unwrap.fault(ptr @.panic_str, ptr @.panic_str.3, i32 161, i64 %2) #4
   unreachable
 
 noerr_block:                                      ; preds = %after_check
-  %2 = call i64 @"abc.TextTemplate$text_test.Foo$.free"(ptr %ft)
-  %not_err4 = icmp eq i64 %2, 0
-  br i1 %not_err4, label %after_check6, label %assign_optional5
-
-assign_optional5:                                 ; preds = %noerr_block
-  store i64 %2, ptr %error_var3, align 8
-  br label %panic_block7
-
-after_check6:                                     ; preds = %noerr_block
-  br label %noerr_block10
-
-panic_block7:                                     ; preds = %assign_optional5
-  store ptr %error_var3, ptr %varargslots, align 16
-  %ptradd8 = getelementptr inbounds i8, ptr %varargslots, i64 8
-  store i64 ptrtoint (ptr @"$ct.fault" to i64), ptr %ptradd8, align 8
-  store ptr %varargslots, ptr %panicarg, align 8
-  %ptradd9 = getelementptr inbounds i8, ptr %panicarg, i64 8
-  store i64 1, ptr %ptradd9, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36,
+  %3 = call i64 @"abc.TextTemplate$text_test.Foo$.free"(ptr %ft)
+  %not_err2 = icmp eq i64 %3, 0
+  br i1 %not_err2, label %after_check4, label %assign_optional3
+assign_optional3:                                 ; preds = %noerr_block
+  store i64 %3, ptr %error_var1, align 8
+  br label %panic_block5
+after_check4:                                     ; preds = %noerr_block
+  br label %noerr_block6
+panic_block5:                                     ; preds = %assign_optional3
+  %4 = load i64, ptr %error_var1, align 8
+  call void @std.core.runtime.panics.unwrap.fault(ptr @.panic_str, ptr @.panic_str.3, i32 162, i64 %4) #4
   unreachable
 
-noerr_block10:                                    ; preds = %after_check6
+noerr_block6:                                     ; preds = %after_check4
   ret void
 }

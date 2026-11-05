@@ -22,7 +22,6 @@ fn void main()
 }
 
 /* #expect: test.ll
-
 define i64 @test.test1(i32 %0) #0 {
 entry:
   %error_var = alloca i64, align 8
@@ -45,8 +44,6 @@ entry:
   %switch = alloca i64, align 8
   %varargslots = alloca [2 x %any], align 16
   %error_var = alloca i64, align 8
-  %varargslots1 = alloca [1 x %any], align 16
-  %panicarg = alloca %"any[]", align 8
   store i64 0, ptr %tok.f, align 8
   store i32 0, ptr %tok, align 4
   br label %testblock
@@ -98,13 +95,8 @@ switch.default:                                   ; preds = %switch.entry
   br label %panic_block
 
 panic_block:                                      ; preds = %switch.default
-  store ptr %error_var, ptr %varargslots1, align 16
-  %ptradd = getelementptr inbounds i8, ptr %varargslots1, i64 8
-  store i64 ptrtoint (ptr @"$ct.fault" to i64), ptr %ptradd, align 8
-  store ptr %varargslots1, ptr %panicarg, align 8
-  %ptradd2 = getelementptr inbounds i8, ptr %panicarg, i64 8
-  store i64 1, ptr %ptradd2, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr
+  %8 = load i64, ptr %error_var, align 8
+  call void @std.core.runtime.panics.unwrap.fault(ptr @.panic_str, ptr @.panic_str.1, i32 14, i64 %8) #2
   unreachable
 }
 

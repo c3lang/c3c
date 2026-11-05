@@ -349,71 +349,107 @@ static bool setup_main_runner(Decl *run_function)
 	main->no_strip = true;
 	return true;
 }
-static void assign_panicfn(void)
+static Decl *find_panic_decl(const char *name)
 {
-	if (compiler.build.feature.panic_level == PANIC_OFF || (!compiler.build.panicfn && no_stdlib()))
-	{
-		compiler.context.panic_var = NULL;
-		compiler.context.panicf = NULL;
-		return;
-	}
-
-	const char *panicfn = compiler.build.panicfn ? compiler.build.panicfn : "std::core::builtin::panic";
 	Path *path;
 	const char *ident;
-	if (sema_splitpathref(panicfn, strlen(panicfn), &path, &ident) != TOKEN_IDENT)
+	if (sema_splitpathref(name, strlen(name), &path, &ident) != TOKEN_IDENT)
 	{
-		error_exit("'%s' does not seem to be the name of a valid panic function.", panicfn);
+		error_exit("'%s' does not seem to be the name of a valid panic function.", name);
 	}
 	if (!ident)
 	{
-		error_exit("The name of the panic function, '%s' does not match any identifier found.", panicfn);
+		error_exit("The name of the panic function, '%s' does not match any identifier found.", name);
 	}
 	if (!path)
 	{
-		error_exit("The name of the panic function '%s' seems to missing the full path, something like 'foo::bar::panic' was expected.", panicfn);
+		error_exit("The name of the panic function '%s' seems to missing the full path, something like 'foo::bar::panic' was expected.", name);
 	}
 	Decl *decl = sema_find_decl_in_modules(compiler.context.module_list, path, ident);
 	if (!decl)
 	{
-		error_exit("Panic function pointer '%s::%s' could not be found.", path->module, ident);
+		error_exit("Panic function '%s' could not be found.", name);
 	}
-	Type *panic_fn_type = decl->type->canonical;
-	if (decl->decl_kind != DECL_VAR || !type_is_func_ptr(panic_fn_type))
-	{
-		error_exit("'%s::%s' is not a function pointer.", path->module, ident);
-	}
-	if (!type_func_match(panic_fn_type, type_void, 4, type_string, type_string, type_string, type_int))
-	{
-		error_exit("Expected panic function to have the signature fn void(String, String, String, int).");
-	}
-	compiler.context.panic_var = decl;
+	return decl;
+}
 
-	if (no_stdlib()) return;
-
-	const char *panicf = "std::core::builtin::panicf";
-	if (sema_splitpathref(panicf, strlen(panicf), &path, &ident) != TOKEN_IDENT || path == NULL || !ident)
+static void check_panic_signature(Type *type)
+{
+	if (!type_func_match(type, type_void, 6, type_string, type_string, type_string, type_int, type_string, type_get_slice(type_any)))
 	{
-		error_exit("'%s' is not a valid panicf function.", panicf);
+		error_exit("Expected panic function to have the signature fn void(String, String, String, int, String, any[]).");
 	}
-	Decl *panicf_decl = sema_find_decl_in_modules(compiler.context.module_list, path, ident);
-	if (!panicf_decl)
+}
+
+Decl *sema_panic_fn(SemaContext *context)
+{
+	if (compiler.context.panic_fn) return compiler.context.panic_fn;
+	const char *name = compiler.build.panicfn;
+	if (!name)
 	{
-		compiler.context.panicf = NULL;
+		if (no_stdlib()) return NULL;
+		name = "std::core::builtin::default_panic";
+	}
+	Decl *decl = find_panic_decl(name);
+	if (decl->decl_kind != DECL_FUNC)
+	{
+		error_exit("'%s' is not a function.", name);
+	}
+	if (!sema_analyse_decl(context, decl)) return NULL;
+	check_panic_signature(type_get_func_ptr(decl->type));
+	return compiler.context.panic_fn = decl;
+}
+
+static bool is_panic_function_name(const char *name)
+{
+	for (PanicFunction id = 0; id < PANIC_FN_COUNT; id++)
+	{
+		if (str_eq(name, panic_fn_desc[id].name)) return true;
+	}
+	return false;
+}
+
+static void check_panic_module_names(SemaContext *context, Decl **decls)
+{
+	FOREACH(Decl *, decl, decls)
+	{
+		if (decl->visibility == VISIBLE_LOCAL || !is_panic_function_name(decl->name)) continue;
+		SEMA_ERROR(decl, "'%s' is reserved in this module, it is the name of a generated panic function.", decl->name);
+	}
+}
+
+static void check_panic_module(void)
+{
+	FOREACH(Module *, module, compiler.context.module_list)
+	{
+		if (!str_eq(module->name->module, PANIC_MODULE_NAME)) continue;
+		FOREACH(CompilationUnit *, unit, module->units)
+		{
+			SemaContext context;
+			sema_context_init(&context, unit);
+			check_panic_module_names(&context, unit->functions);
+			check_panic_module_names(&context, unit->vars);
+			sema_context_destroy(&context);
+		}
+	}
+}
+
+static void assign_panicfn(void)
+{
+	compiler.context.panic_var = NULL;
+	if (no_panic()) return;
+	if (no_stdlib())
+	{
+		compiler.context.panic_var = sema_panic_fn(NULL);
 		return;
 	}
-
-	Type *panicf_fn_type = panicf_decl->type->canonical;
-	if (panicf_decl->decl_kind != DECL_FUNC)
+	Decl *decl = find_panic_decl("std::core::builtin::panic");
+	if (decl->decl_kind != DECL_VAR || !type_is_func_ptr(decl->type->canonical))
 	{
-		error_exit("'%s' is not a function function.", panicf);
+		error_exit("'std::core::builtin::panic' is not a function pointer.");
 	}
-	if (!type_func_match(type_get_func_ptr(panicf_fn_type), type_void, 5, type_string, type_string, type_string, type_int,
-	                     type_get_slice(type_any)))
-	{
-		error_exit("Expected panic function to have the signature fn void(String, String, String, uint, ...).");
-	}
-	compiler.context.panicf = panicf_decl;
+	check_panic_signature(decl->type->canonical);
+	compiler.context.panic_var = decl;
 }
 
 static void assign_testfn(void)
@@ -535,6 +571,7 @@ RESOLVE_LAMBDA:;
 		}
 	}
 	if (found_lambda) goto RESOLVE_LAMBDA;
+	check_panic_module();
 	halt_on_error();
 
 	assign_panicfn();

@@ -890,13 +890,6 @@ BUILD:
 			target->output_ast = true;
 			break;
 	}
-	if (options->benchmark_mode)
-	{
-		target->benchmark_output = true;
-		target->emit_llvm = false;
-		target->emit_asm = false;
-		target->emit_object_files = false;
-	}
 	if (options->lsp_mode)
 	{
 		target->lsp_output = true;

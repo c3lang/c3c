@@ -177,21 +177,7 @@ static inline void llvm_process_parameter_value_inner(GenContext *c, Decl *decl,
 			if (decl->var.not_null && safe_mode_enabled())
 			{
 				LLVMValueRef is_null = LLVMBuildIsNull(c->builder, param_value, "");
-				scratch_buffer_clear();
-				if (decl->name)
-				{
-					scratch_buffer_printf("Reference parameter '%s' was passed a null pointer argument.", decl->name);
-				}
-				else
-				{
-					// This is currently not possible, but let's handle it anyway.
-					scratch_buffer_append("A null pointer argument was passed to a '&' parameter.");
-				}
-				llvm_emit_panic_on_true(c,
-										is_null,
-										scratch_buffer_to_string(),
-										decl->loc,
-										NULL, NULL, NULL);
+				llvm_emit_panic_on_true(c, is_null, PANIC_FN_REF_PARAM, decl->loc, decl->name ? decl->name : "(anon)", NULL, NULL);
 			}
 			if (!decl->var.is_written && !decl->var.is_addr && !llvm_use_accurate_debug_info(c))
 			{

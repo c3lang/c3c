@@ -15,14 +15,11 @@ fn void main()
 }
 
 /* #expect: test.ll
-
 define void @test.main() #0 {
 entry:
   %error_var = alloca i64, align 8
   %error_var1 = alloca i64, align 8
   %retparam = alloca i32, align 4
-  %varargslots = alloca [1 x %any], align 16
-  %panicarg = alloca %"any[]", align 8
   %0 = call i64 @test.xy(ptr %retparam)
   %not_err = icmp eq i64 %0, 0
   br i1 %not_err, label %after_check, label %assign_optional
@@ -40,18 +37,13 @@ guard_block:                                      ; preds = %assign_optional
   br label %panic_block
 
 noerr_block:                                      ; preds = %after_check
-  br label %noerr_block3
+  br label %noerr_block2
 
 panic_block:                                      ; preds = %guard_block
-  store ptr %error_var, ptr %varargslots, align 16
-  %ptradd = getelementptr inbounds i8, ptr %varargslots, i64 8
-  store i64 ptrtoint (ptr @"$ct.fault" to i64), ptr %ptradd, align 8
-  store ptr %varargslots, ptr %panicarg, align 8
-  %ptradd2 = getelementptr inbounds i8, ptr %panicarg, i64 8
-  store i64 1, ptr %ptradd2, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg,
+  %2 = load i64, ptr %error_var, align 8
+  call void @std.core.runtime.panics.unwrap.fault(ptr @.panic_str, ptr @.panic_str.1, i32 13, i64 %2) #2
   unreachable
 
-noerr_block3:                                     ; preds = %noerr_block
+noerr_block2:                                     ; preds = %noerr_block
   ret void
 }
