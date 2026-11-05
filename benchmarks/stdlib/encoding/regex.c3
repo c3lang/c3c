@@ -48,6 +48,10 @@ fn void bench_setup() @init(1000)
 	set_benchmark_func_iterations($reflect(stress_multi_wildcard_c3).qname,                100);
 	set_benchmark_func_iterations($reflect(stress_backref_fail_a_c3).qname,              10_000);
 	set_benchmark_func_iterations($reflect(stress_backref_fail_ab_c3).qname,             10_000);
+	set_benchmark_func_iterations($reflect(stress_backref_nested_empty_c3).qname,       10_000);
+	set_benchmark_func_iterations($reflect(stress_backref_overrun_c3).qname,            10_000);
+	set_benchmark_func_iterations($reflect(stress_backref_reopened_group_c3).qname,     10_000);
+	set_benchmark_func_iterations($reflect(stress_find_all_backref_c3).qname,           10_000);
 
 	input_small   = repeat_str("a", 100);
 	input_medium  = repeat_str("a", 1000);
@@ -137,6 +141,9 @@ fn void bench_glibc_setup() @init(2000)
 	set_benchmark_func_iterations($reflect(stress_multi_wildcard_glibc).qname,           4_000);
 	set_benchmark_func_iterations($reflect(stress_backref_fail_a_glibc).qname,          1_000);
 	set_benchmark_func_iterations($reflect(stress_backref_fail_ab_glibc).qname,         1_000);
+	set_benchmark_func_iterations($reflect(stress_backref_nested_empty_glibc).qname,     1_000);
+	set_benchmark_func_iterations($reflect(stress_backref_overrun_glibc).qname,          1_000);
+	// set_benchmark_func_iterations($reflect(stress_backref_reopened_group_glibc).qname,   1_000);
 
 	int rc;
 	rc = regcomp(&glibc_re_simple, PATTERN_SIMPLE);
@@ -392,6 +399,58 @@ fn void stress_backref_fail_ab_glibc() @feat(POSIX)
 	regcomp(&re, "\\(ab\\)*\\1x", {});
 	regexec(&re, input_ab, 0, null);
 	regfree(&re);
+}
+
+fn void stress_backref_nested_empty_c3()
+{
+	Regex re = regex::compile(mem, "\\(\\(b*.*\\)*\\2*\\)*")!!;
+	(void)re.first_match("cbc");
+	re.free();
+}
+
+fn void stress_backref_nested_empty_glibc() @feat(POSIX)
+{
+	RegexT re;
+	regcomp(&re, "\\(\\(b*.*\\)*\\2*\\)*", {});
+	regexec(&re, "cbc", 0, null);
+	regfree(&re);
+}
+
+fn void stress_backref_overrun_c3()
+{
+	Regex re = regex::compile(mem, "\\(..\\)\\(\\1\\)*b*")!!;
+	(void)re.first_match("bcb");
+	re.free();
+}
+
+fn void stress_backref_overrun_glibc() @feat(POSIX)
+{
+	RegexT re;
+	regcomp(&re, "\\(..\\)\\(\\1\\)*b*", {});
+	regexec(&re, "bcb", 0, null);
+	regfree(&re);
+}
+
+fn void stress_backref_reopened_group_c3()
+{
+	Regex re = regex::compile(mem, "\\(b\\{0,2\\}\\(\\(b*\\|.a\\)\\{0,2\\}\\3*\\)*\\3*\\|b*\\(\\2\\2\\|aa\\)*\\2\\{0,2\\}\\)\\{0,2\\}")!!;
+	(void)re.tfind_all("cb");
+	re.free();
+}
+
+// fn void stress_backref_reopened_group_glibc() @feat(POSIX)
+// {
+// 	RegexT re;
+// 	regcomp(&re, "\\(b\\{0,2\\}\\(\\(b*\\|.a\\)\\{0,2\\}\\3*\\)*\\3*\\|b*\\(\\2\\2\\|aa\\)*\\2\\{0,2\\}\\)\\{0,2\\}", {});
+// 	regexec(&re, "cb", 0, null);
+// 	regfree(&re);
+// }
+
+fn void stress_find_all_backref_c3()
+{
+	Regex re = regex::compile(mem, "\\(o\\)\\1")!!;
+	(void)re.tfind_all("foo boo");
+	re.free();
 }
 
 
