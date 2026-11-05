@@ -1,6 +1,6 @@
 module std::compression::gzip_test;
 import std::compression::gzip @public;
-import std::io, std::math;
+import std::io, std::math, std::compression::deflate;
 
 fn void gzip_fhcrc() @test
 {
@@ -507,4 +507,92 @@ fn void gzip_read_after_close() @test
 
 		test::@error(reader.read(buf[..]), io::CLOSED);
 	};
+}
+
+fn char[] gzip_level_data(sz len)
+{
+	String[*] words = { "alpha ", "beta ", "gamma ", "delta ", "epsilon ", "zeta ", "eta ", "theta " };
+	char[] data = alloc::alloc_array(tmem, char, len);
+	ulong x = 4242;
+	sz pos = 0;
+	while (pos < len)
+	{
+		x ^= x << 13;
+		x ^= x >> 7;
+		x ^= x << 17;
+		foreach (c : words[(x >> 20) % words.len])
+		{
+			if (pos == len) break;
+			data[pos++] = c;
+		}
+	}
+	return data;
+}
+
+fn void gzip_all_levels_roundtrip_test() @test
+{
+	char[] data = gzip_level_data(60_000);
+	for (int level = deflate::MIN_LEVEL; level <= deflate::MAX_LEVEL; level++)
+	{
+		char[] gz = gzip::compress(tmem, data, level: level)!!;
+		char[] back = gzip::uncompress_bytes(tmem, gz)!!;
+		test::eq(back, data);
+
+		char[] gz2 = gzip::compress(tmem, data, true, "extra", "name.txt", "a comment", level)!!;
+		Gzip decoded = gzip::uncompress(tmem, gz2)!!;
+		test::eq(decoded.uncompressed, data);
+		test::eq(decoded.filename, "name.txt");
+	}
+}
+
+fn void gzip_level_sets_xfl_test() @test
+{
+	char[] data = gzip_level_data(5000);
+	// RFC 1952 section 2.3.1: XFL is 2 for the best compression, 4 for the fastest, 0 otherwise.
+	char[] fast = gzip::compress(tmem, data, level: deflate::MIN_LEVEL)!!;
+	char[] best = gzip::compress(tmem, data, level: deflate::MAX_LEVEL)!!;
+	char[] normal = gzip::compress(tmem, data)!!;
+	assert(fast[8] == 4, "Fastest level should set XFL to 4");
+	assert(best[8] == 2, "Best level should set XFL to 2");
+	assert(normal[8] == 0, "Default level should leave XFL at 0");
+}
+
+fn void gzip_default_level_is_explicit_default_test() @test
+{
+	char[] data = gzip_level_data(40_000);
+	char[] implicit = gzip::compress(tmem, data)!!;
+	char[] explicit = gzip::compress(tmem, data, level: deflate::DEFAULT_LEVEL)!!;
+	test::eq(implicit, explicit);
+}
+
+fn void gzip_higher_level_is_smaller_test() @test
+{
+	char[] data = gzip_level_data(200_000);
+	char[] fast = gzip::compress(tmem, data, level: deflate::MIN_LEVEL)!!;
+	char[] best = gzip::compress(tmem, data, level: deflate::MAX_LEVEL)!!;
+	assert(best.len < fast.len, "The highest level must beat the lowest");
+}
+
+fn void gzip_writer_with_level_test() @test
+{
+	char[] data = gzip_level_data(100_000);
+	foreach (int level : { 1, 6, 9 })
+	{
+		ByteWriter bw;
+		bw.tinit();
+		GzipWriter* gz = mem::tnew(GzipWriter);
+		gz.init(tmem, &bw, level: level)!!;
+		sz pos = 0;
+		sz step = 1;
+		while (pos < data.len)
+		{
+			sz n = math::min(step, data.len - pos);
+			gz.write(data[pos:n])!!;
+			pos += n;
+			step = step % 2999 + 1 + step / 5;
+		}
+		gz.close()!!;
+		char[] back = gzip::uncompress_bytes(tmem, bw.array_view())!!;
+		test::eq(back, data);
+	}
 }

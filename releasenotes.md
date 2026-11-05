@@ -119,6 +119,7 @@
 - `std::hash::adler32` `update` is about 3.5x faster (blocked modulo and portable vectors), results unchanged.
 - Rewrite `std::compression::deflate` inflate: table driven decoder, 2-3x faster decompression; truncated input is now rejected and `Inflater.init` works with the default `bit_reader_buf`.
 - Add an optional `level` (1-9) to `std::compression::deflate` `compress`, `compress_stream` and `Deflater.init`; the default level produces the same output as before. Faster deflate encoding, and incompressible data is stored instead of expanded.
+- Add an optional `level` to `std::compression::gzip` `compress`, `compress_stream` and `GzipWriter.init` (sets XFL per RFC 1952); the default is unchanged.
 
 ## 0.8.5 Change list
 
