@@ -117,6 +117,7 @@
 - Add `chmod` support #3536.
 - `std::hash::crc32` now uses slicing-by-16, about 5x faster. This also speeds up gzip and zip.
 - `std::hash::adler32` `update` is about 3.5x faster (blocked modulo and portable vectors), results unchanged.
+- Rewrite `std::compression::deflate` inflate: table driven decoder, 2-3x faster decompression; truncated input is now rejected and `Inflater.init` works with the default `bit_reader_buf`.
 
 ## 0.8.5 Change list
 
