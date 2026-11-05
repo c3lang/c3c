@@ -3,8 +3,15 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 
 module std::hash::adler32;
+import std::core::mem, std::math;
 
 const uint ADLER32_CONST @private = 65521;
+
+<*
+ Largest block length for which a and b cannot overflow 32 bits before the modulo
+ (255 * n * (n + 1) / 2 + (n + 1) * (ADLER32_CONST - 1) <= 2^32 - 1). A multiple of 16.
+*>
+const sz NMAX @private = 5552;
 
 
 struct Adler32
@@ -24,74 +31,62 @@ fn void Adler32.update_byte(&self, char c)
 	self.b = (self.b + self.a) % ADLER32_CONST;
 }
 
+<*
+ Adds `data` to the checksum.
+
+ The data is processed in blocks of at most NMAX bytes, so the modulo is applied
+ once per block instead of once per byte. Full 16 byte groups use portable vectors.
+*>
 fn void Adler32.update(&self, char[] data)
 {
-	// Safe chunking constant which is optimized for L1 cache on most systems 32768 (32 KB).
-	// 0x8000 ~ (2^32 / 65521 / 2).
-	// The division is done so that we are guaranteed to never overflow.
-	const SAFE_CHUNKING_SIZE = 0x8000;
-
-	// In order
-	const UNROLL_SIZE = 8;
-
 	uint a = self.a;
 	uint b = self.b;
+	char* p = data.ptr;
+	sz n = data.len;
 
-	char* buf = data;
-	sz len = data.len;
+	// 16 byte weights for the vector path: the first byte of a group is counted 16 times, the last once.
+	const ushort[<8>] WEIGHTS_LO = { 16, 15, 14, 13, 12, 11, 10, 9 };
+	const ushort[<8>] WEIGHTS_HI = { 8, 7, 6, 5, 4, 3, 2, 1 };
+	const uint[<4>] LOW_MASK = { 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF };
 
-	// Align pointer traversing buffer pointer to the unroll alignment size.
-	if (len % UNROLL_SIZE != 0)
+	while (n > 0)
 	{
-		do
+		sz block = n < NMAX ? n : NMAX;
+		n -= block;
+		sz groups = block / 16;
+		if (groups > 0)
 		{
-			a += *buf;
-			b += a;
-
-			buf++;
-			len--;
-		} while (len % UNROLL_SIZE != 0);
-
-		if (a >= ADLER32_CONST)
-		{
-			a -= ADLER32_CONST;
+			// For group k with running sum S_k (sum of all earlier bytes in this block):
+			//   b += 16 * (a_start + S_k) + weighted_sum(group k)
+			// so only three vector accumulators are needed and no horizontal sum inside the loop.
+			uint[<4>] sum;
+			uint[<4>] weighted;
+			uint[<4>] prefix;
+			for (sz i = 0; i < groups; i++)
+			{
+				char[<8>] lo = mem::load((char[<8>]*)p, 1);
+				char[<8>] hi = mem::load((char[<8>]*)(p + 8), 1);
+				p += 16;
+				prefix += sum;
+				ushort[<8>] xl = (ushort[<8>])lo;
+				ushort[<8>] xh = (ushort[<8>])hi;
+				uint[<4>] s = bitcast(xl + xh, uint[<4>]);
+				uint[<4>] w = bitcast(xl * WEIGHTS_LO + xh * WEIGHTS_HI, uint[<4>]);
+				sum += (s & LOW_MASK) + (s >> 16);
+				weighted += (w & LOW_MASK) + (w >> 16);
+			}
+			// Stays below 2^32 for the same reason NMAX does.
+			b += (uint)groups * 16 * a + 16 * prefix.sum() + weighted.sum();
+			a += sum.sum();
 		}
-
+		for (sz i = groups * 16; i < block; i++)
+		{
+			a += *p++;
+			b += a;
+		}
+		a %= ADLER32_CONST;
 		b %= ADLER32_CONST;
 	}
-
-	// Calculate rest of adler32 checksum.
-	while (len > 0)
-	{
-		$for var $i = 0; $i < UNROLL_SIZE; $i++:
-			a += buf[$i]; b += a;
-		$endfor
-
-		len -= UNROLL_SIZE;
-		buf += UNROLL_SIZE;
-
-		// Even with 8 max value (0xFF) bytes being additioned to a (0xFF * 8 = 2040 for worst case).
-		// There is no chance that a will be > 2 * ADLER32_CONST, so modulo is not needed here.
-		// So its more performant to use subtraction.
-		if (a >= ADLER32_CONST)
-		{
-			a -= ADLER32_CONST;
-		}
-
-		// We need to periodically chunk b because it accumulates a which is a sum, so it grows rapidly.
-		// So every 4K of bytes we modulo in order to prevent uint integer overflow.
-		if (len % SAFE_CHUNKING_SIZE == 0)
-		{
-			b %= ADLER32_CONST;
-		}
-	}
-
-	// No need to explicitly modulo after loop end with ADLER32_CONST.
-	// As a and b are guaranteed to be under ADLER32_CONST.
-
-	// Do assert on debug.
-	assert(a < ADLER32_CONST);
-	assert(b < ADLER32_CONST);
 
 	*self = { a, b };
 }
