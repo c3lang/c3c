@@ -98,6 +98,7 @@
 - `List.insert_at` and `List.push_front` now use a single `memmove` instead of an element-by-element shift. `List.push` has an inline fast path when there is spare capacity.
 - `List.remove_item`, `List.compact` (and the same functions on `FixedList`) are now single pass instead of quadratic.
 - Cryptos now try to use funnel shift and rotation.
+- Add `rapidhash` V3 hash, with `hash`, `micro` and `nano` variants.
 
 ## 0.8.5 Change list
 
