@@ -1520,3 +1520,40 @@ fn void test_backref_repetition_edge_cases() @test
 		test::eq(m.end, 1);
 	}
 }
+
+fn void test_backref_nested_empty_repetition_terminates() @test
+{
+	Regex re = regex::compile(mem, "\\(\\(b*.*\\)*\\2*\\)*")!!;
+	defer re.free();
+	Match m = re.first_match("cbc")!!;
+	test::eq(m.start, 0);
+	test::eq(m.end, 3);
+}
+
+fn void test_backref_overrun_keeps_alternatives() @test
+{
+	Regex re = regex::compile(mem, "\\(..\\)\\(\\1\\)*b*")!!;
+	defer re.free();
+	Match m = re.first_match("bcb")!!;
+	test::eq(m.start, 0);
+	test::eq(m.end, 3);
+}
+
+fn void test_backref_to_reopened_group() @test
+{
+	Regex re = regex::compile(mem, "\\(b\\{0,2\\}\\(\\(b*\\|.a\\)\\{0,2\\}\\3*\\)*\\3*\\|b*\\(\\2\\2\\|aa\\)*\\2\\{0,2\\}\\)\\{0,2\\}")!!;
+	defer re.free();
+	Match[] all = re.tfind_all("cb")!!;
+	test::eq(all.len, 3);
+}
+
+fn void test_find_all_with_backref() @test
+{
+	Regex re = regex::compile(mem, "\\(o\\)\\1")!!;
+	defer re.free();
+	Match[] all = re.find_all(mem, "foo boo")!!;
+	defer free(all);
+	test::eq(all.len, 2);
+	test::eq(all[0].start, 1);
+	test::eq(all[1].start, 5);
+}
