@@ -2,6 +2,7 @@ module zip_test @test;
 
 import std::io;
 import std::compression::zip;
+import std::compression::deflate;
 import std::math;
 
 fn void test_zip_store()
@@ -966,5 +967,88 @@ fn void test_zip_unsupported_algorithm()
 
 		fault res = @catch(recovered.read_file_all(mem, "a"));
 		assert(res == zip::UNSUPPORTED_METHOD, "Expected UNSUPPORTED_METHOD error");
+	};
+}
+
+macro char[] make_level_payload(Allocator allocator, sz len)
+{
+	String[8] words = { "alpha ", "beta ", "gamma ", "delta ", "epsilon ", "zeta ", "eta ", "theta " };
+	char[] data = alloc::alloc_array(allocator, char, len);
+	uint state = 12345;
+	sz pos = 0;
+	while (pos < len)
+	{
+		state = state * 1103515245 + 12345;
+		String w = words[(state >> 16) & 7];
+		sz n = math::min((sz)w.len, len - pos);
+		data[pos:n] = w[:n];
+		pos += n;
+	}
+	return data;
+}
+
+fn void test_zip_levels()
+{
+	@pool()
+	{
+		String path = "unittest_levels.zip";
+		char[] payload = make_level_payload(tmem, 100000);
+
+		ZipArchive zip = zip::open(mem, path, "w")!!;
+		for (int level = deflate::MIN_LEVEL; level <= deflate::MAX_LEVEL; level++)
+		{
+			String name = string::tformat("l%d.bin", level);
+			if (level % 2 == 0)
+			{
+				zip.write_file(name, payload, DEFLATE, level)!!;
+			}
+			else
+			{
+				ZipEntryWriter writer = zip.open_writer(name, DEFLATE, level)!!;
+				// Chunked writes exercise the streaming path.
+				sz pos = 0;
+				while (pos < payload.len)
+				{
+					sz n = math::min((sz)777, payload.len - pos);
+					writer.write(payload[pos:n])!!;
+					pos += n;
+				}
+				writer.close()!!;
+			}
+		}
+		zip.write_file("default.bin", payload)!!;
+		zip.write_file("stored.bin", payload, STORE, 0)!!;
+		(void)zip.close();
+		defer (void)file::delete(path);
+
+		ZipArchive read_zip = zip::open(mem, path, "r")!!;
+		defer (void)read_zip.close();
+		assert(read_zip.count() == deflate::MAX_LEVEL + 2, "Unexpected entry count");
+
+		long first_size = 0;
+		long last_size = 0;
+		for (int level = deflate::MIN_LEVEL; level <= deflate::MAX_LEVEL; level++)
+		{
+			String name = string::tformat("l%d.bin", level);
+			ZipEntry entry = read_zip.stat(name)!!;
+			assert(entry.method == DEFLATE, "Expected DEFLATE method");
+			assert(entry.uncompressed_size == payload.len, "Size mismatch");
+			assert(entry.compressed_size < payload.len / 2, "Expected compression");
+			if (level == deflate::MIN_LEVEL) first_size = entry.compressed_size;
+			if (level == deflate::MAX_LEVEL) last_size = entry.compressed_size;
+
+			char[] got = read_zip.read_file_all(tmem, name)!!;
+			assert(got == payload, "Round trip mismatch");
+		}
+		assert(last_size <= first_size, "Highest level must not be larger than the lowest");
+
+		ZipEntry def = read_zip.stat("default.bin")!!;
+		ZipEntry explicit = read_zip.stat(string::tformat("l%d.bin", deflate::DEFAULT_LEVEL))!!;
+		assert(def.compressed_size == explicit.compressed_size, "Default level must be DEFAULT_LEVEL");
+		assert(read_zip.read_file_all(tmem, "default.bin")!! == payload, "Default round trip mismatch");
+
+		ZipEntry stored = read_zip.stat("stored.bin")!!;
+		assert(stored.method == STORE, "Expected STORE method");
+		assert(stored.compressed_size == payload.len, "STORE must not compress");
 	};
 }

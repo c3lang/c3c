@@ -374,10 +374,12 @@ fn void? ZipArchive.add_directory(&self, String dirname)
  @param filename : `The name of the file to create.`
  @param data : `The data to write.`
  @param method : `Compression method.`
+ @param level : `Deflate level, deflate::MIN_LEVEL (fastest) to deflate::MAX_LEVEL (smallest). Ignored for STORE.`
+ @require method != DEFLATE || (level >= deflate::MIN_LEVEL && level <= deflate::MAX_LEVEL)
 *>
-fn void? ZipArchive.write_file(&self, String filename, char[] data, ZipMethod method = DEFLATE)
+fn void? ZipArchive.write_file(&self, String filename, char[] data, ZipMethod method = DEFLATE, int level = deflate::DEFAULT_LEVEL)
 {
-	ZipEntryWriter writer = self.open_writer(filename, method)!;
+	ZipEntryWriter writer = self.open_writer(filename, method, level)!;
 
 	writer.write(data)!;
 	writer.close()!;
@@ -580,9 +582,11 @@ fn void? ZipEntryWriter.close(&self) @dynamic
  Opens a writer for a new entry.
  @param filename : `The name of the file to create in the archive.`
  @param method : `Compression method.`
+ @param level : `Deflate level, deflate::MIN_LEVEL (fastest) to deflate::MAX_LEVEL (smallest). Ignored for STORE.`
  @return `A writer for the new entry.`
+ @require method != DEFLATE || (level >= deflate::MIN_LEVEL && level <= deflate::MAX_LEVEL)
 *>
-fn ZipEntryWriter? ZipArchive.open_writer(&self, String filename, ZipMethod method = DEFLATE)
+fn ZipEntryWriter? ZipArchive.open_writer(&self, String filename, ZipMethod method = DEFLATE, int level = deflate::DEFAULT_LEVEL)
 {
 	if (!self.mode.starts_with("w")) return IO_ERROR~;
 
@@ -615,7 +619,7 @@ fn ZipEntryWriter? ZipArchive.open_writer(&self, String filename, ZipMethod meth
 
 	if (method == DEFLATE)
 	{
-		writer.deflater.init(self.allocator, self.file);
+		writer.deflater.init(self.allocator, self.file, level);
 		writer.use_deflater = true;
 	}
 
