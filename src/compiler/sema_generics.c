@@ -122,12 +122,12 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 			{
 				sema_error_at(c, param_loc,
 				              "Parameter(s) would violate constraint: %s.",
-				              contract->contract_expr.comment);
+				              contract_to_message(contract, false));
 			}
 			else
 			{
 				sema_error_at(c, param_loc, "Parameter(s) failed validation: %s",
-				              contract->contract_expr.expr_string);
+				              contract_to_message(contract, false));
 			}
 			FAIL:
 			new_context->inlined_at = old_inlined_at;

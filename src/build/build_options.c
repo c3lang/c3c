@@ -1874,11 +1874,6 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->run_dir = unchecked_dir(options, next_arg());
 				return;
 			}
-			if (match_longopt("benchmark"))
-			{
-				options->benchmark_mode = true;
-				return;
-			}
 			if (match_longopt("lsp"))
 			{
 				options->lsp_mode = true;

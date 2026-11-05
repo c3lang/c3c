@@ -275,7 +275,6 @@ typedef struct BuildOptions_
 	AutoVectorization slp_vectorization;
 	bool emit_llvm;
 	bool emit_asm;
-	bool benchmark_mode;
 	bool test_mode;
 	bool lsp_mode;
 	bool no_entry;
@@ -439,7 +438,6 @@ typedef struct
 	bool delete_after_run;
 	bool generate_benchmark_runner;
 	bool generate_test_runner;
-	bool benchmark_output;
 	bool test_output;
 	bool lsp_output;
 	bool docgen;

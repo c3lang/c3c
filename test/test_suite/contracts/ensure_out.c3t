@@ -18,8 +18,6 @@ fn void main()
 }
 
 /* #expect: test.ll
-
-
 define void @test.foo(ptr %0) #0 {
 entry:
   %1 = ptrtoint ptr %0 to i64
@@ -44,17 +42,17 @@ checkok3:                                         ; preds = %checkok
   br i1 %ne, label %assert_ok, label %assert_fail
 
 assert_fail:                                      ; preds = %checkok3
-  call void @__c3_panic(ptr @.panic_loc.3) #2
+  call void @std.core.runtime.panics.ensure(ptr @.panic_str, ptr @.panic_str.1, i32 8, ptr @.panic_str.3) #2
   unreachable
 
 assert_ok:                                        ; preds = %checkok3
   ret void
 
 panic:                                            ; preds = %entry
-  call void @__c3_panic_deref(ptr @.panic_loc, i64 %1, i64 4) #2
+  call void @std.core.runtime.panics.deref.long.long(ptr @.panic_str, ptr @.panic_str.1, i32 9, ptr @.panic_str.2, i64 %1, i64 4) #2
   unreachable
 
 panic2:                                           ; preds = %checkok
-  call void @__c3_panic_deref(ptr @.panic_loc.1, i64 %5, i64 4) #2
+  call void @std.core.runtime.panics.deref.long.long(ptr @.panic_str, ptr @.panic_str.1, i32 5, ptr @.panic_str.2, i64 %5, i64 4) #2
   unreachable
 }

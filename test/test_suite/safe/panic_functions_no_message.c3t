@@ -1,0 +1,389 @@
+// #target: macos-aarch64
+// #safe: yes
+// #opt: --panic-msg=no
+// #opt: --show-backtrace=yes
+module test;
+
+enum Color : int { RED, GREEN }
+interface Greeter { fn void greet(); }
+struct Thing { int a; }
+faultdef BAD;
+alias VoidFn = fn void();
+
+macro void Thing.touch_macro(&self) { self.a++; }
+<* @param [&in] p *>
+macro int ref_macro(int* p) => *p;
+<* @param [&in] p *>
+fn int ref_fn(int* p) @export("ref_fn") => *p;
+<* @require x > 0 *>
+fn void contract_require(int x) @export("contract_require") { }
+<* @require x > 0 : "x must be positive" *>
+fn void contract_require_message(int x) @export("contract_require_message") { }
+<* @ensure return > 0 *>
+fn int contract_ensure(int x) @export("contract_ensure") => x;
+<* @ensure return > 0 : "must be positive" *>
+fn int contract_ensure_message(int x) @export("contract_ensure_message") => x;
+
+fn void assert_plain(int x) @export("assert_plain") { assert(x > 0); }
+fn void assert_message(int x) @export("assert_message") { assert(x > 0, "plain message"); }
+fn void assert_violation() @test @export("assert_violation") { assert(false); }
+fn void assert_args(int x) @export("assert_args") { assert(x > 0, "bad %d", x); }
+fn void null_method(Thing* t) @export("null_method") { t.touch_macro(); }
+fn void ref_arg(int* p) @export("ref_arg") { ref_macro(p); }
+fn int deref(int* p) @export("deref") => *p;
+fn char deref_byte(char* p) @export("deref_byte") => *p;
+fn void null_function(VoidFn f) @export("null_function") { f(); }
+fn void no_method(any a) @export("no_method") { Greeter g = (Greeter)a; g.greet(); }
+fn int div_zero(int a, int b) @export("div_zero") => a / b;
+fn int rem_zero(int a, int b) @export("rem_zero") => a % b;
+fn void infinite_loop() @export("infinite_loop") { for (;;) {} }
+fn void access_inner(typeid t) @export("access_inner") { (void)t.inner; }
+fn void access_names(typeid t) @export("access_names") { (void)t.names; }
+fn void access_len(typeid t) @export("access_len") { (void)t.len; }
+fn int? fails() @export("fails") => BAD~;
+fn int unwrap() @export("unwrap") => fails()!!;
+fn int shift_int(int a, int b) @export("shift_int") => a << b;
+fn ichar shift_ichar(ichar a, ichar b) @export("shift_ichar") => a << b;
+fn uint shift_uint(uint a, uint b) @export("shift_uint") => a >> b;
+fn long shift_long(long a, long b) @export("shift_long") => a << b;
+fn int128 shift_int128(int128 a, int128 b) @export("shift_int128") => a << b;
+fn uint128 shift_uint128(uint128 a, uint128 b) @export("shift_uint128") => a >> b;
+fn int[<2>] shift_vec(int[<2>] a, int[<2>] b) @export("shift_vec") => a << b;
+fn uint[<2>] shift_uvec(uint[<2>] a, uint[<2>] b) @export("shift_uvec") => a << b;
+fn int index_int(int[] a, int i) @export("index_int") => a[i];
+fn int index_uint(int[] a, uint i) @export("index_uint") => a[i];
+fn int index_ichar(int[3]* a, ichar i) @export("index_ichar") => (*a)[i];
+fn int[] slice_start(int[] a, int i) @export("slice_start") => a[i..];
+fn int[] slice_range(int[] a, int i, int j) @export("slice_range") => a[i..j];
+fn int[] slice_len(int[] a, int i, int j) @export("slice_len") => a[i:j];
+fn void slice_copy(int[] a, int[] b) @export("slice_copy") { a[..] = b[..]; }
+fn Color enum_int(int x) @export("enum_int") => (Color)x;
+fn Color enum_uint(uint x) @export("enum_uint") => (Color)x;
+fn Color enum_int128(int128 x) @export("enum_int128") => (Color)x;
+fn Color enum_uint128(uint128 x) @export("enum_uint128") => (Color)x;
+fn int main() { return 0; }
+
+/* #expect: test.ll
+
+@.panic_str = private unnamed_addr constant <{ i32, [30 x i8] }> <{ i32 29, [30 x i8] c"panic_functions_no_message.c3\00" }>
+@.panic_str.1 = private unnamed_addr constant <{ i32, [7 x i8] }> <{ i32 6, [7 x i8] c"ref_fn\00" }>
+@.panic_str.2 = private unnamed_addr constant <{ i32, [17 x i8] }> <{ i32 16, [17 x i8] c"contract_require\00" }>
+@.panic_str.3 = private unnamed_addr constant <{ i32, [25 x i8] }> <{ i32 24, [25 x i8] c"contract_require_message\00" }>
+@.panic_str.4 = private unnamed_addr constant <{ i32, [16 x i8] }> <{ i32 15, [16 x i8] c"contract_ensure\00" }>
+@.panic_str.5 = private unnamed_addr constant <{ i32, [24 x i8] }> <{ i32 23, [24 x i8] c"contract_ensure_message\00" }>
+@.panic_str.6 = private unnamed_addr constant <{ i32, [13 x i8] }> <{ i32 12, [13 x i8] c"assert_plain\00" }>
+@.panic_str.7 = private unnamed_addr constant <{ i32, [15 x i8] }> <{ i32 14, [15 x i8] c"assert_message\00" }>
+@.panic_str.8 = private unnamed_addr constant <{ i32, [14 x i8] }> <{ i32 13, [14 x i8] c"plain message\00" }>
+@.panic_str.9 = private unnamed_addr constant <{ i32, [12 x i8] }> <{ i32 11, [12 x i8] c"assert_args\00" }>
+@.panic_str.10 = private unnamed_addr constant <{ i32, [12 x i8] }> <{ i32 11, [12 x i8] c"null_method\00" }>
+@.panic_str.11 = private unnamed_addr constant <{ i32, [8 x i8] }> <{ i32 7, [8 x i8] c"ref_arg\00" }>
+@.panic_str.12 = private unnamed_addr constant <{ i32, [6 x i8] }> <{ i32 5, [6 x i8] c"deref\00" }>
+@.panic_str.13 = private unnamed_addr constant <{ i32, [11 x i8] }> <{ i32 10, [11 x i8] c"deref_byte\00" }>
+@.panic_str.14 = private unnamed_addr constant <{ i32, [14 x i8] }> <{ i32 13, [14 x i8] c"null_function\00" }>
+@.panic_str.15 = private unnamed_addr constant <{ i32, [10 x i8] }> <{ i32 9, [10 x i8] c"no_method\00" }>
+@.panic_str.16 = private unnamed_addr constant <{ i32, [9 x i8] }> <{ i32 8, [9 x i8] c"div_zero\00" }>
+@.panic_str.17 = private unnamed_addr constant <{ i32, [9 x i8] }> <{ i32 8, [9 x i8] c"rem_zero\00" }>
+@.panic_str.18 = private unnamed_addr constant <{ i32, [14 x i8] }> <{ i32 13, [14 x i8] c"infinite_loop\00" }>
+@.panic_str.19 = private unnamed_addr constant <{ i32, [13 x i8] }> <{ i32 12, [13 x i8] c"access_inner\00" }>
+@.panic_str.20 = private unnamed_addr constant <{ i32, [13 x i8] }> <{ i32 12, [13 x i8] c"access_names\00" }>
+@.panic_str.21 = private unnamed_addr constant <{ i32, [11 x i8] }> <{ i32 10, [11 x i8] c"access_len\00" }>
+@.panic_str.22 = private unnamed_addr constant <{ i32, [7 x i8] }> <{ i32 6, [7 x i8] c"unwrap\00" }>
+@.panic_str.23 = private unnamed_addr constant <{ i32, [10 x i8] }> <{ i32 9, [10 x i8] c"shift_int\00" }>
+@.panic_str.24 = private unnamed_addr constant <{ i32, [12 x i8] }> <{ i32 11, [12 x i8] c"shift_ichar\00" }>
+@.panic_str.25 = private unnamed_addr constant <{ i32, [11 x i8] }> <{ i32 10, [11 x i8] c"shift_uint\00" }>
+@.panic_str.26 = private unnamed_addr constant <{ i32, [11 x i8] }> <{ i32 10, [11 x i8] c"shift_long\00" }>
+@.panic_str.27 = private unnamed_addr constant <{ i32, [13 x i8] }> <{ i32 12, [13 x i8] c"shift_int128\00" }>
+@.panic_str.28 = private unnamed_addr constant <{ i32, [14 x i8] }> <{ i32 13, [14 x i8] c"shift_uint128\00" }>
+@.panic_str.29 = private unnamed_addr constant <{ i32, [10 x i8] }> <{ i32 9, [10 x i8] c"shift_vec\00" }>
+@.panic_str.30 = private unnamed_addr constant <{ i32, [11 x i8] }> <{ i32 10, [11 x i8] c"shift_uvec\00" }>
+@.panic_str.31 = private unnamed_addr constant <{ i32, [10 x i8] }> <{ i32 9, [10 x i8] c"index_int\00" }>
+@.panic_str.32 = private unnamed_addr constant <{ i32, [11 x i8] }> <{ i32 10, [11 x i8] c"index_uint\00" }>
+@.panic_str.33 = private unnamed_addr constant <{ i32, [12 x i8] }> <{ i32 11, [12 x i8] c"index_ichar\00" }>
+@.panic_str.34 = private unnamed_addr constant <{ i32, [12 x i8] }> <{ i32 11, [12 x i8] c"slice_start\00" }>
+@.panic_str.35 = private unnamed_addr constant <{ i32, [12 x i8] }> <{ i32 11, [12 x i8] c"slice_range\00" }>
+@.panic_str.36 = private unnamed_addr constant <{ i32, [10 x i8] }> <{ i32 9, [10 x i8] c"slice_len\00" }>
+@.panic_str.37 = private unnamed_addr constant <{ i32, [11 x i8] }> <{ i32 10, [11 x i8] c"slice_copy\00" }>
+@.panic_str.38 = private unnamed_addr constant <{ i32, [9 x i8] }> <{ i32 8, [9 x i8] c"enum_int\00" }>
+@.panic_str.39 = private unnamed_addr constant <{ i32, [10 x i8] }> <{ i32 9, [10 x i8] c"enum_uint\00" }>
+@.panic_str.40 = private unnamed_addr constant <{ i32, [12 x i8] }> <{ i32 11, [12 x i8] c"enum_int128\00" }>
+@.panic_str.41 = private unnamed_addr constant <{ i32, [13 x i8] }> <{ i32 12, [13 x i8] c"enum_uint128\00" }>
+
+define i32 @ref_fn(ptr %0)
+call void @std.core.runtime.panics.ref_param(ptr @.panic_str, ptr @.panic_str.1, i32 13)
+call void @std.core.runtime.panics.null_pointer(ptr @.panic_str, ptr @.panic_str.1, i32 13)
+call void @std.core.runtime.panics.unaligned(ptr @.panic_str, ptr @.panic_str.1, i32 13)
+define void @contract_require(i32 %0)
+call void @std.core.runtime.panics.require(ptr @.panic_str, ptr @.panic_str.2, i32 14)
+define void @contract_require_message(i32 %0)
+call void @std.core.runtime.panics.require_message(ptr @.panic_str, ptr @.panic_str.3, i32 16)
+define i32 @contract_ensure(i32 %0)
+call void @std.core.runtime.panics.ensure(ptr @.panic_str, ptr @.panic_str.4, i32 19)
+define i32 @contract_ensure_message(i32 %0)
+call void @std.core.runtime.panics.ensure_message(ptr @.panic_str, ptr @.panic_str.5, i32 21)
+define void @assert_plain(i32 %0)
+call void @std.core.runtime.panics.assert(ptr @.panic_str, ptr @.panic_str.6, i32 23)
+define void @assert_message(i32 %0)
+call void @std.core.runtime.panics.message(ptr @.panic_str, ptr @.panic_str.7, i32 24, ptr @.panic_str.8)
+define void @assert_args(i32 %0)
+call void @std.core.runtime.panics.assert_args(ptr @.panic_str, ptr @.panic_str.9, i32 26)
+define void @null_method(ptr %0)
+call void @std.core.runtime.panics.null_method(ptr @.panic_str, ptr @.panic_str.10, i32 9)
+define void @ref_arg(ptr %0)
+call void @std.core.runtime.panics.ref_arg(ptr @.panic_str, ptr @.panic_str.11, i32 11)
+call void @std.core.runtime.panics.null_pointer(ptr @.panic_str, ptr @.panic_str.11, i32 11)
+call void @std.core.runtime.panics.unaligned(ptr @.panic_str, ptr @.panic_str.11, i32 11)
+define i32 @deref(ptr %0)
+call void @std.core.runtime.panics.null_pointer(ptr @.panic_str, ptr @.panic_str.12, i32 29)
+call void @std.core.runtime.panics.unaligned(ptr @.panic_str, ptr @.panic_str.12, i32 29)
+define zeroext i8 @deref_byte(ptr %0)
+call void @std.core.runtime.panics.null_pointer(ptr @.panic_str, ptr @.panic_str.13, i32 30)
+define void @null_function(ptr %0)
+call void @std.core.runtime.panics.null_function(ptr @.panic_str, ptr @.panic_str.14, i32 31)
+define void @no_method([2 x i64] %0)
+call void @std.core.runtime.panics.no_method(ptr @.panic_str, ptr @.panic_str.15, i32 32)
+define i32 @div_zero(i32 %0, i32 %1)
+call void @std.core.runtime.panics.div_zero(ptr @.panic_str, ptr @.panic_str.16, i32 33)
+define i32 @rem_zero(i32 %0, i32 %1)
+call void @std.core.runtime.panics.rem_zero(ptr @.panic_str, ptr @.panic_str.17, i32 34)
+define void @infinite_loop()
+call void @std.core.runtime.panics.infinite_loop(ptr @.panic_str, ptr @.panic_str.18, i32 35)
+define void @access_inner(i64 %0)
+call void @std.core.runtime.panics.access_inner(ptr @.panic_str, ptr @.panic_str.19, i32 36)
+define void @access_names(i64 %0)
+call void @std.core.runtime.panics.access_names(ptr @.panic_str, ptr @.panic_str.20, i32 37)
+define void @access_len(i64 %0)
+call void @std.core.runtime.panics.access_len(ptr @.panic_str, ptr @.panic_str.21, i32 38)
+define i64 @fails(ptr %0)
+define i32 @unwrap()
+call void @std.core.runtime.panics.unwrap(ptr @.panic_str, ptr @.panic_str.22, i32 40)
+define i32 @shift_int(i32 %0, i32 %1)
+call void @std.core.runtime.panics.shift(ptr @.panic_str, ptr @.panic_str.23, i32 41)
+call void @std.core.runtime.panics.shift(ptr @.panic_str, ptr @.panic_str.23, i32 41)
+define signext i8 @shift_ichar(i8 signext %0, i8 signext %1)
+call void @std.core.runtime.panics.shift(ptr @.panic_str, ptr @.panic_str.24, i32 42)
+call void @std.core.runtime.panics.shift(ptr @.panic_str, ptr @.panic_str.24, i32 42)
+define i32 @shift_uint(i32 %0, i32 %1)
+call void @std.core.runtime.panics.shift(ptr @.panic_str, ptr @.panic_str.25, i32 43)
+define i64 @shift_long(i64 %0, i64 %1)
+call void @std.core.runtime.panics.shift(ptr @.panic_str, ptr @.panic_str.26, i32 44)
+call void @std.core.runtime.panics.shift(ptr @.panic_str, ptr @.panic_str.26, i32 44)
+define i128 @shift_int128(i128 %0, i128 %1)
+call void @std.core.runtime.panics.shift(ptr @.panic_str, ptr @.panic_str.27, i32 45)
+call void @std.core.runtime.panics.shift(ptr @.panic_str, ptr @.panic_str.27, i32 45)
+define i128 @shift_uint128(i128 %0, i128 %1)
+call void @std.core.runtime.panics.shift(ptr @.panic_str, ptr @.panic_str.28, i32 46)
+define i64 @shift_vec(i64 %0, i64 %1)
+call void @std.core.runtime.panics.shift(ptr @.panic_str, ptr @.panic_str.29, i32 47)
+call void @std.core.runtime.panics.shift(ptr @.panic_str, ptr @.panic_str.29, i32 47)
+define i64 @shift_uvec(i64 %0, i64 %1)
+call void @std.core.runtime.panics.shift(ptr @.panic_str, ptr @.panic_str.30, i32 48)
+define i32 @index_int([2 x i64] %0, i32 %1)
+call void @std.core.runtime.panics.index_negative(ptr @.panic_str, ptr @.panic_str.31, i32 49)
+call void @std.core.runtime.panics.index_bounds(ptr @.panic_str, ptr @.panic_str.31, i32 49)
+call void @std.core.runtime.panics.unaligned(ptr @.panic_str, ptr @.panic_str.31, i32 49)
+define i32 @index_uint([2 x i64] %0, i32 %1)
+call void @std.core.runtime.panics.index_negative(ptr @.panic_str, ptr @.panic_str.32, i32 50)
+call void @std.core.runtime.panics.index_bounds(ptr @.panic_str, ptr @.panic_str.32, i32 50)
+call void @std.core.runtime.panics.unaligned(ptr @.panic_str, ptr @.panic_str.32, i32 50)
+define i32 @index_ichar(ptr %0, i8 signext %1)
+call void @std.core.runtime.panics.null_pointer(ptr @.panic_str, ptr @.panic_str.33, i32 51)
+call void @std.core.runtime.panics.unaligned(ptr @.panic_str, ptr @.panic_str.33, i32 51)
+call void @std.core.runtime.panics.index_negative(ptr @.panic_str, ptr @.panic_str.33, i32 51)
+call void @std.core.runtime.panics.index_bounds(ptr @.panic_str, ptr @.panic_str.33, i32 51)
+define [2 x i64] @slice_start([2 x i64] %0, i32 %1)
+call void @std.core.runtime.panics.slice_start(ptr @.panic_str, ptr @.panic_str.34, i32 52)
+call void @std.core.runtime.panics.slice_start_negative(ptr @.panic_str, ptr @.panic_str.34, i32 52)
+define [2 x i64] @slice_range([2 x i64] %0, i32 %1, i32 %2)
+call void @std.core.runtime.panics.slice_start(ptr @.panic_str, ptr @.panic_str.35, i32 53)
+call void @std.core.runtime.panics.slice_start_negative(ptr @.panic_str, ptr @.panic_str.35, i32 53)
+call void @std.core.runtime.panics.slice_range_negative(ptr @.panic_str, ptr @.panic_str.35, i32 53)
+call void @std.core.runtime.panics.slice_end(ptr @.panic_str, ptr @.panic_str.35, i32 53)
+define [2 x i64] @slice_len([2 x i64] %0, i32 %1, i32 %2)
+call void @std.core.runtime.panics.slice_start(ptr @.panic_str, ptr @.panic_str.36, i32 54)
+call void @std.core.runtime.panics.slice_start_negative(ptr @.panic_str, ptr @.panic_str.36, i32 54)
+call void @std.core.runtime.panics.slice_len_negative(ptr @.panic_str, ptr @.panic_str.36, i32 54)
+call void @std.core.runtime.panics.slice_end(ptr @.panic_str, ptr @.panic_str.36, i32 54)
+define void @slice_copy([2 x i64] %0, [2 x i64] %1)
+call void @std.core.runtime.panics.slice_start(ptr @.panic_str, ptr @.panic_str.37, i32 55)
+call void @std.core.runtime.panics.slice_start(ptr @.panic_str, ptr @.panic_str.37, i32 55)
+call void @std.core.runtime.panics.slice_copy(ptr @.panic_str, ptr @.panic_str.37, i32 55)
+define i32 @enum_int(i32 %0)
+call void @std.core.runtime.panics.enum_negative(ptr @.panic_str, ptr @.panic_str.38, i32 56)
+call void @std.core.runtime.panics.enum_range(ptr @.panic_str, ptr @.panic_str.38, i32 56)
+define i32 @enum_uint(i32 %0)
+call void @std.core.runtime.panics.enum_range(ptr @.panic_str, ptr @.panic_str.39, i32 57)
+define i32 @enum_int128(i128 %0)
+call void @std.core.runtime.panics.enum_negative(ptr @.panic_str, ptr @.panic_str.40, i32 58)
+call void @std.core.runtime.panics.enum_range(ptr @.panic_str, ptr @.panic_str.40, i32 58)
+define i32 @enum_uint128(i128 %0)
+call void @std.core.runtime.panics.enum_range(ptr @.panic_str, ptr @.panic_str.41, i32 59)
+define i32 @main()
+define weak ptr @.dyn_search(ptr %0, i128 %1) unnamed_addr
+
+/* #expect: std.core.runtime.panics.ll
+
+@.panic_msg = internal constant [56 x i8] c"Reference parameter was passed a null pointer argument.\00"
+@.panic_msg.1 = internal constant [28 x i8] c"Dereference of null pointer\00"
+@.panic_msg.2 = internal constant [34 x i8] c"Unaligned pointer access detected\00"
+@.panic_msg.3 = internal constant [18 x i8] c"@require violated\00"
+@.panic_msg.4 = internal constant [17 x i8] c"@ensure violated\00"
+@.panic_msg.5 = internal constant [14 x i8] c"Assert failed\00"
+@.panic_msg.6 = internal constant [17 x i8] c"Assert violation\00"
+@.panic_msg.7 = internal constant [33 x i8] c"Called a method on a null value.\00"
+@.panic_msg.8 = internal constant [38 x i8] c"Passed null to a ref ('&') parameter.\00"
+@.panic_msg.9 = internal constant [30 x i8] c"Calling null function pointer\00"
+@.panic_msg.10 = internal constant [35 x i8] c"No method could be found on target\00"
+@.panic_msg.11 = internal constant [18 x i8] c"Division by zero.\00"
+@.panic_msg.12 = internal constant [11 x i8] c"% by zero.\00"
+@.panic_msg.13 = internal constant [20 x i8] c"Infinite loop found\00"
+@.panic_msg.14 = internal constant [50 x i8] c"Attempted to access 'inner' on non composite type\00"
+@.panic_msg.15 = internal constant [52 x i8] c"Attempted to access 'names' on non enum/fault type.\00"
+@.panic_msg.16 = internal constant [44 x i8] c"Attempted to access 'len' on non array type\00"
+@.panic_msg.17 = internal constant [21 x i8] c"Force unwrap failed!\00"
+@.panic_msg.18 = internal constant [14 x i8] c"Invalid shift\00"
+@.panic_msg.19 = internal constant [24 x i8] c"Negative array indexing\00"
+@.panic_msg.20 = internal constant [26 x i8] c"Array index out of bounds\00"
+@.panic_msg.21 = internal constant [24 x i8] c"Index exceeds array len\00"
+@.panic_msg.22 = internal constant [15 x i8] c"Negative value\00"
+@.panic_msg.23 = internal constant [14 x i8] c"Negative size\00"
+@.panic_msg.24 = internal constant [24 x i8] c"End index out of bounds\00"
+@.panic_msg.25 = internal constant [22 x i8] c"Negative slice length\00"
+@.panic_msg.26 = internal constant [16 x i8] c"Length mismatch\00"
+@.panic_msg.27 = internal constant [50 x i8] c"Attempt to convert negative value to enum failed.\00"
+@.panic_msg.28 = internal constant [34 x i8] c"Failed integer to enum conversion\00"
+
+define weak void @std.core.runtime.panics.ref_param(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg to i64), i64 55], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.null_pointer(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.1 to i64), i64 27], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.unaligned(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.2 to i64), i64 33], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.require(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.3 to i64), i64 17], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.require_message(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.3 to i64), i64 17], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.ensure(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.4 to i64), i64 16], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.ensure_message(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.4 to i64), i64 16], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.assert(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.5 to i64), i64 13], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.message(ptr %0, ptr %1, i32 %2, ptr %3)
+store %"char[]" %18, ptr %taddr, align 8
+%19 = load [2 x i64], ptr %taddr, align 8
+store %"char[]" %8, ptr %taddr1, align 8
+%20 = load [2 x i64], ptr %taddr1, align 8
+store %"char[]" %13, ptr %taddr2, align 8
+%21 = load [2 x i64], ptr %taddr2, align 8
+%22 = load ptr, ptr @std.core.builtin.panic, align 8
+call void %22([2 x i64] %19, [2 x i64] %20, [2 x i64] %21, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+unreachable
+
+define weak void @std.core.runtime.panics.assert_args(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.6 to i64), i64 16], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.null_method(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.7 to i64), i64 32], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.ref_arg(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.8 to i64), i64 37], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.null_function(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.9 to i64), i64 29], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.no_method(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.10 to i64), i64 34], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.div_zero(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.11 to i64), i64 17], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.rem_zero(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.12 to i64), i64 10], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.infinite_loop(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.13 to i64), i64 19], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.access_inner(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.14 to i64), i64 49], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.access_names(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.15 to i64), i64 51], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.access_len(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.16 to i64), i64 43], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.unwrap(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.17 to i64), i64 20], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.shift(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.18 to i64), i64 13], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.index_negative(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.19 to i64), i64 23], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.index_bounds(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.20 to i64), i64 25], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.slice_start(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.21 to i64), i64 23], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.slice_start_negative(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.22 to i64), i64 14], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.slice_range_negative(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.23 to i64), i64 13], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.slice_end(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.24 to i64), i64 23], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.slice_len_negative(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.25 to i64), i64 21], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.slice_copy(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.26 to i64), i64 15], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.enum_negative(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.27 to i64), i64 49], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()
+
+define weak void @std.core.runtime.panics.enum_range(ptr %0, ptr %1, i32 %2)
+call void %15([2 x i64] [i64 ptrtoint (ptr @.panic_msg.28 to i64), i64 33], [2 x i64] %13, [2 x i64] %14, i32 %2, [2 x i64] zeroinitializer, [2 x i64] zeroinitializer)
+call void @llvm.trap()

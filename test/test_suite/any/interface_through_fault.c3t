@@ -12,7 +12,6 @@ fn int main()
 }
 
 /* #expect: test.ll
-
 define i32 @main() #0 {
 entry:
   %v = alloca %any, align 8
@@ -22,8 +21,6 @@ entry:
   %error_var = alloca i64, align 8
   %.inlinecache = alloca ptr, align 8
   %.cachedtype = alloca ptr, align 8
-  %varargslots = alloca [1 x %any], align 16
-  %panicarg = alloca %"any[]", align 8
   store ptr null, ptr %.cachedtype, align 8
   store i32 2, ptr %taddr, align 4
   %0 = insertvalue %any undef, ptr %taddr, 0
@@ -62,7 +59,7 @@ cache_hit:                                        ; preds = %after_check
   br i1 %9, label %missing_function, label %match
 
 missing_function:                                 ; preds = %8
-  call void @__c3_panic(ptr @.panic_loc) #2
+  call void @std.core.runtime.panics.no_method(ptr @.panic_str, ptr @.panic_str.1, i32 9, ptr @.panic_str.2) #2
   unreachable
 
 match:                                            ; preds = %8
@@ -71,17 +68,12 @@ match:                                            ; preds = %8
   br label %noerr_block
 
 panic_block:                                      ; preds = %assign_optional
-  store ptr %error_var, ptr %varargslots, align 16
-  %ptradd1 = getelementptr inbounds i8, ptr %varargslots, i64 8
-  store i64 ptrtoint (ptr @"$ct.fault" to i64), ptr %ptradd1, align 8
-  store ptr %varargslots, ptr %panicarg, align 8
-  %ptradd2 = getelementptr inbounds i8, ptr %panicarg, i64 8
-  store i64 1, ptr %ptradd2, align 8
-  call void @std.core.builtin.panicf
+  %12 = load i64, ptr %error_var, align 8
+  call void @std.core.runtime.panics.unwrap.fault(ptr @.panic_str, ptr @.panic_str.1, i32 9, i64 %12) #2
   unreachable
 
 noerr_block:                                      ; preds = %match
   store i32 %11, ptr %x, align 4
-  %12 = load i32, ptr %x, align 4
-  ret i32 %12
+  %13 = load i32, ptr %x, align 4
+  ret i32 %13
 }

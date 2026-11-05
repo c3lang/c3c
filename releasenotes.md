@@ -26,6 +26,10 @@
 - Selectors are now a stable 128 bit signature. The first 16 bytes are guaranteed unique.
 - Add `--stats=<none|summary|full|json>` for compiler statistics.
 - Removed `--print-large-functions`, `--stats=full` replaces it.
+- Compiler generated panics will now be emitted to the `std::core::runtime::panics` module.
+- `PanicFn` is changed to support both formatting and non-formatted messages.
+- `--panic-msg=no` only traps if `--show-backtrace=no` is also set, otherwise it gives the short message with file, function and line. `--show-backtrace=no` stops passing file, function and line.
+- `--panicfn` now names a function rather than a function pointer variable, and sets the initial value of `builtin::panic` through the new `$$PANIC_FN`, so stdlib panics and `abort` also reach it. #3443
 
 ### Fixes
 - Compressed `.c3l` libraries were not unpacked again when only files other than `manifest.json` had changed.
@@ -90,6 +94,7 @@
 - A function only used in an `@ensure` could be stripped when it wasn't the first statement to run on return, failing to link.
 - The sign of constant NaN expressions was ignored during codegen.
 - Generic type inference fails with optional expected types #3612.
+- Signed shift amounts narrower than the shifted value were zero extended affecting the panic message of an invalid shift amount.
 
 ### Stdlib changes
 - Added termios support for OpenBSD.
@@ -98,6 +103,7 @@
 - `List.insert_at` and `List.push_front` now use a single `memmove` instead of an element-by-element shift. `List.push` has an inline fast path when there is spare capacity.
 - `List.remove_item`, `List.compact` (and the same functions on `FixedList`) are now single pass instead of quadratic.
 - Cryptos now try to use funnel shift and rotation.
+- Add `unordered` parameter to `List.remove_first` and `.remove_last`
 
 ## 0.8.5 Change list
 

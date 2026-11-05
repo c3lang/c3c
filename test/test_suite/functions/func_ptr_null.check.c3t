@@ -11,8 +11,6 @@ fn int main()
 }
 
 /* #expect: test.ll
-
-
 define i32 @main() #0 {
 entry:
   %foo = alloca ptr, align 8
@@ -26,7 +24,6 @@ checkok:                                          ; preds = %entry
   ret i32 0
 
 panic:                                            ; preds = %entry
-  call void @__c3_panic(ptr @.panic_loc) #2
+  call void @std.core.runtime.panics.null_function(ptr @.panic_str, ptr @.panic_str.1, i32 7, ptr @.panic_str.2) #2
   unreachable
 }
-

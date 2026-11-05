@@ -22,8 +22,6 @@ fn void testi()
 }
 
 /* #expect: test.ll
-
-
 define void @test.testf() #0 {
 entry:
   %y = alloca <4 x float>, align 16
@@ -47,9 +45,6 @@ entry:
   %y = alloca <4 x i32>, align 16
   %z = alloca <4 x i32>, align 16
   %w = alloca <4 x i32>, align 16
-  %taddr = alloca <4 x i32>, align 16
-  %varargslots = alloca [1 x %any], align 16
-  %panicarg = alloca %"any[]", align 8
   store <4 x i32> <i32 1, i32 2, i32 3, i32 4>, ptr %y, align 16
   store <4 x i32> <i32 2, i32 2, i32 2, i32 -100>, ptr %z, align 16
   %0 = load <4 x i32>, ptr %y, align 16
@@ -65,79 +60,55 @@ checkok:                                          ; preds = %entry
   %4 = load <4 x i32>, ptr %y, align 16
   %5 = call i32 @llvm.vector.reduce.smin.v4i32(<4 x i32> %4)
   %shift_underflow = icmp slt i32 %5, 0
-  br i1 %shift_underflow, label %panic1, label %checkok3
+  br i1 %shift_underflow, label %panic1, label %checkok2
 
-checkok3:                                         ; preds = %checkok
+checkok2:                                         ; preds = %checkok
   %6 = call i32 @llvm.vector.reduce.smax.v4i32(<4 x i32> %4)
   %shift_exceeds = icmp sge i32 %6, 32
-  br i1 %shift_exceeds, label %panic4, label %checkok7
+  br i1 %shift_exceeds, label %panic3, label %checkok4
 
-checkok7:                                         ; preds = %checkok3
+checkok4:                                         ; preds = %checkok2
   %ashr = ashr <4 x i32> %3, %4
   %7 = freeze <4 x i32> %ashr
   store <4 x i32> %7, ptr %w, align 16
   %8 = load <4 x i32>, ptr %z, align 16
   %9 = load <4 x i32>, ptr %y, align 16
   %10 = call i32 @llvm.vector.reduce.smin.v4i32(<4 x i32> %9)
-  %shift_underflow8 = icmp slt i32 %10, 0
-  br i1 %shift_underflow8, label %panic9, label %checkok12
+  %shift_underflow5 = icmp slt i32 %10, 0
+  br i1 %shift_underflow5, label %panic6, label %checkok7
 
-checkok12:                                        ; preds = %checkok7
+checkok7:                                         ; preds = %checkok4
   %11 = call i32 @llvm.vector.reduce.smax.v4i32(<4 x i32> %9)
-  %shift_exceeds13 = icmp sge i32 %11, 32
-  br i1 %shift_exceeds13, label %panic14, label %checkok17
+  %shift_exceeds8 = icmp sge i32 %11, 32
+  br i1 %shift_exceeds8, label %panic9, label %checkok10
 
-checkok17:                                        ; preds = %checkok12
+checkok10:                                        ; preds = %checkok7
   %shl = shl <4 x i32> %8, %9
   %12 = freeze <4 x i32> %shl
   store <4 x i32> %12, ptr %w, align 16
   ret void
 
 panic:                                            ; preds = %entry
-  call void @__c3_panic(ptr @.panic_loc) #3
+  call void @std.core.runtime.panics.div_zero(ptr @.panic_str, ptr @.panic_str.1, i32 17) #3
   unreachable
 
 panic1:                                           ; preds = %checkok
-  store <4 x i32> %4, ptr %taddr, align 16
-  store ptr %taddr, ptr %varargslots, align 16
-  %ptradd = getelementptr inbounds i8, ptr %varargslots, i64 8
-  store i64 ptrtoint (ptr @"$ct.v4$int" to i64), ptr %ptradd, align 8
-  store ptr %varargslots, ptr %panicarg, align 8
-  %ptradd2 = getelementptr inbounds i8, ptr %panicarg, i64 8
-  store i64 1, ptr %ptradd2, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64 35, ptr @.file, i64 14, ptr @.func, i64 5, i32 18, ptr byval(%"any[]") align 8 %panicarg) #4
+  %13 = sext i32 %5 to i64
+  call void @std.core.runtime.panics.shift.long(ptr @.panic_str, ptr @.panic_str.1, i32 18, i64 %13) #3
   unreachable
 
-panic4:                                           ; preds = %checkok3
-  store <4 x i32> %4, ptr %taddr, align 16
-  store ptr %taddr, ptr %varargslots, align 16
-  %ptradd5 = getelementptr inbounds i8, ptr %varargslots, i64 8
-  store i64 ptrtoint (ptr @"$ct.v4$int" to i64), ptr %ptradd5, align 8
-  store ptr %varargslots, ptr %panicarg, align 8
-  %ptradd6 = getelementptr inbounds i8, ptr %panicarg, i64 8
-  store i64 1, ptr %ptradd6, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64 35, ptr @.file, i64 14, ptr @.func, i64 5, i32 18, ptr byval(%"any[]") align 8 %panicarg) #4
+panic3:                                           ; preds = %checkok2
+  %14 = sext i32 %6 to i64
+  call void @std.core.runtime.panics.shift.long(ptr @.panic_str, ptr @.panic_str.1, i32 18, i64 %14) #3
+  unreachable
+
+panic6:                                           ; preds = %checkok4
+  %15 = sext i32 %10 to i64
+  call void @std.core.runtime.panics.shift.long(ptr @.panic_str, ptr @.panic_str.1, i32 19, i64 %15) #3
   unreachable
 
 panic9:                                           ; preds = %checkok7
-  store <4 x i32> %9, ptr %taddr, align 16
-  store ptr %taddr, ptr %varargslots, align 16
-  %ptradd10 = getelementptr inbounds i8, ptr %varargslots, i64 8
-  store i64 ptrtoint (ptr @"$ct.v4$int" to i64), ptr %ptradd10, align 8
-  store ptr %varargslots, ptr %panicarg, align 8
-  %ptradd11 = getelementptr inbounds i8, ptr %panicarg, i64 8
-  store i64 1, ptr %ptradd11, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64 35, ptr @.file, i64 14, ptr @.func, i64 5, i32 19, ptr byval(%"any[]") align 8 %panicarg) #4
-  unreachable
-
-panic14:                                          ; preds = %checkok12
-  store <4 x i32> %9, ptr %taddr, align 16
-  store ptr %taddr, ptr %varargslots, align 16
-  %ptradd15 = getelementptr inbounds i8, ptr %varargslots, i64 8
-  store i64 ptrtoint (ptr @"$ct.v4$int" to i64), ptr %ptradd15, align 8
-  store ptr %varargslots, ptr %panicarg, align 8
-  %ptradd16 = getelementptr inbounds i8, ptr %panicarg, i64 8
-  store i64 1, ptr %ptradd16, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64 35, ptr @.file, i64 14, ptr @.func, i64 5, i32 19, ptr byval(%"any[]") align 8 %panicarg) #4
+  %16 = sext i32 %11 to i64
+  call void @std.core.runtime.panics.shift.long(ptr @.panic_str, ptr @.panic_str.1, i32 19, i64 %16) #3
   unreachable
 }

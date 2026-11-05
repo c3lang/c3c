@@ -151,6 +151,7 @@ void symtab_init(uint32_t capacity)
 	builtin_defines[BUILTIN_DEF_LINE] = KW_DEF("LINE");
 	builtin_defines[BUILTIN_DEF_LINE_RAW] = KW_DEF("LINE_RAW");
 	builtin_defines[BUILTIN_DEF_MODULE] = KW_DEF("MODULE");
+	builtin_defines[BUILTIN_DEF_PANIC_FN] = KW_DEF("PANIC_FN");
 	builtin_defines[BUILTIN_DEF_TIME] = KW_DEF("TIME");
 	builtin_defines[BUILTIN_DEF_BENCHMARK_NAMES] = KW_DEF("BENCHMARK_NAMES");
 	builtin_defines[BUILTIN_DEF_BENCHMARK_FNS] = KW_DEF("BENCHMARK_FNS");

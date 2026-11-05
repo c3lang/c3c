@@ -1635,9 +1635,11 @@ typedef struct
 typedef struct
 {
 	bool is_ensure;
+	PanicFunction panic_function : 8;
 	ExprId message;
 	ExprId expr;
 	Expr **args;
+	const char *panic_text[PANIC_FN_MAX_TEXTS];
 } AstAssertStmt;
 
 
@@ -2140,6 +2142,12 @@ typedef struct
 
 typedef struct
 {
+	PanicFunction id;
+	Type *types[PANIC_FN_MAX_VALUES];
+} PanicVariant;
+
+typedef struct
+{
 	bool should_print_environment;
 	bool should_print_asm;
 	Ansi ansi;
@@ -2170,7 +2178,8 @@ typedef struct
 	Path std_module_path;
 	Type *string_type;
 	Decl *panic_var;
-	Decl *panicf;
+	Decl *panic_fn;
+	PanicVariant *panic_variants;
 	Decl *io_error_file_not_found;
 	Decl *main;
 	Decl *decl_stack[MAX_GLOBAL_DECL_STACK];
@@ -2213,6 +2222,18 @@ extern Type *type_cuint;
 extern Type *type_chars;
 extern Type *type_wildcard_optional;
 extern Type *type_string;
+typedef struct
+{
+	const char *name;
+	const char *format;
+	const char *summary;
+	int text_count;
+	int value_count;
+} PanicFunctionDescriptor;
+
+#define PANIC_MODULE_NAME "std::core::runtime::panics"
+extern const PanicFunctionDescriptor panic_fn_desc[PANIC_FN_COUNT];
+
 extern File stdin_file;
 
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
@@ -2311,7 +2332,27 @@ INLINE Type *typeget(TypeInfoId id_)
 
 INLINE bool no_panic(void)
 {
-	return compiler.build.feature.panic_level == PANIC_OFF;
+	return compiler.build.feature.panic_level == PANIC_OFF && compiler.build.show_backtrace == SHOW_BACKTRACE_OFF;
+}
+
+INLINE bool panic_use_format(void)
+{
+	return compiler.build.feature.panic_level != PANIC_OFF && compiler.platform.os != OS_TYPE_EMSCRIPTEN;
+}
+
+INLINE int panic_fn_text_count(PanicFunction id)
+{
+	return panic_use_format() || id == PANIC_FN_MESSAGE ? panic_fn_desc[id].text_count : 0;
+}
+
+INLINE int panic_fn_value_count(PanicFunction id)
+{
+	return panic_use_format() ? panic_fn_desc[id].value_count : 0;
+}
+
+INLINE bool panic_use_location(void)
+{
+	return compiler.build.show_backtrace != SHOW_BACKTRACE_OFF;
 }
 
 INLINE bool safe_mode_enabled(void)
@@ -2740,6 +2781,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_defi
 bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement);
 bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement);
 bool sema_analyse_statement(SemaContext *context, Ast *statement);
+const char *contract_to_message(Expr *contract, bool is_ensure);
 
 bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type *left_type, Expr *right,
                                          bool is_unwrapped_var, bool is_declaration, bool *failed_ref);
@@ -2752,6 +2794,7 @@ bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl
 void sema_expr_convert_enum_to_int(Expr *expr);
 Decl *sema_decl_stack_resolve_symbol(const char *symbol);
 Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *interned_name);
+Decl *sema_panic_fn(SemaContext *context);
 Decl *sema_resolve_type_method(SemaContext *context, CanonicalType *type, const char *method_name);
 Decl *sema_resolve_method(Decl *type, const char *method_name);
 Decl *sema_resolve_method_only(Decl *type, const char *method_name);

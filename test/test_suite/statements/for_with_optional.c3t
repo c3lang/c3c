@@ -15,7 +15,6 @@ fn int main()
 }
 
 /* #expect: test.ll
-
 define i64 @test.test() #0 {
 entry:
   %n = alloca i32, align 4
@@ -80,8 +79,6 @@ entry:
   %n = alloca i32, align 4
   %n.f = alloca i64, align 8
   %error_var = alloca i64, align 8
-  %varargslots = alloca [1 x %any], align 16
-  %panicarg = alloca %"any[]", align 8
   %0 = call i64 @test.test()
   store i64 0, ptr %n.f, align 8
   store i32 0, ptr %n, align 4
@@ -98,7 +95,7 @@ after_check:                                      ; preds = %entry
 voiderr:                                          ; preds = %after_check, %entry
   br label %loop.cond
 
-loop.cond:                                        ; preds = %voiderr9, %voiderr
+loop.cond:                                        ; preds = %voiderr8, %voiderr
   %optval1 = load i64, ptr %n.f, align 8
   %not_err2 = icmp eq i64 %optval1, 0
   br i1 %not_err2, label %after_check3, label %assign_optional
@@ -111,32 +108,25 @@ after_check3:                                     ; preds = %loop.cond
   br label %noerr_block
 
 panic_block:                                      ; preds = %assign_optional
-  store ptr %error_var, ptr %varargslots, align 16
-  %ptradd = getelementptr inbounds i8, ptr %varargslots, i64 8
-  store i64 ptrtoint (ptr @"$ct.fault" to i64), ptr %ptradd, align 8
-  store ptr %varargslots, ptr %panicarg, align 8
-  %ptradd4 = getelementptr inbounds i8, ptr %panicarg, i64 8
-  store i64 1, ptr %ptradd4, align 8
-  call void @std.core.builtin.panicf(
+  %2 = load i64, ptr %error_var, align 8
+  call void @std.core.runtime.panics.unwrap.fault(ptr @.panic_str, ptr @.panic_str.1, i32 12, i64 %2) #2
   unreachable
 
 noerr_block:                                      ; preds = %after_check3
-  %2 = load i32, ptr %n, align 4
-  %lt = icmp slt i32 %2, 10
+  %3 = load i32, ptr %n, align 4
+  %lt = icmp slt i32 %3, 10
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %noerr_block
-  %optval5 = load i64, ptr %n.f, align 8
-  %not_err6 = icmp eq i64 %optval5, 0
-  br i1 %not_err6, label %after_check7, label %voiderr9
-
-after_check7:                                     ; preds = %loop.body
-  %3 = load i32, ptr %n, align 4
-  %add8 = add i32 %3, 1
-  store i32 %add8, ptr %n, align 4
-  br label %voiderr9
-
-voiderr9:                                         ; preds = %after_check7, %loop.body
+  %optval4 = load i64, ptr %n.f, align 8
+  %not_err5 = icmp eq i64 %optval4, 0
+  br i1 %not_err5, label %after_check6, label %voiderr8
+after_check6:                                     ; preds = %loop.body
+  %4 = load i32, ptr %n, align 4
+  %add7 = add i32 %4, 1
+  store i32 %add7, ptr %n, align 4
+  br label %voiderr8
+voiderr8:                                         ; preds = %after_check6, %loop.body
   br label %loop.cond
 
 loop.exit:                                        ; preds = %noerr_block

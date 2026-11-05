@@ -3182,7 +3182,8 @@ static inline bool sema_analyse_macro_params(SemaContext *context, SemaContext *
 				binary->binary_expr.right = exprid(expr_new_const_null(expr->loc, type_voidptr));
 				binary->binary_expr.operator = BINARYOP_NE;
 				if (!sema_analyse_expr_rhs(context, type_bool, binary, false, NULL, false)) return false;
-				const char *string = callee->struct_var && idx == 0 ? "Called a method on a null value." : "Passed null to a ref ('&') parameter.";
+				PanicFunction panic_function = callee->struct_var && idx == 0 ? PANIC_FN_NULL_METHOD : PANIC_FN_REF_ARG;
+				const char *string = panic_fn_desc[panic_function].format;
 				if (expr_is_const_bool(binary) && !binary->const_expr.b)
 				{
 					sema_error_at(context, param->var.init_expr->loc, string);
@@ -3194,6 +3195,7 @@ static inline bool sema_analyse_macro_params(SemaContext *context, SemaContext *
 				assert->assert_stmt.expr = exprid(binary);
 				Expr *comment_expr = expr_new_const_string(expr->loc, string);
 				assert->assert_stmt.message = exprid(comment_expr);
+				assert->assert_stmt.panic_function = panic_function;
 				ast_append(next_ref, assert);
 			}
 		}
@@ -11016,6 +11018,19 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 			return true;
 		}
 
+		case BUILTIN_DEF_PANIC_FN:
+		{
+			Decl *panic_fn = sema_panic_fn(context);
+			if (!panic_fn)
+			{
+				if (compiler.context.errors_found) return false;
+				expr_rewrite_const_null(expr, type_voidptr);
+				return true;
+			}
+			expr_rewrite_const_ref(expr, panic_fn);
+			expr->type = type_get_func_ptr(panic_fn->type);
+			return true;
+		}
 		case BUILTIN_DEF_BENCHMARK_NAMES:
 			if (!compiler.build.build_benchmark)
 			{

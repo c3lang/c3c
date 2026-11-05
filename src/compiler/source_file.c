@@ -38,6 +38,7 @@ File *source_file_generate(const char *filename)
 	file->full_path = "<generated>";
 	file->contents = "";
 	file->name = str_dup(filename);
+	file->dir_path = "";
 	file->content_len = 0;
 	vec_add(compiler.context.loaded_sources, file);
 	return file;

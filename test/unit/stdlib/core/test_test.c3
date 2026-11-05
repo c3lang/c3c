@@ -46,13 +46,13 @@ TestState state =
 		state.n_runs = 0;
 		mem::free(state.buf);
 	},
-	.panic_mock_fn = fn void (String message, String file, String function, int line)
+	.panic_mock_fn = fn void (String summary, String file, String function, int line, String fmt, any[] args)
 	{
 		if (runtime::test_context.is_in_panic) return;
 		if (runtime::test_context.assert_print_backtrace)
 		{
 			$if env::NATIVE_STACKTRACE:
-				builtin::print_backtrace(message, 0);
+				builtin::print_backtrace(summary, 0);
 			$else 
 				io::printfn("No print_backtrace() supported by this platform");
 			$endif
@@ -65,7 +65,7 @@ TestState state =
 		else
 		{
 			builtin::panic = state.old_panic;
-			state.old_panic(message, file, function, line);
+			state.old_panic(summary, file, function, line, fmt, args);
 		}
 		runtime::test_context.is_in_panic = false;
 	}

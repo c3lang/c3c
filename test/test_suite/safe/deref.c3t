@@ -9,7 +9,6 @@ fn void main()
 }
 
 /* #expect: foo.ll
-
 define void @foo.main() #0 {
 entry:
   %x = alloca ptr, align 8
@@ -29,7 +28,6 @@ checkok:                                          ; preds = %entry
   ret void
 
 panic:                                            ; preds = %entry
-  call void @__c3_panic_deref(ptr @.panic_loc, i64 %1, i64 4) #2
+  call void @std.core.runtime.panics.deref.long.long(ptr @.panic_str, ptr @.panic_str.1, i32 6, ptr @.panic_str.2, i64 %1, i64 4) #2
   unreachable
 }
-

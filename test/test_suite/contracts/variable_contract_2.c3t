@@ -15,15 +15,13 @@ fn int main()
 }
 
 /* #expect: test.ll
-
-
 define i32 @test.test(i32 %0, i32 %1) #0 {
 entry:
   %lt = icmp slt i32 %1, 0
   br i1 %lt, label %assert_ok, label %assert_fail
 
 assert_fail:                                      ; preds = %entry
-  call void @__c3_panic(ptr @.panic_loc) #2
+  call void @std.core.runtime.panics.require_message(ptr @.panic_str, ptr @.panic_str.1, i32 2, ptr @.panic_str.2, ptr @.panic_str.1) #2
   unreachable
 
 assert_ok:                                        ; preds = %entry
@@ -40,11 +38,10 @@ entry:
   br i1 %lt, label %assert_ok, label %assert_fail
 
 assert_fail:                                      ; preds = %entry
-  call void @__c3_panic(ptr @.panic_loc.2) #2
+  call void @std.core.runtime.panics.require_message(ptr @.panic_str, ptr @.panic_str.3, i32 11, ptr @.panic_str.2, ptr @.panic_str.1) #2
   unreachable
 
 assert_ok:                                        ; preds = %entry
   %1 = call i32 @test.test(i32 3, i32 %0)
   ret i32 0
 }
-
