@@ -104,6 +104,8 @@
 - `List.remove_item`, `List.compact` (and the same functions on `FixedList`) are now single pass instead of quadratic.
 - Cryptos now try to use funnel shift and rotation.
 - Add `unordered` parameter to `List.remove_first` and `.remove_last`
+- Added `matrix::perspective_infinite`, `matrix::perspective_reverse_z` and `matrix::perspective_infinite_reverse_z`.
+- Added `column`, `row`, `set_column` and `set_row` to `Matrix2x2`, `Matrix3x3` and `Matrix4x4`, and `scale_factors` to `Matrix3x3` and `Matrix4x4`.
 
 ## 0.8.5 Change list
 
