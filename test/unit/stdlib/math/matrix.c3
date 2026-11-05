@@ -407,3 +407,49 @@ fn void test_mat_row_column()
 	Matrix2 m2 = { .m = { 1, 2, 3, 4 } };
 	assert(m2.column(1) == (double[<2>]){3, 4});
 }
+
+fn void test_mat2_column()
+{
+	Matrix2 m = { .m = { 1, 2, 3, 4 } };
+	assert(m.column(0) == (double[<2>]){1, 2});
+	assert(m.column(1) == (double[<2>]){3, 4});
+	assert(m.set_column(0, {7, 8}).m == (double[<4>]){7, 8, 3, 4});
+	assert(m.set_column(1, {7, 8}).m == (double[<4>]){1, 2, 7, 8});
+	assert(m.m == (double[<4>]){1, 2, 3, 4});
+}
+
+fn void test_mat3_column()
+{
+	Matrix3 m = { .m = { 1, 2, 3, 4, 5, 6, 7, 8, 9 } };
+	assert(m.column(0) == (double[<3>]){1, 2, 3});
+	assert(m.column(1) == (double[<3>]){4, 5, 6});
+	assert(m.column(2) == (double[<3>]){7, 8, 9});
+	assert(m.set_column(0, {-1, -2, -3}).m == (double[<9>]){-1, -2, -3, 4, 5, 6, 7, 8, 9});
+	assert(m.set_column(1, {-1, -2, -3}).m == (double[<9>]){1, 2, 3, -1, -2, -3, 7, 8, 9});
+	assert(m.set_column(2, {-1, -2, -3}).m == (double[<9>]){1, 2, 3, 4, 5, 6, -1, -2, -3});
+	assert(m.m == (double[<9>]){1, 2, 3, 4, 5, 6, 7, 8, 9});
+}
+
+fn void test_mat4_column()
+{
+	Matrix4 m = { .m = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 } };
+	assert(m.column(0) == (double[<4>]){1, 2, 3, 4});
+	assert(m.column(1) == (double[<4>]){5, 6, 7, 8});
+	assert(m.column(2) == (double[<4>]){9, 10, 11, 12});
+	assert(m.column(3) == (double[<4>]){13, 14, 15, 16});
+	assert(m.set_column(0, {-1, -2, -3, -4}).m == (double[<16>]){-1, -2, -3, -4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16});
+	assert(m.set_column(1, {-1, -2, -3, -4}).m == (double[<16>]){1, 2, 3, 4, -1, -2, -3, -4, 9, 10, 11, 12, 13, 14, 15, 16});
+	assert(m.set_column(2, {-1, -2, -3, -4}).m == (double[<16>]){1, 2, 3, 4, 5, 6, 7, 8, -1, -2, -3, -4, 13, 14, 15, 16});
+	assert(m.set_column(3, {-1, -2, -3, -4}).m == (double[<16>]){1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, -1, -2, -3, -4});
+	assert(m.m == (double[<16>]){1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16});
+}
+
+fn void test_mat_column_float()
+{
+	Matrix3f m3 = { .m = { 1, 2, 3, 4, 5, 6, 7, 8, 9 } };
+	assert(m3.column(2) == (float[<3>]){7, 8, 9});
+	assert(m3.set_column(1, {-1, -2, -3}).m == (float[<9>]){1, 2, 3, -1, -2, -3, 7, 8, 9});
+	Matrix4f m4 = { .m = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 } };
+	assert(m4.column(3) == (float[<4>]){13, 14, 15, 16});
+	assert(m4.set_column(2, {-1, -2, -3, -4}).m == (float[<16>]){1, 2, 3, 4, 5, 6, 7, 8, -1, -2, -3, -4, 13, 14, 15, 16});
+}

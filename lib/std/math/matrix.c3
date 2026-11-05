@@ -577,17 +577,17 @@ fn Matrix4x4 perspective_infinite_reverse_z(Real fovy, Real aspect, Real z_near)
 <*
  @require index < 2
 *>
-fn Real[<2>] Matrix2x2.column(&self, usz index) => {self.m[index * 2], self.m[index * 2 + 1] };
+fn Real[<2>] Matrix2x2.column(&self, usz index) => self.m[index * 2:2];
 
 <*
  @require index < 3
 *>
-fn Real[<3>] Matrix3x3.column(&self, usz index) => {self.m[index * 3], self.m[index * 3 + 1], self.m[index * 3 + 2] };
+fn Real[<3>] Matrix3x3.column(&self, usz index) => self.m[index * 3:3];
 
 <*
  @require index < 4
 *>
-fn Real[<4>] Matrix4x4.column(&self, usz index) => {self.m[index * 4], self.m[index * 4 + 1], self.m[index * 4 + 2], self.m[index * 4 + 3]};
+fn Real[<4>] Matrix4x4.column(&self, usz index) => self.m[index * 4:4];
 
 <*
  @require index < 2
@@ -610,8 +610,7 @@ fn Real[<4>] Matrix4x4.row(&self, usz index) => {self.m[index], self.m[4 + index
 fn Matrix2x2 Matrix2x2.set_column(&self, usz index, Real[<2>] v)
 {
 	Matrix2x2 result = *self;
-	result.m[index * 2] = v.x;
-	result.m[index * 2 + 1] = v.y;
+	result.m[index * 2:2] = v[..];
 	return result;
 }
 
@@ -621,9 +620,7 @@ fn Matrix2x2 Matrix2x2.set_column(&self, usz index, Real[<2>] v)
 fn Matrix3x3 Matrix3x3.set_column(&self, usz index, Real[<3>] v)
 {
 	Matrix3x3 result = *self;
-	result.m[index * 3] = v.x;
-	result.m[index * 3 + 1] = v.y;
-	result.m[index * 3 + 2] = v.z;
+	result.m[index * 3:3] = v[..];
 	return result;
 }
 
@@ -633,10 +630,7 @@ fn Matrix3x3 Matrix3x3.set_column(&self, usz index, Real[<3>] v)
 fn Matrix4x4 Matrix4x4.set_column(&self, usz index, Real[<4>] v)
 {
 	Matrix4x4 result = *self;
-	result.m[index * 4] = v.x;
-	result.m[index * 4 + 1] = v.y;
-	result.m[index * 4 + 2] = v.z;
-	result.m[index * 4 + 3] = v.w;
+	result.m[index * 4:4] = v[..];
 	return result;
 }
 
