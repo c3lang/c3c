@@ -9,6 +9,26 @@ struct File (InStream, OutStream)
 module std::io::file;
 import libc, std::io::path, std::io::os, std::time;
 
+<*
+ Permission bits for chmod, using the POSIX values on all platforms.
+ On Windows only USER_WRITE is used: without it the file is made read-only.
+*>
+constset FilePermission : uint
+{
+	USER_READ    = 0o400,
+	USER_WRITE   = 0o200,
+	USER_EXEC    = 0o100,
+	GROUP_READ   = 0o040,
+	GROUP_WRITE  = 0o020,
+	GROUP_EXEC   = 0o010,
+	OTHER_READ   = 0o004,
+	OTHER_WRITE  = 0o002,
+	OTHER_EXEC   = 0o001,
+	SET_USER_ID  = 0o4000,
+	SET_GROUP_ID = 0o2000,
+	STICKY       = 0o1000,
+}
+
 fn File? open(String filename, String mode)
 {
 	return from_handle(os::native_fopen(filename, mode));
@@ -63,6 +83,28 @@ fn Time? last_modified(String filename)
 fn void? delete(String filename) @maydiscard
 {
 	return os::native_remove(filename) @inline;
+}
+
+<*
+ Set the permissions of a file. On Windows this only sets or clears the read-only attribute.
+
+ @return? io::NO_PERMISSION, io::FILE_NOT_FOUND, io::READ_ONLY
+*>
+fn void? chmod(String filename, FilePermission mode)
+{
+	return os::native_chmod(filename, mode);
+}
+
+<*
+ Set the permissions of an open file. On Windows this only sets or clears the read-only attribute,
+ and the file must have been opened for writing.
+
+ @require self.file != null
+ @return? io::NO_PERMISSION, io::FILE_NOT_VALID, io::READ_ONLY
+*>
+fn void? File.chmod(&self, FilePermission mode) @feat(LIBC)
+{
+	return os::native_fchmod(self.file, mode);
 }
 
 
