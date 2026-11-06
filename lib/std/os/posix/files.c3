@@ -27,6 +27,8 @@ struct Posix_dirent
 
 extern fn int rmdir(ZString);
 extern fn int mkdir(ZString, ushort mode_t);
+extern fn CInt chmod(ZString path, Mode_t mode);
+extern fn CInt fchmod(CInt fd, Mode_t mode);
 extern fn int chdir(ZString);
 extern fn ZString getcwd(char* pwd, usz len);
 extern fn CInt pipe(CInt[2]* pipes);

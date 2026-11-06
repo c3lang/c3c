@@ -35,9 +35,27 @@ struct Win32_WIN32_FIND_DATAW
 
 alias Win32_LPWIN32_FIND_DATAW = Win32_WIN32_FIND_DATAW*;
 
+constset Win32_FILE_INFO_BY_HANDLE_CLASS : CInt
+{
+	FILE_BASIC_INFO = 0,
+}
+
+struct Win32_FILE_BASIC_INFO
+{
+	Win32_LARGE_INTEGER creationTime;
+	Win32_LARGE_INTEGER lastAccessTime;
+	Win32_LARGE_INTEGER lastWriteTime;
+	Win32_LARGE_INTEGER changeTime;
+	Win32_DWORD         fileAttributes;
+}
+
 extern fn Win32_BOOL closeHandle(Win32_HANDLE) @cname("CloseHandle");
 extern fn Win32_BOOL createPipe(Win32_PHANDLE hReadPipe, Win32_PHANDLE hWritePipe, Win32_LPSECURITY_ATTRIBUTES lpPipeAttributes, Win32_DWORD nSize) @cname("CreatePipe");
 extern fn Win32_BOOL getFileAttributesExW(Win32_LPCWSTR, Win32_GET_FILEEX_INFO_LEVELS, Win32_LPVOID) @cname("GetFileAttributesExW");
+extern fn Win32_DWORD getFileAttributesW(Win32_LPCWSTR lpFileName) @cname("GetFileAttributesW");
+extern fn Win32_BOOL setFileAttributesW(Win32_LPCWSTR lpFileName, Win32_DWORD dwFileAttributes) @cname("SetFileAttributesW");
+extern fn Win32_BOOL getFileInformationByHandleEx(Win32_HANDLE hFile, Win32_FILE_INFO_BY_HANDLE_CLASS fileInformationClass, Win32_LPVOID lpFileInformation, Win32_DWORD dwBufferSize) @cname("GetFileInformationByHandleEx");
+extern fn Win32_BOOL setFileInformationByHandle(Win32_HANDLE hFile, Win32_FILE_INFO_BY_HANDLE_CLASS fileInformationClass, Win32_LPVOID lpFileInformation, Win32_DWORD dwBufferSize) @cname("SetFileInformationByHandle");
 extern fn Win32_BOOL pathFileExistsW(Win32_LPCWSTR) @cname("PathFileExistsW");
 extern fn Win32_DWORD getTempPathW(Win32_DWORD nBufferLength, Win32_LPWSTR lpBuffer) @cname("GetTempPathW");
 extern fn Win32_BOOL setCurrentDirectoryW(Win32_LPCTSTR buffer) @cname("SetCurrentDirectoryW");
@@ -50,6 +68,7 @@ extern fn Win32_BOOL findClose(Win32_HANDLE hFindFile) @cname("FindClose");
 
 const Win32_DWORD GENERIC_WRITE = 0x40000000;
 const Win32_DWORD OPEN_EXISTING = 3;
+const Win32_DWORD INVALID_FILE_ATTRIBUTES = 0xFFFFFFFF;
 const Win32_DWORD FILE_ATTRIBUTE_READONLY = 0x01;
 const Win32_DWORD FILE_ATTRIBUTE_HIDDEN = 0x02;
 const Win32_DWORD FILE_ATTRIBUTE_SYSTEM = 0x04;

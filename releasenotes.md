@@ -114,6 +114,7 @@
 - Added `matrix::perspective_infinite`, `matrix::perspective_reverse_z` and `matrix::perspective_infinite_reverse_z`.
 - Added `column`, `row`, `set_column` and `set_row` to `Matrix2x2`, `Matrix3x3` and `Matrix4x4`, and `scale_factors` to `Matrix3x3` and `Matrix4x4`.
 - `math::sign` now supports floats.
+- Add `chmod` support #3536.
 
 ## 0.8.5 Change list
 
