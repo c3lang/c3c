@@ -27,15 +27,6 @@ typedef struct LibraryOverview
 	JSONObject **versions;
 } LibraryOverview;
 
-typedef struct LibraryInfo
-{
-	JSONObject *versions;
-	const char *latest;
-	const char *library;
-	const char *updated;
-	const char *description;
-	JSONObject **tags;
-} LibraryInfo;
 
 CompilerState compiler;
 
@@ -891,7 +882,7 @@ void compiler_compile(void)
 #if USE_PTHREAD
 	INFO_LOG("Will use %d thread(s).\n", compiler.build.build_threads);
 #endif
-	int task_count = (int)vec_size(tasks);
+	int task_count = vec_size(tasks);
 	if (task_count > 0)
 	{
 		int threads = (int)(compiler.build.build_threads > task_count ? task_count : compiler.build.build_threads);
@@ -1144,182 +1135,12 @@ bool use_ansi(void)
 #endif
 }
 
-// Download a library to `destination`, unpacking it into a directory of that name unless `decompress` is false.
-static const char *download_library(const char *url, const char *resource, const char *destination, bool progress, bool decompress)
+// The registry: --fetch-url, else "fetch-url" of the project, else the default.
+const char *registry_url(BuildOptions *options)
 {
-	// Work in a unique directory next to the destination: the final move stays on one filesystem,
-	// and a failure leaves any existing copy alone.
-	char *parent;
-	if (!file_namesplit(destination, NULL, &parent)) return "Invalid library destination";
-	dir_make_recursive(parent);
-	const char *stage_dir = dir_make_temp_dir_in(parent);
-	if (!stage_dir) return "Failed to create a temporary directory for the library";
-	const char *result = file_append_path(stage_dir, "library.c3l");
-	const char *error = download_file(url, resource, result, progress);
-	if (!error && decompress)
-	{
-		const char *zip_file = result;
-		result = file_append_path(stage_dir, "library");
-		error = unpack_c3l(zip_file, result);
-	}
-	if (!error && !file_replace(result, destination)) error = "Failed to replace the existing library";
-	file_delete_dir(stage_dir);
-	return error;
-}
-
-const char *vendor_fetch_single(const char* lib, const char* path, bool progress, bool decompress)
-{
-	const char *resource = str_printf("/c3lang/vendor/releases/download/latest/%s.c3l", lib);
-	const char *destination = file_append_path(path, str_printf("%s.c3l", lib));
-	return download_library("https://github.com", resource, destination, progress, decompress);
-}
-
-
-INLINE bool json_get_string_from_key(JSONObject *obj, const char *key, const char **result)
-{
-	JSONObject *val = json_map_get(obj, key);
-	if (!val || val->type != J_STRING) return false;
-	*result = val->str;
-	return true;
-}
-
-static const char *load_fetch_info(BuildOptions *options, const char *name, LibraryInfo *info)
-{
-	const char *base = options->fetch_url;
-	const char *tmp_dir = dir_make_temp_dir();
-	if (!tmp_dir) error_exit("Failed to create temp directory");
-	const char *tmp_file = file_append_path(tmp_dir, "info.json");
-	scratch_buffer_clear();
-	scratch_buffer_printf("/info/%s", name);
-	const char *error = download_file(base, scratch_buffer_to_string(), tmp_file, false);
-	JSONObject *json = NULL;
-	if (error) return error;
-
-	size_t size;
-	char *json_str = file_read_all(tmp_file, &size);
-
-	JsonParser parser;
-	json_init_string(&parser, json_str);
-	json = json_parse(&parser);
-	if (!json || json->type != J_OBJECT) return "corrupt library info";
-	JSONObject *versions = json_map_get(json, "versions");
-	if (!versions || versions->type != J_OBJECT) return "corrupt library info (no 'versions')";
-	*info = (LibraryInfo) { .versions = versions };
-	if (!json_get_string_from_key(json, "latest", &info->latest)) return "corrupt library info (no 'latest')";
-	if (!json_get_string_from_key(json, "library", &info->library)) return "corrupt library info (no 'library')";
-	if (!json_get_string_from_key(json, "description", &info->description)) return "corrupt library info (no 'description')";
-	if (!json_get_string_from_key(json, "updated", &info->updated)) return "corrupt library info (no 'updated')";
-
-	JSONObject *tags = json_map_get(json, "tags");
-	if (tags)
-	{
-		if (tags->type != J_ARRAY) return "corrupt library info (invalid 'tags')";
-		info->tags = tags->elements;
-	}
-
-	return NULL;
-}
-
-static const char *registry_fetch_single(BuildOptions *options, const char *lib_id,
-										 const char *requested_version, const char *provides, const char *path)
-{
-	LibraryInfo info;
-	const char *error = load_fetch_info(options, lib_id, &info);
-	if (error) return error;
-
-	// 2. Resolve the version: the requested one, or "latest" from the record.
-	const char *version = requested_version ? requested_version : info.latest;
-	JSONObject *entry = json_map_get(info.versions, version);
-	if (!entry || entry->type != J_OBJECT) return str_printf("no such version '%s'", version ? version : "latest");
-
-	// 3. Download exactly that version.
-	const char *destination = file_append_path(path, str_printf("%s.c3l", provides));
-	const char *base = options->fetch_url;
-	return download_library(base, str_printf("/download/%s@%s", lib_id, version), destination, false, !options->fetch_compressed);
-}
-
-INLINE void fetch_lib(BuildOptions *options, bool is_vendor, const char **libraries_to_fetch)
-{
-	if (!download_available())
-	{
-		error_exit("The '%s' command requires libcurl to download libraries.\n"
-				   "Please ensure libcurl is installed on your system.", is_vendor ? "vendor-fetch" : "fetch");
-	}
-	bool ansi = use_ansi();
-	// check if there is a project JSON file (--path has already been applied)
-	if (file_exists(PROJECT_JSON5) || file_exists(PROJECT_JSON))
-	{
-		const char** deps_dirs =  get_project_dependency_directories();
-		int num_lib = (int)vec_size(deps_dirs);
-		if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
-	}
-	int count = 0;
-	const char** fetched_libraries = NULL;
-	int total_libraries = (int)vec_size(libraries_to_fetch);
-
-	for (int i = 0; i < total_libraries; i++)
-	{
-		const char *lib = libraries_to_fetch[i];
-		const char *installed_name = lib; // name recorded in the project dependency list
-		const char *error;
-		if (is_vendor)
-		{
-			printf("Fetching library '%s'...\n", lib);
-			(void)fflush(stdout);
-			error = vendor_fetch_single(lib, options->vendor_download_path, ansi, !options->fetch_compressed);
-		}
-		else
-		{
-			// Split "<ns>/<name>[@<ver>]" into the library id and optional version.
-			const char *at = strchr(lib, '@');
-			const char *requested_version = at ? at + 1 : NULL;
-			scratch_buffer_clear();
-			scratch_buffer_append(lib);
-			if (at) scratch_buffer_set_len((int)(at - lib));
-			const char *lib_id = scratch_buffer_copy(); // durable "<ns>/<name>"
-			const char *slash = strrchr(lib_id, '/');
-			if (!slash || !slash[1])
-			{
-				printf("Skipping invalid library name '%s' (expected <namespace>/<name>).\n", lib);
-				continue;
-			}
-			// The installed name (and dependency entry) is the bare provides name,
-			// i.e. the last path component; it points into the durable `lib_id`.
-			installed_name = slash + 1;
-			printf("Fetching library '%s'...\n", lib);
-			(void)fflush(stdout);
-			error = registry_fetch_single(options, lib_id, requested_version, installed_name,
-										  options->vendor_download_path);
-		}
-		if (!error)
-		{
-			vec_add(fetched_libraries, installed_name);
-			count++;
-		}
-		else
-		{
-			if (ansi)
-			{
-				printf("\033[2K\033[31mFailed to fetch library '%s': %s\033[0m\n", lib, error);
-			}
-			else
-			{
-				printf("Failed: '%s'\n", error);
-			}
-			(void)fflush(stdout);
-		}
-	}
-
-	if (ansi && total_libraries > 1) printf("\033[2K");
-
-	// add fetched library to the dependency list
-	add_libraries_to_project_file(fetched_libraries);
-
-	if (!count)	error_exit("Error: Failed to download any libraries.");
-	if (count < vec_size(libraries_to_fetch)) error_exit("Error: Only some libraries were downloaded.");
-
-	if (ansi) printf("\033[32mFetching complete.\033[0m\t\t\n");
-
+	if (options->fetch_url) return options->fetch_url;
+	const char *project_url = project_fetch_url();
+	return project_url ? project_url : DEFAULT_FETCH_URL;
 }
 
 void vendor_fetch(BuildOptions *options)
@@ -1416,6 +1237,53 @@ static bool library_has_tag(LibraryOverview *info, const char *tag)
 	return false;
 }
 
+// Load the "libraries" array of /index.json from the registry at `base`.
+static const char *load_registry_index(const char *base, JSONObject **libs_ref)
+{
+	const char *tmp_dir = dir_make_temp_dir();
+	if (!tmp_dir) return "Failed to create temp directory";
+	const char *tmp_file = file_append_path(tmp_dir, "index.json");
+	const char *error = download_file(base, "/index.json", tmp_file, false);
+	if (error) return error;
+	size_t size;
+	JsonParser parser;
+	json_init_string(&parser, file_read_all(tmp_file, &size));
+	JSONObject *obj = json_parse(&parser);
+	if (!obj || obj->type != J_OBJECT) return "failed to parse the library index";
+	JSONObject *libs = json_map_get(obj, "libraries");
+	if (!libs || libs->type != J_ARRAY) return "invalid library index (missing 'libraries')";
+	*libs_ref = libs;
+	return NULL;
+}
+
+// Find the "<namespace>/<name>" of the library `name` in the registry at `base`. It must be the only one.
+const char *registry_find_library(const char *base, const char *name, const char **id_ref)
+{
+	JSONObject *libs;
+	const char *error = load_registry_index(base, &libs);
+	if (error) return str_printf("failed to fetch the library list from '%s': %s", base, error);
+	const char **candidates = NULL;
+	FOREACH(JSONObject *, entry, libs->elements)
+	{
+		LibraryOverview info;
+		if (!parse_library(entry, &info)) return "malformed library index entry";
+		const char *slash = strrchr(info.name, '/');
+		if (slash && str_eq(slash + 1, name)) vec_add(candidates, info.name);
+	}
+	if (!vec_size(candidates)) return str_printf("there is no library '%s' in '%s'", name, base);
+	if (vec_size(candidates) > 1)
+	{
+		scratch_buffer_clear();
+		FOREACH_IDX(i, const char *, candidate, candidates)
+		{
+			if (i) scratch_buffer_append(", ");
+			scratch_buffer_append(candidate);
+		}
+		return str_printf("'%s' is ambiguous in '%s', it could be any of: %s", name, base, scratch_buffer_to_string());
+	}
+	*id_ref = candidates[0];
+	return NULL;
+}
 
 void fetch(BuildOptions *options)
 {
@@ -1432,7 +1300,7 @@ void fetch_info(BuildOptions *options)
 
 	const char *name = options->search_name;
 	LibraryInfo info;
-	const char *error = load_fetch_info(options, name, &info);
+	const char *error = load_fetch_info(registry_url(options), name, &info);
 	if (error) error_exit("Error loading info for '%s' (%s).", name, error);
 
 	printf("Library:     %s\n", info.library);
@@ -1464,6 +1332,7 @@ void fetch_info(BuildOptions *options)
 			JSONObject *sz = json_map_get(v, "size");
 			if (sz && sz->type == J_NUMBER) printf("    Size:        %lld bytes\n", (long long)sz->f);
 			if (json_get_string_from_key(v, "checksum", &s)) printf("    Checksum:    %s\n", s);
+			if (json_get_string_from_key(v, "url", &s)) printf("    URL:         %s\n", s);
 			if (json_get_string_from_key(v, "published", &s)) printf("    Published:   %s\n", s);
 		}
 	}
@@ -1476,23 +1345,12 @@ void fetch_list(BuildOptions *options)
 		error_exit("The 'fetch-list' command requires libcurl to download libraries.\n"
 				   "Please ensure libcurl is installed on your system.");
 	}
-	const char *base = options->fetch_url;
+	const char *base = registry_url(options);
 	const char *name_filter = options->search_name;
 	const char *tag_filter = options->search_tag;
-	const char *tmp_dir = dir_make_temp_dir();
-	if (!tmp_dir) error_exit("Failed to create temp directory");
-	const char *tmp_file = file_append_path(tmp_dir, "index.json");
-	const char *error = download_file(base, "/index.json", tmp_file, false);
+	JSONObject *libs;
+	const char *error = load_registry_index(base, &libs);
 	if (error) error_exit("Failed to fetch the library list from '%s': %s", base, error);
-
-	size_t size;
-	char *json_str = file_read_all(tmp_file, &size);
-	JsonParser parser;
-	json_init_string(&parser, json_str);
-	JSONObject *obj = json_parse(&parser);
-	if (!obj || obj->type != J_OBJECT) error_exit("Failed to parse the library index.");
-	JSONObject *libs = json_map_get(obj, "libraries");
-	if (!libs || libs->type != J_ARRAY) error_exit("Invalid library index (missing 'libraries').");
 
 	// Unfiltered: just the ns/name of every library.
 	if (!name_filter && !tag_filter)

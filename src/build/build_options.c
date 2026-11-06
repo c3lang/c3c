@@ -370,7 +370,7 @@ static void project_usage(void)
 	PRINTF("Project Subcommands:");
 	print_cmd("view", "view the current projects structure.");
 	print_cmd("add-target <name>  <target_type>  [sources...]", "add a new target to the project.");
-	print_cmd("fetch", "fetch missing project libraries.");
+	print_cmd("fetch [<library>...]", "fetch the named project libraries, or list the missing ones.");
 }
 
 static void project_view_usage(void)
@@ -464,7 +464,7 @@ static void parse_project_subcommand(BuildOptions *options)
 		options->project_options.target_name = next_arg();
 
 		if (at_end() || next_is_opt()) error_exit("Expected a target type like 'executable' or 'static-lib'");
-		options->project_options.target_type = (TargetType)get_valid_enum_from_string(next_arg(), "type", targets, ELEMENTLEN(targets), "a target type like 'executable' or 'static-lib'");
+		options->project_options.target_type = (TargetType)get_valid_enum_from_string(next_arg(), "type", target_types, ELEMENTLEN(target_types), "a target type like 'executable' or 'static-lib'");
 
 		while (!at_end() && !next_is_opt())
 		{
@@ -476,6 +476,10 @@ static void parse_project_subcommand(BuildOptions *options)
 	if (arg_match("fetch"))
 	{
 		options->project_options.command = SUBCOMMAND_FETCH;
+		while (!at_end() && !next_is_opt())
+		{
+			vec_add(options->libraries_to_fetch, next_arg());
+		}
 		return;
 	}
 
@@ -1992,7 +1996,6 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 	BuildOptions build_options = {
 		.path = DEFAULT_PATH,
 		.vendor_download_path = DEFAULT_PATH,
-		.fetch_url = DEFAULT_FETCH_URL,
 		.emit_llvm = false,
 		.optsetting = OPT_SETTING_NOT_SET,
 		.debug_info_override = DEBUG_INFO_NOT_SET,

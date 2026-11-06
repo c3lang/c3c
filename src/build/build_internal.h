@@ -200,6 +200,7 @@ Project *project_load(const char **filename_ref);
 BuildTarget *project_select_target(const char *filename, Project *project, const char *optional_target, CompilerCommand compiler_command);
 const char **project_dependency_order(const char *filename, Project *project, BuildTarget *target);
 JSONObject *read_library_manifest_for_path(const char *lib_path, const char **manifest_path_ref);
+JSONObject *load_library_manifest(const char *lib_path, const char **error_ref, const char **manifest_path_ref);
 
 const char *get_string(BuildParseContext context, JSONObject *table, const char *key, const char *default_value);
 int get_valid_bool(BuildParseContext context, JSONObject *json, const char *key, int default_val);

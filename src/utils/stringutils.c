@@ -41,6 +41,14 @@ int str_findlist(const char *value, int count, const char** elements)
 	return -1;
 }
 
+void str_list_add_all_unique(const char ***list, const char **items)
+{
+	FOREACH(const char *, item, items)
+	{
+		if (str_findlist(item, vec_size(*list), *list) == -1) vec_add(*list, item);
+	}
+}
+
 
 bool str_is_valid_module_name(const char *name)
 {
@@ -273,6 +281,10 @@ bool str_start_with(const char *name, const char *prefix)
 	return true;
 }
 
+const char *slice_copy(StringSlice slice)
+{
+	return str_copy(slice.ptr, slice.len);
+}
 
 StringSlice slice_next_token(StringSlice *slice, char separator)
 {

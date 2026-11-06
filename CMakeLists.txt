@@ -559,6 +559,7 @@ add_executable(c3c
         src/utils/file_utils.c
         src/utils/find_msvc.c
         src/utils/malloc.c
+        src/utils/sha256.c
         src/utils/stats.c
         src/utils/stringutils.c
         src/utils/taskqueue.c

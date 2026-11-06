@@ -1684,7 +1684,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 			}
 			// Set the variadic type and insert a dummy argument.
 			*variadic = VARIADIC_RAW;
-			*vararg_index_ref = (int)vec_size(params);
+			*vararg_index_ref = vec_size(params);
 			var_arg_found = true;
 			vec_add(params, NULL);
 			if (!try_consume(c, TOKEN_COMMA)) break;
@@ -1890,7 +1890,7 @@ CHECK_ELLIPSIS:
 		{
 			var_arg_found = true;
 			param->var.vararg = ellipsis;
-			*vararg_index_ref = (int)vec_size(params);
+			*vararg_index_ref = vec_size(params);
 		}
 		vec_add(params, param);
 		if (!try_consume(c, TOKEN_COMMA)) break;

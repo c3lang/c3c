@@ -738,7 +738,7 @@ void fetch_winsdk(BuildOptions *options)
 		}
 	}
 
-	for (int i = 0; i < (int)vec_size(archs); i++)
+	for (int i = 0; i < vec_size(archs); i++)
 	{
 		char *msi_name = str_printf("Windows SDK Desktop Libs %s-x86_en-us.msi", archs[i]);
 		vec_add(msi_names, msi_name);
@@ -751,7 +751,7 @@ void fetch_winsdk(BuildOptions *options)
 		}
 	}
 
-	int msi_count = (int)vec_size(msi_names);
+	int msi_count = vec_size(msi_names);
 	JSONObject **msi_packages = NULL;
 	for (int i = 0; i < msi_count; i++) vec_add(msi_packages, (JSONObject *)NULL);
 
@@ -805,7 +805,7 @@ void fetch_winsdk(BuildOptions *options)
 	}
 
 	// Dynamic download of CRT and optionally ASan per requested arch
-	for (int i = 0; i < (int)vec_size(archs); i++)
+	for (int i = 0; i < vec_size(archs); i++)
 	{
 		const char *arch = archs[i];
 		const char *arch_suffixes[4] = {"crt.%s.desktop.base", "crt.%s.store.base", "asan.%s.base", "crt.headers.base"};
@@ -827,7 +827,7 @@ void fetch_winsdk(BuildOptions *options)
 					}
 				}
 			}
-			progress += 32 / ((int)vec_size(archs) * arch_len);
+			progress += 32 / (vec_size(archs) * arch_len);
 			sdk_progress(progress);
 		}
 	}
@@ -858,7 +858,7 @@ void fetch_winsdk(BuildOptions *options)
 	}
 
 	int cabs_done = 0;
-	int cab_count = (int)vec_size(cab_list);
+	int cab_count = vec_size(cab_list);
 	FOREACH(const char *, cab, cab_list)
 	{
 		FOREACH(JSONObject *, pkg, checked_pkgs)
@@ -965,7 +965,7 @@ void fetch_winsdk(BuildOptions *options)
 	}
 
 	// Finalizing and copying files for all requested target architectures
-	for (int i = 0; i < (int)vec_size(archs); i++)
+	for (int i = 0; i < vec_size(archs); i++)
 	{
 		const char *arch = archs[i];
 		char *sdk_arch = file_append_path(sdk_output, arch);

@@ -7,8 +7,13 @@
 - Improved GfxKey mappings.
 - Add the `source-lib` target type (and `c3c source-lib` command) to pack the C3 sources, C sources and headers of a project into a `.c3l` library.
 - `.c3l` manifests without `targets` now work for all platforms, and may contain `version`, `authors` and `langrev`.
-- Fetching dependencies also fetches dependencies in the targets.
 - `fetch`, `vendor-fetch` and `project fetch` now unpack libraries into a `<name>.c3l` directory by default. Use `--decompress=no` to keep them compressed.
+- `fetch` now verifies the downloaded library against the `checksum` (`sha256:<hex>`) of the registry, and refuses a library that doesn't match.
+- `dependencies`, in projects and in library manifests, may name a registry library as `[<url>:]<namespace>/<name>[@<version>]`. The build only uses the name.
+- `fetch` adds just the library name to `dependencies`.
+- `project fetch` only fetches the libraries it is given: `c3c project fetch <library>...`. Without any, it lists the missing ones. Each must be a dependency of the project, or of a library that is installed. A name uses the path of the dependency, or is looked up in the registry: the `fetch-url` project property or `--fetch-url` for the project's dependencies, the default registry for those of libraries.
+- A version in the registry's library info may have a `url`, which `fetch` downloads the library from instead of from the registry itself.
+- A registry library can be locked to a checksum: `<namespace>/<name>@<version>:<sha256>`. `fetch` refuses a library that doesn't match.
 - An `else if` now requires `{ }` around a single statement, like `else` does. `else if (x) foo();` is an error. #3473
 - Add `depends-on` to project targets, allowing them to depend on other targets.
 - LLVM IR (`.ll`) and bitcode (`.bc`) files can be added to the compilation, just like .o files #3339
