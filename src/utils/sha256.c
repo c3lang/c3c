@@ -108,3 +108,22 @@ const char *sha256_file_hex(const char *path)
 	fclose(file);
 	return failed ? NULL : sha256_final_hex(&ctx);
 }
+
+bool hex_equals(const char *a, const char *b)
+{
+	for (; *a && *b; a++, b++)
+	{
+		if ((*a | 0x20) != (*b | 0x20)) return false;
+	}
+	return *a == *b;
+}
+
+bool is_sha256_hex(const char *hex)
+{
+	if (strlen(hex) != 64) return false;
+	for (int i = 0; i < 64; i++)
+	{
+		if (!char_is_hex(hex[i])) return false;
+	}
+	return true;
+}

@@ -84,6 +84,7 @@ static inline void parse_library_target(Library *library, LibraryTarget *target,
 
 	target->linked_libs = get_string_array(context, json, "linked-libraries", false);
 	target->dependencies = get_string_array(context, json, "dependencies", false);
+	convert_library_paths_to_plain_library_names(target->dependencies);
 	target->execs = get_string_array(context, json, "exec", false);
 	target->cc = get_string(context, json, "cc", library->cc);
 	target->cflags = get_cflags(context, json, library->cflags);
@@ -121,6 +122,7 @@ static Library *add_library(JSONObject *json, const char *dir, const char **libs
 	library->execs = get_optional_string_array(context, json, "exec");
 	library->linklib_dir = get_optional_string(context, json, "linklib-dir");
 	library->dependencies = get_optional_string_array(context, json, "dependencies");
+	convert_library_paths_to_plain_library_names(library->dependencies);
 	library->cc = get_optional_string(context, json, "cc");
 	library->cflags = get_cflags(context, json, NULL);
 	library->win_crt = (WinCrtLinking)get_valid_string_setting(context, json, "wincrt", wincrt_linking, 0, 5, "'none', 'static', 'static-debug', 'dynamic' or 'dynamic-debug'.");
@@ -338,65 +340,73 @@ const char *unpack_c3l(const char *zip_path, const char *dest_dir)
 	return file_exists(file_append_path(dest_dir, MANIFEST_FILE)) ? NULL : "the library has no manifest";
 }
 
-// A registry library may end with the checksum it is locked to: "<namespace>/<name>[@<version>]:<checksum>".
-// Returns the ':' in front of the checksum, or NULL. Anything after a ':' that is not a library
-// ("<namespace>/<name>[@<version>]") is a checksum.
-static const char *dependency_pin(const char *text)
+// Format is "<namespace>/<name>[@<version>]:<checksum>". Where the checksum must be 64 hex digits.
+static const char *extract_library_checksum(const char *text)
 {
 	const char *colon = strrchr(text, ':');
-	if (!colon || strchr(colon + 1, '/') || strchr(colon + 1, '@')) return NULL;
-	const char *scheme = strstr(text, "://");
-	return scheme && colon == scheme ? NULL : colon;
+	if (!colon) return NULL;
+	const char *current = colon + 1;
+	while (true)
+	{
+		char c = *(current++);
+		if (!c) break;
+		if (!char_is_hex(c)) return NULL;
+	}
+	if (current - colon != 64 + 2) return NULL;
+	return colon + 1;
 }
 
-// A registry library may start with the URL of its own registry: "<url>:<namespace>/<name>...".
-// The URL ends at the last ':', so it may contain a port. Returns the start of the library, or the
-// text itself if it has no URL. The text must not have a checksum.
-static const char *dependency_library(const char *text)
+// "http://foo.bar.baz:80:namespace/name" -> "namespace/name"
+static StringSlice extract_library_name(StringSlice slice)
 {
-	const char *scheme = strstr(text, "://");
-	if (!scheme) return text;
-	const char *colon = strrchr(text, ':');
-	return colon > scheme ? colon + 1 : text;
+	for (size_t i = slice.len; i > 0; i--)
+	{
+		if (slice.ptr[i - 1] != ':') continue;
+		if (slice.ptr[i] == '/') return slice;
+		return (StringSlice) { slice.ptr + i, slice.len - i };
+	}
+	return slice;
 }
 
-// A dependency is a plain library name ("curl", from the vendor collection) or a registry library
-// "[<url>:]<namespace>/<name>[@<version>][:<checksum>]".
-Dependency dependency_parse(const char *text)
+// A library path has the format "[<url>:]<namespace>/<name>[@<version>][:<checksum>]".
+LibraryPathInfo parse_library_path(const char *path)
 {
-	const char *original = text;
-	const char *pin = dependency_pin(text);
-	if (pin) text = str_copy(text, (size_t)(pin - text));
-	const char *library = dependency_library(text);
-	const char *at = strchr(library, '@');
-	const char *id = at ? str_copy(library, (size_t)(at - library)) : library;
-	// Without a namespace it is a vendor library, which has no registry, version or checksum.
-	if (!strchr(id, '/')) return (Dependency) { .id = original, .name = original };
-	Dependency dependency = { .registry = true, .id = id, .name = strrchr(id, '/') + 1, .version = at ? at + 1 : NULL };
-	if (pin) dependency.checksum = pin + 1;
-	if (library != text) dependency.url = str_copy(text, (size_t)(library - text - 1));
+	const char *checksum = extract_library_checksum(path);
+	StringSlice slice = slice_from_string(path);
+	if (checksum) slice.len -= 65;
+	StringSlice library = extract_library_name(slice);
+	// After slicing, the "library" will just contain the version (or be empty)
+	StringSlice namespace_name_slice = slice_next_token(&library, '@');
+	const char *namespace_name = slice_copy(namespace_name_slice);
+	// This can be a plain entry fetched and added manually, then you just have "raylib6"
+	if (!strchr(namespace_name, '/')) return (LibraryPathInfo) { .id = path, .name = path };
+	LibraryPathInfo dependency = {
+		.use_remote_fetch = true,
+		.id = namespace_name,
+		.name = strrchr(namespace_name, '/') + 1,
+		.version = library.len ? slice_copy(library) : NULL
+	};
+	if (checksum) dependency.checksum = checksum;
+	if (namespace_name_slice.ptr != slice.ptr) dependency.url = str_copy(path, namespace_name_slice.ptr - slice.ptr - 1);
 	return dependency;
 }
 
-// The dependency as it is written in the project file.
-const char *dependency_string(const Dependency *dependency)
+const char *library_path_info_to_string(LibraryPathInfo *dependency)
 {
-	const char *text = dependency->id;
-	if (dependency->version) text = str_printf("%s@%s", text, dependency->version);
-	if (dependency->checksum) text = str_printf("%s:%s", text, dependency->checksum);
-	if (dependency->url) text = str_printf("%s:%s", dependency->url, text);
-	return text;
+	scratch_buffer_clear();
+	if (dependency->url) scratch_buffer_printf("%s:", dependency->url);
+	scratch_buffer_append(dependency->id);
+	if (dependency->version) scratch_buffer_printf("@%s", dependency->version);
+	if (dependency->checksum) scratch_buffer_printf(":%s", dependency->checksum);
+	return scratch_buffer_copy();
 }
 
-// The "version" in the manifest of an installed library (a .c3l file or an unpacked directory),
-// or NULL if it has no manifest or the manifest has no version.
-const char *library_version(const char *lib_path)
+void convert_library_paths_to_plain_library_names(const char **libs)
 {
-	const char *manifest_path;
-	JSONObject *manifest = read_library_manifest_for_path(lib_path, &manifest_path);
-	if (!manifest) return NULL;
-	JSONObject *version = json_map_get(manifest, "version");
-	return version && version->type == J_STRING ? version->str : NULL;
+	FOREACH_IDX(i, const char *, lib, libs)
+	{
+		libs[i] = parse_library_path(lib).name;
+	}
 }
 
 void resolve_libraries(BuildTarget *build_target)

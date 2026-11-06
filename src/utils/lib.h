@@ -18,6 +18,8 @@ bool download_available(void);
 // SHA-256 as 64 lowercase hex characters. The file version returns NULL if the file can't be read.
 const char *sha256_hex(const void *data, size_t len);
 const char *sha256_file_hex(const char *path);
+bool hex_equals(const char *a, const char *b);
+bool is_sha256_hex(const char *hex);
 
 #define ELEMENTLEN(x) (sizeof(x) / sizeof(x[0]))
 extern const char *compiler_exe_name;
@@ -167,6 +169,7 @@ char *str_cat(const char *a, const char *b);
 char *str_cat_len(const char *a, size_t a_len, const char *b, size_t b_len);
 // Search a list of strings and return the matching element or -1 if none found.
 int str_findlist(const char *value, int count, const char** elements);
+void str_list_add_all_unique(const char ***list, const char **items);
 // Sprintf style, saved to an arena allocated string
 char *str_printf(const char *var, ...) __printflike(1, 2);
 char *str_vprintf(const char *var, va_list list);
@@ -186,6 +189,7 @@ char *str_copy(const char *start, size_t str_len);
 char *str_dup(const char *str);
 void stable_identifier_hash(const char *name, uint64_t output[2]);
 
+const char *slice_copy(StringSlice slice);
 StringSlice slice_next_token(StringSlice *slice, char separator);
 static inline bool slice_strcmp(StringSlice slice, const char *other);
 static inline StringSlice slice_from_string(const char *data);

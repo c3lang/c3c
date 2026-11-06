@@ -12,7 +12,6 @@
 #include "c3_llvm.h"
 #endif
 #include "git_hash.h"
-#include <ctype.h>
 #include <errno.h>
 
 #define MAX_OUTPUT_FILES 1000000
@@ -892,7 +891,7 @@ void compiler_compile(void)
 #if USE_PTHREAD
 	INFO_LOG("Will use %d thread(s).\n", compiler.build.build_threads);
 #endif
-	int task_count = (int)vec_size(tasks);
+	int task_count = vec_size(tasks);
 	if (task_count > 0)
 	{
 		int threads = (int)(compiler.build.build_threads > task_count ? task_count : compiler.build.build_threads);
@@ -1145,25 +1144,6 @@ bool use_ansi(void)
 #endif
 }
 
-static bool hex_equals(const char *a, const char *b)
-{
-	for (; *a && *b; a++, b++)
-	{
-		if (tolower((unsigned char)*a) != tolower((unsigned char)*b)) return false;
-	}
-	return *a == *b;
-}
-
-// Check a downloaded file against the registry's `sha256:<hex>` checksum.
-static const char *verify_checksum(const char *file, const char *checksum)
-{
-	if (!str_start_with(checksum, "sha256:")) return str_printf("unsupported checksum '%s'", checksum);
-	const char *actual = sha256_file_hex(file);
-	if (!actual) return "Failed to read the downloaded library";
-	if (!hex_equals(actual, checksum + 7)) return str_printf("checksum mismatch (expected %s, got sha256:%s)", checksum, actual);
-	return NULL;
-}
-
 // Download a library to `destination`, unpacking it into a directory of that name unless `decompress` is false.
 // A non-NULL `checksum` must match the downloaded file.
 static const char *download_library(const char *url, const char *resource, const char *destination, bool progress, bool decompress, const char *checksum)
@@ -1177,14 +1157,35 @@ static const char *download_library(const char *url, const char *resource, const
 	if (!stage_dir) return "Failed to create a temporary directory for the library";
 	const char *result = file_append_path(stage_dir, "library.c3l");
 	const char *error = download_file(url, resource, result, progress);
-	if (!error && checksum) error = verify_checksum(result, checksum);
-	if (!error && decompress)
+	if (error) goto END;
+	if (checksum)
+	{
+		const char *sha256 = sha256_file_hex(result);
+		if (!sha256)
+		{
+			error = "Failed to read the downloaded library";
+			goto END;
+		}
+		if (!str_start_with(checksum, "sha256:"))
+		{
+			error = str_printf("unsupported checksum '%s'", checksum);
+			goto END;
+		}
+		if (!hex_equals(sha256, checksum + 7))
+		{
+			error = str_printf("checksum mismatch (expected %s, got sha256:%s)", checksum, sha256);
+			goto END;
+		}
+	}
+	if (decompress)
 	{
 		const char *zip_file = result;
 		result = file_append_path(stage_dir, "library");
 		error = unpack_c3l(zip_file, result);
+		if (error) goto END;
 	}
-	if (!error && !file_replace(result, destination)) error = "Failed to replace the existing library";
+	if (!file_replace(result, destination)) error = "Failed to replace the existing library";
+END:
 	file_delete_dir(stage_dir);
 	return error;
 }
@@ -1206,7 +1207,7 @@ INLINE bool json_get_string_from_key(JSONObject *obj, const char *key, const cha
 }
 
 // The registry: --fetch-url, else "fetch-url" of the project, else the default.
-static const char *registry_url(BuildOptions *options)
+const char *registry_url(BuildOptions *options)
 {
 	if (options->fetch_url) return options->fetch_url;
 	const char *project_url = project_fetch_url();
@@ -1250,65 +1251,43 @@ static const char *load_fetch_info(const char *base, const char *name, LibraryIn
 	return NULL;
 }
 
-static bool is_sha256_hex(const char *hex)
-{
-	if (strlen(hex) != 64) return false;
-	for (; *hex; hex++)
-	{
-		if (!isxdigit((unsigned char)*hex)) return false;
-	}
-	return true;
-}
-
 // Fetch a registry library as <path>/<name>.c3l: the version of the dependency (the latest if it has
 // none) from the registry of the dependency (the default one if it has none).
-// A dependency with a checksum must match it. Without a version, the version of the registry with
-// that checksum is fetched.
-// `fetched_version` (if not NULL) is set to the version that was resolved.
-const char *registry_fetch_single(BuildOptions *options, const Dependency *dependency, const char *path,
-								  const char **fetched_version, bool progress)
+// A dependency with a checksum must have a version, and match the checksum.
+const char *registry_fetch_single(BuildOptions *options, const LibraryPathInfo *dependency, const char *path, bool progress)
 {
-	const char *pin = dependency->checksum;
-	if (pin && !is_sha256_hex(pin)) return str_printf("invalid checksum '%s' (expected the 64 hex digits of a sha256)", pin);
-	const char *wanted = pin ? str_printf("sha256:%s", pin) : NULL;
+	const char *requested_checksum = dependency->checksum;
+	const char *prefixed_checksum_req = NULL;
+	if (requested_checksum)
+	{
+		if (!is_sha256_hex(requested_checksum)) return str_printf("invalid checksum '%s' (expected the 64 hex digits of a sha256)", requested_checksum);
+		if (!dependency->version) return "a checksum requires a version: <namespace>/<name>@<version>:<checksum>";
+		prefixed_checksum_req = str_cat("sha256:", requested_checksum);
+	}
 	const char *base = dependency->url ? dependency->url : registry_url(options);
 	LibraryInfo info;
 	const char *error = load_fetch_info(base, dependency->id, &info);
 	if (error) return error;
 
-	// 2. Resolve the version: the requested one, the first one with the pinned checksum, or "latest" from the record.
-	const char *version = dependency->version;
-	if (!version && pin)
-	{
-		FOREACH_IDX(i, JSONObject *, candidate, info.versions->members)
-		{
-			const char *candidate_checksum;
-			if (!candidate || candidate->type != J_OBJECT || !json_get_string_from_key(candidate, "checksum", &candidate_checksum)) continue;
-			if (!hex_equals(candidate_checksum, wanted)) continue;
-			version = info.versions->keys[i];
-			break;
-		}
-		if (!version) return str_printf("no version of '%s' has the checksum %s", dependency->id, wanted);
-	}
-	if (!version) version = info.latest;
+	// 2. Resolve the version: the requested one, or "latest" from the record.
+	const char *version = dependency->version ? dependency->version : info.latest;
 	JSONObject *entry = json_map_get(info.versions, version);
 	if (!entry || entry->type != J_OBJECT) return str_printf("no such version '%s'", version ? version : "latest");
-	if (fetched_version) *fetched_version = version;
 
-	// 3. Download exactly that version, checking it against the checksum: the pinned one, or the one
-	// of the registry when it gives one.
-	const char *checksum = NULL;
-	json_get_string_from_key(entry, "checksum", &checksum);
-	if (pin)
+	// 3. Verify checksum match.
+	const char *json_checksum = NULL;
+	json_get_string_from_key(entry, "checksum", &json_checksum);
+	if (prefixed_checksum_req)
 	{
-		if (checksum && !hex_equals(checksum, wanted))
+		// Hex equals will be safe here, even though it steps through the prefix.
+		if (json_checksum && !hex_equals(json_checksum, prefixed_checksum_req))
 		{
-			return str_printf("version '%s' has the checksum %s in the registry, not the pinned %s", version, checksum, wanted);
+			return str_printf("version '%s' has the checksum %s in the repository, not the requested %s", version, json_checksum, prefixed_checksum_req);
 		}
-		checksum = wanted;
+		json_checksum = prefixed_checksum_req;
 	}
 	const char *destination = file_append_path(path, str_printf("%s.c3l", dependency->name));
-	// The registry may say where the library is stored, otherwise the registry serves it itself.
+	// The repo may say where the library is stored, otherwise the repo serves it itself.
 	const char *artifact_url = NULL;
 	json_get_string_from_key(entry, "url", &artifact_url);
 	if (artifact_url)
@@ -1317,9 +1296,9 @@ const char *registry_fetch_single(BuildOptions *options, const Dependency *depen
 		{
 			return str_printf("invalid download url '%s'", artifact_url);
 		}
-		return download_library(artifact_url, "", destination, progress, !options->fetch_compressed, checksum);
+		return download_library(artifact_url, "", destination, progress, !options->fetch_compressed, json_checksum);
 	}
-	return download_library(base, str_printf("/download/%s@%s", dependency->id, version), destination, progress, !options->fetch_compressed, checksum);
+	return download_library(base, str_printf("/download/%s@%s", dependency->id, version), destination, progress, !options->fetch_compressed, json_checksum);
 }
 
 INLINE void fetch_lib(BuildOptions *options, bool is_vendor, const char **libraries_to_fetch)
@@ -1334,12 +1313,12 @@ INLINE void fetch_lib(BuildOptions *options, bool is_vendor, const char **librar
 	if (file_exists(PROJECT_JSON5) || file_exists(PROJECT_JSON))
 	{
 		const char** deps_dirs =  get_project_dependency_directories();
-		int num_lib = (int)vec_size(deps_dirs);
+		int num_lib = vec_size(deps_dirs);
 		if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
 	}
 	int count = 0;
 	const char** fetched_libraries = NULL;
-	int total_libraries = (int)vec_size(libraries_to_fetch);
+	int total_libraries = vec_size(libraries_to_fetch);
 
 	for (int i = 0; i < total_libraries; i++)
 	{
@@ -1354,23 +1333,17 @@ INLINE void fetch_lib(BuildOptions *options, bool is_vendor, const char **librar
 		}
 		else
 		{
-			Dependency library = dependency_parse(lib);
-			if (!library.registry || !library.name[0])
+			LibraryPathInfo library = parse_library_path(lib);
+			if (!library.use_remote_fetch || !library.name[0])
 			{
 				printf("Skipping invalid library name '%s' (expected <namespace>/<name>).\n", lib);
 				continue;
 			}
 			printf("Fetching library '%s'...\n", lib);
 			(void)fflush(stdout);
-			const char *fetched_version = NULL;
-			error = registry_fetch_single(options, &library, options->vendor_download_path, &fetched_version, ansi);
-			// The project keeps the version that was fetched, unless the library is locked to a checksum
-			// only, and the registry if the library names its own.
-			if (!error)
-			{
-				if (library.version || !library.checksum) library.version = fetched_version;
-				recorded = dependency_string(&library);
-			}
+			error = registry_fetch_single(options, &library, options->vendor_download_path, ansi);
+			// The project only lists the name: where it came from is up to the user to write down.
+			recorded = library.name;
 		}
 		if (!error)
 		{
@@ -1394,7 +1367,7 @@ INLINE void fetch_lib(BuildOptions *options, bool is_vendor, const char **librar
 	if (ansi && total_libraries > 1) printf("\033[2K");
 
 	// add fetched library to the dependency list
-	add_libraries_to_project_file(fetched_libraries, is_vendor ? NULL : options->fetch_url);
+	add_libraries_to_project_file(fetched_libraries);
 
 	if (!count)	error_exit("Error: Failed to download any libraries.");
 	if (count < vec_size(libraries_to_fetch)) error_exit("Error: Only some libraries were downloaded.");
@@ -1497,6 +1470,53 @@ static bool library_has_tag(LibraryOverview *info, const char *tag)
 	return false;
 }
 
+// Load the "libraries" array of /index.json from the registry at `base`.
+static const char *load_registry_index(const char *base, JSONObject **libs_ref)
+{
+	const char *tmp_dir = dir_make_temp_dir();
+	if (!tmp_dir) return "Failed to create temp directory";
+	const char *tmp_file = file_append_path(tmp_dir, "index.json");
+	const char *error = download_file(base, "/index.json", tmp_file, false);
+	if (error) return error;
+	size_t size;
+	JsonParser parser;
+	json_init_string(&parser, file_read_all(tmp_file, &size));
+	JSONObject *obj = json_parse(&parser);
+	if (!obj || obj->type != J_OBJECT) return "failed to parse the library index";
+	JSONObject *libs = json_map_get(obj, "libraries");
+	if (!libs || libs->type != J_ARRAY) return "invalid library index (missing 'libraries')";
+	*libs_ref = libs;
+	return NULL;
+}
+
+// Find the "<namespace>/<name>" of the library `name` in the registry at `base`. It must be the only one.
+const char *registry_find_library(const char *base, const char *name, const char **id_ref)
+{
+	JSONObject *libs;
+	const char *error = load_registry_index(base, &libs);
+	if (error) return str_printf("failed to fetch the library list from '%s': %s", base, error);
+	const char **candidates = NULL;
+	FOREACH(JSONObject *, entry, libs->elements)
+	{
+		LibraryOverview info;
+		if (!parse_library(entry, &info)) return "malformed library index entry";
+		const char *slash = strrchr(info.name, '/');
+		if (slash && str_eq(slash + 1, name)) vec_add(candidates, info.name);
+	}
+	if (!vec_size(candidates)) return str_printf("there is no library '%s' in '%s'", name, base);
+	if (vec_size(candidates) > 1)
+	{
+		scratch_buffer_clear();
+		FOREACH_IDX(i, const char *, candidate, candidates)
+		{
+			if (i) scratch_buffer_append(", ");
+			scratch_buffer_append(candidate);
+		}
+		return str_printf("'%s' is ambiguous in '%s', it could be any of: %s", name, base, scratch_buffer_to_string());
+	}
+	*id_ref = candidates[0];
+	return NULL;
+}
 
 void fetch(BuildOptions *options)
 {
@@ -1561,20 +1581,9 @@ void fetch_list(BuildOptions *options)
 	const char *base = registry_url(options);
 	const char *name_filter = options->search_name;
 	const char *tag_filter = options->search_tag;
-	const char *tmp_dir = dir_make_temp_dir();
-	if (!tmp_dir) error_exit("Failed to create temp directory");
-	const char *tmp_file = file_append_path(tmp_dir, "index.json");
-	const char *error = download_file(base, "/index.json", tmp_file, false);
+	JSONObject *libs;
+	const char *error = load_registry_index(base, &libs);
 	if (error) error_exit("Failed to fetch the library list from '%s': %s", base, error);
-
-	size_t size;
-	char *json_str = file_read_all(tmp_file, &size);
-	JsonParser parser;
-	json_init_string(&parser, json_str);
-	JSONObject *obj = json_parse(&parser);
-	if (!obj || obj->type != J_OBJECT) error_exit("Failed to parse the library index.");
-	JSONObject *libs = json_map_get(obj, "libraries");
-	if (!libs || libs->type != J_ARRAY) error_exit("Invalid library index (missing 'libraries').");
 
 	// Unfiltered: just the ns/name of every library.
 	if (!name_filter && !tag_filter)

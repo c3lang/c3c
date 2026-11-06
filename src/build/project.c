@@ -211,15 +211,6 @@ const int project_deprecated_target_keys_count = ELEMENTLEN(project_deprecated_t
   (type__)get_valid_string_setting(context, json, key__, strings__, 0, ELEMENTLEN(strings__), comment__)
 
 // Json -> target / default target
-// Libraries are found by name, so a dependency like "test/vk@1.0.0" is looked up as "vk".
-static void use_library_names(const char **libs)
-{
-	FOREACH_IDX(i, const char *, lib, libs)
-	{
-		libs[i] = dependency_parse(lib).name;
-	}
-}
-
 static void load_into_build_target(BuildParseContext context, JSONObject *json, BuildTarget *target)
 {
 	if (context.target || context.is_template)
@@ -362,7 +353,7 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 
 	// Dependencies
 	APPEND_STRING_LIST(&target->libs, "dependencies");
-	use_library_names(target->libs);
+	convert_library_paths_to_plain_library_names(target->libs);
 
 	FOREACH(const char *, name, target->libs)
 	{
@@ -935,7 +926,7 @@ static void project_add_target(BuildParseContext context, Project *project, Buil
 		const char **default_libs = target->libs;
 		APPEND_STRING_LIST(&target->libdirs, "dependency-search-paths");
 		APPEND_STRING_LIST(&target->libs, "dependencies");
-		use_library_names(target->libs);
+		convert_library_paths_to_plain_library_names(target->libs);
 		const char *manifest_path = NULL;
 		JSONObject *template_json = resolve_template(target, template_ref, &manifest_path);
 		target->libdirs = default_libdirs;
@@ -983,7 +974,7 @@ static void project_add_targets(const char *filename, Project *project, JSONObje
 		const char *key = targets_json->keys[i];
 		if (object->type != J_OBJECT) error_exit("Invalid data in target '%s'", key);
 		BuildParseContext context = { filename, key, false };
-		int type = get_valid_string_setting(context, object, "type", targets, 0, ELEMENTLEN(targets), "a target type like 'executable' or 'static-lib'");
+		int type = get_valid_string_setting(context, object, "type", target_types, 0, ELEMENTLEN(target_types), "a target type like 'executable' or 'static-lib'");
 		if (type < 0) error_exit("Target %s did not contain 'type' key.", key);
 		project_add_target(context, project, &default_target, object, target_desc[type], type);
 	}

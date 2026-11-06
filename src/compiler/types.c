@@ -1274,7 +1274,7 @@ static Type *type_create_array(Type *element_type, ArrayIndex len, TypeKind kind
 	{
 		create_type_cache(element_type);
 	}
-	int entries = (int)vec_size(element_type->type_cache);
+	int entries = vec_size(element_type->type_cache);
 	for (int i = ARRAY_OFFSET; i < entries; i++)
 	{
 		Type *ptr_vec = element_type->type_cache[i];

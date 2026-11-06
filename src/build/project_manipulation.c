@@ -79,7 +79,7 @@ static const char *generate_expected(const char **options, size_t n)
 }
 
 
-const char *optimization_levels[] = {
+static const char *optimization_levels[] = {
 	[OPT_SETTING_O0] = "O0",
 	[OPT_SETTING_O1] = "O1",
 	[OPT_SETTING_O2] = "O2",
@@ -90,7 +90,7 @@ const char *optimization_levels[] = {
 	[OPT_SETTING_OTINY] = "Oz"
 };
 
-const char *debug_levels[] = {
+static const char *debug_levels[] = {
 	[DEBUG_INFO_NONE] = "none",
 	[DEBUG_INFO_LINE_TABLES] = "line-tables",
 	[DEBUG_INFO_FULL] = "full"
@@ -276,7 +276,7 @@ static const char **get_list(const char *file, JSONObject *project, const char *
 	return list;
 }
 
-// The registry named by "fetch-url" in the project file, or NULL.
+// The remote named by "fetch-url" in the project file, or NULL.
 const char *project_fetch_url(void)
 {
 	if (!file_exists(PROJECT_JSON5) && !file_exists(PROJECT_JSON)) return NULL;
@@ -287,80 +287,141 @@ const char *project_fetch_url(void)
 	return url->str;
 }
 
-// Libraries are installed as <name>.c3l, so two dependencies of the target (or of the project if target is NULL)
-// with the same name can't be used together, unless it is the same dependency written twice.
-static void check_dependency_names(const char *file, JSONObject *project, const char *target)
+// The search path where <name>.c3l is installed, or NULL.
+static const char *find_library_dir(const char **dirs, const char *name)
 {
-	const char **deps = get_list(file, project, target, "dependencies", "dependencies-override");
-	if (!vec_size(deps)) return;
-	FOREACH_IDX(dep_index, const char *, dep, deps)
+	const char *lib_file = str_printf("%s.c3l", name);
+	FOREACH(const char *, dir, dirs)
 	{
-		const char *name = dependency_parse(dep).name;
-		for (int i = 0; i < dep_index; i++)
-		{
-			if (!str_eq(dependency_parse(deps[i]).name, name) || str_eq(deps[i], dep)) continue;
-			error_exit("Failed: the dependencies '%s' and '%s' would both be installed as '%s.c3l'.", deps[i], dep, name);
-		}
+		if (file_exists(file_append_path(dir, lib_file))) return dir;
 	}
+	return NULL;
 }
 
-// Fetch the dependencies of the target (or of the project if target is NULL) missing from its search paths.
-// A dependency "[<url>:]<namespace>/<name>[@<version>]" comes from the registry (the one at <url> if it has one),
-// any other from the vendor collection. The dependencies of a target include those of the project, so
-// `handled` lists the ones already dealt with in this run.
-static void fetch_missing_dependencies(BuildOptions *options, const char *file, JSONObject *project, const char *target, const char ***handled)
+// The dependencies in the manifests of the installed libraries that `direct` depends on, directly or not.
+static const char **derived_dependencies(const char **dirs, const char **direct)
 {
-	const char **deps = get_list(file, project, target, "dependencies", "dependencies-override");
-	if (!vec_size(deps)) return;
-	const char **dirs = get_list(file, project, target, "dependency-search-paths", "dependency-search-paths-override");
-	if (!vec_size(dirs))
+	const char **derived = NULL;
+	const char **pending = NULL;
+	const char **visited = NULL;
+	FOREACH(const char *, dep, direct) vec_add(pending, dep);
+	for (int i = 0; i < vec_size(pending); i++)
 	{
-		error_exit("Failed: no 'dependency-search-paths' to fetch '%s' into.\n"
-				   "Add e.g. \"dependency-search-paths\": [ \"lib\" ] to the project file.", deps[0]);
-	}
-	FOREACH(const char *, dep, deps)
-	{
-		if (str_findlist(dep, vec_size(*handled), *handled) != -1) continue;
-		vec_add(*handled, dep);
-		Dependency library = dependency_parse(dep);
-		const char *lib_file = str_printf("%s.c3l", library.name);
-		// New libraries go into the first search path, an installed one is replaced where it is.
-		const char *install_dir = dirs[0];
-		bool found = false;
-		FOREACH(const char *, dir, dirs)
+		// Let's get the actual name.
+		const char *name = parse_library_path(pending[i]).name;
+		if (str_findlist(name, vec_size(visited), visited) != -1) continue;
+		vec_add(visited, name);
+		const char *dir = find_library_dir(dirs, name);
+		if (!dir) continue;
+		const char *manifest_path;
+		JSONObject *manifest = read_library_manifest_for_path(file_append_path(dir, str_printf("%s.c3l", name)), &manifest_path);
+		// Mangled or missing manifest, ignore it.
+		if (!manifest) continue;
+		BuildParseContext context = { manifest_path, NULL, false };
+		// Pick the main dependencies
+		const char **deps = get_optional_string_array(context, manifest, "dependencies");
+		JSONObject *targets = json_map_get(manifest, "targets");
+		if (targets && targets->type == J_OBJECT)
 		{
-			if (found || !file_exists(file_append_path(dir, lib_file))) continue;
+			// Add the target dependencies
+			FOREACH_IDX(t, JSONObject *, target, targets->members)
+			{
+				if (target->type != J_OBJECT) continue;
+				context.target = targets->keys[t];
+				FOREACH(const char *, dep, get_optional_string_array(context, target, "dependencies")) vec_add(deps, dep);
+			}
+		}
+		// Add everything to pending and derived sets.
+		FOREACH(const char *, dep, deps)
+		{
+			vec_add(derived, dep);
+			vec_add(pending, dep);
+		}
+	}
+	return derived;
+}
+
+// A field the dependency gives must be the same in the argument, which takes it if it has none.
+static bool field_matches(const char **arg_field, const char *dep_field)
+{
+	if (!dep_field) return true;
+	if (!*arg_field) *arg_field = dep_field;
+	return str_eq(*arg_field, dep_field);
+}
+
+// What to fetch for `arg`, which must name a dependency of the project, or of a library it depends on.
+// A bare name uses the path of the dependency, or else is looked up in the registry.
+// The registry is the project's for its own dependencies, and the default one for those of libraries.
+static LibraryPathInfo resolve_fetch(BuildOptions *options, const char *arg, const char **direct, const char **derived)
+{
+	LibraryPathInfo wanted = parse_library_path(arg);
+	bool found = false;
+	bool found_direct = false;
+	const char *path = NULL;
+	bool path_direct = false;
+	const char **dep_set[2] = { direct, derived };
+	for (int i = 0; i < 2; i++)
+	{
+		const char **deps = dep_set[i];
+		FOREACH(const char *, dep, deps)
+		{
+			LibraryPathInfo info = parse_library_path(dep);
+			if (!str_eq(info.name, wanted.name)) continue;
 			found = true;
-			install_dir = dir;
+			if (deps == direct) found_direct = true;
+			if (!info.use_remote_fetch) continue;
+			if (path && !str_eq(path, dep))
+			{
+				error_exit("Failed: '%s' is ambiguous, the dependencies have both '%s' and '%s'.", arg, path, dep);
+			}
+			if (!path) path_direct = deps == direct;
+			path = dep;
 		}
-		if (found)
-		{
-			// An installed library is kept, unless the dependency asks for a version and the
-			// manifest of the installed library says it is another one.
-			const char *installed_version = NULL;
-			if (library.registry && library.version) installed_version = library_version(file_append_path(install_dir, lib_file));
-			if (!installed_version || str_eq(installed_version, library.version)) continue;
-			printf("Updating library '%s' (installed version is %s)...\n", dep, installed_version);
-		}
-		else
-		{
-			printf("Fetching missing library '%s'...\n", dep);
-		}
-		fflush(stdout);
-		file_create_folders(file_append_path(install_dir, lib_file));
-		const char *error;
-		if (library.registry)
-		{
-			error = registry_fetch_single(options, &library, install_dir, NULL, use_ansi());
-		}
-		else
-		{
-			error = vendor_fetch_single(dep, install_dir, use_ansi(), !options->fetch_compressed);
-		}
-		if (error) printf("Failed: '%s'\n", error);
 	}
+	if (!found) error_exit("Failed: '%s' is not a dependency of the project, or of the libraries it depends on.", arg);
+
+	const char *base = DEFAULT_FETCH_URL;
+	if ((path && path_direct) || (!path && found_direct)) base = registry_url(options);
+
+	LibraryPathInfo library;
+	if (wanted.use_remote_fetch)
+	{
+		library = wanted;
+		if (path)
+		{
+			// Given something like foo/bar as the fetch parameter, we require that the path also contains foo/bar
+			// so the user-provided info needs to match the project provided data.
+			LibraryPathInfo dep = parse_library_path(path);
+			if (!str_eq(dep.id, library.id) || !field_matches(&library.url, dep.url)
+				|| !field_matches(&library.version, dep.version) || !field_matches(&library.checksum, dep.checksum))
+			{
+				error_exit("Failed: '%s' doesn't match the dependency '%s'.", arg, path);
+			}
+		}
+		if (!library.url) library.url = base;
+		return library;
+	}
+
+	// We just have the path.
+	if (path)
+	{
+		library = parse_library_path(path);
+		if (!library.url) library.url = base;
+		return library;
+	}
+
+	// Try to find the library in the remote.
+	const char *id;
+	const char *error = registry_find_library(base, wanted.name, &id);
+	if (error) error_exit("Failed: %s.", error);
+	library = parse_library_path(id);
+	if (!library.url) library.url = base;
+	return library;
 }
 
+
+// Fetch the libraries named on the command line, in order. Each must be a dependency of the project,
+// or of a library that is installed, possibly by an earlier one of them.
 void fetch_project(BuildOptions* options)
 {
 	if (!download_available())
@@ -373,38 +434,64 @@ void fetch_project(BuildOptions* options)
 		error_exit("Failed: no project file found.");
 	}
 
-	// First the dependencies of the project itself, then those of each target.
 	const char *filename;
 	JSONObject *project = project_json_load(&filename);
 	JSONObject *project_targets = json_map_get(project, "targets");
 	if (project_targets && project_targets->type != J_OBJECT) project_targets = NULL;
-	// Check all the names before fetching anything.
-	check_dependency_names(filename, project, NULL);
+	const char **direct = NULL;
+	str_list_add_all_unique(&direct, get_list(filename, project, NULL, "dependencies", "dependencies-override"));
 	if (project_targets)
 	{
 		FOREACH_IDX(i, JSONObject *, target, project_targets->members)
 		{
 			if (target->type != J_OBJECT) error_exit("Invalid data in target '%s'", project_targets->keys[i]);
-			check_dependency_names(filename, project, project_targets->keys[i]);
+			str_list_add_all_unique(&direct, get_list(filename, project, project_targets->keys[i], "dependencies", "dependencies-override"));
 		}
 	}
-	const char **handled = NULL;
-	fetch_missing_dependencies(options, filename, project, NULL, &handled);
-	if (!project_targets) return;
-	FOREACH(const char *, target_name, project_targets->keys)
+	const char **dirs = get_list(filename, project, NULL, "dependency-search-paths", "dependency-search-paths-override");
+	if (!vec_size(dirs))
 	{
-		fetch_missing_dependencies(options, filename, project, target_name, &handled);
+		error_exit("Failed: no 'dependency-search-paths' to fetch into.\n"
+				   "Add e.g. \"dependency-search-paths\": [ \"lib\" ] to the project file.");
+	}
+
+	if (!vec_size(options->libraries_to_fetch))
+	{
+		const char **all = NULL;
+		str_list_add_all_unique(&all, direct);
+		str_list_add_all_unique(&all, derived_dependencies(dirs, direct));
+		const char **missing = NULL;
+		FOREACH(const char *, dep, all)
+		{
+			const char *name = parse_library_path(dep).name;
+			if (find_library_dir(dirs, name) || str_findlist(name, vec_size(missing), missing) != -1) continue;
+			vec_add(missing, name);
+		}
+		if (!vec_size(missing))
+		{
+			puts("All dependencies are installed.");
+			return;
+		}
+		puts("Missing dependencies, fetch them with 'c3c project fetch <library>...':");
+		FOREACH(const char *, name, missing) printf("  %s\n", name);
+		return;
+	}
+
+	FOREACH(const char *, arg, options->libraries_to_fetch)
+	{
+		LibraryPathInfo library = resolve_fetch(options, arg, direct, derived_dependencies(dirs, direct));
+		// A new library goes into the first search path, an installed one is replaced where it is.
+		const char *dir = find_library_dir(dirs, library.name);
+		printf("Fetching '%s'...\n", library_path_info_to_string(&library));
+		fflush(stdout);
+		const char *error = registry_fetch_single(options, &library, dir ? dir : dirs[0], use_ansi());
+		if (error) error_exit("Failed to fetch '%s': %s", arg, error);
 	}
 }
 
-
-
-// Add the libraries to "dependencies". A library is listed once, by name: a registry library
-// ("<namespace>/<name>@<version>") replaces an older entry for it, a plain name never does.
-// The registry is saved as "fetch-url" if the project doesn't have one yet. If the project has another
-// one, the libraries are listed with their own registry: "<url>:<namespace>/<name>@<version>".
-void add_libraries_to_project_file(const char** libs, const char *fetch_url) {
-
+// Add the library names to "dependencies", unless there already is a dependency with that name.
+void add_libraries_to_project_file(const char** libs)
+{
 	if (!vec_size(libs)) return;
 	if (!file_exists(PROJECT_JSON5) && !file_exists(PROJECT_JSON)) return;
 
@@ -424,35 +511,15 @@ void add_libraries_to_project_file(const char** libs, const char *fetch_url) {
 		vec_add(dependencies, element->str);
 	}
 
-	const char *project_url = project_fetch_url();
-	bool own_url = fetch_url && project_url && !str_eq(project_url, fetch_url);
-
 	FOREACH(const char*, lib, libs)
 	{
-		Dependency library = dependency_parse(lib);
-		if (own_url && library.registry && !library.url)
+		FOREACH(const char *, dependency, dependencies)
 		{
-			printf("'%s' is fetched from '%s', and not from the 'fetch-url' of the project, so it is listed with that URL.\n", lib, fetch_url);
-			library.url = fetch_url;
-			lib = dependency_string(&library);
+			if (str_eq(parse_library_path(dependency).name, lib)) goto NEXT;
 		}
-		int present = -1;
-		FOREACH_IDX(i, const char *, dependency, dependencies)
-		{
-			if (str_eq(dependency_parse(dependency).name, library.name)) present = i;
-		}
-		if (present == -1) {
-			vec_add(dependencies, lib);
-		}
-		else if (library.registry) {
-			dependencies[present] = lib;
-		}
+		vec_add(dependencies, lib);
+		NEXT:;
 	}
-	if (fetch_url && !project_url)
-	{
-		json_map_set(project_json, "fetch-url", json_new_string(fetch_url));
-	}
-
 	JSONObject** elements = NULL;
 	FOREACH(const char*, dep, dependencies)
 	{
@@ -487,7 +554,7 @@ void add_target_project(BuildOptions *build_options)
 		error_exit("Target with name '%s' already exists", build_options->project_options.target_name);
 	}
 
-	JSONObject *target_type_obj = json_new_string(targets[build_options->project_options.target_type]);
+	JSONObject *target_type_obj = json_new_string(target_types[build_options->project_options.target_type]);
 
 	JSONObject *new_target = json_new_map();
 	json_map_set(new_target, "type", target_type_obj);
