@@ -607,6 +607,32 @@ fn void test_sign() @test
 	assert($Typeof(math::sign(y)) == uint);
 }
 
+fn void test_sign_float() @test
+{
+	double d = -21.5;
+	assert(math::sign(d) == -1.0);
+	d = 1e-310;
+	assert(math::sign(d) == 1.0);
+	d = -double::inf;
+	assert(math::sign(d) == -1.0);
+	d = double::inf;
+	assert(math::sign(d) == 1.0);
+	d = 0.0;
+	assert(math::sign(d) == 0.0 && !math::signbit(math::sign(d)));
+	d = -0.0;
+	assert(math::sign(d) == 0.0 && math::signbit(math::sign(d)));
+	d = double::nan;
+	assert(math::is_nan(math::sign(d)));
+	assert($Typeof(math::sign(d)) == double);
+	float f = -3.0f;
+	assert(math::sign(f) == -1.0f);
+	f = 1e-40f;
+	assert(math::sign(f) == 1.0f);
+	f = float::nan;
+	assert(math::is_nan(math::sign(f)));
+	assert($Typeof(math::sign(f)) == float);
+}
+
 
 fn void test_sin() @test
 {
