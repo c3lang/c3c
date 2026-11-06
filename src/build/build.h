@@ -160,6 +160,8 @@ static const char *target_desc[8] = {
 };
 
 
+#define LIBRARY_PATH_FORMAT "[<url>:]<namespace>/<name>[@<version>][:<checksum>]"
+
 typedef struct
 {
 	bool use_remote_fetch;
@@ -168,7 +170,18 @@ typedef struct
 	const char *name;
 	const char *version;
 	const char *checksum;
+	const char *error;
 } LibraryPathInfo;
+
+typedef struct LibraryInfo
+{
+	struct JSONObject_ *versions;
+	const char *latest;
+	const char *library;
+	const char *updated;
+	const char *description;
+	struct JSONObject_ **tags;
+} LibraryInfo;
 
 typedef struct BuildOptions_
 {
@@ -680,14 +693,18 @@ BuildOptions parse_arguments(int argc, const char *argv[]);
 ArchOsTarget arch_os_target_from_string(const char *target);
 bool command_accepts_files(CompilerCommand command);
 bool command_passes_args(CompilerCommand command);
-void update_build_target_with_opt_level(BuildTarget *target,
-	OptimizationSetting level);
+void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting level);
 const char *check_dir(const char *path);
 void create_project(BuildOptions *build_options);
 void create_library(BuildOptions *build_options);
 void resolve_libraries(BuildTarget *build_target);
-const char *unpack_c3l(const char *zip_path, const char *dest_dir);
+const char** get_project_dependency_directories(void);
+void add_libraries_to_project_file(const char** libs);
+const char *registry_url(BuildOptions *options);
+void fetch_lib(BuildOptions *options, bool is_vendor, const char **libraries_to_fetch);
 LibraryPathInfo parse_library_path(const char *path);
+const char *load_fetch_info(const char *base, const char *name, LibraryInfo *info);
+const char *registry_fetch_single(BuildOptions *options, LibraryPathInfo *dependency, const char *path, bool progress);
 const char *library_path_info_to_string(LibraryPathInfo *dependency);
 void convert_library_paths_to_plain_library_names(const char **libs);
 void build_source_library(BuildTarget *target);

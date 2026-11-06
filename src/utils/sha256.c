@@ -117,13 +117,3 @@ bool hex_equals(const char *a, const char *b)
 	}
 	return *a == *b;
 }
-
-bool is_sha256_hex(const char *hex)
-{
-	if (strlen(hex) != 64) return false;
-	for (int i = 0; i < 64; i++)
-	{
-		if (!char_is_hex(hex[i])) return false;
-	}
-	return true;
-}

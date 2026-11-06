@@ -19,7 +19,6 @@ bool download_available(void);
 const char *sha256_hex(const void *data, size_t len);
 const char *sha256_file_hex(const char *path);
 bool hex_equals(const char *a, const char *b);
-bool is_sha256_hex(const char *hex);
 
 #define ELEMENTLEN(x) (sizeof(x) / sizeof(x[0]))
 extern const char *compiler_exe_name;

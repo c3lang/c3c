@@ -298,6 +298,17 @@ static const char *find_library_dir(const char **dirs, const char *name)
 	return NULL;
 }
 
+// The strings in the "dependencies" of a manifest or one of its targets, skipping anything malformed.
+static void add_manifest_dependencies(const char ***deps, JSONObject *json)
+{
+	JSONObject *list = json_map_get(json, "dependencies");
+	if (!list || list->type != J_ARRAY) return;
+	FOREACH(JSONObject *, dep, list->elements)
+	{
+		if (dep->type == J_STRING && !parse_library_path(dep->str).error) vec_add(*deps, dep->str);
+	}
+}
+
 // The dependencies in the manifests of the installed libraries that `direct` depends on, directly or not.
 static const char **derived_dependencies(const char **dirs, const char **direct)
 {
@@ -314,21 +325,21 @@ static const char **derived_dependencies(const char **dirs, const char **direct)
 		const char *dir = find_library_dir(dirs, name);
 		if (!dir) continue;
 		const char *manifest_path;
-		JSONObject *manifest = read_library_manifest_for_path(file_append_path(dir, str_printf("%s.c3l", name)), &manifest_path);
-		// Mangled or missing manifest, ignore it.
-		if (!manifest) continue;
-		BuildParseContext context = { manifest_path, NULL, false };
+		JSONObject *manifest;
+		// Mangled or missing manifest, ignore it, so that the library can be fetched again.
+		const char *error;
+		manifest = load_library_manifest(file_append_path(dir, str_printf("%s.c3l", name)), &error, &manifest_path);
+		if (!manifest || manifest->type != J_OBJECT) continue;
 		// Pick the main dependencies
-		const char **deps = get_optional_string_array(context, manifest, "dependencies");
+		const char **deps = NULL;
+		add_manifest_dependencies(&deps, manifest);
 		JSONObject *targets = json_map_get(manifest, "targets");
 		if (targets && targets->type == J_OBJECT)
 		{
 			// Add the target dependencies
-			FOREACH_IDX(t, JSONObject *, target, targets->members)
+			FOREACH(JSONObject *, target, targets->members)
 			{
-				if (target->type != J_OBJECT) continue;
-				context.target = targets->keys[t];
-				FOREACH(const char *, dep, get_optional_string_array(context, target, "dependencies")) vec_add(deps, dep);
+				if (target->type == J_OBJECT) add_manifest_dependencies(&deps, target);
 			}
 		}
 		// Add everything to pending and derived sets.
@@ -355,6 +366,7 @@ static bool field_matches(const char **arg_field, const char *dep_field)
 static LibraryPathInfo resolve_fetch(BuildOptions *options, const char *arg, const char **direct, const char **derived)
 {
 	LibraryPathInfo wanted = parse_library_path(arg);
+	if (wanted.error) error_exit("Failed: '%s' is not a valid library, %s.", arg, wanted.error);
 	bool found = false;
 	bool found_direct = false;
 	const char *path = NULL;
@@ -415,6 +427,7 @@ static LibraryPathInfo resolve_fetch(BuildOptions *options, const char *arg, con
 	const char *error = registry_find_library(base, wanted.name, &id);
 	if (error) error_exit("Failed: %s.", error);
 	library = parse_library_path(id);
+	if (library.error) error_exit("Failed: the registry has an invalid library '%s', %s.", id, library.error);
 	if (!library.url) library.url = base;
 	return library;
 }
@@ -447,6 +460,11 @@ void fetch_project(BuildOptions* options)
 			if (target->type != J_OBJECT) error_exit("Invalid data in target '%s'", project_targets->keys[i]);
 			str_list_add_all_unique(&direct, get_list(filename, project, project_targets->keys[i], "dependencies", "dependencies-override"));
 		}
+	}
+	FOREACH(const char *, dep, direct)
+	{
+		const char *error = parse_library_path(dep).error;
+		if (error) error_exit("Failed: invalid dependency '%s' in the project file, %s.", dep, error);
 	}
 	const char **dirs = get_list(filename, project, NULL, "dependency-search-paths", "dependency-search-paths-override");
 	if (!vec_size(dirs))
