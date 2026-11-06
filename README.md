@@ -543,19 +543,4 @@ Editor plugins can be found at https://github.com/c3lang/editor-plugins.
 
 A huge **THANK YOU** goes out to all contributors and sponsors.
 
-A special thank you to sponsors [Zack Puhl](https://github.com/NotsoanoNimus) and [konimarti](https://github.com/konimarti) for going the extra mile.
-
-And honorable mention goes to past sponsors:
-[Ygor Pontelo](https://github.com/ygorpontelo), [Simone Raimondi](https://github.com/SRaimondi),
-[Jan Válek](https://github.com/jan-valek), [Pierre Curto](https://github.com/pierrec),
-[Caleb-o](https://github.com/Caleb-o) and [devdad](https://github.com/devdad)
-
-## Star History
-
-<a href="https://star-history.dera.page/#c3lang/c3c&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=c3lang/c3c&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=c3lang/c3c&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://star-history.dera.page/svg?repos=c3lang/c3c&type=date&legend=top-left" />
- </picture>
-</a>
+A special thank you to sponsor [konimarti](https://github.com/konimarti) for going the extra mile.
