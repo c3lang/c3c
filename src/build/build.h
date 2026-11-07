@@ -17,7 +17,7 @@
 #define DEFAULT_SWITCHRANGE_MAX_SIZE (256)
 #define DEFAULT_SWITCH_JUMP_MAX_SIZE (0x3FFF)
 #define DEFAULT_PATH "."
-#define DEFAULT_FETCH_URL "http://localhost:8080"
+#define DEFAULT_FETCH_URL "https://raw.githubusercontent.com/c3lang/vendor/refs/heads/registry"
 #define DEFAULT_STACK_PROBE_SIZE (0x1000)
 
 typedef enum
