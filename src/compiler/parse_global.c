@@ -2353,9 +2353,20 @@ static bool parse_macro_params(ParseContext *c, Decl *macro)
 		TRY_CONSUME_OR_RET(TOKEN_AT_IDENT, "Expected an ending ')' or a block parameter on the format '@block(...).", false);
 		if (try_consume(c, TOKEN_LPAREN))
 		{
-			if (!parse_parameters(c, &body_param->body_params, NULL, NULL, PARAM_PARSE_BODY)) return false;
+			Variadic body_variadic = VARIADIC_NONE;
+			int body_vararg_index = -1;
+			Decl **body_params = NULL;
+			if (!parse_parameters(c, &body_params, &body_variadic, &body_vararg_index, PARAM_PARSE_BODY)) return false;
 			CONSUME_OR_RET(TOKEN_RPAREN, false);
+			body_param->func_decl.signature = (Signature) {
+				.params = body_params,
+				.vararg_index = body_vararg_index < 0 ? vec_size(body_params) : body_vararg_index,
+				.variadic = body_variadic,
+				.is_macro = true,
+				.is_macro_body = true,
+			};
 		}
+		else body_param->func_decl.signature = (Signature){};
 		macro->func_decl.body_param = declid(body_param);
 	}
 	else
