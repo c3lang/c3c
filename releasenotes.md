@@ -117,6 +117,11 @@
 - Add `chmod` support #3536.
 - `std::hash::crc32` now uses slicing-by-16, about 5x faster. This also speeds up gzip and zip.
 - `std::hash::adler32` `update` is about 3.5x faster (blocked modulo and portable vectors), results unchanged.
+- Rewrite `std::compression::deflate` inflate: table driven decoder, 2-3x faster decompression; truncated input is now rejected and `Inflater.init` works with the default `bit_reader_buf`.
+- Add an optional `level` (1-9) to `std::compression::deflate` `compress`, `compress_stream` and `Deflater.init`; the default level produces the same output as before. Faster deflate encoding, and incompressible data is stored instead of expanded.
+- Add an optional `level` to `std::compression::gzip` `compress`, `compress_stream` and `GzipWriter.init` (sets XFL per RFC 1952); the default is unchanged.
+- Add an optional `level` to `std::compression::zip` `ZipArchive.open_writer` and `ZipArchive.write_file` (DEFLATE only); the default is unchanged.
+- Fix several `std::compression::zip` problems: `open` and `recover` closed the file twice on errors, `open` failed on ZIP64 archives with a comment or exactly 65535 entries, rejected data after the end record, and silently dropped entries after a broken central directory header. `recover` now reads ZIP64 local headers, `extract` verifies the CRC32 and no longer overwrites the modification time, `ZipEntryReader.seek` rejects negative positions, and the central directory flags match the local header.
 
 ## 0.8.5 Change list
 

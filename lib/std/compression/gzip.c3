@@ -2,8 +2,8 @@
  Gzip compression and decompression module (DEFLATE).
 
  API:
- - fn char[]?   compress(Allocator allocator, char[] src, ...)
- - fn void?     compress_stream(OutStream writer, char[] src, ...)
+ - fn char[]?   compress(Allocator allocator, char[] src, ..., int level = deflate::DEFAULT_LEVEL)
+ - fn void?     compress_stream(OutStream writer, char[] src, ..., int level = deflate::DEFAULT_LEVEL)
  - fn Gzip?     uncompress(Allocator allocator, char[] src)
  - fn char[]?   uncompress_bytes(Allocator allocator, char[] src)
  - fn void?     uncompress_stream(OutStream writer, InStream src)
@@ -59,19 +59,27 @@ fn void Gzip.free(&self)
 	alloc::free(self.allocator, self.uncompressed);
 }
 
+<*
+ @param level : `deflate::MIN_LEVEL (fastest) to deflate::MAX_LEVEL (smallest output).`
+ @require level >= deflate::MIN_LEVEL && level <= deflate::MAX_LEVEL
+*>
 fn char[]? compress(Allocator allocator, char[] src, bool hcrc = false,
-	char[] extra = {}, String name = "", String comment = "")
+	char[] extra = {}, String name = "", String comment = "", int level = deflate::DEFAULT_LEVEL)
 {
 	ByteWriter bw;
 	bw.init(allocator);
-	compress_stream(&bw, src, hcrc, extra, name, comment)!;
+	compress_stream(&bw, src, hcrc, extra, name, comment, level)!;
 	return bw.array_view();
 }
 
-fn void? compress_stream(OutStream writer, char[] src, bool hcrc = false, char[] extra = {}, String name = "", String comment = "")
+<*
+ @param level : `deflate::MIN_LEVEL (fastest) to deflate::MAX_LEVEL (smallest output).`
+ @require level >= deflate::MIN_LEVEL && level <= deflate::MAX_LEVEL
+*>
+fn void? compress_stream(OutStream writer, char[] src, bool hcrc = false, char[] extra = {}, String name = "", String comment = "", int level = deflate::DEFAULT_LEVEL)
 {
 	GzipWriter gz;
-	gz.init(tmem, writer, hcrc, extra, name, comment)!;
+	gz.init(tmem, writer, hcrc, extra, name, comment, level)!;
 	gz.write(src)!;
 	gz.close()!;
 }
@@ -134,8 +142,12 @@ struct GzipWriter (OutStream)
 	usz total_in;
 }
 
+<*
+ @param level : `deflate::MIN_LEVEL (fastest) to deflate::MAX_LEVEL (smallest output).`
+ @require level >= deflate::MIN_LEVEL && level <= deflate::MAX_LEVEL
+*>
 fn void? GzipWriter.init(&self, Allocator allocator, OutStream writer, bool hcrc = false,
-	char[] extra = {}, String name = "", String comment = "")
+	char[] extra = {}, String name = "", String comment = "", int level = deflate::DEFAULT_LEVEL)
 {
 	self.next = writer;
 	self.hasher.init();
@@ -145,6 +157,8 @@ fn void? GzipWriter.init(&self, Allocator allocator, OutStream writer, bool hcrc
 		.id  = { GZIP_ID1, GZIP_ID2 },
 		.flg = { .hcrc = hcrc, .extra = extra.len > 0, .name = name.len > 0, .comment = comment.len > 0 },
 		.cm  = GZIP_CM_DEFLATE,
+		// RFC 1952: 2 = slowest algorithm (best compression), 4 = fastest algorithm.
+		.xfl = level == deflate::MAX_LEVEL ? 2 : (level == deflate::MIN_LEVEL ? 4 : 0),
 		.os  = 0xff,
 	};
 
@@ -166,7 +180,7 @@ fn void? GzipWriter.init(&self, Allocator allocator, OutStream writer, bool hcrc
 	}
 	self.next.write(h.array_view())!;
 
-	self.deflater.init(allocator, self.next);
+	self.deflater.init(allocator, self.next, level);
 }
 
 fn sz? GzipWriter.write(&self, char[] bytes) @dynamic
