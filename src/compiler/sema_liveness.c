@@ -567,8 +567,7 @@ void sema_trace_liveness(void)
 		{
 			FOREACH(Decl *, function, unit->functions)
 			{
-				if (function->func_decl.attr_test && !keep_tests) continue;
-				if (function->func_decl.attr_benchmark && !keep_benchmarks) continue;
+				if (decl_skip_benchtest_function(function)) continue;
 				if (keep_all ||
 					function->is_export ||
 					function->no_strip ||

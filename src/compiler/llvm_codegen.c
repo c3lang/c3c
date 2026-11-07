@@ -2259,14 +2259,13 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 		FOREACH(Decl *, func, unit->functions)
 		{
 			if (!func->is_live) continue;
-			if (func->func_decl.attr_test)
+			if (decl_skip_benchtest_function(func)) continue;
+			if (func->func_decl.attr_test && compiler.build.build_test)
 			{
-				if (!compiler.build.build_test) continue;
 				vec_add(module->tests, func);
 			}
-			if (func->func_decl.attr_benchmark)
+			if (func->func_decl.attr_benchmark && compiler.build.build_benchmark)
 			{
-				if (!compiler.build.build_benchmark) continue;
 				vec_add(module->benchmarks, func);
 			}
 			llvm_emit_function_decl(gen_context, func);
@@ -2311,8 +2310,7 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 
 		FOREACH(Decl *, decl, unit->functions)
 		{
-			if (decl->func_decl.attr_test && !compiler.build.build_test) continue;
-			if (decl->func_decl.attr_benchmark && !compiler.build.build_benchmark) continue;
+			if (decl_skip_benchtest_function(decl)) continue;
 			if (!decl->is_live) continue;
 			if (decl->func_decl.body)
 			{

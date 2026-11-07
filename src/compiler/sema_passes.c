@@ -797,11 +797,9 @@ bool analyse_func_body(SemaContext *context, Decl *decl)
 		SEMA_ERROR(decl, "'extern' functions should never have a body.");
 		return decl_poison(decl);
 	}
-	// Don't analyse functions that are tests.
-	if (decl->func_decl.attr_test && !compiler.build.build_test) return true;
 
-	// Don't analyse functions that are benchmarks.
-	if (decl->func_decl.attr_benchmark && !compiler.build.build_benchmark) return true;
+	// Don't analyse functions that are tests / benchmarks if not included
+	if (decl_skip_benchtest_function(decl)) return true;
 
 	if (!compiler.build.collect_stats)
 	{

@@ -794,14 +794,7 @@ static void c_try_emit_function_def(GenContext *c, Decl *decl, bool only_used)
 	{
 		return;
 	}
-	if (decl->func_decl.attr_test && !compiler.build.build_test)
-	{
-		return;
-	}
-	if (decl->func_decl.attr_benchmark && !compiler.build.build_benchmark)
-	{
-		return;
-	}
+	if (decl_skip_benchtest_function(decl)) return;
 	if (only_used && !decl->is_live)
 	{
 		return;

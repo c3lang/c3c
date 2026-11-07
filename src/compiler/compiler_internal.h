@@ -2623,6 +2623,7 @@ INLINE bool decl_is_user_defined_type(Decl *decl);
 INLINE Decl *decl_flatten(Decl *decl);
 INLINE TypeInfo *decl_find_method_target(Decl *decl);
 INLINE TypeInfo *decl_find_target_if_method(Decl *decl);
+INLINE bool decl_skip_benchtest_function(Decl *decl);
 static inline Decl *decl_raw(Decl *decl);
 static inline DeclKind decl_from_token(TokenType type);
 static inline bool decl_is_var_local(Decl *decl);
@@ -4036,6 +4037,17 @@ INLINE TypeInfo *decl_find_method_target(Decl *decl)
 INLINE TypeInfo *decl_find_target_if_method(Decl *decl)
 {
 	return type_infoptrzero(decl->func_decl.type_parent);
+}
+
+INLINE bool decl_skip_benchtest_function(Decl *decl)
+{
+	// Always added
+	bool is_test = decl->func_decl.attr_test;
+	bool is_bench = decl->func_decl.attr_benchmark;
+	if (!is_test && !is_bench) return false;
+	bool keep_bench = is_bench && compiler.build.build_benchmark;
+	bool keep_test = is_test && compiler.build.build_test;
+	return !keep_bench && !keep_test;
 }
 
 static inline DeclKind decl_from_token(TokenType type)
