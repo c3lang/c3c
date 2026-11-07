@@ -3711,7 +3711,7 @@ INLINE bool sema_expr_analyse_from_ordinal(SemaContext *context, Expr *expr, Exp
 		Int max = {.i.low = max_enums, .type = TYPE_U32};
 		if (int_comp(to_convert, max, BINARYOP_GE))
 		{
-			RETURN_SEMA_ERROR(key, "The ordinal '%s' exceeds the max ordinal '%d'.", int_to_str(max, 10, false), max_enums - 1);
+			RETURN_SEMA_ERROR(key, "The ordinal '%s' exceeds the max ordinal '%d'.", int_to_str(to_convert, 10, false), max_enums - 1);
 		}
 		if (is_const_enum)
 		{

@@ -102,6 +102,7 @@
 - Generic type inference fails with optional expected types #3612.
 - Signed shift amounts narrower than the shifted value were zero extended affecting the panic message of an invalid shift amount.
 - A function with `@test @benchmark` would effectively never be included.
+- Incorrect compiler error using `from_ordinal` when exceeding max.
 
 ### Stdlib changes
 - Added termios support for OpenBSD.
