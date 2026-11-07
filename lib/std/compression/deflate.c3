@@ -25,11 +25,11 @@ const int DEFAULT_LEVEL = 4;
 
 // Per level search effort. `lazy` is the longest match for which the next position is still searched for
 // a longer one; 0 selects greedy matching.
-const ushort[10] LEVEL_CHAIN = { 0, 2, 4, 8, 16, 16, 32, 64, 128, 512 };
-const ushort[10] LEVEL_GOOD = { 0, 8, 8, 16, 32, 8, 8, 16, 32, 64 };
-const ushort[10] LEVEL_NICE = { 0, 16, 32, 64, 128, 32, 128, 128, 258, 258 };
-const ushort[10] LEVEL_LAZY = { 0, 0, 0, 0, 0, 16, 16, 32, 64, 258 };
-const int TOO_FAR = 4096;      // a match of length 3 further away than this costs more than three literals
+const ushort[10] LEVEL_CHAIN @private = { 0, 2, 4, 8, 16, 16, 32, 64, 128, 512 };
+const ushort[10] LEVEL_GOOD @private = { 0, 8, 8, 16, 32, 8, 8, 16, 32, 64 };
+const ushort[10] LEVEL_NICE @private = { 0, 16, 32, 64, 128, 32, 128, 128, 258, 258 };
+const ushort[10] LEVEL_LAZY @private = { 0, 0, 0, 0, 0, 16, 16, 32, 64, 258 };
+const int TOO_FAR @private = 4096;      // a match of length 3 further away than this costs more than three literals
 
 excuse
 {

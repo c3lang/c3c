@@ -8,26 +8,26 @@
 module std::compression::deflate;
 import std::io, std::math, std::thread;
 
-const sz INFLATE_HISTORY = 32768;
-const sz INFLATE_CHUNK = 32768;
+const sz INFLATE_HISTORY @private = 32768;
+const sz INFLATE_CHUNK @private = 32768;
 // 258 (longest match) + 16 (a match is copied in 16 byte steps and may overshoot)
-const sz INFLATE_MARGIN = 274;
-const sz INFLATE_WINDOW_LEN = INFLATE_HISTORY + INFLATE_CHUNK + INFLATE_MARGIN;
-const sz INFLATE_OWN_INPUT = 1024;
-const sz INFLATE_MIN_INPUT = 64;
+const sz INFLATE_MARGIN @private = 274;
+const sz INFLATE_WINDOW_LEN @private = INFLATE_HISTORY + INFLATE_CHUNK + INFLATE_MARGIN;
+const sz INFLATE_OWN_INPUT @private = 1024;
+const sz INFLATE_MIN_INPUT @private = 64;
 
-const int LIT_TABLE_BITS = 11;
-const int DIST_TABLE_BITS = 8;
-const int CODELEN_TABLE_BITS = 7;
-const int LIT_TABLE_LEN = 2560;
-const int DIST_TABLE_LEN = 512;
+const int LIT_TABLE_BITS @private = 11;
+const int DIST_TABLE_BITS @private = 8;
+const int CODELEN_TABLE_BITS @private = 7;
+const int LIT_TABLE_LEN @private = 2560;
+const int DIST_TABLE_LEN @private = 512;
 
 // Decode table entry: [31:16] value | [15:12] flags | [11:8] code length (subtable bits for ENTRY_SUB) | [7:0] bits to consume.
 // For lengths and distances the bits to consume are the code length plus the extra bits.
-const uint ENTRY_LIT = 0x1000;
-const uint ENTRY_EOB = 0x2000;
-const uint ENTRY_SUB = 0x4000;
-const uint ENTRY_BAD = 0x8000;
+const uint ENTRY_LIT @private = 0x1000;
+const uint ENTRY_EOB @private = 0x2000;
+const uint ENTRY_SUB @private = 0x4000;
+const uint ENTRY_BAD @private = 0x8000;
 
 enum InflatePhase @private
 {
