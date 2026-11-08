@@ -3182,7 +3182,7 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 		case ATTR_BITSTRUCT_MEMBER: return "bitstruct member";
 		case ATTR_FUNC:             return "function";
 		case ATTR_PARAM:            return "parameter";
-		case ATTR_ENUM_VALUE:       return "enum value";
+		case ATTR_ENUM_VALUE:       return "enum or constset value";
 		case ATTR_GLOBAL:           return "global variable";
 		case ATTR_ENUM:             return "enum";
 		case ATTR_STRUCT:           return "struct";

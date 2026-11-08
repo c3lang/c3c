@@ -16,7 +16,7 @@ import std::thread;
 
 const int MIN_MATCH = 3;
 const int MAX_MATCH = 258;
-const uint WINDOW_SIZE = 32768;
+const int WINDOW_SIZE = 32768;
 const uint HASH_SIZE = 32768;
 const uint HASH_MASK = HASH_SIZE - 1;
 const int MIN_LEVEL = 1;       // fastest
