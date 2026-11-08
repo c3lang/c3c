@@ -139,7 +139,7 @@ struct GzipWriter (OutStream)
 	OutStream next;
 	Deflater deflater;
 	Crc32 hasher;
-	usz total_in;
+	long total_in;
 }
 
 <*
@@ -187,7 +187,7 @@ fn sz? GzipWriter.write(&self, char[] bytes) @dynamic
 {
 	if (!bytes.len) return 0;
 	self.hasher.update(bytes);
-	self.total_in += (usz)bytes.len;
+	self.total_in += bytes.len;
 	return self.deflater.write(bytes);
 }
 

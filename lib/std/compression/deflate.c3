@@ -25,10 +25,10 @@ const int DEFAULT_LEVEL = 4;
 
 // Per level search effort. `lazy` is the longest match for which the next position is still searched for
 // a longer one; 0 selects greedy matching.
-const ushort[10] LEVEL_CHAIN @private = { 0, 2, 4, 8, 16, 16, 32, 64, 128, 512 };
-const ushort[10] LEVEL_GOOD @private = { 0, 8, 8, 16, 32, 8, 8, 16, 32, 64 };
-const ushort[10] LEVEL_NICE @private = { 0, 16, 32, 64, 128, 32, 128, 128, 258, 258 };
-const ushort[10] LEVEL_LAZY @private = { 0, 0, 0, 0, 0, 16, 16, 32, 64, 258 };
+const int[10] LEVEL_CHAIN @private = { 0, 2, 4, 8, 16, 16, 32, 64, 128, 512 };
+const int[10] LEVEL_GOOD  @private = { 0, 8, 8, 16, 32, 8, 8, 16, 32, 64 };
+const int[10] LEVEL_NICE  @private = { 0, 16, 32, 64, 128, 32, 128, 128, 258, 258 };
+const int[10] LEVEL_LAZY  @private = { 0, 0, 0, 0, 0, 16, 16, 32, 64, 258 };
 const int TOO_FAR @private = 4096;      // a match of length 3 further away than this costs more than three literals
 
 excuse
@@ -43,7 +43,8 @@ fn void? compress_stream(Allocator allocator, InStream input, OutStream output, 
 {
 	Deflater* deflater = alloc::new(allocator, Deflater);
 	deflater.init(allocator, output, level);
-	defer {
+	defer
+	{
 		(void)deflater.close();
 		alloc::free(allocator, deflater);
 	}
@@ -65,7 +66,7 @@ struct Deflater (OutStream)
 	uint[] head;
 	uint[] prev;
 	char[] window;
-	uint window_fill;
+	sz window_fill;
 
 	Token[] tokens;
 	sz token_count;
@@ -77,20 +78,20 @@ struct Deflater (OutStream)
 
 	uint hash;
 	uint strstart;
-	uint match_pos;
+	sz match_pos;
 	bool hash_ready;
 	int max_chain;
 	int good_match;
 	int nice_match;
 	int max_lazy;
-	bool pending;      // lazy matching: the position before `match_pos` is waiting for a decision
-	int prev_len;      // the match found at that position (0 if none)
+	bool pending;       // lazy matching: the position before `match_pos` is waiting for a decision
+	int prev_len;       // the match found at that position (0 if none)
 	int prev_dist;
 	char[] source;      // the complete input when it is known (in-memory compress), used for stored blocks
 	sz block_origin;    // offset in `source` where the current block starts
 	sz block_bytes;     // input bytes covered by the tokens of the current block
-	sz total_in;
-	sz total_out;
+	long total_in;
+	long total_out;
 	bool closed;
 }
 
@@ -139,7 +140,7 @@ fn sz? Deflater.write(&self, char[] data) @dynamic
 	sz offset = 0;
 	while (remaining > 0)
 	{
-		sz space = (WINDOW_SIZE * 2) - (sz)self.window_fill;
+		sz space = (WINDOW_SIZE * 2) - self.window_fill;
 		assert(space >= 0);
 		if (space == 0)
 		{
@@ -152,7 +153,7 @@ fn sz? Deflater.write(&self, char[] data) @dynamic
 
 		sz to_copy = math::min(remaining, space);
 		mem::copy(self.window[self.window_fill..], data[offset..], to_copy);
-		self.window_fill += (uint)to_copy;
+		self.window_fill += to_copy;
 		remaining -= to_copy;
 		offset += to_copy;
 
@@ -180,7 +181,7 @@ fn void? Deflater.close(&self) @dynamic
 fn void? Deflater.scan_matches(&self, bool final)
 {
 	char[] input = self.window;
-	uint wfill = self.window_fill;
+	sz wfill = self.window_fill;
 
 	if (!self.hash_ready && wfill > WINDOW_SIZE + 1)
 	{
@@ -324,7 +325,7 @@ fn void? Deflater.scan_matches(&self, bool final)
 		if (m_len > 0)
 		{
 			lfreqs[257 + len_code_table[m_len]]++;
-			dfreqs[dist_code_of((uint)m_dist)]++;
+			dfreqs[dist_code_of(m_dist)]++;
 			tokens[tcount++] = { (ushort)m_len, (ushort)m_dist };
 			bbytes += m_len;
 		}
@@ -361,7 +362,7 @@ fn void? Deflater.scan_matches(&self, bool final)
 		if (prev_len >= MIN_MATCH)
 		{
 			lfreqs[257 + len_code_table[prev_len]]++;
-			dfreqs[dist_code_of((uint)prev_dist)]++;
+			dfreqs[dist_code_of(prev_dist)]++;
 			tokens[tcount++] = { (ushort)prev_len, (ushort)prev_dist };
 			bbytes += prev_len;
 		}
@@ -383,7 +384,7 @@ fn void? Deflater.scan_matches(&self, bool final)
 	self.prev_dist = prev_dist;
 	self.hash = hash;
 	self.strstart = strstart;
-	self.match_pos = (uint)pos;
+	self.match_pos = (sz)pos;
 }
 
 fn void? Deflater.emit_block(&self, bool final) => @pool()
@@ -564,7 +565,7 @@ fn void ensure_fixed_codes_built() @private
 {
 	if (fixed_lit_codes_global[0].len != 0) return;
 	gen_fixed_codes(&fixed_lit_codes_global);
-	for (uint i = 0; i < 32; i++) { fixed_dist_codes_global[i] = { (ushort)i, 5, (ushort)bits::reverse(i << 27) }; }
+	for (int i = 0; i < 32; i++) { fixed_dist_codes_global[i] = { (ushort)i, 5, (ushort)bits::reverse(i << 27) }; }
 }
 
 
@@ -711,7 +712,7 @@ fn void Huffman.build(&self, char[] lengths)
 	// Build 11-bit lookup table
 	self.table = {};
 	uint code = 0;
-	uint sym_idx = 0;
+	int sym_idx = 0;
 	for (int len = 1; len <= 11; len++)
 	{
 		int count = self.counts[len];
@@ -887,7 +888,7 @@ fn void gen_canonical_codes(Code* codes, char[] blen) @private
 	ushort[16] bl_count; foreach (len : blen) { if (len > 0) bl_count[len]++; }
 	ushort[16] next_code; ushort code = 0; bl_count[0] = 0;
 	for (int bits = 1; bits <= 15; bits++) { code = (code + bl_count[bits - 1]) << 1; next_code[bits] = code; }
-	foreach (uint n, len : blen)
+	foreach (int n, len : blen)
 	{
 		if (len == 0)
 		{
@@ -915,18 +916,25 @@ struct Code @private
 fn void gen_fixed_codes(Code* codes) @private
 {
 	char[288] lens;
-	for (uint i = 0; i <= 143; i++) lens[i] = 8;
-	for (uint i = 144; i <= 255; i++) lens[i] = 9;
-	for (uint i = 256; i <= 279; i++) lens[i] = 7;
-	for (uint i = 280; i <= 287; i++) lens[i] = 8;
+	for (int i = 0; i <= 143; i++) lens[i] = 8;
+	for (int i = 144; i <= 255; i++) lens[i] = 9;
+	for (int i = 256; i <= 279; i++) lens[i] = 7;
+	for (int i = 280; i <= 287; i++) lens[i] = 8;
 	ushort[16] bl_count;
-	for (uint i = 0; i < 288; i++) { if (lens[i] > 0) bl_count[lens[i]]++; }
-	ushort[16] next_code; ushort code = 0; bl_count[0] = 0;
-	for (int bits = 1; bits <= 15; bits++) { code = (code + bl_count[bits - 1]) << 1; next_code[bits] = code; }
-	for (uint n = 0; n < 288; n++)
+	for (int i = 0; i < 288; i++)
 	{
-		uint len = lens[n];
-		if (len == 0)
+		if (lens[i] > 0) bl_count[lens[i]]++;
+	}
+	ushort[16] next_code; ushort code = 0; bl_count[0] = 0;
+	for (int bits = 1; bits <= 15; bits++)
+	{
+		code = (code + bl_count[bits - 1]) << 1;
+		next_code[bits] = code;
+	}
+	for (int n = 0; n < 288; n++)
+	{
+		int len = lens[n];
+		if (!len)
 		{
 			codes[n].code = 0;
 			codes[n].len = 0;
@@ -982,7 +990,7 @@ fn void deflate_init_tables() @private
 	});
 }
 
-fn uint dist_code_of(uint dist) @private @inline
+fn int dist_code_of(int dist) @private @inline
 {
 	return dist <= 256 ? dist_code_small[dist - 1] : dist_code_large[(dist - 1) >> 7];
 }
@@ -999,13 +1007,13 @@ fn void _write_compressed_tokens(Deflater* self, Code* lit_codes, Code* dist_cod
 			bw.write_bits(c.rcode, c.len);
 			continue;
 		}
-		uint li = len_code_table[t.val];
+		int li = len_code_table[t.val];
 		Code lc = lit_codes[257 + li];
-		uint leb = LENGTH_EXTRA[li];
+		int leb = LENGTH_EXTRA[li];
 		bw.write_bits((uint)lc.rcode | (((uint)t.val - LENGTH_BASE[li]) << lc.len), (int)(lc.len + leb));
-		uint di = dist_code_of(t.dist);
+		int di = dist_code_of(t.dist);
 		Code dc = dist_codes[di];
-		uint deb = DIST_EXTRA[di];
+		int deb = DIST_EXTRA[di];
 		bw.write_bits((uint)dc.rcode | (((uint)t.dist - DIST_BASE[di]) << dc.len), (int)(dc.len + deb));
 	}
 }

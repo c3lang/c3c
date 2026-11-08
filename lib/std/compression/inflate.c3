@@ -405,10 +405,10 @@ fn void? InflateState.read_dynamic(&self)
 	while (i < total)
 	{
 		self.need(14)!;
-		uint entry = code_tab[(uint)(self.bit_buf & 127)];
+		uint entry = code_tab[self.bit_buf & 127];
 		if (entry & ENTRY_BAD) return CORRUPTED_DATA~;
 		self.take((int)(entry & 0xFF));
-		uint sym = entry >> 16;
+		int sym = (int)(entry >> 16);
 		if (sym < 16)
 		{
 			self.lens[i++] = (char)sym;
@@ -538,7 +538,7 @@ fn InflateStatus? InflateState.run(&self)
 			}
 		}
 
-		uint e = lt[(uint)(bb & ((1UL << LIT_TABLE_BITS) - 1))];
+		uint e = lt[bb & (1UL << LIT_TABLE_BITS - 1)];
 		if (e & ENTRY_SUB)
 		{
 			bb >>= (e & 0xFF);
@@ -546,7 +546,7 @@ fn InflateStatus? InflateState.run(&self)
 			e = lt[(e >> 16) + (uint)(bb & ((1UL << ((e >> 8) & 0xF)) - 1))];
 		}
 		ulong saved = bb;
-		uint total = e & 0xFF;
+		int total = (int)(e & 0xFF);
 		bb >>= total;
 		bc -= (int)total;
 
@@ -554,13 +554,13 @@ fn InflateStatus? InflateState.run(&self)
 		{
 			out[op++] = (char)(e >> 16);
 			// At least 41 bits are left: decode up to two more literals without refilling.
-			e = lt[(uint)(bb & ((1UL << LIT_TABLE_BITS) - 1))];
+			e = lt[bb & (1UL << LIT_TABLE_BITS - 1)];
 			if (e & ENTRY_LIT)
 			{
 				bb >>= (e & 0xFF);
 				bc -= (int)(e & 0xFF);
 				out[op++] = (char)(e >> 16);
-				e = lt[(uint)(bb & ((1UL << LIT_TABLE_BITS) - 1))];
+				e = lt[bb & (1UL << LIT_TABLE_BITS - 1)];
 				if (e & ENTRY_LIT)
 				{
 					bb >>= (e & 0xFF);
@@ -574,10 +574,10 @@ fn InflateStatus? InflateState.run(&self)
 		if (e & ENTRY_BAD) return CORRUPTED_DATA~;
 
 		// Length: base value plus extra bits. The extra bits sit right behind the code in `saved`.
-		uint len = (e >> 16) + (uint)((saved & ((1UL << total) - 1)) >> ((e >> 8) & 0xF));
+		int len = (int)(e >> 16 + (uint)((saved & (1UL << total - 1)) >> ((e >> 8) & 0xF)));
 
 		// Distance. At most 20 bits were used so far, so there is no need to refill.
-		uint d = dt[(uint)(bb & ((1UL << DIST_TABLE_BITS) - 1))];
+		uint d = dt[bb & (1UL << DIST_TABLE_BITS - 1)];
 		if (d & ENTRY_SUB)
 		{
 			bb >>= (d & 0xFF);
@@ -586,10 +586,10 @@ fn InflateStatus? InflateState.run(&self)
 		}
 		if (d & ENTRY_BAD) return CORRUPTED_DATA~;
 		saved = bb;
-		total = d & 0xFF;
+		total = (int)(d & 0xFF);
 		bb >>= total;
 		bc -= (int)total;
-		uint dist = (d >> 16) + (uint)((saved & ((1UL << total) - 1)) >> ((d >> 8) & 0xF));
+		int dist = (int)(d >> 16 + (uint)((saved & (1UL << total - 1)) >> ((d >> 8) & 0xF)));
 		if ((sz)dist > op) return CORRUPTED_DATA~;
 
 		// Copy the match. Output room for 258 bytes plus 16 bytes of overshoot is guaranteed by `limit`.
@@ -621,11 +621,11 @@ fn InflateStatus? InflateState.run(&self)
 		else if (dist == 1)
 		{
 			char c = src[0];
-			for (uint i = 0; i < len; i++) dst[i] = c;
+			dst[:len] = c;
 		}
 		else
 		{
-			for (uint i = 0; i < len; i++) dst[i] = src[i];
+			for (int i = 0; i < len; i++) dst[i] = src[i];
 		}
 	}
 }
@@ -657,10 +657,10 @@ fn bool build_decode_table(uint* table, int table_len, int root_bits, char[] len
 	// Symbols sorted by code length, then symbol value: the canonical code order.
 	int[16] offs;
 	for (int l = 1; l < 15; l++) offs[l + 1] = offs[l] + count[l];
-	uint[288] sorted;
+	int[288] sorted;
 	foreach (int s, l : lens)
 	{
-		if (l) sorted[offs[l]++] = (uint)s;
+		if (l) sorted[offs[l]++] = s;
 	}
 
 	int[16] remaining = count;
@@ -669,19 +669,19 @@ fn bool build_decode_table(uint* table, int table_len, int root_bits, char[] len
 	int next_free = root_size;
 	bool in_sub = false;
 	uint sub_prefix = 0;
-	uint sub_base = 0;
+	int sub_base = 0;
 	int sub_bits = 0;
 	uint root_mask = (uint)root_size - 1;
 	for (int l = 1; l <= max_len; l++)
 	{
 		for (int k = 0; k < count[l]; k++)
 		{
-			uint sym = sorted[idx++];
+			int sym = sorted[idx++];
 			uint rev = (uint)reverse16((ushort)code) >> (16 - l);
 			if (l <= root_bits)
 			{
 				uint entry = tmpl[sym] + (uint)l * 0x101;
-				for (uint j = rev; j < (uint)root_size; j += 1u << l) table[j] = entry;
+				for (int j = (int)rev; j < root_size; j += 1 << l) table[j] = entry;
 			}
 			else
 			{
@@ -702,13 +702,13 @@ fn bool build_decode_table(uint* table, int table_len, int root_bits, char[] len
 					}
 					if (next_free + (1 << curr) > table_len) return false;
 					sub_bits = curr;
-					sub_base = (uint)next_free;
+					sub_base = next_free;
 					for (int j = 0; j < (1 << curr); j++) table[next_free + j] = ENTRY_BAD;
-					table[prefix] = ENTRY_SUB | (uint)root_bits | ((uint)curr << 8) | (sub_base << 16);
+					table[prefix] = ENTRY_SUB | (uint)root_bits | ((uint)curr << 8) | ((uint)sub_base << 16);
 					next_free += 1 << curr;
 				}
 				uint entry = tmpl[sym] + (uint)(l - root_bits) * 0x101;
-				for (uint j = rev >> root_bits; j < (1u << sub_bits); j += 1u << (l - root_bits)) table[sub_base + j] = entry;
+				for (int j = (int)(rev >> root_bits); j < 1 << sub_bits; j += 1 << (l - root_bits)) table[sub_base + j] = entry;
 			}
 			code++;
 			remaining[l]--;
@@ -728,27 +728,27 @@ fn void inflate_init_tables() @private
 {
 	static OnceFlag once;
 	once.call(fn void() {
-		for (uint s = 0; s < 256; s++) litlen_template[s] = ENTRY_LIT | (s << 16);
+		for (int s = 0; s < 256; s++) litlen_template[s] = ENTRY_LIT | ((uint)s << 16);
 		litlen_template[256] = ENTRY_EOB;
-		for (uint s = 257; s < 286; s++)
+		for (int s = 257; s < 286; s++)
 		{
 			litlen_template[s] = ((uint)LENGTH_BASE[s - 257] << 16) | (uint)LENGTH_EXTRA[s - 257];
 		}
 		litlen_template[286] = ENTRY_BAD;
 		litlen_template[287] = ENTRY_BAD;
-		for (uint s = 0; s < 30; s++)
+		for (int s = 0; s < 30; s++)
 		{
 			dist_template[s] = ((uint)DIST_BASE[s] << 16) | (uint)DIST_EXTRA[s];
 		}
 		dist_template[30] = ENTRY_BAD;
 		dist_template[31] = ENTRY_BAD;
-		for (uint s = 0; s < 19; s++) codelen_template[s] = s << 16;
+		for (int s = 0; s < 19; s++) codelen_template[s] = (uint)s << 16;
 
 		char[288] lit_lens;
-		for (uint s = 0; s <= 143; s++) lit_lens[s] = 8;
-		for (uint s = 144; s <= 255; s++) lit_lens[s] = 9;
-		for (uint s = 256; s <= 279; s++) lit_lens[s] = 7;
-		for (uint s = 280; s <= 287; s++) lit_lens[s] = 8;
+		for (int s = 0; s <= 143; s++) lit_lens[s] = 8;
+		for (int s = 144; s <= 255; s++) lit_lens[s] = 9;
+		for (int s = 256; s <= 279; s++) lit_lens[s] = 7;
+		for (int s = 280; s <= 287; s++) lit_lens[s] = 8;
 		build_decode_table(&fixed_lit_table[0], LIT_TABLE_LEN, LIT_TABLE_BITS, lit_lens[..], litlen_template[..]);
 		char[32] dist_lens;
 		dist_lens[..] = 5;

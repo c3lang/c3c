@@ -138,7 +138,6 @@ fn ZipArchive? open(Allocator allocator, String path, String mode = "r")
 
 	// Every central directory header takes at least ZipCDH::size bytes.
 	if (cd_offset < 0 || cd_offset > eocd_pos || num_entries < 0 || num_entries > (eocd_pos - cd_offset) / ZipCDH::size) return CORRUPTED_DATA~;
-	if (cd_offset > (long)sz::max) return io::OVERFLOW~;
 	archive.file.seek(cd_offset)!;
 
 	for (long i = 0; i < num_entries; i++)
@@ -248,7 +247,7 @@ fn ZipArchive? recover(Allocator allocator, String path)
 
 		archive.entries.push(entry);
 
-		if (compressed_size < 0 || compressed_size > (long)sz::max) return io::OVERFLOW~;
+		if (compressed_size < 0) return io::OVERFLOW~;
 		archive.file.seek(compressed_size, FROM_CURSOR)!;
 	}
 
@@ -556,7 +555,6 @@ fn ZipEntryReader? ZipArchive.open_reader(&self, String filename, String passwor
 
 
 	self.file.flush()!;
-	if (entry.offset > sz::max) return io::OVERFLOW~;
 	self.file.seek(entry.offset)!;
 	ZipLFH lfh;
 	if (catch io::read_any(self.file, &lfh)) return CORRUPTED_DATA~;
@@ -566,7 +564,6 @@ fn ZipEntryReader? ZipArchive.open_reader(&self, String filename, String passwor
 
 	reader.adapter.archive = self;
 	long start_offset = entry.offset + ZipLFH::size + lfh.filename_len.val + lfh.extra_field_len.val;
-	if (start_offset > sz::max) return io::OVERFLOW~;
 	reader.adapter.start_offset = start_offset;
 	// For STORE: adapter.size is uncompressed size.
 	// For DEFLATE: adapter.size is compressed size.
@@ -639,7 +636,6 @@ fn void? ZipEntryWriter.close(&self) @dynamic
 
 	long end_pos = self.archive.file.cursor()!;
 
-	if (self.lfh_offset > (long)sz::max) return io::OVERFLOW~;
 	self.archive.file.seek(self.lfh_offset)!;
 	io::write_any(self.archive.file, &self.lfh)!;
 
@@ -719,7 +715,6 @@ fn sz? ArchiveStreamAdapter.read(&self, char[] buffer) @dynamic
 	sz to_read = (sz)math::min((long)buffer.len, self.size - self.pos);
 
 	long abs_pos = self.start_offset + self.pos;
-	if (abs_pos > sz::max) return io::OVERFLOW~;
 
 	// Note: ZipArchive shared file handle access is not thread-safe.
 	self.archive.file.seek(abs_pos)!;
@@ -952,7 +947,6 @@ fn bool? _find_eocd(File* f, long file_size, ZipEOCD* eocd, long* eocd_pos) @loc
 	long search_start = file_size > ZipEOCD::size + 65535LL ? file_size - (ZipEOCD::size + 65535LL) : 0;
 	for (long pos = file_size - ZipEOCD::size; pos >= search_start; pos--)
 	{
-		if (pos > sz::max) return io::OVERFLOW~;
 		f.seek(pos)!;
 		UIntLE sig;
 		if (io::read_any(f, &sig)! != 4) break;
@@ -993,7 +987,6 @@ fn bool? _read_zip64_cd(File* f, long eocd_pos, long* cd_offset, long* num_entri
 	// The ZIP64 record comes before the locator.
 	long record_pos = locator.offset_eocd.val;
 	if (record_pos < 0 || record_pos > locator_pos - Zip64EOCD::size) return CORRUPTED_DATA~;
-	if (record_pos > (long)sz::max) return io::OVERFLOW~;
 	f.seek(record_pos)!;
 	Zip64EOCD eocd64;
 	if (catch io::read_any(f, &eocd64)) return CORRUPTED_DATA~;
