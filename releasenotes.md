@@ -103,6 +103,7 @@
 - Signed shift amounts narrower than the shifted value were zero extended affecting the panic message of an invalid shift amount.
 - A function with `@test @benchmark` would effectively never be included.
 - Incorrect compiler error using `from_ordinal` when exceeding max.
+- Concatenated base64 literals lost decoded bytes after the first chunk.
 
 ### Stdlib changes
 - Added termios support for OpenBSD.
