@@ -1839,7 +1839,7 @@ static Expr *parse_bytes_expr(ParseContext *c, Expr *left, SourceLoc *lhs_start 
 		{
 			const char *base64data = c->data.lex_start + 4;
 			const char *end = base64data + c->data.lex_len - 1 - 4;
-			parse_base64(new_data + len, new_data + next_len, base64data, end);
+			parse_base64(new_data + len, new_data + len + next_len, base64data, end);
 		}
 		else
 		{
