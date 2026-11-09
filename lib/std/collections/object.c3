@@ -753,6 +753,14 @@ fn void recursively_free(Allocator allocator, FreeType* val) <FreeType>
 					var $Inner = FreeType::inner;
 					recursively_free{$Inner}(allocator, ($Inner*)val);
 			$endswitch
+		$case POINTER:
+			if (!*val) return;
+			$if FreeType == Object*:
+				(*val).free();
+			$else
+				recursively_free{FreeType::inner}(allocator, *val);
+				alloc::free(allocator, *val);
+			$endif
 		$default:
 	$endswitch
 }

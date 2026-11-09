@@ -115,6 +115,7 @@
 - The libc allocator was incorrectly declared in `std::core::mem::allocator`.
 - Fixes to the `benchmarks.c3`, `map.c3` and `xml/3_xml_write_stream.c3` examples.
 - A global slice of vectors, e.g. `int[<2>][] g = { { 1, 2 } };`, would be lowered incorrectly.
+- `json::unmarshal` failed to compile for an `inline String` constdef or typedef.
 
 ### Stdlib changes
 - Added termios support for OpenBSD.
@@ -137,6 +138,8 @@
 - Add an optional `level` to `std::compression::zip` `ZipArchive.open_writer` and `ZipArchive.write_file` (DEFLATE only); the default is unchanged.
 - Fix several `std::compression::zip` problems: `open` and `recover` closed the file twice on errors, `open` failed on ZIP64 archives with a comment or exactly 65535 entries, rejected data after the end record, and silently dropped entries after a broken central directory header. `recover` now reads ZIP64 local headers, `extract` verifies the CRC32 and no longer overwrites the modification time, `ZipEntryReader.seek` rejects negative positions, and the central directory flags match the local header.
 - Added `XmlSerializer.add_raw` to write unescaped text.
+- `json::marshal` and `json::unmarshal` use the key set with `@Json("key")` on a struct member. `@JsonOmitEmpty` leaves an empty member out of `json::marshal`.
+- `json::marshal` and `json::unmarshal` support pointers, including `Nullable` and `NonNull`, written as the value they point to or `null`. `json::unmarshal` fills an `Object*` member with any JSON value, and accepts `null` for a pointer except `NonNull`.
 
 ## 0.8.5 Change list
 

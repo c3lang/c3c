@@ -1,6 +1,7 @@
 module json_marshal_test @test;
 import std::encoding::json;
 import std::collections::object;
+import std::collections::ref;
 import std::io;
 
 enum Status
@@ -809,4 +810,164 @@ fn void test_skip_array_with_trailing_comma() @test
 {
 	SimpleKept res = json::unmarshal(tmem, `{"ignored": [1, 2, 3,], "kept": 99}`, SimpleKept)!!;
 	test::eq(res.kept, 99);
+}
+struct JsonTagged
+{
+    String normal_key;
+    String my_key @Json("my-key");
+}
+
+fn void test_json_tag_renames_key() @test
+{
+    JsonTagged value = { .normal_key = "a", .my_key = "b" };
+    test::eq(json::marshal(tmem, value), `{"normal_key":"a","my-key":"b"}`);
+    JsonTagged back = json::unmarshal(tmem, `{"normal_key":"a","my-key":"b"}`, JsonTagged)!!;
+    test::eq(back.my_key, "b");
+}
+
+struct JsonPoint
+{
+    int x;
+    int y;
+}
+
+struct JsonOptional
+{
+    String name;
+    String note @JsonOmitEmpty;
+    int count @JsonOmitEmpty;
+    JsonPoint* point;
+    JsonPoint* maybe_point @JsonOmitEmpty;
+    Address extra @JsonOmitEmpty;
+}
+
+fn void test_json_omit_empty_leaves_out_empty_members() @test
+{
+    JsonOptional value = { .name = "" };
+    test::eq(json::marshal(tmem, value), `{"name":"","point":null}`);
+}
+
+fn void test_json_omit_empty_keeps_set_members() @test
+{
+    JsonPoint p = { 1, 2 };
+    JsonOptional value = { .name = "n", .note = "x", .count = 3, .point = &p, .maybe_point = &p, .extra = { .zip_code = 5 } };
+    test::eq(json::marshal(tmem, value), `{"name":"n","note":"x","count":3,"point":{"x":1,"y":2},"maybe_point":{"x":1,"y":2},"extra":{"street":"","city":"","zip_code":5}}`);
+}
+
+struct JsonAllOmitted
+{
+    int a @JsonOmitEmpty;
+}
+
+fn void test_json_omit_empty_with_indent() @test
+{
+    test::eq(json::marshal(tmem, (JsonAllOmitted){}, TAB), "{}");
+    test::eq(json::marshal(tmem, (JsonAllOmitted){ .a = 1 }, TAB), "{\n\t\"a\": 1\n}");
+}
+
+struct JsonNullable
+{
+    int count;
+    JsonPoint where;
+    String name;
+    int[] list;
+    JsonPoint* point;
+    Nullable{int} maybe_count;
+    NonNull{JsonPoint} sure_point;
+    Object* raw;
+}
+
+fn void test_unmarshal_null_into_nullable_types() @test
+{
+    JsonNullable value = json::unmarshal(tmem, `{"name": null, "list": null, "point": null, "maybe_count": null, "raw": null}`, JsonNullable)!!;
+    test::eq(value.name, "");
+    test::eq(value.list.len, 0);
+    assert(value.point == null);
+    assert(value.maybe_count == null);
+    assert(value.raw == null);
+}
+
+fn void test_unmarshal_null_into_value_types_fails() @test
+{
+    assert(@catch(json::unmarshal(tmem, `{"count": null}`, JsonNullable)) == encoding::MALFORMED_DATA);
+    assert(@catch(json::unmarshal(tmem, `{"where": null}`, JsonNullable)) == encoding::MALFORMED_DATA);
+    assert(@catch(json::unmarshal(tmem, `{"sure_point": null}`, JsonNullable)) == encoding::MALFORMED_DATA);
+}
+
+fn void test_unmarshal_ref_wrappers_allocate_values() @test
+{
+    JsonNullable value = json::unmarshal(tmem, `{"maybe_count": 3, "sure_point": {"x": 1, "y": 2}}`, JsonNullable)!!;
+    test::eq(value.maybe_count.value()!!, 3);
+    test::eq(value.sure_point.get().y, 2);
+}
+
+fn void test_unmarshal_pointer_allocates_value() @test
+{
+    JsonNullable value = json::unmarshal(tmem, `{"point": {"x": 1, "y": 2}}`, JsonNullable)!!;
+    assert(value.point != null);
+    test::eq(value.point.x, 1);
+    test::eq(value.point.y, 2);
+}
+
+fn void test_unmarshal_pointer_frees_on_error() @test
+{
+    JsonNullable? value = json::unmarshal(mem, `{"name": "n", "point": {"x": 1, "y": "bad"}}`, JsonNullable);
+    assert(@catch(value) == encoding::MALFORMED_DATA || @catch(value) == json::UNEXPECTED_CHARACTER || @catch(value) == json::INVALID_NUMBER);
+}
+
+struct JsonAnyValue
+{
+    String kind;
+    Object* value;
+}
+
+fn void test_unmarshal_object_member_keeps_any_value() @test
+{
+    JsonAnyValue list = json::unmarshal(tmem, `{"kind": "list", "value": [1, "a", {"b": true}]}`, JsonAnyValue)!!;
+    assert(list.value.is_array());
+    test::eq(list.value.len(), 3);
+    test::eq(list.value.get_string_at(1)!!, "a");
+
+    JsonAnyValue text = json::unmarshal(tmem, `{"kind": "text", "value": "plain"}`, JsonAnyValue)!!;
+    assert(text.value.is_string());
+
+    JsonAnyValue missing = json::unmarshal(tmem, `{"kind": "none"}`, JsonAnyValue)!!;
+    assert(missing.value == null);
+}
+
+fn void test_pointer_and_omit_empty_roundtrip() @test
+{
+    JsonPoint p = { 3, 4 };
+    JsonOptional original = { .name = "n", .maybe_point = &p };
+    String text = json::marshal(tmem, original);
+    JsonOptional back = json::unmarshal(tmem, text, JsonOptional)!!;
+    assert(back.point == null);
+    test::eq(back.maybe_point.x, 3);
+    test::eq(back.maybe_point.y, 4);
+}
+
+constdef JsonTextKind : String
+{
+    PLAIN = "plaintext",
+    MARKDOWN = "markdown",
+}
+
+constdef JsonInlineTextKind : inline String
+{
+    INLINE_PLAIN = "plaintext",
+    INLINE_MARKDOWN = "markdown",
+}
+
+struct JsonText
+{
+    JsonTextKind kind;
+    JsonInlineTextKind inline_kind;
+    String value;
+}
+
+fn void test_unmarshal_string_constdef() @test
+{
+    JsonText text = json::unmarshal(tmem, `{"kind": "markdown", "inline_kind": "markdown", "value": "x"}`, JsonText)!!;
+    test::eq(text.kind, JsonTextKind.MARKDOWN);
+    test::eq(text.inline_kind, JsonInlineTextKind.INLINE_MARKDOWN);
 }
