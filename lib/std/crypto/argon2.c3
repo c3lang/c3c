@@ -508,7 +508,7 @@ fn String encode(Allocator allocator, char[] hash_value, Argon2Options options, 
 }
 
 <* A simple alias of `encode` implicitly using the temp allocator. *>
-macro tencode(char[] hash_value, Argon2Options options, char key_id = {})
+macro tencode(char[] hash_value, Argon2Options options, char[] key_id = {})
 	=> encode(tmem, hash_value, options, key_id: key_id);
 
 

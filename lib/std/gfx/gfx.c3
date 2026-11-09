@@ -1091,7 +1091,7 @@ fn String[] get_required_vulkan_extensions()
 
 fn bool get_vulkan_physical_device_presentation_support(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
 {
-	return get_vulkan_physical_device_presentation_support(instance, physical_device, queue_family_index);
+	return _get_vulkan_physical_device_presentation_support(instance, physical_device, queue_family_index);
 }
 
 <*

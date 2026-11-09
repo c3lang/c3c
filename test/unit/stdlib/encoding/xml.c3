@@ -317,6 +317,23 @@ fn void test_dom_filter()
 }
 
 
+fn void test_writer_doc_comment_pi()
+{
+	String xml_str = `<root><?pi data?><child>x</child></root>`;
+	XmlDocument* doc = xml::parse(mem, xml_str)!!;
+	defer doc.free();
+	doc.root.children.push(xml::new_comment_node(doc, " a & b "));
+
+	char[256] buf;
+	ByteWriter bw;
+	bw.init_with_buffer(buf[..]);
+
+	xml::serialize(&bw, doc)!!;
+
+	String expected = `<?xml version="1.0" encoding="UTF-8"?>` "\n" `<root><?pi data?><child>x</child><!-- a & b --></root>`;
+	test::eq(bw.str_view(), expected);
+}
+
 module xml_test;
 import std::encoding::xml;
 

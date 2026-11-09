@@ -108,6 +108,12 @@
 - 16-byte align JmpBuf on Win32.
 - Win64 returned `@simd` vectors through a hidden pointer instead of XMM0. #3628
 - Fix regression when slices or pointers exceed 2 GB. #3595
+- `XmlSerializer.start_doc` was missing the closing quote after the encoding.
+- `XmlSerializer` escaped comments and processing instructions when serializing a document.
+- `gfx::get_vulkan_physical_device_presentation_support` was broken.
+- `argon2::tencode` took `key_id` as a `char` instead of a `char[]`.
+- The libc allocator was incorrectly declared in `std::core::mem::allocator`.
+- Fixes to the `benchmarks.c3`, `map.c3` and `xml/3_xml_write_stream.c3` examples.
 
 ### Stdlib changes
 - Added termios support for OpenBSD.
@@ -129,6 +135,7 @@
 - Add an optional `level` to `std::compression::gzip` `compress`, `compress_stream` and `GzipWriter.init` (sets XFL per RFC 1952); the default is unchanged.
 - Add an optional `level` to `std::compression::zip` `ZipArchive.open_writer` and `ZipArchive.write_file` (DEFLATE only); the default is unchanged.
 - Fix several `std::compression::zip` problems: `open` and `recover` closed the file twice on errors, `open` failed on ZIP64 archives with a comment or exactly 65535 entries, rejected data after the end record, and silently dropped entries after a broken central directory header. `recover` now reads ZIP64 local headers, `extract` verifies the CRC32 and no longer overwrites the modification time, `ZipEntryReader.seek` rejects negative positions, and the central directory flags match the local header.
+- Added `XmlSerializer.add_raw` to write unescaped text.
 
 ## 0.8.5 Change list
 
