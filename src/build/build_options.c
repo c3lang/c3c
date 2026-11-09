@@ -65,8 +65,8 @@ static void usage(bool full)
 	print_cmd("clean-run [<target>] [-- [<arg1> ...]]", "Clean, then run the target.");
 	print_cmd("compile-run <file1> [<file2> ...] [-- [<arg1> ...]]", "Compile files then immediately run the result.");
 	print_cmd("compile-only <file1> [<file2> ...]", "Compile files but do not perform linking.");
-	print_cmd("compile-benchmark <file1> [<file2> ...]", "Compile files into a test-executable and run benchmarks.");
-	print_cmd("compile-test <file1> [<file2> ...]", "Compile files into a benchmark-executable and run unit tests.");
+	print_cmd("compile-benchmark <file1> [<file2> ...]", "Compile files into a benchmark-executable and run benchmarks.");
+	print_cmd("compile-test <file1> [<file2> ...]", "Compile files into a test-executable and run unit tests.");
 	print_cmd("static-lib <file1> [<file2> ...]", "Compile files without a project into a static library.");
 	print_cmd("dynamic-lib <file1> [<file2> ...]", "Compile files without a project into a dynamic library.");
 	print_cmd("source-lib <file1> [<file2> ...]", "Pack files without a project into a source library (.c3l), use -o to set the library name.");
