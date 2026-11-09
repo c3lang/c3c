@@ -51,8 +51,10 @@ fn void errno_set(Errno e)
 
 alias TerminateFunction = fn void();
 alias CompareFunction = fn int(void*, void*);
-alias JmpBuf = uptr[$$JMP_BUF_SIZE];
-alias SigJmpBuf = uptr[$$JMP_BUF_SIZE + 1];
+
+typedef JmpBuf = uptr[$$JMP_BUF_SIZE] @align(jmpbuf_alignment());
+typedef SigJmpBuf = uptr[$$JMP_BUF_SIZE + 1] @align(jmpbuf_alignment());
+macro int jmpbuf_alignment() @local @const => $feat(WIN32 & X86_64) ??? 16 : uptr::alignment;
 alias Fd = CInt;
 alias Fpos_t @feat(WIN32) = long;
 alias SignalFunction = fn void(CInt);
