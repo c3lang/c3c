@@ -104,6 +104,7 @@
 - A function with `@test @benchmark` would effectively never be included.
 - Incorrect compiler error using `from_ordinal` when exceeding max.
 - Concatenated base64 literals lost decoded bytes after the first chunk.
+- Win64 returned `@simd` vectors through a hidden pointer instead of XMM0. #3628
 
 ### Stdlib changes
 - Added termios support for OpenBSD.
