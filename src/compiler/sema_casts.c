@@ -714,16 +714,14 @@ bool cast_to_index_len(SemaContext *context, Expr *index, bool is_len)
 		case TYPE_I16:
 		case TYPE_I32:
 		case TYPE_I64:
+			if (!sema_check_array_index(context, index, is_len)) return false;
 			return cast_explicit(context, index, type_sz);
 		case TYPE_U8:
 		case TYPE_U16:
 		case TYPE_U32:
 		case TYPE_U64:
+			if (!sema_check_array_index(context, index, is_len)) return false;
 			if (!cast_explicit(context, index, type_usz)) return false;
-			if (expr_is_const_int(index) && !int_fits(index->const_expr.ixx, type_sz->canonical->type_kind))
-			{
-				RETURN_SEMA_ERROR(index, "The %s is out of range: it cannot fit in a %s.", is_len ? "length" : "index", type_quoted_error_string(type_sz));
-			}
 			return cast_explicit(context, index, type_sz);
 		case TYPE_U128:
 			RETURN_SEMA_ERROR(index, "You need to explicitly cast this to a uint or ulong.");
@@ -1033,9 +1031,9 @@ static bool rule_ulist_to_vecarr(CastContext *cc, UNUSED bool is_explicit, bool 
 	if (size != cc->to->array.len)
 	{
 		if (is_silent) return false;
-		RETURN_CAST_ERROR(cc->expr, "%s may only be initialized with 0 elements or %d, not %d.",
+		RETURN_CAST_ERROR(cc->expr, "%s may only be initialized with 0 elements or %lld, not %d.",
 			type_quoted_error_string(cc->to_type),
-			cc->to->array.len, size);
+			(long long)cc->to->array.len, size);
 	}
 	Type *base = cc->to->array.base;
 	FOREACH(Expr *, expr, expressions)

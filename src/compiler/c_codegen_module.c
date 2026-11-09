@@ -921,7 +921,7 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 						else
 						{
 							ASSERT(init->kind == CONST_INIT_ARRAY_VALUE);
-							PRINTF("[%d] = ", init->init_array_value.index);
+							PRINTF("[%lld] = ", (long long)init->init_array_value.index);
 							c_emit_const_initializer_rec(c, init->init_array_value.element);
 						}
 					}

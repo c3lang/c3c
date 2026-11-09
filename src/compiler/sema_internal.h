@@ -115,6 +115,7 @@ void sema_add_methods_to_decl_stack(SemaContext *context, Decl *decl);
 
 bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool call_var_optional, bool *no_match_ref);
 Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, SubscriptIndex *range);
+bool sema_check_array_index(SemaContext *context, Expr *index, bool is_len);
 
 Expr *sema_ct_eval_expr(SemaContext *context, CtEvalKind eval_kind, Expr *inner, bool report_missing, bool *was_reflect);
 Expr *sema_resolve_string_ident(SemaContext *context, Expr *inner, bool report_missing);
@@ -269,15 +270,20 @@ static inline IndexDiff range_const_len(Range *range)
 	Expr *start = exprptr(range->start);
 	Expr *end = exprptrzero(range->end);
 	if (!end || !expr_is_const_int(end)) return -1;
-	if (!int_fits(end->const_expr.ixx, TYPE_I32)) return -1;
+	if (!int_fits(end->const_expr.ixx, type_sz->canonical->type_kind)) return -1;
 	IndexDiff end_val = (IndexDiff)int_to_i64(end->const_expr.ixx);
 	if (range->is_len) return end_val;
 	if (!expr_is_const_int(start)) return -1;
-	if (!int_fits(start->const_expr.ixx, TYPE_I32)) return -1;
+	if (!int_fits(start->const_expr.ixx, type_sz->canonical->type_kind)) return -1;
 	IndexDiff start_val = (IndexDiff)int_to_i64(start->const_expr.ixx);
 	if (range->start_from_end && range->end_from_end) return start_val - end_val + 1;
 	if (range->start_from_end != range->end_from_end) return -1;
 	return end_val - start_val + 1;
+}
+
+INLINE ArrayIndex max_array_index(void)
+{
+	return type_sz->canonical == type_long ? INT64_MAX : INT32_MAX;
 }
 
 static inline StorageType sema_resolve_storage_type(SemaContext *context, Type *type)

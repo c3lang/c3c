@@ -200,7 +200,7 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, b
 		if (mask_val->const_expr.ixx.i.low >= (uint64_t)components)
 		{
 			if (components == 1) RETURN_SEMA_ERROR(mask_val, "The only possible swizzle position is 0.");
-			RETURN_SEMA_ERROR(mask_val, "The swizzle position must be in the range 0-%d.", components - 1);
+			RETURN_SEMA_ERROR(mask_val, "The swizzle position must be in the range 0-%lld.", (long long)(components - 1));
 		}
 	}
 	expr->type = type_add_optional(type_get_vector(type_get_indexed_type(args[0]->type), flat->type_kind, arg_count - first_mask_value), optional);
@@ -863,7 +863,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			Int sum = int_mul(args[1]->const_expr.ixx, args[2]->const_expr.ixx);
 			if (!int_icomp(sum, vec_len, BINARYOP_EQ))
 			{
-				RETURN_SEMA_ERROR(args[1], "Expected row * col to equal %d.", vec_len);
+				RETURN_SEMA_ERROR(args[1], "Expected row * col to equal %lld.", (long long)vec_len);
 			}
 			rtype = args[0]->type;
 			break;
@@ -885,12 +885,12 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			args[3]->type = type_int;
 			if (sum.high != 0 || (ArrayIndex)sum.low != vec_len1)
 			{
-				RETURN_SEMA_ERROR(args[3], "Expected outer row * inner to equal %d.", vec_len1);
+				RETURN_SEMA_ERROR(args[3], "Expected outer row * inner to equal %lld.", (long long)vec_len1);
 			}
 			sum = i128_mult(args[3]->const_expr.ixx.i, args[4]->const_expr.ixx.i);
 			if (sum.high != 0 || (ArrayIndex)sum.low != vec_len2)
 			{
-				RETURN_SEMA_ERROR(args[4], "Expected inner * outer col to equal %d.", vec_len2);
+				RETURN_SEMA_ERROR(args[4], "Expected inner * outer col to equal %lld.", (long long)vec_len2);
 			}
 			rtype = type_get_vector(flat1->array.base, flat1->type_kind, i128_mult(args[2]->const_expr.ixx.i, args[4]->const_expr.ixx.i).low);
 			break;

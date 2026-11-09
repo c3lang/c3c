@@ -230,6 +230,15 @@ static inline void context_switch_stat_pop(SemaContext *swapped, ContextSwitchSt
 	swapped->generic_instance = state.generic_instance;
 }
 
+bool sema_check_array_index(SemaContext *context, Expr *index, bool is_len)
+{
+	if (expr_is_const_int(index) && !int_fits(index->const_expr.ixx, type_sz->canonical->type_kind))
+	{
+		RETURN_SEMA_ERROR(index, "The %s is out of range: it cannot fit in a %s.", is_len ? "length" : "index", type_quoted_error_string(type_sz));
+	}
+	return true;
+}
+
 Expr *sema_enter_inline_member(Expr *parent, CanonicalType *type)
 {
 	Expr *expr;
@@ -610,6 +619,46 @@ bool sema_expr_analyse_sprintf(SemaContext *context, Expr *expr, Expr *format_st
 }
 
 
+static bool expr_is_const_storage(Expr *expr)
+{
+	while (true)
+	{
+		switch (expr->expr_kind)
+		{
+			case EXPR_CONST:
+				return true;
+			case EXPR_IDENTIFIER:
+				return expr->ident_expr->decl_kind == DECL_VAR && expr->ident_expr->var.kind == VARDECL_CONST;
+			case EXPR_BITACCESS:
+			case EXPR_ACCESS_RESOLVED:
+				expr = expr->access_resolved_expr.parent;
+				continue;
+			case EXPR_SUBSCRIPT:
+			case EXPR_SUBSCRIPT_ADDR:
+			case EXPR_SLICE:
+				expr = exprptr(expr->expr_kind == EXPR_SLICE ? expr->slice_expr.expr : expr->subscript_expr.expr);
+				if (!expr->type) return false;
+				switch (type_flatten(expr->type)->type_kind)
+				{
+					case TYPE_ARRAY:
+					case VECTORS:
+						continue;
+					default:
+						return false;
+				}
+			case EXPR_UNARY:
+				if (expr->unary_expr.operator != UNARYOP_DEREF) return false;
+				expr = expr->unary_expr.expr;
+				if (expr->expr_kind == EXPR_SUBSCRIPT_ADDR) continue;
+				if (expr->expr_kind != EXPR_UNARY || expr->unary_expr.operator != UNARYOP_ADDR) return false;
+				expr = expr->unary_expr.expr;
+				continue;
+			default:
+				return false;
+		}
+	}
+}
+
 static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Expr *expr, bool *failed_ref)
 {
 	if (expr->expr_kind == EXPR_CT_SUBSCRIPT) return true;
@@ -682,6 +731,12 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 			goto CHECK_OPTIONAL;
 		case EXPR_SUBSCRIPT:
 		case EXPR_SLICE:
+			if (expr_is_const_storage(expr))
+			{
+				if (failed_ref) goto FAILED_REF;
+				RETURN_SEMA_ERROR(top_expr, "You cannot assign to an element of a constant.");
+			}
+			goto CHECK_OPTIONAL;
 		case EXPR_SUBSCRIPT_ASSIGN:
 			goto CHECK_OPTIONAL;
 		case EXPR_CONST:
@@ -2449,11 +2504,11 @@ SPLAT_NORMAL:;
 			{
 				if (missing != needed)
 				{
-					RETURN_SEMA_FUNC_ERROR(callee->definition, call, "'%s' expects %d-%d parameters, but none were provided.",
-										   callee->name, missing, needed);
+					RETURN_SEMA_FUNC_ERROR(callee->definition, call, "'%s' expects %d-%lld parameters, but none were provided.",
+										   callee->name, missing, (long long)needed);
 				}
-				RETURN_SEMA_FUNC_ERROR(callee->definition, call, "'%s' expects %d parameter(s), but none were provided.",
-									   callee->name, needed);
+				RETURN_SEMA_FUNC_ERROR(callee->definition, call, "'%s' expects %lld parameter(s), but none were provided.",
+									   callee->name, (long long)needed);
 			}
 			if (!last) last = args[0];
 			int more_needed = (int)((ArrayIndex)func_param_count - i);
@@ -4088,13 +4143,8 @@ static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr 
 {
 	ASSERT_SPAN(index_expr, type == type->canonical);
 	if (!sema_cast_const(index_expr)) return true;
-
+	if (!sema_check_array_index(context, index_expr, false)) return false;
 	Int index = index_expr->const_expr.ixx;
-	if (!int_fits(index, TYPE_I64))
-	{
-		RETURN_SEMA_ERROR(index_expr, "The index cannot be stored in a 64-signed integer, which isn't supported.");
-		return false;
-	}
 	if (from_end && int_is_neg(index))
 	{
 		RETURN_SEMA_ERROR(index_expr, "Negative numbers are not allowed when indexing from the end.");
@@ -4318,7 +4368,6 @@ static inline bool sema_expr_resolve_subscript_index(SemaContext *context, Subsc
 	}
 
 	// Analyse the index.
-
 	int64_t index_value = -1;
 	bool start_from_end = expr->subscript_expr.index.start_from_end;
 	if (start_from_end && (current_type->type_kind == TYPE_POINTER || current_type->type_kind == TYPE_FLEXIBLE_ARRAY))
@@ -4338,7 +4387,8 @@ static inline bool sema_expr_resolve_subscript_index(SemaContext *context, Subsc
 			if (missing_ref) return *missing_ref = true, false;
 			RETURN_SEMA_ERROR(index, "The index may not be negative.");
 		}
-		if (!int_fits(index->const_expr.ixx, TYPE_I64) || size == 0)
+		if (!sema_check_array_index(context, index, false)) return false;
+		if (!size)
 		{
 			if (!check_len)
 			{
@@ -4686,17 +4736,13 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	{
 		if (sema_cast_const(index))
 		{
+			if (!sema_check_array_index(context, index, false)) return false;
 			ASSERT_SPAN(index, expr_is_const_int(index));
 			sema_cast_const(current_expr);
 			bool is_const_initializer = expr_is_const_initializer(current_expr) || (expr_is_const_slice(current_expr) && current_expr->const_expr.slice_init);
 			if (is_const_initializer || expr_is_const_string(current_expr) || expr_is_const_bytes(current_expr))
 			{
-				if (!int_fits(index->const_expr.ixx, TYPE_U32))
-				{
-					if (failed_ref) return *failed_ref = true, false;
-					RETURN_SEMA_ERROR(index, "Index is out of range.");
-				}
-				ArrayIndex idx = index->const_expr.ixx.i.low;
+				ArrayIndex idx = (ArrayIndex)index->const_expr.ixx.i.low;
 				ArrayIndex len = sema_len_from_const(current_expr);
 				if (idx > len || (idx == len && !start_from_end) || (idx == 0 && start_from_end))
 				{
@@ -4785,7 +4831,7 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 
 	ArrayIndex lowest = range->is_len ? 0 : -1;
 	if (!cast_to_index_len(context, start, false)) return false;
-	if (end && !cast_to_index_len(context, end, false)) return false;
+	if (end && !cast_to_index_len(context, end, range->is_len)) return false;
 	Type *end_type = end ? type_no_optional(end->type) : NULL;
 	Type *start_type = type_no_optional(start->type);
 	if (end && IS_OPTIONAL(end)) range->is_optional = true;
@@ -4833,13 +4879,9 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 	if (end && sema_cast_const(end))
 	{
 		// Only ArrayIndex sized
-		if (!expr_is_valid_index(end))
-		{
-			RETURN_SEMA_ERROR(end, "The index cannot be stored in a 64-signed integer, which isn't supported.");
-		}
+		if (!sema_check_array_index(context, end, range->is_len)) return false;
 
 		ArrayIndex end_index = int_to_i64(end->const_expr.ixx);
-
 		if (range->end_from_end)
 		{
 			if (end_index < 0) RETURN_SEMA_ERROR(end, "Negative numbers are not allowed when indexing from the end.");
@@ -4870,16 +4912,12 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 
 	if (sema_cast_const(start))
 	{
-		// Only ArrayIndex sized
-		if (!expr_is_valid_index(start))
-		{
-			RETURN_SEMA_ERROR(start, "The index is out of range: it cannot be stored in a 64-signed integer.");
-		}
+		if (!sema_check_array_index(context, start, false)) return false;
 		// Only ArrayIndex sized
 		ArrayIndex start_index = int_to_i64(start->const_expr.ixx);
 		if (range->start_from_end)
 		{
-			if (start_index < 0) RETURN_SEMA_ERROR(end, "Negative numbers are not allowed when indexing from the end.");
+			if (start_index < 0) RETURN_SEMA_ERROR(start, "Negative numbers are not allowed when indexing from the end.");
 			// Something like  ^1 .. 4 with an unknown length.
 			if (len < 0) return true;
 			// Otherwise we fold the "from end"
@@ -4923,19 +4961,19 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 			case RANGE_CONST_END:
 				if (range->const_end >= len)
 				{
-					RETURN_SEMA_ERROR(end ? end : start, "End index out of bounds, was %d, exceeding max index %d.", range->const_end, len - 1);
+					RETURN_SEMA_ERROR(end ? end : start, "End index out of bounds, was %lld, exceeding max index %lld.", (long long)range->const_end, (long long)(len - 1));
 				}
 				break;
 			case RANGE_CONST_LEN:
 				if (range->const_end > len)
 				{
-					RETURN_SEMA_ERROR(end ? end : start, "Length out of bounds, was %d, exceeding max length %d.", range->const_end, len);
+					RETURN_SEMA_ERROR(end ? end : start, "Length out of bounds, was %lld, exceeding max length %lld.", (long long)range->const_end, (long long)len);
 				}
 				break;
 			case RANGE_CONST_RANGE:
 				if (range->start_index + range->len_index > len)
 				{
-					RETURN_SEMA_ERROR(end ? end : start, "End index out of bounds, was %d, exceeding max index %d.", range->start_index + range->len_index - 1, len - 1);
+					RETURN_SEMA_ERROR(end ? end : start, "End index out of bounds, was %lld, exceeding max index %lld.", (long long)(range->start_index + range->len_index - 1), (long long)(len - 1));
 				}
 				break;
 			default:
@@ -6472,7 +6510,7 @@ static inline bool sema_expr_fold_to_index(Expr *expr, Expr *parent, SubscriptIn
 	ConstInitializer *result = INVALID_PTR;
 	ASSERT_SPAN(expr, !index_expr.start_from_end);
 	Int128 i = exprptr(index_expr.expr)->const_expr.ixx.i;
-	if (i.high || i.low > MAX_ARRAYINDEX) return false;
+	if (i.high || i.low > (uint64_t)max_array_index()) return false;
 	ArrayIndex index = (ArrayIndex)i.low;
 	switch (init->kind)
 	{
@@ -12505,7 +12543,7 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 		if (len != to_canonical->array.len)
 		{
 			if (no_match_ref) goto NO_MATCH_REF;
-			RETURN_SEMA_ERROR(expr, "Slice length mismatch, expected %d but got %d.", to_canonical->array.len, len);
+			RETURN_SEMA_ERROR(expr, "Slice length mismatch, expected %lld but got %lld.", (long long)to_canonical->array.len, (long long)len);
 		}
 		// Given x[3..7] -> (int[5]*)x[3..7]
 		cast_no_check(expr, type_get_ptr(type_get_array(element, len)), IS_OPTIONAL(expr));

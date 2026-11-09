@@ -107,6 +107,7 @@
 - Improve accuracy of `log` and `logf` without a C library (wasm32, freestanding, or `-D C3_MATH`).
 - 16-byte align JmpBuf on Win32.
 - Win64 returned `@simd` vectors through a hidden pointer instead of XMM0. #3628
+- Fix regression when slices or pointers exceed 2 GB. #3595
 
 ### Stdlib changes
 - Added termios support for OpenBSD.

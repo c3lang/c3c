@@ -14,8 +14,8 @@
 typedef double Real;
 typedef int64_t ByteSize;
 typedef int32_t TypeSize;
-typedef int32_t IndexDiff;
-typedef int32_t ArrayIndex;
+typedef int64_t IndexDiff;
+typedef int64_t ArrayIndex;
 typedef int16_t StructIndex;
 typedef int32_t AlignSize;
 typedef int64_t BitSize;
@@ -33,7 +33,6 @@ typedef int32_t FileId;
 
 #define STRUCT_INDEX_MAX INT16_MAX
 #define ALIGN_SIZE_MAX INT32_MAX
-#define MAX_ARRAYINDEX INT_MAX
 #define MAX_FIXUPS 0xFFFFF
 #define MAX_HASH_SIZE (512 * 1024 * 1024)
 #define MAX_SCOPE_DEPTH 0x100
@@ -75,7 +74,7 @@ print_deprecation_at(span__, __VA_ARGS__); } while (0)
 #define PRINT_DEPRECATED_AT_LOC(loc__, ...) do { if (compiler.build.test_output && compiler.build.warnings.deprecation > WARNING_SILENT) print_error_at_loc(loc__, __VA_ARGS__); if (compiler.build.warnings.deprecation > WARNING_SILENT) \
 print_deprecation_at_loc(loc__, __VA_ARGS__); } while (0)
 
-#define EXPAND_EXPR_STRING(str_) (str_)->const_expr.bytes.len, (str_)->const_expr.bytes.ptr
+#define EXPAND_EXPR_STRING(str_) (int)(str_)->const_expr.bytes.len, (str_)->const_expr.bytes.ptr
 #define TABLE_MAX_LOAD 0.5
 #define OUTF(...) do { if (!compiler.build.silent) printf(__VA_ARGS__); } while(0)
 #define OUTN(str__) do { if (!compiler.build.silent) puts(str__); } while(0)
@@ -5051,12 +5050,6 @@ INLINE bool check_module_name(Path *path)
 INLINE void const_init_set_type(ConstInitializer *init, Type *type)
 {
 	init->type = type_flatten(type);
-}
-
-INLINE bool expr_is_valid_index(Expr *expr)
-{
-	ASSERT_SPAN(expr, expr_is_const_int(expr));
-	return int_fits(expr->const_expr.ixx, TYPE_I64);
 }
 
 INLINE ResolvedAttrData *decl_get_resolved_attributes(Decl *decl)

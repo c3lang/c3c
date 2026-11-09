@@ -145,6 +145,10 @@ static void expr_concat_character(Expr *expr, Type *type, const char *a, ArrayIn
 static bool sema_concat_bytes_and_other(SemaContext *context, Expr *expr, Expr *left, Expr *right)
 {
 	ArrayIndex len = left->const_expr.bytes.len;
+	if (len == MAX_ARRAY_SIZE)
+	{
+		RETURN_SEMA_ERROR(expr, "The result of the concatenation would exceed max supported length.");
+	}
 	bool is_bytes = left->const_expr.const_kind == CONST_BYTES;
 	ASSERT(is_bytes || left->const_expr.const_kind == CONST_STRING);
 	Type *indexed = type_get_indexed_type(left->type);
@@ -183,6 +187,10 @@ RETRY:;
 			                  type_quoted_error_string(left->type), type_to_error_string(right->type));
 		case CONST_BYTES:
 		case CONST_STRING:
+			if (len > MAX_ARRAY_SIZE - right->const_expr.bytes.len)
+			{
+				RETURN_SEMA_ERROR(expr, "The result of the concatenation would exceed max supported length.");
+			}
 			expr_concat_const_bytes(expr, left->type, is_bytes, left_bytes, right->const_expr.bytes.ptr,
 				len, right->const_expr.bytes.len);
 			return true;
@@ -410,6 +418,10 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 		indexed_type = NULL;
 	}
 	ArrayIndex len_rhs = sema_len_from_const(right);
+	if (len > max_array_index() - len_rhs)
+	{
+		RETURN_SEMA_ERROR(left, "Constant expression would exceed the maximum length (%lld).", (long long)max_array_index());
+	}
 	len += len_rhs;
 	if (!indexed_type)
 	{

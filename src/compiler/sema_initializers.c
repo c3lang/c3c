@@ -510,7 +510,11 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 	Type *type;
 	if (!is_structlike && is_inferred)
 	{
-		type = type_from_inferred(flattened, flattened->array.base, (ArrayIndex)(max_index + 1));
+		if (max_index >= MAX_ARRAY_SIZE)
+		{
+			RETURN_SEMA_ERROR(initializer, "Inferred size would exceed max supported array size (%lld).", (long long)MAX_ARRAY_SIZE);
+		}
+		type = type_from_inferred(flattened, flattened->array.base, (int)(max_index + 1));
 	}
 	else
 	{
@@ -1305,7 +1309,7 @@ static Type *sema_find_type_of_element(SemaContext *context, Type *type, Designa
 		{
 			case TYPE_INFERRED_ARRAY:
 			case TYPE_INFERRED_VECTOR:
-				len = MAX_ARRAYINDEX;
+				len = max_array_index();
 				base = type_flattened->array.base;
 				break;
 			case TYPE_ARRAY:
@@ -1397,11 +1401,8 @@ static ArrayIndex sema_analyse_designator_index(SemaContext *context, Expr *inde
 		SEMA_ERROR(index, "The index must be a constant value.");
 		return -1;
 	}
-	if (!int_fits(index->const_expr.ixx, TYPE_I32))
-	{
-		SEMA_ERROR(index, "The value of the index does not fit in an int.");
-		return -1;
-	}
+	if (!sema_check_array_index(context, index, false)) return -1;
+
 	int64_t index_val = int_to_i64(index->const_expr.ixx);
 	if (index_val < 0)
 	{
