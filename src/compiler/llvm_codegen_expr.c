@@ -4773,8 +4773,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 				{
 					LLVMValueRef value = llvm_emit_const_initializer(c, init, false);
 					AlignSize alignment = type_alloca_alignment(init->type);
-					LLVMTypeRef val_type = llvm_get_type(c, init->type);
-					LLVMValueRef global_copy = llvm_add_global_raw(c, ".__const_slice", val_type, alignment);
+					LLVMValueRef global_copy = llvm_add_global_raw(c, ".__const_slice", LLVMTypeOf(value), alignment);
 					LLVMSetInitializer(global_copy, value);
 					llvm_set_private_declaration(global_copy);
 					ASSERT(type_is_arraylike(init->type));

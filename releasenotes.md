@@ -114,6 +114,7 @@
 - `argon2::tencode` took `key_id` as a `char` instead of a `char[]`.
 - The libc allocator was incorrectly declared in `std::core::mem::allocator`.
 - Fixes to the `benchmarks.c3`, `map.c3` and `xml/3_xml_write_stream.c3` examples.
+- A global slice of vectors, e.g. `int[<2>][] g = { { 1, 2 } };`, would be lowered incorrectly.
 
 ### Stdlib changes
 - Added termios support for OpenBSD.
