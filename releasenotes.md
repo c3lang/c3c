@@ -104,6 +104,8 @@
 - A function with `@test @benchmark` would effectively never be included.
 - Incorrect compiler error using `from_ordinal` when exceeding max.
 - Concatenated base64 literals lost decoded bytes after the first chunk.
+- Improve accuracy of `log` and `logf` without a C library (wasm32, freestanding, or `-D C3_MATH`).
+- 16-byte align JmpBuf on Win32.
 
 ### Stdlib changes
 - Added termios support for OpenBSD.
