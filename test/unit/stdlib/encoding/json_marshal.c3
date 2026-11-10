@@ -2,6 +2,7 @@ module json_marshal_test @test;
 import std::encoding::json;
 import std::collections::object;
 import std::collections::ref;
+import std::collections::map;
 import std::io;
 
 enum Status
@@ -971,4 +972,63 @@ fn void test_unmarshal_string_constdef() @test
 	JsonText text = json::unmarshal(tmem, `{"kind": "markdown", "inline_kind": "markdown", "value": "x"}`, JsonText)!!;
 	test::eq(text.kind, JsonTextKind.MARKDOWN);
 	test::eq(text.inline_kind, JsonInlineTextKind.INLINE_MARKDOWN);
+}
+
+struct JsonNode
+{
+	int value;
+	JsonNode* next @JsonOmitEmpty;
+}
+
+fn void test_self_referencing_struct() @test
+{
+	JsonNode last = { .value = 2 };
+	JsonNode first = { .value = 1, .next = &last };
+	test::eq(json::marshal(tmem, first), `{"value":1,"next":{"value":2}}`);
+	JsonNode back = json::unmarshal(tmem, `{"value":1,"next":{"value":2}}`, JsonNode)!!;
+	test::eq(back.next.value, 2);
+}
+
+fn void test_object_map_keys_are_escaped() @test
+{
+	Object* obj = json::tparse(`{"q\"uote": 1}`)!!;
+	test::eq(json::marshal(tmem, obj), `{"q\"uote":1}`);
+}
+
+struct JsonTargets
+{
+	String name;
+	HashMap{String, JsonPoint} targets;
+	OrderedMap{String, int} counts;
+	HashMap{String, int} empty @JsonOmitEmpty;
+}
+
+fn void test_map_roundtrip() @test
+{
+	JsonTargets value = json::unmarshal(tmem, `{"name": "n", "targets": {"a-b": {"x": 1, "y": 2}, "q\"uote": {"x": 3, "y": 4}}, "counts": {"one": 1, "two": 2}}`, JsonTargets)!!;
+	test::eq(value.targets.len(), 2);
+	test::eq(value.targets["a-b"]!!.y, 2);
+	test::eq(value.targets["q\"uote"]!!.x, 3);
+	test::eq(value.counts["two"]!!, 2);
+
+	String text = json::marshal(tmem, value);
+	test::eq(text.contains(`"q\"uote":{"x":3,"y":4}`), true);
+	test::eq(text.contains(`"counts":{"one":1,"two":2}`), true);
+	test::eq(text.contains(`"empty"`), false);
+	JsonTargets back = json::unmarshal(tmem, text, JsonTargets)!!;
+	test::eq(back.targets["a-b"]!!.x, 1);
+}
+
+fn void test_map_null_and_empty() @test
+{
+	JsonTargets value = json::unmarshal(tmem, `{"targets": null, "counts": {}}`, JsonTargets)!!;
+	test::eq(value.targets.len(), 0);
+	test::eq(value.counts.len(), 0);
+	test::eq(json::marshal(tmem, value), `{"name":"","targets":{},"counts":{}}`);
+}
+
+fn void test_map_frees_on_error() @test
+{
+	JsonTargets? value = json::unmarshal(mem, `{"targets": {"a": {"x": 1, "y": 2}, "b": {"x": "bad"}}}`, JsonTargets);
+	assert(@catch(value) == json::INVALID_NUMBER);
 }

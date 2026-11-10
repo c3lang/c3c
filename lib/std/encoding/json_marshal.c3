@@ -5,7 +5,7 @@
  Marshaling: convert a C3 struct or array to a JSON string via `marshal` and `marshal_to`.
  Unmarshaling: convert a JSON `String` back to a native C3 struct via `unmarshal`.
 
- _Supports: structs, arrays, slices, pointers, String, ints, floats, bools, enums, constsets, typedefs, and nested combinations of those.
+ _Supports: structs, arrays, slices, pointers, String-keyed `HashMap` and `OrderedMap`, String, ints, floats, bools, enums, constsets, typedefs, and nested combinations of those.
  A pointer is written as the value it points to, or `null`, and unmarshaling allocates it. An `Object*` member holds any JSON value.
  Unmarshaling `null` gives an empty string or slice, or a null pointer (`Nullable` included); it is an error for other types.
  Use a pointer or `Nullable` for a value that may be `null`._
@@ -13,7 +13,7 @@
  Struct members can set their JSON key with `@Json("key")`, and be left out of the output when empty with `@JsonOmitEmpty`.
 *>
 module std::encoding::json;
-import std::io, std::collections::object, std::collections::ref, std::math;
+import std::io, std::collections::object, std::collections::ref, std::collections::map, std::math;
 
 <*
  Formatting indentation preference for JSON output.
@@ -51,6 +51,9 @@ attrmacro @JsonOmitEmpty = @tag("json_omit_empty", true);
 *>
 macro bool may_serialize($Type) @const
 {
+	$if is_string_map($Type):
+		return may_serialize(map_value_type($Type));
+	$endif
 	$if $Type == Object*:
 		return true;
 	$endif
@@ -75,8 +78,9 @@ macro bool may_serialize($Type) @const
 		$case ARRAY:
 		$case VECTOR:
 		$case SLICE:
-		$case POINTER:
 			return may_serialize($Type::inner);
+		$case POINTER:
+			return true;
 		$default:
 			return false;
 	$endswitch
@@ -91,7 +95,7 @@ macro bool accepts_null($Type) @const @private
 	$switch:
 		$case $Type::is_generic(NonNull):
 			return false;
-		$case $Type::kind == SLICE || $Type::kind == POINTER:
+		$case $Type::kind == SLICE || $Type::kind == POINTER || is_string_map($Type):
 			return true;
 		$case $Type::kind == TYPEDEF:
 			return accepts_null($Type::inner);
@@ -100,7 +104,21 @@ macro bool accepts_null($Type) @const @private
 	$endswitch
 }
 
-macro String json_key($member) @const
+<*
+ Whether `$Type` is a map with String keys, which is written as a JSON object.
+*>
+macro bool is_string_map($Type) @const @private
+{
+	$if $Type::is_generic(HashMap) ||| $Type::is_generic(OrderedMap):
+		return $Typeof((($Type){}).keys(tmem))::inner == String;
+	$else
+		return false;
+	$endif
+}
+
+macro map_value_type($Type) @const @private => $Typeof((($Type){}).get("")!!);
+
+macro String json_key($member) @const @private
 {
 	$if $member.has_tag("json"):
 		return $member.get_tag("json");
@@ -109,31 +127,35 @@ macro String json_key($member) @const
 	$endif
 }
 
-fn bool is_empty_value(Type value) <Type> @private
+fn bool is_empty_value(EmptyType value) <EmptyType> @private
 {
-	$switch Type::kind:
+	$switch EmptyType::kind:
 		$case SLICE:
 			return value.len == 0;
 		$case POINTER:
 			return value == null;
 		$case STRUCT:
-			$foreach $member : Type::members:
-				if (!is_empty_value{$member.type}(value.$member)) return false;
-			$endforeach
-			return true;
+			$if is_string_map(EmptyType):
+				return value.len() == 0;
+			$else
+				$foreach $member : EmptyType::members:
+					if (!is_empty_value{$member.type}(value.$member)) return false;
+				$endforeach
+				return true;
+			$endif
 		$case ARRAY:
 		$case VECTOR:
 			foreach (element : value)
 			{
-				if (!is_empty_value{Type::inner}(element)) return false;
+				if (!is_empty_value{EmptyType::inner}(element)) return false;
 			}
 			return true;
 		$case TYPEDEF:
 		$case CONSTDEF:
-			var $Inner = Type::inner;
+			var $Inner = EmptyType::inner;
 			return is_empty_value{$Inner}(($Inner)value);
 		$default:
-			return value == (Type){};
+			return value == (EmptyType){};
 	$endswitch
 }
 
@@ -223,6 +245,33 @@ macro void? @skip_json_value(JsonDeserializer* des) @private
 	}
 }
 
+<*
+ Reads the entries of a JSON object, running the body with each key, which is valid until the next
+ string is parsed, and the reader at its value.
+*>
+macro void? @read_entries(JsonDeserializer* d; @body(String key)) @private
+{
+	expect_char(d, '{')!;
+	bool first = true;
+	while (peek_char(d) != '}')
+	{
+		if (!first)
+		{
+			expect_char(d, ',')!;
+			if (peek_char(d) == '}')
+			{
+				if (d.flavor == JSON) return UNEXPECTED_CHARACTER~;
+				break;
+			}
+		}
+		first = false;
+		String key = parse_string(d)!;
+		expect_char(d, ':')!;
+		@body(key);
+	}
+	expect_char(d, '}')!;
+}
+
 fn void? deserialize_value(JsonDeserializer* d, OutValue* out) <OutValue> @private
 {
 	if (peek_char(d) == 'n')
@@ -240,35 +289,33 @@ fn void? deserialize_value(JsonDeserializer* d, OutValue* out) <OutValue> @priva
 	}
 	$switch OutValue::kind:
 		$case STRUCT:
-			expect_char(d, '{')!;
-			bool first = true;
 			defer catch object::recursively_free{OutValue}(d.allocator, out);
-			while (peek_char(d) != '}')
-			{
-				if (!first)
+			$if is_string_map(OutValue):
+				out.init(d.allocator);
+				@read_entries(d; String key)
 				{
-					expect_char(d, ',')!;
-					if (peek_char(d) == '}')
-					{
-						if (d.flavor == JSON) return UNEXPECTED_CHARACTER~;
-						break;
-					}
-				}
-				first = false;
-				String key = parse_string(d)!;
-				expect_char(d, ':')!;
-
-				bool matched = false;
-				$foreach $member : OutValue::members:
-					if (!matched && key == json_key($member))
-					{
-						deserialize_value{$member.type}(d, &out.$member)!;
-						matched = true;
-					}
-				$endforeach
-				if (!matched) @skip_json_value(d)!;
-			}
-			expect_char(d, '}')!;
+					var $Value = map_value_type(OutValue);
+					String map_key = key.tcopy();
+					$Value value;
+					defer catch object::recursively_free{$Value}(d.allocator, &value);
+					deserialize_value{$Value}(d, &value)!;
+					if (try old = out.get(map_key)) object::recursively_free{$Value}(d.allocator, &old);
+					out.set(map_key, value);
+				}!;
+			$else
+				@read_entries(d; String key)
+				{
+					bool matched = false;
+					$foreach $member : OutValue::members:
+						if (!matched && key == json_key($member))
+						{
+							deserialize_value{$member.type}(d, &out.$member)!;
+							matched = true;
+						}
+					$endforeach
+					if (!matched) @skip_json_value(d)!;
+				}!;
+			$endif
 		$case ARRAY:
 		$case VECTOR:
 		$case SLICE:
@@ -438,7 +485,10 @@ macro void? @write_array(OutStream stream, sz len, JsonIndent indent, int indent
 	stream.write_byte(']')!;
 }
 
-fn void? write_entry_prefix(OutStream stream, String key, JsonIndent indent, int indent_depth, bool first) @private
+<*
+ Writes the separator and key of an object entry. Keys from data are escaped; member names are written as they are.
+*>
+fn void? write_entry_prefix(OutStream stream, String key, JsonIndent indent, int indent_depth, bool first, bool escape_key = false) @private
 {
 	bool pretty_print = indent != NONE;
 	switch
@@ -450,6 +500,12 @@ fn void? write_entry_prefix(OutStream stream, String key, JsonIndent indent, int
 			stream.write_byte('\n')!;
 	}
 	if (pretty_print) write_indent(stream, indent, indent_depth + 1)!;
+	if (escape_key)
+	{
+		serialize_string(stream, key)!;
+		stream.write(pretty_print ? ": " : ":")!;
+		return;
+	}
 	stream.write_byte('"')!;
 	stream.write(key)!;
 	stream.write(pretty_print ? `": ` : `":`)!;
@@ -482,6 +538,19 @@ fn void? serialize(OutStream stream, MapType value, JsonIndent indent, int inden
 	write_map_suffix(stream, indent, indent_depth, !first)!;
 }
 
+fn void? serialize_map(OutStream stream, StringMap value, JsonIndent indent, int indent_depth) <StringMap> @private
+{
+	stream.write_byte('{')!;
+	bool first = true;
+	value.@each(; key, element)
+	{
+		write_entry_prefix(stream, key, indent, indent_depth, first, escape_key: true)!;
+		serialize_value{$Typeof(element)}(stream, element, indent, indent_depth + 1)!;
+		first = false;
+	};
+	write_map_suffix(stream, indent, indent_depth, !first)!;
+}
+
 fn void? serialize_value(OutStream stream, TypeElement value, JsonIndent indent, int indent_depth = 0)<TypeElement> @private
 {
 	$switch TypeElement::kind:
@@ -497,7 +566,11 @@ fn void? serialize_value(OutStream stream, TypeElement value, JsonIndent indent,
 				return serialize_value{TypeElement::inner}(stream, *value, indent, indent_depth);
 			$endif
 		$case STRUCT:
-			return serialize{TypeElement}(stream, value, indent, indent_depth);
+			$if is_string_map(TypeElement):
+				return serialize_map{TypeElement}(stream, value, indent, indent_depth);
+			$else
+				return serialize{TypeElement}(stream, value, indent, indent_depth);
+			$endif
 		$case ARRAY:
 		$case VECTOR:
 			return serialize_slice{TypeElement::inner}(stream, &value, indent, indent_depth);
@@ -570,7 +643,7 @@ fn void? serialize_object(OutStream stream, Object* obj, JsonIndent indent, int 
 			bool first = true;
 			obj.@each_entry(; key, val)
 			{
-				write_entry_prefix(stream, key, indent, indent_depth, first)!;
+				write_entry_prefix(stream, key, indent, indent_depth, first, escape_key: true)!;
 				first = false;
 				serialize_object(stream, val, indent, indent_depth + 1)!;
 			};

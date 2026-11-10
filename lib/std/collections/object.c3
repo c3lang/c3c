@@ -728,9 +728,17 @@ fn void recursively_free(Allocator allocator, FreeType* val) <FreeType>
 	defer *val = {};
 	$switch FreeType::kind:
 		$case STRUCT:
-			$foreach $member : FreeType::members:
-				recursively_free{$member.type}(allocator, &val.$member);
-			$endforeach
+			$if FreeType::is_generic(HashMap) ||| FreeType::is_generic(OrderedMap):
+				val.@each(; key, value)
+				{
+					recursively_free{$Typeof(value)}(allocator, &value);
+				};
+				val.free();
+			$else
+				$foreach $member : FreeType::members:
+					recursively_free{$member.type}(allocator, &val.$member);
+				$endforeach
+			$endif
 		$case ARRAY:
 			var $InnerType = FreeType::inner;
 			foreach (&ref : *val)
