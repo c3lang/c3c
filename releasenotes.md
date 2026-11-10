@@ -119,6 +119,7 @@
 - Instantiating a generic with the type of an anonymous inner struct/union would crash the compiler. #3631
 - Anonymous inner structs/unions of the same parent shared a name. They are now named by member index, e.g. `Foo.0`.
 - Inner structs/unions of a generic struct lacked the generic parameters in their name.
+- Fix Win32 compiler support  for paths containing non-ASCII characters. #3606
 
 ### Stdlib changes
 - Added termios support for OpenBSD.
