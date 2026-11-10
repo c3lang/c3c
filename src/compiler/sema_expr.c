@@ -3656,7 +3656,22 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 		}
 		Ast *ast = copy_ast_single(macro_context->yield_body);
 		call->body_expansion_expr.first_stmt = astid(ast);
-		if (!sema_analyse_statement(context, ast))
+		bool body_ok;
+		Ast *macro_in_defer = macro_context->active_scope.in_defer;
+		if (macro_in_defer)
+		{
+			context->active_scope.in_defer = macro_in_defer;
+			PUSH_BREAKCONT(NULL);
+			PUSH_NEXT(NULL, NULL);
+			body_ok = sema_analyse_statement(context, ast);
+			POP_NEXT();
+			POP_BREAKCONT();
+		}
+		else
+		{
+			body_ok = sema_analyse_statement(context, ast);
+		}
+		if (!body_ok)
 		{
 			sema_context_pop_ct_stack(context, ct_context);
 			return SCOPE_POP_ERROR();

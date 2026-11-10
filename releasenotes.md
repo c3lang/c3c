@@ -129,6 +129,8 @@
 - Comparing constant bitstructs could crash the compiler.
 - Constant `!=` on faults and on addresses of globals returned the result of `==`.
 - `a += e` on an optional `a` did not assign the fault when `e` was a fault. It now works like `a = a + e`.
+- Constant folding of `int::min / -1` was incorrect.
+- `return`, `break`, `continue`, `nextcase` and rethrow in a macro's trailing body were allowed when the macro invoked the body from a `defer`.
 
 ### Stdlib changes
 - Added termios support for OpenBSD.
