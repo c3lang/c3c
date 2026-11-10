@@ -140,12 +140,18 @@ void type_append_name_to_scratch(Type *type)
 		case TYPE_POISONED:
 		case TYPE_ALIAS:
 			UNREACHABLE_VOID;
-		case TYPE_ENUM:
-		case TYPE_CONSTSET:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		case TYPE_TYPEDEF:
 		case TYPE_BITSTRUCT:
+			if (!type->decl->name)
+			{
+				scratch_buffer_append(type->name);
+				break;
+			}
+			FALLTHROUGH;
+		case TYPE_ENUM:
+		case TYPE_CONSTSET:
+		case TYPE_TYPEDEF:
 		case TYPE_INTERFACE:
 			scratch_buffer_append(type->decl->name);
 			break;

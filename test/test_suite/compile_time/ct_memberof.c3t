@@ -601,7 +601,7 @@ voiderr151:                                       ; preds = %noerr_block149, %gu
   %56 = insertvalue %any undef, ptr %taddr169, 0
   %57 = insertvalue %any %56, i64 ptrtoint (ptr @"$ct.String" to i64), 1
   store %any %57, ptr %varargslots168, align 16
-  store %"char[]" { ptr @.str.22, i64 9 }, ptr %taddr170, align 8
+  store %"char[]" { ptr @.str.22, i64 5 }, ptr %taddr170, align 8
   %58 = insertvalue %any undef, ptr %taddr170, 0
   %59 = insertvalue %any %58, i64 ptrtoint (ptr @"$ct.String" to i64), 1
   %ptradd171 = getelementptr inbounds i8, ptr %varargslots168, i64 16
@@ -646,7 +646,7 @@ voiderr151:                                       ; preds = %noerr_block149, %gu
   %79 = insertvalue %any undef, ptr %taddr202, 0
   %80 = insertvalue %any %79, i64 ptrtoint (ptr @"$ct.String" to i64), 1
   store %any %80, ptr %varargslots201, align 16
-  store %"char[]" { ptr @.str.35, i64 9 }, ptr %taddr203, align 8
+  store %"char[]" { ptr @.str.35, i64 5 }, ptr %taddr203, align 8
   %81 = insertvalue %any undef, ptr %taddr203, 0
   %82 = insertvalue %any %81, i64 ptrtoint (ptr @"$ct.String" to i64), 1
   %ptradd204 = getelementptr inbounds i8, ptr %varargslots201, i64 16

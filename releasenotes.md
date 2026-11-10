@@ -115,6 +115,9 @@
 - The libc allocator was incorrectly declared in `std::core::mem::allocator`.
 - Fixes to the `benchmarks.c3`, `map.c3` and `xml/3_xml_write_stream.c3` examples.
 - A global slice of vectors, e.g. `int[<2>][] g = { { 1, 2 } };`, would be lowered incorrectly.
+- Instantiating a generic with the type of an anonymous inner struct/union would crash the compiler. #3631
+- Anonymous inner structs/unions of the same parent shared a name. They are now named by member index, e.g. `Foo.0`.
+- Inner structs/unions of a generic struct lacked the generic parameters in their name.
 
 ### Stdlib changes
 - Added termios support for OpenBSD.
