@@ -100,7 +100,7 @@ macro bool accepts_null($Type) @const @private
 	$endswitch
 }
 
-macro String @json_key($member) @const
+macro String json_key($member) @const
 {
 	$if $member.has_tag("json"):
 		return $member.get_tag("json");
@@ -111,30 +111,29 @@ macro String @json_key($member) @const
 
 fn bool is_empty_value(Type value) <Type> @private
 {
-	$switch:
-		$case Type == String:
+	$switch Type::kind:
+		$case SLICE:
 			return value.len == 0;
-		$case Type::kind == SLICE:
-			return value.len == 0;
-		$case Type::kind == POINTER:
+		$case POINTER:
 			return value == null;
-		$case Type::kind == STRUCT:
+		$case STRUCT:
 			$foreach $member : Type::members:
 				if (!is_empty_value{$member.type}(value.$member)) return false;
 			$endforeach
 			return true;
-		$case Type::kind == ARRAY || Type::kind == VECTOR:
+		$case ARRAY:
+		$case VECTOR:
 			foreach (element : value)
 			{
 				if (!is_empty_value{Type::inner}(element)) return false;
 			}
 			return true;
-		$case Type::kind == TYPEDEF || Type::kind == CONSTDEF:
+		$case TYPEDEF:
+		$case CONSTDEF:
 			var $Inner = Type::inner;
 			return is_empty_value{$Inner}(($Inner)value);
 		$default:
-			Type zero;
-			return value == zero;
+			return value == (Type){};
 	$endswitch
 }
 
@@ -261,7 +260,7 @@ fn void? deserialize_value(JsonDeserializer* d, OutValue* out) <OutValue> @priva
 
 				bool matched = false;
 				$foreach $member : OutValue::members:
-					if (!matched && key == @json_key($member))
+					if (!matched && key == json_key($member))
 					{
 						deserialize_value{$member.type}(d, &out.$member)!;
 						matched = true;
@@ -473,18 +472,12 @@ fn void? serialize(OutStream stream, MapType value, JsonIndent indent, int inden
 	stream.write_byte('{')!;
 	bool first = true;
 	$foreach $member : MapType::members:
-		$if $member.has_tag("json_omit_empty"):
-			if (!is_empty_value{$member.type}(value.$member))
-			{
-				write_entry_prefix(stream, @json_key($member), indent, indent_depth, first)!;
-				serialize_value{$member.type}(stream, value.$member, indent, indent_depth + 1)!;
-				first = false;
-			}
-		$else
-			write_entry_prefix(stream, @json_key($member), indent, indent_depth, first)!;
+		if (!$member.has_tag("json_omit_empty") ||| !is_empty_value{$member.type}(value.$member))
+		{
+			write_entry_prefix(stream, json_key($member), indent, indent_depth, first)!;
 			serialize_value{$member.type}(stream, value.$member, indent, indent_depth + 1)!;
 			first = false;
-		$endif
+		}
 	$endforeach
 	write_map_suffix(stream, indent, indent_depth, !first)!;
 }
