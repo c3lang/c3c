@@ -140,6 +140,7 @@ static void usage(bool full)
 		print_opt("--threads <number>", "Set the number of threads to use for compilation.");
 		print_opt("--safe=<yes|no>", "Turn safety (contracts, runtime bounds checking, null pointer checks etc) on or off.");
 		print_opt("--panic-msg=<yes|no>", "Turn panic message output on or off.");
+		print_opt("--infinite-loop-detect=<yes|no>", "Panic on empty infinite loops such as `for (;;) {}` in safe mode (default: no).");
 		print_opt("--optlevel=<option>", "Code optimization level: none, less, more, max.");
 		print_opt("--optsize=<option>", "Code size optimization: none, small, tiny.");
 		print_opt("--unroll-loops=<yes|no>", "Enable loop unrolling.");
@@ -1313,6 +1314,11 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->merge_functions = parse_opt_select(MergeFunctions, argopt, on_off);
 				return;
 			}
+			if ((argopt = match_argopt("infinite-loop-detect"))) // NOLINT
+			{
+				options->infinite_loop_detect = parse_opt_select(InfiniteLoopDetect, argopt, on_off);
+				return;
+			}
 			if ((argopt = match_argopt("data-sections"))) // NOLINT
 			{
 				options->data_sections = parse_opt_select(SectionsSetting, argopt, on_off);
@@ -2038,6 +2044,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.sanitize_mode = SANITIZE_NOT_SET,
 		.unroll_loops = UNROLL_LOOPS_NOT_SET,
 		.merge_functions = MERGE_FUNCTIONS_NOT_SET,
+		.infinite_loop_detect = INFINITE_LOOP_DETECT_NOT_SET,
 		.data_sections = SECTIONS_SETTING_NOT_SET,
 		.function_sections = SECTIONS_SETTING_NOT_SET,
 		.slp_vectorization = VECTORIZATION_NOT_SET,

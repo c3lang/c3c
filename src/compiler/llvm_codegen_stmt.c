@@ -625,7 +625,17 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 			// We might have an infinite loop
 			if (!loop_start_block)
 			{
-				llvm_emit_panic(c, PANIC_FN_INFINITE_LOOP, ast->loc, NULL, NULL);
+				if (safe_mode_enabled() && compiler.build.infinite_loop_detect == INFINITE_LOOP_DETECT_ON)
+				{
+					llvm_emit_panic(c, PANIC_FN_INFINITE_LOOP, ast->loc, NULL, NULL);
+				}
+				else
+				{
+					LLVMBasicBlockRef self_loop = llvm_basic_block_new(c, "loop.body");
+					llvm_emit_br(c, self_loop);
+					llvm_emit_block(c, self_loop);
+					llvm_emit_br(c, self_loop);
+				}
 				llvm_emit_block(c, llvm_basic_block_new(c, "unreachable_block"));
 				DEBUG_POP_LEXICAL_SCOPE(c);
 				return;
@@ -1743,6 +1753,7 @@ LLVMValueRef llvm_get_panic_function(GenContext *c, PanicFunction id, Type **typ
 	scratch_buffer_clear();
 	scratch_buffer_append("std.core.runtime.panics.");
 	scratch_buffer_append(info->name);
+	if (text_count != info->text_count) scratch_buffer_append(".nofmt");
 	for (int i = 0; i < value_count; i++)
 	{
 		scratch_buffer_append_char('.');

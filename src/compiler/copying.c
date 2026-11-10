@@ -910,6 +910,28 @@ Attr **copy_attributes_single(Attr** attr_list)
 	return attrs;
 }
 
+static void copy_rename_inner_types(Decl *decl, const char *prefix, int old_len)
+{
+	FOREACH(Decl *, member, decl->strukt.members)
+	{
+		switch (member->decl_kind)
+		{
+			case DECL_STRUCT:
+			case DECL_UNION:
+				copy_rename_inner_types(member, prefix, old_len);
+				FALLTHROUGH;
+			case DECL_BITSTRUCT:
+				scratch_buffer_clear();
+				scratch_buffer_append(prefix);
+				scratch_buffer_append(member->type->name + old_len);
+				member->type->name = scratch_buffer_interned();
+				break;
+			default:
+				break;
+		}
+	}
+}
+
 Decl **copy_decl_list_single_for_generic(Decl **decl_list, Decl *generic_instance)
 {
 	const char *name_suffix = generic_instance->instance_decl.name_suffix;
@@ -924,6 +946,7 @@ Decl **copy_decl_list_single_for_generic(Decl **decl_list, Decl *generic_instanc
 		// Only change the name if it's not a macro or a function.
 		if ((decl->decl_kind != DECL_FUNC && decl->decl_kind != DECL_MACRO) || !decl->func_decl.type_parent)
 		{
+			int old_len = (int)strlen(decl->name);
 			scratch_buffer_clear();
 			scratch_buffer_append(decl->name);
 			scratch_buffer_append(name_suffix);
@@ -931,6 +954,7 @@ Decl **copy_decl_list_single_for_generic(Decl **decl_list, Decl *generic_instanc
 			if (decl_is_user_defined_type(decl))
 			{
 				decl->type->name = decl->name;
+				if (decl_is_struct_type(decl)) copy_rename_inner_types(decl, decl->name, old_len);
 			}
 		}
 		decl->is_templated = true;

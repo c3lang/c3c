@@ -292,6 +292,7 @@ typedef struct BuildOptions_
 	SingleModule single_module;
 	UnrollLoops unroll_loops;
 	MergeFunctions merge_functions;
+	InfiniteLoopDetect infinite_loop_detect;
 	SectionsSetting function_sections;
 	SectionsSetting data_sections;
 	AutoVectorization loop_vectorization;
@@ -509,6 +510,7 @@ typedef struct
 	SectionsSetting function_sections;
 	SectionsSetting data_sections;
 	MergeFunctions merge_functions;
+	InfiniteLoopDetect infinite_loop_detect;
 	UnrollLoops unroll_loops;
 	AutoVectorization loop_vectorization;
 	AutoVectorization slp_vectorization;
@@ -636,6 +638,7 @@ static BuildTarget default_build_target = {
 		.single_module = SINGLE_MODULE_NOT_SET,
 		.unroll_loops = UNROLL_LOOPS_NOT_SET,
 		.merge_functions = MERGE_FUNCTIONS_NOT_SET,
+		.infinite_loop_detect = INFINITE_LOOP_DETECT_NOT_SET,
 		.slp_vectorization = VECTORIZATION_NOT_SET,
 		.loop_vectorization = VECTORIZATION_NOT_SET,
 		.function_sections = SECTIONS_SETTING_NOT_SET,

@@ -647,15 +647,19 @@ void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear)
 	const char *name = decl_is_user_defined_type(decl) ? decl->type->name : decl->name;
 	const char *template_end = NULL;
 	const char *suffix = NULL;
+	const char *tail = NULL;
+	ASSERT(name);
 	if (decl->is_templated)
 	{
+		Decl *instance = declptr(decl->instance_id);
 		template_end = strchr(name, '{');
-		suffix = declptr(decl->instance_id)->instance_decl.cname_suffix;
+		suffix = instance->instance_decl.cname_suffix;
+		if (template_end) tail = template_end + strlen(instance->instance_decl.name_suffix);
 	}
-	if (!name) name = "$anon";
 	if (decl->is_export)
 	{
 		scratch_buffer_append_but_mangle_underscore_dot(name, template_end, suffix);
+		if (tail) scratch_buffer_append_but_mangle_underscore_dot(tail, NULL, NULL);
 	}
 	else
 	{
@@ -668,6 +672,7 @@ void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear)
 			scratch_buffer_append(name);
 		}
 		if (suffix) scratch_buffer_append(suffix);
+		if (tail) scratch_buffer_append(tail);
 	}
 	if (decl->visibility == VISIBLE_LOCAL)
 	{

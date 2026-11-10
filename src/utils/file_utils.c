@@ -83,6 +83,19 @@ char *win_utf16to8(const uint16_t *wname UNUSED)
 #endif
 }
 
+static int file_stat_mode(const char *path, int *mode)
+{
+#if PLATFORM_WINDOWS
+	struct _stat64 info;
+	int err = _wstat64(win_utf8to16(path), &info);
+#else
+	struct stat info;
+	int err = stat(path, &info);
+#endif
+	*mode = err ? 0 : info.st_mode;
+	return err;
+}
+
 bool dir_make(const char *path)
 {
 #if (_MSC_VER)
@@ -434,19 +447,19 @@ char *file_read_binary(const char *path, size_t *size)
 
 static inline const char *lib_find(const char *exe_path, const char *rel_path)
 {
-	struct stat info;
+	int mode;
 	scratch_buffer_clear();
 	scratch_buffer_printf("%s%sstd", exe_path, rel_path);
 	DEBUG_LOG("Checking %s", scratch_buffer_to_string());
-	int err = stat(scratch_buffer_to_string(), &info);
+	int err = file_stat_mode(scratch_buffer_to_string(), &mode);
 
 	// Not a dir or had error?
-	if (err || !S_ISDIR(info.st_mode)) return NULL;
+	if (err || !S_ISDIR(mode)) return NULL;
 
 	DEBUG_LOG("Potential lib found, sanity check for libc...");
 	scratch_buffer_append("/libc/libc.c3");
-	err = stat(scratch_buffer_to_string(), &info);
-	if (err || !S_ISREG(info.st_mode)) return NULL;
+	err = file_stat_mode(scratch_buffer_to_string(), &mode);
+	if (err || !S_ISREG(mode)) return NULL;
 
 	const char *lib_path = str_printf("%s%s", exe_path, rel_path);
 	INFO_LOG("Library path found at %s", lib_path);
@@ -457,7 +470,7 @@ const char *find_rel_exe_dir(const char *dir)
 {
 	const char *path = find_executable_path();
 	INFO_LOG("Detected executable path at %s", path);
-	struct stat info;
+	int mode;
 	const char *attempts[5] = { "/../", "/lib/", "/../lib/", "/", "/../../lib/" };
 
 	for (size_t i = 0; i < 5; i++)
@@ -465,10 +478,10 @@ const char *find_rel_exe_dir(const char *dir)
 		scratch_buffer_clear();
 		scratch_buffer_printf("%s%s%s", path, attempts[i], dir);
 		DEBUG_LOG("Checking %s", scratch_buffer_to_string());
-		int err = stat(scratch_buffer_to_string(), &info);
+		int err = file_stat_mode(scratch_buffer_to_string(), &mode);
 
 		// Not a dir or had error?
-		if (err || !S_ISDIR(info.st_mode)) continue;
+		if (err || !S_ISDIR(mode)) continue;
 		return scratch_buffer_to_string();
 	}
 	return NULL;
@@ -548,9 +561,9 @@ void file_find_top_dir(void)
 {
 	while (1)
 	{
-		struct stat info;
+		int mode;
 		const char *filename = file_exists(PROJECT_JSON5) ? PROJECT_JSON5 : PROJECT_JSON;
-		int err = stat(filename, &info);
+		int err = file_stat_mode(filename, &mode);
 
 		// Error and the it's not a "missing file"?
 		if (err && errno != ENOENT)
@@ -559,7 +572,7 @@ void file_find_top_dir(void)
 		}
 
 		// Everything worked and it's a regular file? We're done!
-		if (!err && S_ISREG(info.st_mode)) return; // NOLINT(hicpp-signed-bitwise)
+		if (!err && S_ISREG(mode)) return; // NOLINT(hicpp-signed-bitwise)
 
 		// Otherwise just continue upwards.
 		// Note that symbolically linked files are ignored.
@@ -591,16 +604,16 @@ bool file_has_suffix_in_list(const char *file_name, int name_len, const char **s
 
 bool file_is_dir(const char *file)
 {
-	struct stat st;
-	if (stat(file, &st)) return false;
-	return S_ISDIR(st.st_mode);
+	int mode;
+	if (file_stat_mode(file, &mode)) return false;
+	return S_ISDIR(mode);
 }
 
 bool file_exists(const char *path)
 {
-	struct stat st;
-	if (stat(path, &st)) return false;
-	return S_ISDIR(st.st_mode) || S_ISREG(st.st_mode) || S_ISREG(st.st_mode);
+	int mode;
+	if (file_stat_mode(path, &mode)) return false;
+	return S_ISDIR(mode) || S_ISREG(mode);
 }
 
 bool file_executable_in_path(const char *name)

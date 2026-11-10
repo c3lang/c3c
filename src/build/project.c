@@ -47,6 +47,7 @@ const char *project_default_keys[][2] = {
 		{"loop-vectorize", "Force enable/disable loop auto-vectorization."},
 		{"macos-min-version", "Set the minimum MacOS version to compile for."},
 		{"macos-sdk", "Set the directory for the MacOS SDK for cross compilation."},
+		{"infinite-loop-detect", "Panic on empty infinite loops in safe mode."},
 		{"macos-sdk-version", "Set the MacOS SDK compiled for." },
 		{"max-vector-size", "Set the maximum allowed vector size in bits."},
 		{"memory-env", "Set the memory environment: normal, small, tiny, none."},
@@ -151,6 +152,7 @@ const char* project_target_keys[][2] = {
 		{"loop-vectorize", "Force enable/disable loop auto-vectorization."},
 		{"macos-min-version", "Set the minimum MacOS version to compile for."},
 		{"macos-sdk", "Set the directory for the MacOS SDK for cross compilation."},
+		{"infinite-loop-detect", "Panic on empty infinite loops in safe mode."},
 		{"macos-sdk-version", "Set the MacOS SDK compiled for." },
 		{"max-vector-size", "Set the maximum allowed vector size in bits."},
 		{"memory-env", "Set the memory environment: normal, small, tiny, none."},
@@ -385,6 +387,7 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	target->slp_vectorization = (AutoVectorization)get_valid_bool(context, json, "slp-vectorize", target->slp_vectorization);
 	target->unroll_loops = (UnrollLoops)get_valid_bool(context, json, "unroll-loops", target->unroll_loops);
 	target->merge_functions = (MergeFunctions)get_valid_bool(context, json, "merge-functions", target->merge_functions);
+	target->infinite_loop_detect = (InfiniteLoopDetect)get_valid_bool(context, json, "infinite-loop-detect", target->infinite_loop_detect);
 	target->data_sections = (SectionsSetting)get_valid_bool(context, json, "data-sections", target->data_sections);
 	target->function_sections = (SectionsSetting)get_valid_bool(context, json, "function-sections", target->function_sections);
 	target->no_compress = !get_valid_bool(context, json, "compress", !target->no_compress);

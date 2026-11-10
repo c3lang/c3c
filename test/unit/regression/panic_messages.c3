@@ -169,7 +169,6 @@ fn void test_dynamic() @test @feat(!(WIN32 & AARCH64)) @feat(!WASM) @feat(SAFE_M
 	@expect_full_panic("Attempted to access 'inner' on non composite type", "Attempted to access 'inner' on non composite type") { (void)int_type.inner; };
 	@expect_full_panic("Attempted to access 'names' on non enum/fault type.", "Attempted to access 'names' on non enum/fault type.") { (void)int_type.names; };
 	@expect_full_panic("Attempted to access 'len' on non array type", "Attempted to access 'len' on non array type") { (void)int_type.len; };
-	@expect_full_panic("Infinite loop found", "Infinite loop found") { for (;;) {} };
 }
 
 fn void test_slices() @test @feat(!(WIN32 & AARCH64)) @feat(!WASM) @feat(SAFE_MODE)

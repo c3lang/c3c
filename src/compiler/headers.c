@@ -61,7 +61,7 @@ INLINE const char *decl_get_extname(Decl *decl)
 		scratch_buffer_set_extern_decl_name(decl, true);
 		decl->extname = scratch_buffer_copy();
 	}
-	return decl->extname;
+	return decl->extname[0] == '\x01' ? decl->extname + 1 : decl->extname;
 }
 
 static bool type_is_func_pointer(Type *type)

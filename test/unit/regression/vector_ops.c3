@@ -10,6 +10,19 @@ fn void test_int_mod() @test
 	assert((int[<2>]){ 10, 99 } / { 3, 5 } == { 3, 19 });
 }
 
+fn void test_float_mod() @test
+{
+	float[<2>] v = { 7.5, -3.5 };
+	float[<2>] w = { 2, 2 };
+	assert(v % w == { 1.5, -1.5 });
+	assert(v % 2 == { 1.5, -1.5 });
+	v %= 2;
+	assert(v == { 1.5, -1.5 });
+	double[<2>] d = { 7.5, 9 };
+	d %= { 2, 4 };
+	assert(d == { 1.5, 1 });
+}
+
 fn void test_swizzle_assign() @test
 {
 	int[<3>] abc;

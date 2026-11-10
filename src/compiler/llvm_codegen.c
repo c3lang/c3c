@@ -421,7 +421,12 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			}
 			if (was_modified)
 			{
-				return llvm_get_unnamed_struct(c, entries, decl->strukt.is_packed);
+				LLVMValueRef value = llvm_get_unnamed_struct(c, entries, is_packed);
+				ByteSize size = llvm_abi_size(c, LLVMTypeOf(value));
+				ByteSize expected = type_size(const_init->type);
+				if (size >= expected) return value;
+				vec_add(entries, llvm_emit_const_padding(c, expected - size));
+				return llvm_get_unnamed_struct(c, entries, is_packed);
 			}
 			return llvm_get_struct_of_type(c, const_init->type, entries, vec_size(entries));
 		}
@@ -612,13 +617,14 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	if (llvm_use_debug_variables(c))
 	{
 		SourceLoc *loc = sourcelocptrzero(decl->loc);
+		const char *linkage_name = name[0] == '\x01' ? name + 1 : name;
 		decl->var.backend_debug_ref = LLVMDIBuilderCreateGlobalVariableExpression(
 				c->debug.builder,
 				c->debug.file.debug_file,
 				decl->name,
 				strlen(decl->name),
-				name,
-				strlen(name),
+				linkage_name,
+				strlen(linkage_name),
 				c->debug.file.debug_file,
 				loc && loc->row ? loc->row : 1,
 				llvm_get_debug_type(c, decl->type),

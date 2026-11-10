@@ -1991,7 +1991,14 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 			scratch_buffer_clear();
 			scratch_buffer_append(parent->type->name);
 			scratch_buffer_append(".");
-			scratch_buffer_append(member->name ? member->name : "$anon");
+			if (member->name)
+			{
+				scratch_buffer_append(member->name);
+			}
+			else
+			{
+				scratch_buffer_append_unsigned_int(index);
+			}
 			member->type->name = scratch_buffer_interned();
 
 			member->strukt.parent = declid(parent);

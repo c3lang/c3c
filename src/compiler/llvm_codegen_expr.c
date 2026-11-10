@@ -4222,7 +4222,7 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 				  : LLVMBuildSDiv(c->builder, lhs_value, rhs_value, "sdiv");
 			break;
 		case BINARYOP_MOD:
-			if (type_is_float(lhs_type))
+			if (is_float)
 			{
 				val = LLVMBuildFRem(c->builder, lhs_value, rhs_value, "fmod");
 				break;

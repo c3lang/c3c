@@ -35,6 +35,7 @@
 - `PanicFn` is changed to support both formatting and non-formatted messages.
 - `--panic-msg=no` only traps if `--show-backtrace=no` is also set, otherwise it gives the short message with file, function and line. `--show-backtrace=no` stops passing file, function and line.
 - `--panicfn` now names a function rather than a function pointer variable, and sets the initial value of `builtin::panic` through the new `$$PANIC_FN`, so stdlib panics and `abort` also reach it. #3443
+- Make panic on infinite loops opt-in with `--infinite-loop-detect=yes` – and is only added in safe mode. #3630
 
 ### Fixes
 - Compressed `.c3l` libraries were not unpacked again when only files other than `manifest.json` had changed.
@@ -115,6 +116,12 @@
 - The libc allocator was incorrectly declared in `std::core::mem::allocator`.
 - Fixes to the `benchmarks.c3`, `map.c3` and `xml/3_xml_write_stream.c3` examples.
 - A global slice of vectors, e.g. `int[<2>][] g = { { 1, 2 } };`, would be lowered incorrectly.
+- Instantiating a generic with the type of an anonymous inner struct/union would crash the compiler. #3631
+- Anonymous inner structs/unions of the same parent shared a name. They are now named by member index, e.g. `Foo.0`.
+- Inner structs/unions of a generic struct lacked the generic parameters in their name.
+- Fix Win32 compiler support  for paths containing non-ASCII characters. #3606
+- A constant struct containing a union initialized by a smaller member was emitted too small.
+- Codegen for `%` on float vectors was incorrect. 
 - `json::unmarshal` failed to compile for an `inline String` constdef or typedef.
 - `json::marshal` did not escape the keys of an `Object` map.
 

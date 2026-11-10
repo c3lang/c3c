@@ -9,7 +9,7 @@ fn void main(String[] args)
 
 /* #expect: test.ll
 
-call void @std.core.runtime.panics.assert(ptr @.panic_str, ptr @.panic_str.1, i32 5)
+call void @std.core.runtime.panics.assert.nofmt(ptr @.panic_str, ptr @.panic_str.1, i32 5)
 
 /* #expect: std.core.runtime.panics.ll
 
