@@ -4971,9 +4971,9 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 				}
 				break;
 			case RANGE_CONST_RANGE:
-				if (range->start_index + range->len_index > len)
+				if (range->len_index > len - range->start_index)
 				{
-					RETURN_SEMA_ERROR(end ? end : start, "End index out of bounds, was %lld, exceeding max index %lld.", (long long)(range->start_index + range->len_index - 1), (long long)(len - 1));
+					RETURN_SEMA_ERROR(end ? end : start, "End index out of bounds, was %llu, exceeding max index %lld.", (unsigned long long)range->start_index + (unsigned long long)range->len_index - 1, (long long)(len - 1));
 				}
 				break;
 			default:

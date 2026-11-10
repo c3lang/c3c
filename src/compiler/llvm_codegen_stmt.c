@@ -1753,6 +1753,7 @@ LLVMValueRef llvm_get_panic_function(GenContext *c, PanicFunction id, Type **typ
 	scratch_buffer_clear();
 	scratch_buffer_append("std.core.runtime.panics.");
 	scratch_buffer_append(info->name);
+	if (text_count != info->text_count) scratch_buffer_append(".nofmt");
 	for (int i = 0; i < value_count; i++)
 	{
 		scratch_buffer_append_char('.');

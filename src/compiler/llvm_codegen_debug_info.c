@@ -117,10 +117,12 @@ void llvm_emit_debug_function(GenContext *c, Decl *decl)
 	ASSERT(c->debug.file.debug_file);
 	LLVMMetadataRef debug_type = llvm_get_debug_type(c, decl->type);
 	scratch_buffer_set_extern_decl_name(decl, true);
+	const char *linkage_name = scratch_buffer_to_string();
+	if (linkage_name[0] == '\x01') linkage_name++;
 	c->debug.function = LLVMDIBuilderCreateFunction(c->debug.builder,
 													c->debug.file.debug_file,
 													decl->name, strlen(decl->name),
-													scratch_buffer_to_string(), scratch_buffer_len(),
+													linkage_name, strlen(linkage_name),
 													c->debug.file.debug_file,
 													row,
 													debug_type,

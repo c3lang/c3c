@@ -3704,6 +3704,11 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 				RETURN_SEMA_ERROR(attr, "'%s' requires a string argument, e.g. %s(\"foo\").", attr->name, attr->name);
 			}
 			if (!sema_analyse_attribute_string_const(context, expr)) return false;
+			if (type != ATTRIBUTE_SECTION)
+			{
+				if (!expr->const_expr.bytes.len) RETURN_SEMA_ERROR(expr, "'%s' requires a non-empty name.", attr->name);
+				if (decl->has_extname) RETURN_SEMA_ERROR(attr, "An external name is already defined, so '%s' cannot be used.", attr->name);
+			}
 			switch (type)
 			{
 				case ATTRIBUTE_SECTION:
