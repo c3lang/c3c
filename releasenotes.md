@@ -121,6 +121,7 @@
 - Inner structs/unions of a generic struct lacked the generic parameters in their name.
 - Fix Win32 compiler support  for paths containing non-ASCII characters. #3606
 - A constant struct containing a union initialized by a smaller member was emitted too small.
+- Codegen for `%` on float vectors was incorrect. 
 
 ### Stdlib changes
 - Added termios support for OpenBSD.
