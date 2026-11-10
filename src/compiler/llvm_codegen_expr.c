@@ -4614,9 +4614,19 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		BinaryOp base_op = binaryop_assign_base_op(binary_op);
 		ASSERT(base_op != BINARYOP_ERROR);
 
+		Expr *left = exprptr(expr->binary_expr.left);
+		if (left->expr_kind == EXPR_IDENTIFIER && IS_OPTIONAL(exprptr(expr->binary_expr.right)))
+		{
+			Expr op_expr = *expr;
+			op_expr.binary_expr.operator = base_op;
+			llvm_value_set_decl(c, be_value, left->ident_expr);
+			*be_value = llvm_emit_assign_expr(c, be_value, NULL, &op_expr, decl_optional_ref(c, left->ident_expr), false);
+			return;
+		}
+
 		// Get the left hand side, which must be an address.
 		BEValue addr;
-		if (!llvm_emit_folded_in_block(c, &addr, exprptr(expr->binary_expr.left))) RETURN_EMPTY_BLOCK(be_value);
+		if (!llvm_emit_folded_in_block(c, &addr, left)) RETURN_EMPTY_BLOCK(be_value);
 
 		ASSERT(llvm_value_is_addr(&addr));
 

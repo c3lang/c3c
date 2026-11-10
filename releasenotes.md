@@ -128,6 +128,7 @@
 - `++` and `--` on a multi-component swizzle, e.g. `v.xy++`, did not change the vector.
 - Comparing constant bitstructs could crash the compiler.
 - Constant `!=` on faults and on addresses of globals returned the result of `==`.
+- `a += e` on an optional `a` did not assign the fault when `e` was a fault. It now works like `a = a + e`.
 
 ### Stdlib changes
 - Added termios support for OpenBSD.
