@@ -122,6 +122,12 @@
 - Fix Win32 compiler support  for paths containing non-ASCII characters. #3606
 - A constant struct containing a union initialized by a smaller member was emitted too small.
 - Codegen for `%` on float vectors was incorrect. 
+- `/`, `%` and `>>` on unsigned integer vectors used signed operations.
+- Assigning to `v[^i]` on a vector with a non-constant `i` wrote the wrong element.
+- Assigning to a vector element or swizzle discarded would not evaluate right to left. 
+- `++` and `--` on a multi-component swizzle, e.g. `v.xy++`, did not change the vector.
+- Comparing constant bitstructs could crash the compiler.
+- Constant `!=` on faults and on addresses of globals returned the result of `==`.
 
 ### Stdlib changes
 - Added termios support for OpenBSD.

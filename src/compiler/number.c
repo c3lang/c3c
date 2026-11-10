@@ -158,9 +158,9 @@ static bool expr_const_compare_bitstruct(const ExprConst *left, const ExprConst 
 		ConstInitializer *init_rhs = rhs_inits[i];
 		swap_to_zero_to_left(&init_lhs, &init_rhs);
 		// Zero case
-		if (lhs->kind == CONST_INIT_ZERO)
+		if (init_lhs->kind == CONST_INIT_ZERO)
 		{
-			if (const_init_is_zero(rhs)) continue;
+			if (const_init_is_zero(init_rhs)) continue;
 			return !find_eq;
 		}
 		// Both should have values
@@ -214,12 +214,13 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 			return int_comp(left->ixx, right->ixx, op);
 		case CONST_FAULT:
 			ASSERT(right->const_kind == CONST_FAULT);
-			if (right->fault == left->fault) return true;
-			return right->fault && left->fault && decl_flatten(right->fault) == decl_flatten(left->fault);
+			is_eq = right->fault == left->fault
+				|| (right->fault && left->fault && decl_flatten(right->fault) == decl_flatten(left->fault));
+			return op == BINARYOP_EQ ? is_eq : !is_eq;
 		case CONST_REF:
 			ASSERT(right->const_kind == CONST_POINTER || right->const_kind == CONST_REF);
-			if (right->const_kind == CONST_POINTER) return false;
-			return decl_flatten(right->global_ref) == decl_flatten(left->global_ref);
+			is_eq = right->const_kind == CONST_REF && decl_flatten(right->global_ref) == decl_flatten(left->global_ref);
+			return op == BINARYOP_EQ ? is_eq : !is_eq;
 		case CONST_FLOAT:
 			return compare_fps(left->fxx.f, right->fxx.f, op);
 		case CONST_POINTER:
