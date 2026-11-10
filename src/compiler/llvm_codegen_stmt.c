@@ -625,7 +625,17 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 			// We might have an infinite loop
 			if (!loop_start_block)
 			{
-				llvm_emit_panic(c, PANIC_FN_INFINITE_LOOP, ast->loc, NULL, NULL);
+				if (safe_mode_enabled() && compiler.build.infinite_loop_detect == INFINITE_LOOP_DETECT_ON)
+				{
+					llvm_emit_panic(c, PANIC_FN_INFINITE_LOOP, ast->loc, NULL, NULL);
+				}
+				else
+				{
+					LLVMBasicBlockRef self_loop = llvm_basic_block_new(c, "loop.body");
+					llvm_emit_br(c, self_loop);
+					llvm_emit_block(c, self_loop);
+					llvm_emit_br(c, self_loop);
+				}
 				llvm_emit_block(c, llvm_basic_block_new(c, "unreachable_block"));
 				DEBUG_POP_LEXICAL_SCOPE(c);
 				return;

@@ -202,6 +202,13 @@ typedef enum
 
 typedef enum
 {
+	INFINITE_LOOP_DETECT_NOT_SET = -1,
+	INFINITE_LOOP_DETECT_OFF = 0,
+	INFINITE_LOOP_DETECT_ON = 1
+} InfiniteLoopDetect;
+
+typedef enum
+{
 	SECTIONS_SETTING_NOT_SET = -1,
 	SECTIONS_SETTING_OFF = 0,
 	SECTIONS_SETTING_ON = 1

@@ -277,6 +277,11 @@
       "enum": ["none", "pic", "PIC", "pie", "PIE"],
       "default": "none"
     },
+    "infinite-loop-detect": {
+      "type": "boolean",
+      "description": "Panic on empty infinite loops in safe mode.",
+      "default": false
+    },
     "trap-on-wrap": {
       "type": "boolean",
       "description": "Trap on signed and unsigned integer wrapping for testing.",

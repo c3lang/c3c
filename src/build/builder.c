@@ -279,6 +279,7 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 	COPY_IF_DEFAULT(target->feature.fp_math, fp_opt);
 	COPY_IF_DEFAULT(target->unroll_loops, unroll_loops);
 	COPY_IF_DEFAULT(target->merge_functions, merge_functions);
+	COPY_IF_DEFAULT(target->infinite_loop_detect, INFINITE_LOOP_DETECT_OFF);
 	COPY_IF_DEFAULT(target->slp_vectorization, slp_vectorization);
 	COPY_IF_DEFAULT(target->loop_vectorization, vectorization);
 	COPY_IF_DEFAULT(target->single_module, single_module);
@@ -578,6 +579,7 @@ BUILD:
 	set_if_updated(target->single_module, options->single_module);
 	set_if_updated(target->unroll_loops, options->unroll_loops);
 	set_if_updated(target->merge_functions, options->merge_functions);
+	set_if_updated(target->infinite_loop_detect, options->infinite_loop_detect);
 	set_if_updated(target->data_sections, options->data_sections);
 	set_if_updated(target->function_sections, options->function_sections);
 	set_if_updated(target->loop_vectorization, options->loop_vectorization);

@@ -1,5 +1,6 @@
 // #target: macos-aarch64
 // #safe: yes
+// #opt: --infinite-loop-detect=yes
 module test;
 
 enum Color : int { RED, GREEN }

@@ -1,5 +1,6 @@
 // #target: macos-aarch64
 // #safe: yes
+// #opt: --infinite-loop-detect=yes
 // #opt: --panic-msg=no
 // #opt: --show-backtrace=yes
 module test;
