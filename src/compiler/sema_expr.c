@@ -10196,14 +10196,14 @@ static inline bool sema_expr_analyse_not(SemaContext *context, Expr *expr)
 		if (type_flatten(flat->array.base) == type_bool)
 		{
 			// If so then we're done.
-			expr->type = type;
+			expr->type = inner->type;
 			return true;
 		}
 		Type *canonical = type->canonical;
 		switch (canonical->type_kind)
 		{
 			case VECTORS:
-				expr->type = type_get_vector_from_vector(type_bool, canonical);
+				expr->type = type_add_optional(type_get_vector_from_vector(type_bool, canonical), IS_OPTIONAL(inner));
 				return true;
 			case TYPE_INFERRED_VECTOR:
 				UNREACHABLE

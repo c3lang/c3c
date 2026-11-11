@@ -131,6 +131,10 @@
 - `a += e` on an optional `a` did not assign the fault when `e` was a fault. It now works like `a = a + e`.
 - Constant folding of `int::min / -1` was incorrect.
 - `return`, `break`, `continue`, `nextcase` and rethrow in a macro's trailing body were allowed when the macro invoked the body from a `defer`.
+- `!` on a non-bool vector gave the wrong lanes when stored into a bool vector.
+- The `$$overflow_add`, `$$overflow_sub` and `$$overflow_mul` were lowered incorrectly for vectors.
+- `!` on an optional vector lost the optional and could cause the compiler to crash.
+- `math::overflow_add` and `math::overflow_sub` failed on vectors.
 
 ### Stdlib changes
 - Added termios support for OpenBSD.

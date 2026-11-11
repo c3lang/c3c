@@ -240,3 +240,59 @@ fn void test_swizzle_inc_dec() @test
 	g.yx++;
 	assert(g == { 2.5, 3.5 });
 }
+
+struct NotVecHolder
+{
+	bool[<4>] b;
+	int guard;
+}
+
+fn void test_vector_not() @test
+{
+	int[<4>] a = { 1, 0, 5, 0 };
+	bool[<4>] b = !a;
+	assert(b == { false, true, false, true });
+	float[<2>] f = { 0.0f, 2.5f };
+	bool[<2>] nf = !f;
+	assert(nf == { true, false });
+	double[<2>] d = { 3.0, 0.0 };
+	assert(!d == { false, true });
+	long[<2>] l = { 0, 1L << 40 };
+	assert(!l == { true, false });
+	char[<4>] c = { 0, 1, 0, 255 };
+	assert(!c == { true, false, true, false });
+	bool[<4>] bb = { true, false, false, true };
+	assert(!bb == { false, true, true, false });
+	int[<4>] mask = !a;
+	assert(mask == { 0, -1, 0, -1 });
+	NotVecHolder h = { .guard = 0x1234_5678 };
+	h.b = !a;
+	assert(h.b == { false, true, false, true });
+	assert(h.guard == 0x1234_5678);
+}
+
+faultdef NOT_VEC_FAULT;
+
+fn int[<2>]? not_vec_source(bool fail)
+{
+	if (fail) return NOT_VEC_FAULT~;
+	return { 0, 3 };
+}
+
+fn bool[<2>]? bool_vec_source(bool fail)
+{
+	if (fail) return NOT_VEC_FAULT~;
+	return { true, false };
+}
+
+fn void test_vector_not_optional() @test
+{
+	bool[<2>]? r = !not_vec_source(false);
+	assert(r!! == { true, false });
+	r = !not_vec_source(true);
+	assert(@catch(r) == NOT_VEC_FAULT);
+	r = !bool_vec_source(false);
+	assert(r!! == { false, true });
+	r = !bool_vec_source(true);
+	assert(@catch(r) == NOT_VEC_FAULT);
+}

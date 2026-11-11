@@ -785,7 +785,7 @@ static void llvm_emit_overflow_builtin(GenContext *c, BEValue *be_value, Expr *e
 	LLVMValueRef failed = llvm_emit_extract_value(c, result, 1);
 	LLVMValueRef value = llvm_emit_extract_value(c, result, 0);
 	llvm_store_raw(c, &ref, value);
-	llvm_value_set(be_value, failed, type_bool);
+	llvm_value_set(be_value, failed, expr->type);
 }
 
 static void llvm_emit_wrap_builtin(GenContext *c, BEValue *result_value, Expr *expr, BuiltinFunction func)

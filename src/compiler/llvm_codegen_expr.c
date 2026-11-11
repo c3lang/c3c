@@ -2566,9 +2566,7 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 				{
 					llvm_value = LLVMBuildICmp(c->builder, LLVMIntEQ, value->value, LLVMConstNull(LLVMTypeOf(value->value)), "not");
 				}
-				Type *res_type = type_get_vector_bool(type, TYPE_SIMD_VECTOR);
-				llvm_value = LLVMBuildSExt(c->builder, llvm_value, llvm_get_type(c, res_type), "");
-				llvm_value_set(value, llvm_value, res_type);
+				llvm_value_set(value, llvm_value, type_lowering(expr->type));
 				return;
 			}
 			value->value = LLVMBuildNot(c->builder, value->value, "not");
