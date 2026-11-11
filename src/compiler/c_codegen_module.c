@@ -37,6 +37,108 @@ bool c_is_file_global(Decl *decl)
 	return false;
 }
 
+// The C lvalue of a global or of a member / constant index inside one (`X.m1.ptr[2]`), usable in an address
+// constant; NULL for anything else. `c` may be NULL to only ask whether there is one.
+static const char *c_const_lvalue_str(GenContext *c, Expr *expr)
+{
+	switch (expr->expr_kind)
+	{
+		case EXPR_IDENTIFIER:
+		case EXPR_DECL:
+		{
+			Decl *d = expr->expr_kind == EXPR_DECL ? expr->decl_expr : c_decl_unwrap(expr->ident_expr);
+			if (d->decl_kind != DECL_VAR || !c_is_file_global(d)) return NULL;
+			if (c) c_emit_global_decl(c, d);
+			return c_get_decl_name(d);
+		}
+		case EXPR_ACCESS_RESOLVED:
+		{
+			Expr *parent = expr->access_resolved_expr.parent;
+			Decl *parent_decl = type_flatten(parent->type)->type_kind == TYPE_STRUCT || type_flatten(parent->type)->type_kind == TYPE_UNION
+			                        ? type_flatten(parent->type)->decl : NULL;
+			if (!parent_decl) return NULL;
+			const char *base = c_const_lvalue_str(c, parent);
+			if (!base) return NULL;
+			int indices[16];
+			int depth = 0;
+			if (!c_find_member_index_rec(parent_decl, expr->access_resolved_expr.ref, indices, &depth, 16)) return NULL;
+			for (int i = 0; i < depth; i++) base = str_printf("%s.m%d", base, indices[i]);
+			return base;
+		}
+		case EXPR_SUBSCRIPT:
+		{
+			Expr *parent = exprptr(expr->subscript_expr.expr);
+			Expr *index  = exprptr(expr->subscript_expr.index.expr);
+			if (type_flatten(parent->type)->type_kind != TYPE_ARRAY || !expr_is_const_int(index)) return NULL;
+			const char *base = c_const_lvalue_str(c, parent);
+			return base ? str_printf("%s.ptr[%llu]", base, (unsigned long long)index->const_expr.ixx.i.low) : NULL;
+		}
+		default:
+			return NULL;
+	}
+}
+
+// Whether the integer value of `expr` comes from an address (pointer to int conversions).
+static bool c_expr_is_address_int(Expr *expr)
+{
+	if (type_is_pointer_type(expr->type)) return true;
+	switch (expr->expr_kind)
+	{
+		case EXPR_PTR_TO_INT:
+			return true;
+		case EXPR_EXT_TRUNC:
+		case EXPR_RVALUE:
+			return c_expr_is_address_int(expr->inner_expr);
+		case EXPR_IDENTIFIER:
+		{
+			Decl *d = c_decl_unwrap(expr->ident_expr);
+			return d->decl_kind == DECL_VAR && d->var.kind == VARDECL_CONST && d->var.init_expr && c_expr_is_address_int(d->var.init_expr);
+		}
+		default:
+			return false;
+	}
+}
+
+static bool c_const_initializer_is_static(ConstInitializer *init)
+{
+	switch (init->kind)
+	{
+		case CONST_INIT_ZERO:
+			return true;
+		case CONST_INIT_VALUE:
+			return c_can_emit_static_initializer(init->init_value);
+		case CONST_INIT_STRUCT:
+		{
+			FOREACH(ConstInitializer *, element, init->init_struct)
+			{
+				if (!c_const_initializer_is_static(element)) return false;
+			}
+			return true;
+		}
+		case CONST_INIT_UNION:
+			return c_const_initializer_is_static(init->init_union.element);
+		case CONST_INIT_ARRAY:
+		{
+			FOREACH(ConstInitializer *, element, init->init_array.elements)
+			{
+				if (!c_const_initializer_is_static(element)) return false;
+			}
+			return true;
+		}
+		case CONST_INIT_ARRAY_FULL:
+		{
+			FOREACH(ConstInitializer *, element, init->init_array_full)
+			{
+				if (!c_const_initializer_is_static(element)) return false;
+			}
+			return true;
+		}
+		case CONST_INIT_ARRAY_VALUE:
+			return c_const_initializer_is_static(init->init_array_value.element);
+	}
+	UNREACHABLE
+}
+
 bool c_can_emit_static_initializer(Expr *expr)
 {
 	if (!expr)
@@ -46,6 +148,9 @@ bool c_can_emit_static_initializer(Expr *expr)
 	switch (expr->expr_kind)
 	{
 		case EXPR_CONST:
+			// A constant initializer holds expressions (addresses among them) that C may not write statically.
+			if (expr->const_expr.const_kind == CONST_INITIALIZER) return c_const_initializer_is_static(expr->const_expr.initializer);
+			return true;
 		case EXPR_TYPEID:
 			return true;
 		case EXPR_INITIALIZER_LIST:
@@ -100,6 +205,7 @@ bool c_can_emit_static_initializer(Expr *expr)
 						return true;
 					}
 				}
+				if (c_const_lvalue_str(NULL, inner)) return true;
 				return c_can_emit_static_initializer(inner);
 			}
 			if (uop == UNARYOP_NEG || uop == UNARYOP_BITNEG || uop == UNARYOP_NOT)
@@ -144,14 +250,17 @@ bool c_can_emit_static_initializer(Expr *expr)
 			if (d->var.init_expr) return c_can_emit_static_initializer(d->var.init_expr);
 			return false;
 		}
+		case EXPR_PTR_TO_INT:
+		case EXPR_EXT_TRUNC:
+			// C has no constant for an address narrowed to a smaller integer (LLVM's ptrtoint to i32 is a link-time one).
+			if (c_expr_is_address_int(expr->inner_expr) && type_size(expr->type) < type_size(type_uptr)) return false;
+			return c_can_emit_static_initializer(expr->inner_expr);
 		case EXPR_RECAST:
 		case EXPR_ADDR_CONVERSION:
 		case EXPR_RVALUE:
 		case EXPR_INT_TO_PTR:
-		case EXPR_PTR_TO_INT:
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_FLOAT_TO_INT:
-		case EXPR_EXT_TRUNC:
 		case EXPR_SCALAR_TO_VECTOR:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_VECTOR_TO_ARRAY:
@@ -495,7 +604,7 @@ void c_emit_const_int_literal(GenContext *c, const ExprConst *ec, Type *type)
 
 void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 {
-	type              = (type && is_valid_type_ptr(type)) ? c_safe_type_lower(type) : type_void;
+	type              = c_safe_type_lower(type);
 	const char *tname = c_type_name(c, type);
 	if (!expr)
 	{
@@ -582,7 +691,13 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 					return;
 				}
 			}
-			Type *inner_t = (inner && inner->type && is_valid_type_ptr(inner->type)) ? c_safe_type_lower(inner->type) : type_void;
+			const char *lvalue = c_const_lvalue_str(c, inner);
+			if (lvalue)
+			{
+				PRINTF("(%s)&%s", tname, lvalue);
+				return;
+			}
+			Type *inner_t = (inner) ? c_safe_type_lower(inner->type) : type_void;
 			if (inner_t->type_kind == TYPE_VOID)
 			{
 				inner_t = type_int;
@@ -773,7 +888,7 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 	}
 	if (expr->expr_kind == EXPR_DESIGNATED_INITIALIZER_LIST)
 	{
-		Decl *d          = (type && is_valid_type_ptr(type)) ? type->decl : NULL;
+		Decl *d          = type->decl;
 		Decl **members   = d ? d->strukt.members : NULL;
 		int member_count = vec_size(members);
 		Expr **elements  = expr->designated_init.list;
@@ -948,11 +1063,11 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 static const char *c_get_align_attr_str(Decl *decl, Type *type)
 {
 	AlignSize align = decl ? decl->alignment : 0;
-	if (!align && decl && is_valid_type_ptr(decl->type) && c_type_is_resolved(decl->type))
+	if (!align && decl && c_type_is_resolved(decl->type))
 	{
 		align = type_alloca_alignment(decl->type);
 	}
-	if (!align && type && is_valid_type_ptr(type) && c_type_is_resolved(type))
+	if (!align && c_type_is_resolved(type))
 	{
 		align = type_alloca_alignment(type);
 	}
@@ -962,6 +1077,12 @@ static const char *c_get_align_attr_str(Decl *decl, Type *type)
 	}
 	AlignSize abi_align = (c_type_is_resolved(type)) ? type_abi_alignment(type) : 1;
 	return (align > abi_align) ? str_printf("__c3_aligned(%u) ", (unsigned)align) : "";
+}
+
+// A C3 constant is `const` in C unless C cannot write its initializer statically: it is then assigned at startup.
+static bool c_global_is_c_const(Decl *var)
+{
+	return var->var.kind == VARDECL_CONST && (!var->var.init_expr || c_can_emit_static_initializer(var->var.init_expr));
 }
 
 void c_emit_global_decl(GenContext *c, Decl *var)
@@ -992,8 +1113,9 @@ void c_emit_global_decl(GenContext *c, Decl *var)
 	c_emit_type_forward_decl(c, var_type);
 	const char *tname     = c_type_name(c, var_type);
 	const char *align_str = c_get_align_attr_str(var, var_type);
+	PRINT(c_decl_export_attrs(var, false));
 	PRINT("extern ");
-	if (var->var.kind == VARDECL_CONST)
+	if (c_global_is_c_const(var))
 	{
 		PRINT("const ");
 	}
@@ -1046,7 +1168,10 @@ void c_emit_global_def(GenContext *c, Decl *var)
 	c_emit_type_forward_decl(c, var_type);
 	const char *tname     = c_type_name(c, var_type);
 	const char *align_str = c_get_align_attr_str(var, var_type);
-	if (var->var.kind == VARDECL_CONST)
+	bool is_weak          = decl_should_weaken(var);
+	PRINT(c_decl_export_attrs(var, true));
+	if (is_weak) PRINT("__c3_linkonce ");
+	if (c_global_is_c_const(var))
 	{
 		PRINT("const ");
 	}
@@ -1067,7 +1192,7 @@ void c_emit_global_def(GenContext *c, Decl *var)
 	}
 	if (IS_OPTIONAL(var))
 	{
-		PRINTF("__c3_thread_local c3fault_t %s__f = NULL;\n", vname);
+		PRINTF("%s__c3_thread_local c3fault_t %s__f = NULL;\n", is_weak ? "__c3_linkonce " : "", vname);
 	}
 }
 
@@ -1086,7 +1211,8 @@ static void c_find_dyn_impl_visitor(GenContext *c, Decl *m, void *ud)
 	{
 		return;
 	}
-	if (m->func_decl.attr_interface_method)
+	// As in LLVM, only `@dynamic` methods can be reached through dynamic dispatch.
+	if (m->func_decl.attr_interface_method || !m->func_decl.attr_dynamic)
 	{
 		return;
 	}
@@ -1096,10 +1222,6 @@ static void c_find_dyn_impl_visitor(GenContext *c, Decl *m, void *ud)
 		return;
 	}
 	Type *target_type = c_get_method_target_type(m);
-	if (!target_type || !is_valid_type_ptr(target_type))
-	{
-		return;
-	}
 	if (strcmp(m->name, dyn_fn->name) != 0)
 	{
 		return;
@@ -1132,6 +1254,11 @@ static void c_find_dyn_impl_visitor(GenContext *c, Decl *m, void *ud)
 	m_rtype = c_safe_type_lower(m_rtype);
 
 	if (m_rtype != dyn_rtype && strcmp(c_type_name(NULL, m_rtype), c_type_name(NULL, dyn_rtype)) != 0)
+	{
+		return;
+	}
+	// The lowered types drop the optional, which changes how the function returns.
+	if (c_signature_ret(m_sig).optional != c_signature_ret(dyn_sig).optional)
 	{
 		return;
 	}
@@ -1224,25 +1351,21 @@ void c_emit_dynamic_dispatcher(GenContext *c, Decl *dyn_fn)
 	PRINTF("}\n\n");
 
 	Signature *sig = &dyn_fn->func_decl.signature;
-	Type *rtype    = typeget(sig->rtype);
-	if (!rtype)
+	CRet ret       = c_signature_ret(sig);
+	// An optional value is written through ___ret_out, forwarded in front of self.
+	const char *ret_kw  = (ret.optional || ret.value) ? "return " : "";
+	const char *ret_out = (ret.optional && ret.value) ? "___ret_out, " : "";
+	int param_count    = vec_size(sig->params);
+	const char **names = NULL;
+	// The arguments forwarded after self: zero sized parameters are not passed.
+	const char *args = "";
+	for (int i = 0; i < param_count; i++)
 	{
-		rtype = type_void;
+		vec_add(names, i ? str_printf("___p%d", i) : "___self");
+		Type *ptype = c_decl_type(sig->params[i]);
+		if (i && !(c_type_is_resolved(ptype) && type_size(ptype) == 0)) args = str_printf("%s, ___p%d", args, i);
 	}
-	rtype = c_safe_type_lower(rtype);
-	c_emit_type_forward_decl(c, rtype);
-	const char *ret_tname = c_type_name(c, rtype);
-
-	PRINTF("static inline %s %s(__c3_any__ ___self", ret_tname, disp_name);
-	int param_count = vec_size(sig->params);
-	for (int i = 1; i < param_count; i++)
-	{
-		Decl *p     = sig->params[i];
-		Type *ptype = c_decl_type(p);
-		c_emit_type_forward_decl(c, ptype);
-		PRINTF(", %s ___p%d", c_type_name(c, ptype), i);
-	}
-	PRINTF(") {\n");
+	PRINTF("static inline %s {\n", c_signature_str(c, sig, disp_name, (CSigOpts){ .names = names, .self_type = type_any }));
 
 	for (int pass = 0; pass < 2; pass++)
 	{
@@ -1257,7 +1380,7 @@ void c_emit_dynamic_dispatcher(GenContext *c, Decl *dyn_fn)
 			Signature *m_sig  = &impl->func_decl.signature;
 			Decl *first_p     = (m_sig->params && vec_size(m_sig->params) > 0) ? m_sig->params[0] : NULL;
 			Type *first_ptype = first_p ? c_decl_type(first_p) : NULL;
-			if (first_ptype && is_valid_type_ptr(first_ptype))
+			if (first_ptype)
 			{
 				c_emit_type_forward_decl(c, first_ptype);
 			}
@@ -1276,16 +1399,8 @@ void c_emit_dynamic_dispatcher(GenContext *c, Decl *dyn_fn)
 			{
 				PRINTF("\tif (__c3_type_matches((c3typeid_t)___self.typeid, (c3typeid_t)&%s)) {\n", tsym);
 			}
-			PRINTF("\t\t%s%s(%s", (rtype->type_kind != TYPE_VOID) ? "return " : "", impl_fn_name, self_arg);
-			for (int i = 1; i < param_count; i++)
-			{
-				PRINTF(", ___p%d", i);
-			}
-			PRINTF(");\n");
-			if (rtype->type_kind == TYPE_VOID)
-			{
-				PRINTF("\t\treturn;\n");
-			}
+			PRINTF("\t\t%s%s(%s%s%s);\n", ret_kw, impl_fn_name, ret_out, self_arg, args);
+			if (!ret_kw[0]) PRINT("\t\treturn;\n");
 			PRINTF("\t}\n");
 		}
 	}
@@ -1295,7 +1410,7 @@ void c_emit_dynamic_dispatcher(GenContext *c, Decl *dyn_fn)
 		Signature *def_sig = &def_method->func_decl.signature;
 		Decl *first_dp     = (def_sig->params && vec_size(def_sig->params) > 0) ? def_sig->params[0] : NULL;
 		Type *first_dptype = first_dp ? c_decl_type(first_dp) : NULL;
-		if (first_dptype && is_valid_type_ptr(first_dptype))
+		if (first_dptype)
 		{
 			c_emit_type_forward_decl(c, first_dptype);
 		}
@@ -1308,37 +1423,38 @@ void c_emit_dynamic_dispatcher(GenContext *c, Decl *dyn_fn)
 		                                                                           : "(void*)___self.ptr"));
 
 		const char *def_fn_name = c_get_decl_name(def_method);
-		PRINTF("\t%s%s(%s", (rtype->type_kind != TYPE_VOID) ? "return " : "", def_fn_name, def_self_arg);
-		for (int i = 1; i < param_count; i++)
-		{
-			PRINTF(", ___p%d", i);
-		}
-		PRINTF(");\n");
-		if (rtype->type_kind == TYPE_VOID)
-		{
-			PRINTF("\treturn;\n");
-		}
+		PRINTF("\t%s%s(%s%s%s);\n", ret_kw, def_fn_name, ret_out, def_self_arg, args);
+		if (!ret_kw[0]) PRINT("\treturn;\n");
 	}
 	else
 	{
-		PRINTF("\t__c3_abort();\n");
-		if (rtype->type_kind != TYPE_VOID)
+		// The dispatcher has no access to the call site, so the panic reports the interface method.
+		const char *saved_name = c->cur_func_name;
+		c->cur_func_name       = dyn_fn->name;
+		c_emit_panic_fn(c, PANIC_FN_NO_METHOD, dyn_fn->loc, &dyn_fn->name, NULL);
+		c->cur_func_name = saved_name;
+		if (ret.optional)
 		{
-			PRINTF("\treturn (%s)%s;\n", ret_tname, c_type_zero_literal(rtype));
+			PRINT("\treturn NULL;\n");
+		}
+		else if (ret.value)
+		{
+			PRINTF("\treturn (%s)%s;\n", c_type_name(c, ret.value), c_type_zero_literal(ret.value));
 		}
 	}
 	PRINTF("}\n\n");
 }
 
-static void c_collect_and_emit_bitstructs(FILE *f, HTable *emitted, Decl *d)
+// Anonymous inner members (struct/union/bitstruct) have no liveness of their own; they follow the outer type.
+static void c_collect_and_emit_bitstructs(FILE *f, HTable *emitted, Decl *d, bool is_member)
 {
-	if (!d || d->is_template || d->replacement || (strip_unused() && !d->is_live))
+	if (!d || d->is_template || d->replacement || (!is_member && strip_unused() && !d->is_live))
 	{
 		return;
 	}
 	if (d->decl_kind == DECL_BITSTRUCT)
 	{
-		if (!d->strukt.container_type || !is_valid_type_ptr(d->strukt.container_type->type))
+		if (!d->strukt.container_type)
 		{
 			return;
 		}
@@ -1353,61 +1469,57 @@ static void c_collect_and_emit_bitstructs(FILE *f, HTable *emitted, Decl *d)
 	{
 		FOREACH(Decl *, m, d->strukt.members)
 		{
-			c_collect_and_emit_bitstructs(f, emitted, m);
+			c_collect_and_emit_bitstructs(f, emitted, m, true);
 		}
 	}
 }
 
 #include "c_runtime_header.h"
 
+// The parent (inline base) and inner (pointee, element, ...) types a typeid refers to; NULL when the kind has none.
 static void c_get_runtime_type_dependencies(Type *t, Type **out_parent, Type **out_inner)
 {
 	Type *parent = NULL;
-	if (t->type_kind == TYPE_TYPEDEF && t->decl && t->decl->distinct && is_valid_type_ptr(t->decl->distinct->type))
+	if (t->type_kind == TYPE_TYPEDEF)
 	{
 		parent = t->decl->distinct->type;
 	}
-	else if (t->type_kind == TYPE_CONSTSET && t->decl && t->decl->is_substruct && t->decl->enums.type_info && is_valid_type_ptr(t->decl->enums.type_info->type))
+	else if (t->type_kind == TYPE_CONSTSET && t->decl->is_substruct)
 	{
 		parent = t->decl->enums.type_info->type;
 	}
-	else if (t->type_kind == TYPE_STRUCT && t->decl && t->decl->is_substruct && t->decl->strukt.members && vec_size(t->decl->strukt.members) > 0)
+	else if (t->type_kind == TYPE_STRUCT && t->decl->is_substruct)
 	{
-		Decl *first_m = t->decl->strukt.members[0];
-		if (first_m && is_valid_type_ptr(first_m->type))
-		{
-			parent = first_m->type;
-		}
+		parent = t->decl->strukt.members[0]->type;
 	}
 
 	Type *inner = NULL;
-	if (t->type_kind == TYPE_POINTER && t->pointer && is_valid_type_ptr(t->pointer))
+	switch (t->type_kind)
 	{
-		inner = t->pointer;
-	}
-	else if ((t->type_kind == TYPE_SLICE || c_type_is_vec_or_arr(t)) && t->array.base && is_valid_type_ptr(t->array.base))
-	{
-		inner = t->array.base;
-	}
-	else if ((t->type_kind == TYPE_ENUM || t->type_kind == TYPE_CONSTSET) && t->decl)
-	{
-		Type *it = enum_inner_type(t);
-		if (it && is_valid_type_ptr(it))
-		{
-			inner = it;
-		}
-	}
-	else if (t->type_kind == TYPE_TYPEDEF && t->decl && t->decl->distinct && is_valid_type_ptr(t->decl->distinct->type))
-	{
-		inner = t->decl->distinct->type;
-	}
-	else if (t->type_kind == TYPE_BITSTRUCT && t->decl && t->decl->strukt.container_type && is_valid_type_ptr(t->decl->strukt.container_type->type))
-	{
-		inner = t->decl->strukt.container_type->type;
-	}
-	else if (t->type_kind == TYPE_OPTIONAL && t->optional && is_valid_type_ptr(t->optional))
-	{
-		inner = t->optional;
+		case TYPE_POINTER:
+			inner = t->pointer;
+			break;
+		case TYPE_SLICE:
+		case TYPE_ARRAY:
+		case TYPE_VECTOR:
+		case TYPE_SIMD_VECTOR:
+			inner = t->array.base;
+			break;
+		case TYPE_ENUM:
+		case TYPE_CONSTSET:
+			inner = enum_inner_type(t);
+			break;
+		case TYPE_TYPEDEF:
+			inner = t->decl->distinct->type;
+			break;
+		case TYPE_BITSTRUCT:
+			inner = t->decl->strukt.container_type->type;
+			break;
+		case TYPE_OPTIONAL:
+			inner = t->optional;
+			break;
+		default:
+			break;
 	}
 
 	if (out_parent) *out_parent = parent;
@@ -1416,9 +1528,10 @@ static void c_get_runtime_type_dependencies(Type *t, Type **out_parent, Type **o
 
 static void c_add_runtime_type_dep(HTable *emitted_types, Type ***all_types, Type *dep)
 {
-	if (!dep || !is_valid_type_ptr(dep)) return;
+	if (!dep) return;
+	// A typeid referenced by an emitted typeid must exist even when sema did not mark the type live.
+	if (!c_type_is_resolved(dep) || !c_type_has_typeid(dep)) return;
 	dep = c_unwrap_alias(dep);
-	if (!c_type_needs_emission(dep) || !c_type_is_resolved(dep)) return;
 	const char *sym = c_typeid_name(dep);
 	if (strcmp(sym, "__c3_typeid_void") == 0) return;
 	if (!htable_get(emitted_types, (void *)sym))
@@ -1435,17 +1548,14 @@ static Type **c_collect_runtime_types(HTable *emitted_types)
 
 	if (strip_unused() && c_needed_typeids_vec)
 	{
+		// Recorded typeids are referenced by emitted code, so liveness must not filter them.
 		FOREACH(Type *, t, c_needed_typeids_vec)
 		{
-			if (!c_type_needs_emission(t))
+			if (!c_type_is_resolved(t) || !c_type_has_typeid(t))
 			{
 				continue;
 			}
 			t = c_unwrap_alias(t);
-			if (!c_type_is_resolved(t))
-			{
-				continue;
-			}
 			const char *tsym = c_typeid_name(t);
 			if (!htable_get(emitted_types, (void *)tsym))
 			{
@@ -1508,6 +1618,8 @@ void c_emit_runtime_header(const char *dir)
 		error_exit("Failed to open output runtime header '%s'.", header_path);
 	}
 
+	// The runtime header is target neutral text; the target's 128-bit integer alignment comes from C3's layout.
+	fprintf(f, "#define __C3_INT128_ALIGN %d\n", (int)type_abi_alignment(type_i128));
 	fwrite(c_runtime_header_boilerplate, 1, c_runtime_header_boilerplate_len, f);
 
 	HTable emitted_types;
@@ -1531,16 +1643,12 @@ void c_emit_runtime_header(const char *dir)
 	for (int i = 0; i < type_count; i++)
 	{
 		Type *t = compiler.context.type[i];
-		if (!t || !is_valid_type_ptr(t) || t->type_kind != TYPE_BITSTRUCT || !t->decl)
+		if (t->type_kind != TYPE_BITSTRUCT || !c_type_is_resolved(t))
 		{
 			continue;
 		}
 		Decl *d = t->decl;
-		if (d->is_template || d->replacement || (strip_unused() && !d->is_live))
-		{
-			continue;
-		}
-		if (!d->strukt.container_type || !is_valid_type_ptr(d->strukt.container_type->type))
+		if (d->replacement || (strip_unused() && !d->is_live))
 		{
 			continue;
 		}
@@ -1566,7 +1674,7 @@ void c_emit_runtime_header(const char *dir)
 			}
 			FOREACH(Decl *, d, unit->types)
 			{
-				c_collect_and_emit_bitstructs(f, &emitted_bs, d);
+				c_collect_and_emit_bitstructs(f, &emitted_bs, d, false);
 			}
 		}
 	}
@@ -1625,9 +1733,8 @@ GenContext *c_emit_runtime_c(const char *dir)
 
 	fputs("/* Generated by C3 Compiler */\n", f);
 	fputs("#include \"__c3_runtime.h\"\n\n", f);
-	fputs("__c3_thread_local c3fault_t __c3_current_fault = NULL;\n\n", f);
 	fputs("#if defined(__TINYC__)\nvoid *__dso_handle = (void *)&__dso_handle;\n#endif\n\n", f);
-	fputs("const c3type_info_t __c3_typeid_void = { .kind = 0, .parentof = NULL, .dtable = NULL, .size = 0, .inner = NULL, .len = 0, .name = \"void\", .names = NULL };\n", f);
+	fputs("__c3_linkonce const c3type_info_t __c3_typeid_void = { .kind = 0, .parentof = NULL, .dtable = NULL, .size = 0, .inner = NULL, .len = 0, .name = \"void\", .names = NULL };\n", f);
 
 	HTable emitted_types;
 	Type **all_types = c_collect_runtime_types(&emitted_types);
@@ -1664,7 +1771,7 @@ GenContext *c_emit_runtime_c(const char *dir)
 
 		if (val_count > 0)
 		{
-			fprintf(f, "const c3type_info_t %s = { .kind = %d, .parentof = (const struct c3type_info__ *)%s, .dtable = NULL, .size = %zu, .inner = (const struct c3type_info__ *)%s, .len = %zu, .name = \"%s\", .names = (const c3string_t[]){ ",
+			fprintf(f, "__c3_linkonce const c3type_info_t %s = { .kind = %d, .parentof = (const struct c3type_info__ *)%s, .dtable = NULL, .size = %zu, .inner = (const struct c3type_info__ *)%s, .len = %zu, .name = \"%s\", .names = (const c3string_t[]){ ",
 			        sym, kind, parent_sym, sz, inner_sym, len, name_str);
 			FOREACH_IDX(i, Decl *, ev, t->decl->enums.values)
 			{
@@ -1679,7 +1786,7 @@ GenContext *c_emit_runtime_c(const char *dir)
 		}
 		else
 		{
-			fprintf(f, "const c3type_info_t %s = { .kind = %d, .parentof = (const struct c3type_info__ *)%s, .dtable = NULL, .size = %zu, .inner = (const struct c3type_info__ *)%s, .len = %zu, .name = \"%s\", .names = NULL };\n",
+			fprintf(f, "__c3_linkonce const c3type_info_t %s = { .kind = %d, .parentof = (const struct c3type_info__ *)%s, .dtable = NULL, .size = %zu, .inner = (const struct c3type_info__ *)%s, .len = %zu, .name = \"%s\", .names = NULL };\n",
 			        sym, kind, parent_sym, sz, inner_sym, len, name_str);
 		}
 	}
@@ -1730,7 +1837,7 @@ GenContext *c_emit_runtime_c(const char *dir)
 				const char *new_name = (strlen(&module_name[last]) > 0)
 				                           ? str_printf("%s::%s", &module_name[last], d->name ? d->name : "fault")
 				                           : (d->name ? d->name : "fault");
-				fprintf(f, "const char %s[] = \"%s\";\n", sym, new_name);
+				fprintf(f, "__c3_linkonce const char %s[] = \"%s\";\n", sym, new_name);
 			}
 		}
 	}

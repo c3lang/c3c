@@ -18,7 +18,9 @@ static inline bool abi_type_is_type(AbiType type);
 static inline bool abi_type_is_valid(AbiType type);
 
 
-static inline LoweredType *type_lowering(Type *type)
+// keep_typeid_fault: anyfault and typeid stay themselves instead of becoming uptr (the C backend gives them C pointer
+// types, which static initializers need as address constants).
+static inline LoweredType *type_lowering_ex(Type *type, bool keep_typeid_fault)
 {
 	while (1)
 	{
@@ -49,7 +51,7 @@ static inline LoweredType *type_lowering(Type *type)
 				return type_any;
 			case TYPE_ANYFAULT:
 			case TYPE_TYPEID:
-				return type_uptr->canonical;
+				return keep_typeid_fault ? type : type_uptr->canonical;
 			case TYPE_BITSTRUCT:
 				type = type->decl->strukt.container_type->type;
 				continue;
@@ -59,7 +61,7 @@ static inline LoweredType *type_lowering(Type *type)
 			case TYPE_POINTER:
 			{
 				Type *pointer = type->pointer;
-				Type *flat = type_lowering(pointer);
+				Type *flat = type_lowering_ex(pointer, keep_typeid_fault);
 				if (flat == pointer) return type;
 				return type_get_ptr(flat);
 			}
@@ -70,7 +72,7 @@ static inline LoweredType *type_lowering(Type *type)
 			case TYPE_FLEXIBLE_ARRAY:
 			{
 				Type *arr_type = type->array.base;
-				Type *flat = type_lowering(arr_type);
+				Type *flat = type_lowering_ex(arr_type, keep_typeid_fault);
 				if (flat == arr_type) return type;
 				switch (type->type_kind)
 				{
@@ -91,6 +93,11 @@ static inline LoweredType *type_lowering(Type *type)
 		}
 	}
 	UNREACHABLE
+}
+
+static inline LoweredType *type_lowering(Type *type)
+{
+	return type_lowering_ex(type, false);
 }
 
 static inline LoweredType *type_lowering_abi(Type *type)

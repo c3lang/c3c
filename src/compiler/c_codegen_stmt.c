@@ -30,84 +30,41 @@ void c_emit_local_decl(GenContext *c, Decl *decl, CValue *value)
 	}
 
 	Type *var_type = c_decl_type(decl);
-	if (var_type->type_kind == TYPE_VOID && decl->var.init_expr)
-	{
-		Type *it = c_expr_type(decl->var.init_expr);
-		if (it && it->type_kind != TYPE_VOID)
-		{
-			var_type   = it;
-			decl->type = it;
-		}
-	}
-	if (var_type->type_kind == TYPE_VOID)
-	{
-		var_type = type_int;
-	}
+	ASSERT(var_type->type_kind != TYPE_VOID);
 	c_emit_type_forward_decl(c, var_type);
-	VariableId vid  = c_get_or_create_decl_var(c, decl);
-	VariableId fvid = c_get_decl_fault_var(c, decl);
+	VariableId vid        = c_get_or_create_decl_var(c, decl);
+	const char *fault_ref = c_decl_fault_ref(c, decl);
 	if (value)
 	{
-		*value = (CValue){.var = vid, .kind = CV_VALUE, .type = var_type, .optional = fvid};
+		// Used as an expression the decl is its variable; an optional one is checked when the value is read.
+		*value = (CValue){.var = vid, .kind = CV_VALUE, .type = var_type, .fault = fault_ref};
 	}
 
 	if (decl->var.init_expr && !decl->var.is_static)
 	{
+		COptionalAssign assign;
+		c_optional_assign_begin(c, &assign, fault_ref, decl->var.init_expr);
 		CValue init_val = {0};
 		c_emit_expr(c, &init_val, decl->var.init_expr);
 		if (init_val.var != 0 && init_val.type && init_val.type->type_kind != TYPE_VOID)
 		{
 			c_emit_assign_var(c, vid, var_type, &init_val);
 		}
-		if (fvid != 0)
-		{
-			c_emit_assign_decl_fault(c, decl, &init_val, decl->var.init_expr);
-		}
+		c_optional_assign_end(c, &assign);
 	}
 	else if (!decl->var.is_static && !decl->var.no_init)
 	{
 		c_emit_assign_var(c, vid, var_type, NULL);
-		if (fvid != 0)
-		{
-			c_emit_assign_decl_fault(c, decl, NULL, NULL);
-		}
+		if (fault_ref) PRINTF("%s = NULL;\n", fault_ref);
 	}
 }
 
-void c_emit_check_fault_and_return(GenContext *c, Expr *expr)
+// Return the fault `fault` from the current (optional) function.
+void c_emit_fault_return(GenContext *c, const char *fault)
 {
-	if (!c->current_block_live)
-	{
-		return;
-	}
-
-	if (expr && expr->rethrow_expr.in_block && *expr->rethrow_expr.in_block)
-	{
-		BlockExit *exit = *expr->rethrow_expr.in_block;
-		int blbl        = (int)(uintptr_t)exit->block_return_exit;
-		int bfault      = (int)(uintptr_t)exit->block_error_var;
-		if (bfault != 0)
-		{
-			PRINTF("\t___var_%d = __c3_current_fault;\n", bfault);
-		}
-		PRINTF("\tgoto __C3_LABEL_%d;\n", blbl);
-		return;
-	}
-
-	Type *cur_ret_t = (c->current_return_type && is_valid_type_ptr(c->current_return_type)) ? c_safe_type_lower(c->current_return_type) : type_void;
-	if (cur_ret_t->type_kind == TYPE_VOID)
-	{
-		PRINT("\treturn;\n");
-	}
-	else if (cur_ret_t->type_kind == TYPE_ANYFAULT || cur_ret_t == type_fault)
-	{
-		PRINT("\treturn (c3fault_t)__c3_current_fault;\n");
-	}
-	else
-	{
-		PRINTF("\treturn (%s)%s;\n",
-		       c_type_name(c, cur_ret_t), c_type_zero_literal(cur_ret_t));
-	}
+	ASSERT(c->cur_ret.optional);
+	PRINTF("return (c3fault_t)%s;\n", fault);
+	c->current_block_live = false;
 }
 
 static const char *c_cond_expr_str(const CValue *cval, bool invert)
@@ -191,6 +148,20 @@ static void c_emit_if_stmt(GenContext *c, Ast *stmt)
 	}
 }
 
+// A loop that never exits and does nothing: no condition (or a constant true one), no body, no increment.
+// Same test as llvm_emit_for_stmt's LOOP_INFINITE without a start block.
+static bool c_for_is_empty_infinite(Ast *stmt)
+{
+	AstForStmt *for_stmt = &stmt->for_stmt;
+	if (for_stmt->incr || ast_is_not_empty(astptrzero(for_stmt->body))) return false;
+	if (!for_stmt->cond) return !for_stmt->flow.skip_first;
+	Expr *cond = exprptr(for_stmt->cond);
+	if (cond->expr_kind == EXPR_COND && vec_size(cond->cond_expr) == 1) cond = cond->cond_expr[0];
+	if (!expr_is_const(cond)) return false;
+	ASSERT(cond->const_expr.const_kind == CONST_BOOL);
+	return cond->const_expr.b;
+}
+
 static void c_emit_for_stmt(GenContext *c, Ast *stmt)
 {
 	AstForStmt *for_stmt = &stmt->for_stmt;
@@ -199,6 +170,9 @@ static void c_emit_for_stmt(GenContext *c, Ast *stmt)
 	ExprId incr_id       = for_stmt->incr;
 	AstId body_id        = for_stmt->body;
 	bool skip_first      = stmt->flow.skip_first;
+	// Read before codegen.continue_block / exit_block overwrite cond, incr, init and body.
+	bool panic_on_loop   = safe_mode_enabled() && compiler.build.infinite_loop_detect == INFINITE_LOOP_DETECT_ON
+	                       && c_for_is_empty_infinite(stmt);
 
 	int loop_start            = c_create_label(c);
 	int loop_body             = skip_first ? c_create_label(c) : 0;
@@ -221,6 +195,14 @@ static void c_emit_for_stmt(GenContext *c, Ast *stmt)
 	if (init_id)
 	{
 		c_emit_ignored_expr(c, exprptr(init_id));
+	}
+	if (panic_on_loop)
+	{
+		c_emit_panic_fn(c, PANIC_FN_INFINITE_LOOP, stmt->loc, NULL, NULL);
+		c->current_block_live     = false;
+		c->current_break_label    = old_break;
+		c->current_continue_label = old_cont;
+		return;
 	}
 	if (skip_first)
 	{
@@ -268,7 +250,7 @@ static bool is_constant_int_switch(AstSwitchStmt *sw, ExprId cond_id)
 	{
 		return false;
 	}
-	Type *cond_type = (exprptr(cond_id)->type && is_valid_type_ptr(exprptr(cond_id)->type)) ? c_safe_type_lower(exprptr(cond_id)->type) : type_void;
+	Type *cond_type = c_safe_type_lower(exprptr(cond_id)->type);
 	if (cond_type->type_kind == TYPE_BOOL)
 	{
 		return false;
@@ -475,7 +457,7 @@ static void c_emit_switch_stmt(GenContext *c, Ast *stmt)
 		bool is_type_switch = false;
 		if (has_cond)
 		{
-			cond_type      = (exprptr(cond_id)->type && is_valid_type_ptr(exprptr(cond_id)->type)) ? c_safe_type_lower(exprptr(cond_id)->type) : type_void;
+			cond_type      = c_safe_type_lower(exprptr(cond_id)->type);
 			is_type_switch = (exprptr(cond_id)->type && exprptr(cond_id)->type->canonical == type_typeid);
 			cond_var       = c_create_variable(c);
 			c_emit_var_zero_init(c, cond_var, cond_type);
@@ -516,7 +498,7 @@ static void c_emit_switch_stmt(GenContext *c, Ast *stmt)
 			if (has_cond)
 			{
 				Type *ct    = cond_type;
-				Type *caset = (case_expr_val.type && is_valid_type_ptr(case_expr_val.type)) ? c_safe_type_lower(case_expr_val.type) : NULL;
+				Type *caset = c_safe_type_lower(case_expr_val.type);
 				if (is_type_switch && cond_var != 0 && case_expr_val.var != 0)
 				{
 					PRINTF("if (__c3_type_matches((c3typeid_t)___var_%d, (c3typeid_t)___var_%d)) {\n", cond_var, case_expr_val.var);
@@ -638,35 +620,86 @@ static void c_emit_switch_stmt(GenContext *c, Ast *stmt)
 	c->current_break_label = old_break;
 }
 
-static void c_emit_defer_and_fault_cleanup(GenContext *c, int fault_var, AstId cleanup, AstId cleanup_fail)
+// Leave a macro block, as llvm_emit_block_exit_return.
+static void c_emit_block_exit_return(GenContext *c, Ast *stmt)
 {
-	if (fault_var != 0 && cleanup_fail)
+	ASSERT(stmt->return_stmt.block_exit_ref && *stmt->return_stmt.block_exit_ref);
+	CBlockExit *exit = (CBlockExit *)*stmt->return_stmt.block_exit_ref;
+	Expr *ret_expr   = stmt->return_stmt.expr;
+
+	// Without an outer fault variable `defer (catch err)` still needs one.
+	const char *error = exit->catch.fault;
+	if (!error && stmt->return_stmt.cleanup_catch)
 	{
-		PRINTF("if (___var_%d != NULL) {\n", fault_var);
-		c_emit_stmt_chain(c, cleanup_fail);
-		PRINT("} else {\n");
-		if (cleanup)
-		{
-			c_emit_stmt_chain(c, cleanup);
-		}
-		PRINT("}\n");
-	}
-	else if (cleanup)
-	{
-		c_emit_stmt_chain(c, cleanup);
+		error = str_printf("___var_%d", c_create_variable(c));
+		PRINTF("c3fault_t %s = NULL;\n", error);
 	}
 
-	if (fault_var != 0)
+	CCatch saved    = c->catch;
+	c->catch        = (CCatch){ exit->catch.label, error };
+	int err_cleanup = 0;
+	if (stmt->return_stmt.cleanup_fail && ret_expr && IS_OPTIONAL(ret_expr))
 	{
-		PRINTF("__c3_current_fault = ___var_%d;\n", fault_var);
+		err_cleanup    = c_create_label(c);
+		c->catch.label = err_cleanup;
+	}
+
+	CValue ret_val = {0};
+	if (ret_expr)
+	{
+		c_emit_expr(c, &ret_val, ret_expr);
+		c_value_rvalue(c, &ret_val);
+		c->retval = ret_val;
+	}
+	c->catch = saved;
+
+	if (exit->return_out && ret_val.var && ret_val.type && ret_val.type->type_kind != TYPE_VOID)
+	{
+		c_emit_assign_var(c, exit->return_out, exit->return_type, &ret_val);
+	}
+	if (stmt->return_stmt.cleanup)
+	{
+		PRINT("{\n");
+		c_emit_stmt_chain(c, stmt->return_stmt.cleanup);
+		PRINT("}\n");
+	}
+	PRINTF("goto __C3_LABEL_%d;\n", exit->return_exit);
+	c->current_block_live = false;
+	if (err_cleanup)
+	{
+		c_emit_label(c, err_cleanup);
+		const char *saved_defer_error = c->defer_error_var;
+		c->defer_error_var            = error;
+		PRINT("{\n");
+		c_emit_stmt_chain(c, astid(copy_ast_defer(astptr(stmt->return_stmt.cleanup_fail))));
+		PRINT("}\n");
+		c->defer_error_var = saved_defer_error;
+		ASSERT(exit->catch.label && "Optional evaluated without a catch target");
+		PRINTF("goto __C3_LABEL_%d;\n", exit->catch.label);
+		c->current_block_live = false;
 	}
 }
+
+// The success return of c_emit_return.
+static void c_emit_return_value(GenContext *c, bool has_ret, CValue ret_val);
 
 static void c_emit_return(GenContext *c, Ast *stmt)
 {
 	if (!c->current_block_live)
 	{
 		return;
+	}
+
+	CCatch saved    = c->catch;
+	int err_label   = 0;
+	const char *err = NULL;
+	if (stmt->return_stmt.expr && IS_OPTIONAL(stmt->return_stmt.expr))
+	{
+		err_label = c_create_label(c);
+		int e     = c_create_variable(c);
+		err       = str_printf("___var_%d", e);
+		PRINTF("c3fault_t %s = NULL;\n", err);
+		c->catch = (CCatch){ err_label, err };
 	}
 
 	CValue ret_val = {0};
@@ -678,301 +711,57 @@ static void c_emit_return(GenContext *c, Ast *stmt)
 		has_ret   = true;
 		c->retval = ret_val;
 	}
+	c->catch = saved;
 
-	bool is_fn_optional = c->current_return_type && type_is_optional(c->current_return_type);
-	Type *cur_ret_t     = (c->current_return_type && is_valid_type_ptr(c->current_return_type)) ? c_safe_type_lower(c->current_return_type) : type_void;
-
-	int saved_fault = 0;
-	if (is_fn_optional)
+	if (stmt->return_stmt.cleanup)
 	{
-		saved_fault = c_create_variable(c);
-		if (stmt->return_stmt.expr && type_is_optional(stmt->return_stmt.expr->type))
-		{
-			if (ret_val.optional != 0)
-			{
-				PRINTF("c3fault_t ___var_%d = (c3fault_t)(uintptr_t)___var_%d;\n", saved_fault, ret_val.optional);
-			}
-			else
-			{
-				PRINTF("c3fault_t ___var_%d = __c3_current_fault;\n", saved_fault);
-			}
-		}
-		else if (has_ret && (ret_val.type && (ret_val.type->type_kind == TYPE_ANYFAULT || ret_val.type == type_fault)))
-		{
-			PRINTF("c3fault_t ___var_%d = (c3fault_t)(uintptr_t)___var_%d;\n", saved_fault, ret_val.var);
-		}
-		else
-		{
-			PRINTF("c3fault_t ___var_%d = NULL;\n", saved_fault);
-		}
+		PRINT("{\n");
+		c_emit_stmt_chain(c, stmt->return_stmt.cleanup);
+		PRINT("}\n");
 	}
+	c_emit_return_value(c, has_ret, ret_val);
 
-	c_emit_defer_and_fault_cleanup(c, is_fn_optional ? saved_fault : 0, stmt->return_stmt.cleanup, stmt->return_stmt.cleanup_fail);
-
-	if (cur_ret_t->type_kind == TYPE_VOID)
+	if (err_label)
 	{
-		PRINT("return;\n");
-		c->current_block_live = false;
-		return;
+		c_emit_label(c, err_label);
+		if (stmt->return_stmt.cleanup_fail)
+		{
+			const char *saved_defer_error = c->defer_error_var;
+			c->defer_error_var            = err;
+			PRINT("{\n");
+			c_emit_stmt_chain(c, stmt->return_stmt.cleanup_fail);
+			PRINT("}\n");
+			c->defer_error_var = saved_defer_error;
+		}
+		c_emit_fault_return(c, err);
 	}
-
-	if (has_ret)
-	{
-		Type *ret_t = (ret_val.type && is_valid_type_ptr(ret_val.type)) ? c_safe_type_lower(ret_val.type) : type_void;
-
-		if (cur_ret_t->type_kind == TYPE_ANYFAULT || cur_ret_t == type_fault)
-		{
-			if (is_fn_optional)
-			{
-				PRINTF("return ___var_%d;\n", saved_fault);
-			}
-			else if (ret_val.var != 0)
-			{
-				PRINTF("return (c3fault_t)(uintptr_t)___var_%d;\n", ret_val.var);
-			}
-			else
-			{
-				PRINT("return NULL;\n");
-			}
-			c->current_block_live = false;
-			return;
-		}
-
-		if ((ret_t->type_kind == TYPE_ANYFAULT || ret_t == type_fault) &&
-		    cur_ret_t->type_kind != TYPE_ANYFAULT && cur_ret_t != type_fault && cur_ret_t->type_kind != TYPE_VOID)
-		{
-			PRINTF("return (%s)%s;\n", c_type_name(c, cur_ret_t), c_type_zero_literal(cur_ret_t));
-			c->current_block_live = false;
-			return;
-		}
-
-		if (ret_val.var == 0)
-		{
-			PRINTF("return (%s)%s;\n", c_type_name(c, cur_ret_t), c_type_zero_literal(cur_ret_t));
-			c->current_block_live = false;
-			return;
-		}
-
-		if ((cur_ret_t->type_kind == TYPE_ANY || cur_ret_t->type_kind == TYPE_INTERFACE) && (ret_t->type_kind == TYPE_ANY || ret_t->type_kind == TYPE_INTERFACE))
-		{
-			PRINTF("return ___var_%d;\n", ret_val.var);
-		}
-		else if ((cur_ret_t->type_kind == TYPE_ANY || cur_ret_t->type_kind == TYPE_INTERFACE) && ret_t->type_kind == TYPE_POINTER)
-		{
-			Type *ptype = (ret_t->pointer && is_valid_type_ptr(ret_t->pointer)) ? ret_t->pointer : type_void;
-			PRINTF("return (__c3_any__){ .ptr = (void*)___var_%d, .typeid = (c3typeid_t)&%s };\n", ret_val.var, c_typeid_name(ptype));
-		}
-		else if (cur_ret_t->type_kind == TYPE_ANY || cur_ret_t->type_kind == TYPE_INTERFACE)
-		{
-			PRINTF("return (__c3_any__){ .ptr = (void*)&___var_%d, .typeid = (c3typeid_t)&%s };\n", ret_val.var, c_typeid_name(ret_t));
-		}
-		else if (cur_ret_t->type_kind == TYPE_POINTER && (ret_t->type_kind == TYPE_ANY || ret_t->type_kind == TYPE_INTERFACE))
-		{
-			PRINTF("return (%s)___var_%d.ptr;\n", c_type_name(c, cur_ret_t), ret_val.var);
-		}
-		else if (cur_ret_t->type_kind == TYPE_POINTER && ret_t->type_kind == TYPE_SLICE)
-		{
-			PRINTF("return (%s)___var_%d.ptr;\n", c_type_name(c, cur_ret_t), ret_val.var);
-		}
-		else if (c_type_is_aggregate(cur_ret_t) || c_type_is_aggregate(ret_t))
-		{
-			if (strcmp(c_type_name(c, cur_ret_t), c_type_name(c, ret_t)) != 0 && c_type_is_aggregate(cur_ret_t) && c_type_is_aggregate(ret_t))
-			{
-				PRINTF("return *(%s*)&___var_%d;\n", c_type_name(c, cur_ret_t), ret_val.var);
-			}
-			else
-			{
-				PRINTF("return ___var_%d;\n", ret_val.var);
-			}
-		}
-		else if ((type_is_pointer(cur_ret_t) || cur_ret_t->type_kind == TYPE_FUNC_PTR) && type_is_integer(ret_t))
-		{
-			PRINTF("return (%s)(uintptr_t)___var_%d;\n", c_type_name(c, cur_ret_t), ret_val.var);
-		}
-		else if (type_is_integer(cur_ret_t) && (type_is_pointer(ret_t) || ret_t->type_kind == TYPE_FUNC_PTR))
-		{
-			PRINTF("return (%s)(uintptr_t)___var_%d;\n", c_type_name(c, cur_ret_t), ret_val.var);
-		}
-		else if (cur_ret_t->type_kind == TYPE_ANYFAULT && type_is_integer(ret_t))
-		{
-			PRINTF("return (c3fault_t)(uintptr_t)___var_%d;\n", ret_val.var);
-		}
-		else if (type_is_integer(cur_ret_t) && ret_t->type_kind == TYPE_ANYFAULT)
-		{
-			PRINTF("return (%s)(uintptr_t)___var_%d;\n", c_type_name(c, cur_ret_t), ret_val.var);
-		}
-		else if (cur_ret_t != ret_t && cur_ret_t->type_kind != TYPE_VOID)
-		{
-			PRINTF("return (%s)___var_%d;\n", c_type_name(c, cur_ret_t), ret_val.var);
-		}
-		else
-		{
-			PRINTF("return ___var_%d;\n", ret_val.var);
-		}
-	}
-	else
-	{
-		if (cur_ret_t->type_kind == TYPE_VOID)
-		{
-			PRINT("return;\n");
-		}
-		else if (cur_ret_t->type_kind == TYPE_ANYFAULT || cur_ret_t == type_fault)
-		{
-			PRINT("return NULL;\n");
-		}
-		else
-		{
-			PRINTF("return (%s)%s;\n", c_type_name(c, cur_ret_t), c_type_zero_literal(cur_ret_t));
-		}
-	}
-	c->current_block_live = false;
 }
 
-static void c_emit_foreach_stmt(GenContext *c, Ast *stmt)
+// The returned value. Sema converts it to the function's value type `cur_ret_t`.
+static const char *c_return_value_str(GenContext *c, bool has_ret, CValue ret_val, Type *cur_ret_t)
 {
-	AstForeachStmt *fe = &stmt->foreach_stmt;
-	Expr *enum_expr    = exprptrzero(fe->enumeration);
-	if (!enum_expr)
-	{
-		return;
-	}
+	const char *cur_tname = c_type_name(c, cur_ret_t);
+	if (!has_ret || ret_val.var == 0) return str_printf("(%s)%s", cur_tname, c_type_zero_literal(cur_ret_t));
+	ASSERT(ret_val.kind == CV_VALUE && strcmp(cur_tname, c_type_name(c, c_safe_type_lower(ret_val.type))) == 0);
+	return str_printf("___var_%d", ret_val.var);
+}
 
-	CValue enum_val = {0};
-	c_emit_expr(c, &enum_val, enum_expr);
-	if (enum_val.var == 0)
+static void c_emit_return_value(GenContext *c, bool has_ret, CValue ret_val)
+{
+	CRet ret = c->cur_ret;
+	if (ret.value)
 	{
-		return;
+		PRINTF("%s%s;\n", ret.optional ? "*___ret_out = " : "return ", c_return_value_str(c, has_ret, ret_val, ret.value));
 	}
-
-	Type *enum_type = (enum_val.type && is_valid_type_ptr(enum_val.type)) ? c_safe_type_lower(enum_val.type) : NULL;
-	if (!enum_type)
+	if (ret.optional)
 	{
-		enum_type = c_expr_type(enum_expr);
+		PRINT("return NULL;\n");
 	}
-	if (!enum_type || enum_type->type_kind == TYPE_VOID)
+	else if (!ret.value)
 	{
-		return;
+		PRINT("return;\n");
 	}
-
-	const char *arrow = c_arrow(&enum_val);
-
-	Type *elem_type = NULL;
-	if (enum_type->type_kind == TYPE_SLICE || c_type_is_vec_or_arr(enum_type))
-	{
-		elem_type = enum_type->array.base ? c_safe_type_lower(enum_type->array.base) : type_char;
-	}
-	else if (enum_type->type_kind == TYPE_POINTER && enum_type->pointer)
-	{
-		Type *pt = c_safe_type_lower(enum_type->pointer);
-		if (c_type_is_vec_or_arr(pt))
-		{
-			elem_type = pt->array.base ? c_safe_type_lower(pt->array.base) : type_char;
-			arrow     = "->";
-		}
-		else
-		{
-			elem_type = pt;
-		}
-	}
-	if (!elem_type)
-	{
-		elem_type = type_char;
-	}
-	c_emit_type_forward_decl(c, elem_type);
-
-	int len_var = c_create_variable(c);
-	if (enum_type->type_kind == TYPE_SLICE)
-	{
-		PRINTF("size_t ___var_%d = ___var_%d%slen;\n", len_var, enum_val.var, arrow);
-	}
-	else if (c_type_is_vec_or_arr(enum_type))
-	{
-		PRINTF("size_t ___var_%d = %llu;\n", len_var, (unsigned long long)enum_type->array.len);
-	}
-	else if (enum_type->type_kind == TYPE_POINTER && enum_type->pointer && c_type_is_vec_or_arr(enum_type->pointer))
-	{
-		PRINTF("size_t ___var_%d = %llu;\n", len_var, (unsigned long long)enum_type->pointer->array.len);
-	}
-	else
-	{
-		PRINTF("size_t ___var_%d = 0;\n", len_var);
-	}
-
-	int loop_idx              = c_create_variable(c);
-	int loop_exit             = c_create_label(c);
-	int loop_cont             = c_create_label(c);
-	int old_break             = c->current_break_label;
-	int old_cont              = c->current_continue_label;
-	c->current_break_label    = loop_exit;
-	c->current_continue_label = loop_cont;
-
-	stmt->for_stmt.codegen.continue_block = (void *)(uintptr_t)loop_cont;
-	stmt->for_stmt.codegen.exit_block     = (void *)(uintptr_t)loop_exit;
-	Decl *label                           = declptrzero(fe->flow.label);
-	if (label)
-	{
-		label->label.break_target    = (void *)(uintptr_t)loop_exit;
-		label->label.continue_target = (void *)(uintptr_t)loop_cont;
-	}
-
-	if (fe->is_reverse)
-	{
-		PRINTF("for (size_t ___var_%d = ___var_%d; ___var_%d > 0; ) {\n", loop_idx, len_var, loop_idx);
-		PRINTF("\t___var_%d--;\n", loop_idx);
-	}
-	else
-	{
-		PRINTF("for (size_t ___var_%d = 0; ___var_%d < ___var_%d; ___var_%d++) {\n", loop_idx, loop_idx, len_var, loop_idx);
-	}
-
-	Decl *idx_decl = declptrzero(fe->index);
-	if (idx_decl)
-	{
-		VariableId idx_vid = c_get_or_create_decl_var(c, idx_decl);
-		Type *idx_type     = c_decl_type(idx_decl);
-		if (fe->index_by_ref)
-		{
-			PRINTF("\t___var_%d = (%s)&___var_%d;\n", idx_vid, c_type_name(c, idx_type), loop_idx);
-		}
-		else
-		{
-			PRINTF("\t___var_%d = (%s)___var_%d;\n", idx_vid, c_type_name(c, idx_type), loop_idx);
-		}
-	}
-
-	Decl *var_decl = declptrzero(fe->variable);
-	if (var_decl)
-	{
-		VariableId var_vid  = c_get_or_create_decl_var(c, var_decl);
-		Type *var_type      = c_decl_type(var_decl);
-		const char *vt_name = c_type_name(c, var_type);
-		const char *et_name = c_type_name(c, elem_type);
-		if (fe->value_by_ref)
-		{
-			PRINTF("\t___var_%d = (%s)&(___var_%d%sptr[___var_%d]);\n", var_vid, vt_name, enum_val.var, arrow, loop_idx);
-		}
-		else if (c_type_is_aggregate(elem_type))
-		{
-			PRINTF("\t__c3_memcpy(&___var_%d, &(___var_%d%sptr[___var_%d]), sizeof(%s));\n", var_vid, enum_val.var, arrow, loop_idx, et_name);
-		}
-		else
-		{
-			PRINTF("\t___var_%d = (%s)___var_%d%sptr[___var_%d];\n", var_vid, vt_name, enum_val.var, arrow, loop_idx);
-		}
-	}
-
-	c->current_block_live = true;
-	if (fe->body)
-	{
-		c_emit_stmt(c, astptr(fe->body));
-	}
-
-	c_emit_label(c, loop_cont);
-	PRINT("}\n");
-	c_emit_label(c, loop_exit);
-
-	c->current_break_label    = old_break;
-	c->current_continue_label = old_cont;
+	c->current_block_live = false;
 }
 
 static char *c_convert_asm_template(const char *data)
@@ -1066,10 +855,8 @@ void c_emit_asm_block_stmt(GenContext *c, Ast *stmt)
 		const char *name       = c_get_asm_operand_name(c, var->ident.ident_decl);
 		vec_add(out_constraints, constraint);
 		vec_add(out_names, name);
-		if (IS_OPTIONAL(var->ident.ident_decl))
-		{
-			c_emit_assign_decl_fault(c, var->ident.ident_decl, NULL, NULL);
-		}
+		const char *fault_ref  = c_decl_fault_ref(c, var->ident.ident_decl);
+		if (fault_ref) PRINTF("%s = NULL;\n", fault_ref);
 	}
 
 	int in_count                = (block && block->input) ? vec_size(block->input) : 0;
@@ -1149,7 +936,7 @@ void c_emit_asm_block_stmt(GenContext *c, Ast *stmt)
 				{
 					int clobber_index        = i * 64 + j;
 					const char *clobber_name = asm_clobber_by_index(clobber_index);
-					if (clobber_name && *clobber_name)
+					if (clobber_name && *clobber_name && asm_clobber_is_register(clobber_index))
 					{
 						if (strcmp(clobber_name, "flags") == 0 || strcmp(clobber_name, "dirflag") == 0 ||
 						    strcmp(clobber_name, "fpsr") == 0 || strcmp(clobber_name, "cc") == 0)
@@ -1232,6 +1019,7 @@ void c_emit_stmt(GenContext *c, Ast *stmt)
 	switch (stmt->ast_kind)
 	{
 		case AST_POISONED:
+		case AST_FOREACH_STMT: // Lowered to AST_FOR_STMT by sema_analyse_foreach_stmt.
 			UNREACHABLE_VOID
 		case AST_COMPOUND_STMT:
 			PRINT("{\n");
@@ -1268,98 +1056,12 @@ void c_emit_stmt(GenContext *c, Ast *stmt)
 		case AST_FOR_STMT:
 			c_emit_for_stmt(c, stmt);
 			return;
-		case AST_FOREACH_STMT:
-			c_emit_foreach_stmt(c, stmt);
-			return;
 		case AST_RETURN_STMT:
 			c_emit_return(c, stmt);
 			return;
 		case AST_BLOCK_EXIT_STMT:
-		{
-			CValue ret_val    = {0};
-			bool has_ret_expr = (stmt->return_stmt.expr != NULL);
-			if (has_ret_expr)
-			{
-				c_emit_expr(c, &ret_val, stmt->return_stmt.expr);
-				c_value_rvalue(c, &ret_val);
-				c->retval = ret_val;
-			}
-
-			int target_ret_var    = c->current_macro_ret_var;
-			int target_fault_var  = c->current_macro_fault_var;
-			int exit_label        = c->current_macro_exit_label;
-			Type *target_ret_type = c->current_macro_ret_type;
-			if (stmt->return_stmt.block_exit_ref && *stmt->return_stmt.block_exit_ref)
-			{
-				BlockExit *exit = *stmt->return_stmt.block_exit_ref;
-				int bret        = (int)(uintptr_t)exit->block_return_out;
-				int blbl        = (int)(uintptr_t)exit->block_return_exit;
-				int bfault      = (int)(uintptr_t)exit->block_error_var;
-				Type *btype     = (Type *)exit->block_optional_exit;
-				if (blbl)
-				{
-					exit_label       = blbl;
-					target_ret_var   = bret;
-					target_fault_var = bfault;
-				}
-				if (btype)
-				{
-					target_ret_type = btype;
-				}
-			}
-
-			if (has_ret_expr)
-			{
-				if (target_fault_var != 0)
-				{
-					if (ret_val.type && (ret_val.type->type_kind == TYPE_ANYFAULT || ret_val.type == type_fault))
-					{
-						PRINTF("___var_%d = (c3fault_t)(uintptr_t)___var_%d;\n", target_fault_var, ret_val.var);
-					}
-					else if (ret_val.optional != 0)
-					{
-						PRINTF("___var_%d = (c3fault_t)(uintptr_t)___var_%d;\n", target_fault_var, ret_val.optional);
-						if (target_ret_var)
-						{
-							c_emit_assign_var(c, target_ret_var, target_ret_type, &ret_val);
-						}
-					}
-					else if (stmt->return_stmt.expr && type_is_optional(stmt->return_stmt.expr->type))
-					{
-						PRINTF("___var_%d = __c3_current_fault;\n", target_fault_var);
-						if (target_ret_var)
-						{
-							c_emit_assign_var(c, target_ret_var, target_ret_type, &ret_val);
-						}
-					}
-					else
-					{
-						PRINTF("___var_%d = NULL;\n", target_fault_var);
-						if (target_ret_var)
-						{
-							c_emit_assign_var(c, target_ret_var, target_ret_type, &ret_val);
-						}
-					}
-				}
-				else if (target_ret_var)
-				{
-					c_emit_assign_var(c, target_ret_var, target_ret_type, &ret_val);
-				}
-			}
-			else if (target_fault_var != 0)
-			{
-				PRINTF("___var_%d = NULL;\n", target_fault_var);
-			}
-
-			c_emit_defer_and_fault_cleanup(c, target_fault_var, stmt->return_stmt.cleanup, stmt->return_stmt.cleanup_fail);
-
-			if (exit_label)
-			{
-				PRINTF("goto __C3_LABEL_%d;\n", exit_label);
-			}
-			c->current_block_live = false;
+			c_emit_block_exit_return(c, stmt);
 			return;
-		}
 		case AST_BREAK_STMT:
 		{
 			if (stmt->contbreak_stmt.defers)
@@ -1370,7 +1072,7 @@ void c_emit_stmt(GenContext *c, Ast *stmt)
 			if (target)
 			{
 				int lbl = 0;
-				if (target->ast_kind == AST_FOR_STMT || target->ast_kind == AST_FOREACH_STMT)
+				if (target->ast_kind == AST_FOR_STMT)
 				{
 					lbl = (int)(uintptr_t)target->for_stmt.codegen.exit_block;
 				}
@@ -1410,7 +1112,7 @@ void c_emit_stmt(GenContext *c, Ast *stmt)
 			if (target)
 			{
 				int lbl = 0;
-				if (target->ast_kind == AST_FOR_STMT || target->ast_kind == AST_FOREACH_STMT)
+				if (target->ast_kind == AST_FOR_STMT)
 				{
 					lbl = (int)(uintptr_t)target->for_stmt.codegen.continue_block;
 				}
@@ -1448,15 +1150,25 @@ void c_emit_stmt(GenContext *c, Ast *stmt)
 				c_value_rvalue(c, &cval);
 				c_ensure_cvalue_var(c, &cval, type_bool);
 				PRINTF("if (!___var_%d) {\n", cval.var);
-				const char *message = "Assert violation";
-				Expr *message_expr = exprptrzero(stmt->assert_stmt.message);
-				if (message_expr && message_expr->expr_kind == EXPR_CONST &&
-				    (message_expr->const_expr.const_kind == CONST_STRING ||
-				     message_expr->const_expr.const_kind == CONST_BYTES))
+				SourceLocId loc             = assert_expr->loc;
+				Expr *message_expr           = exprptrzero(stmt->assert_stmt.message);
+				PanicFunction panic_function = stmt->assert_stmt.panic_function;
+				if (panic_function != PANIC_FN_MESSAGE)
 				{
-					message = message_expr->const_expr.bytes.ptr;
+					c_emit_panic_fn(c, panic_function, loc, stmt->assert_stmt.panic_text, NULL);
 				}
-				c_emit_panic(c, message, assert_expr ? assert_expr->loc : stmt->loc, stmt->assert_stmt.args);
+				else if (!message_expr)
+				{
+					c_emit_panic_fn(c, PANIC_FN_ASSERT_VIOLATION, loc, NULL, NULL);
+				}
+				else if (vec_size(stmt->assert_stmt.args))
+				{
+					c_emit_panic(c, message_expr->const_expr.bytes.ptr, loc, stmt->assert_stmt.args);
+				}
+				else
+				{
+					c_emit_panic_fn(c, PANIC_FN_MESSAGE, loc, &message_expr->const_expr.bytes.ptr, NULL);
+				}
 				PRINT("}\n");
 			}
 			return;

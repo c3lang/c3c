@@ -233,6 +233,14 @@ AsmInstruction *asm_instr_by_name(const char *name)
 	}
 }
 
+// Whether a clobber is a register a compiler allocates. The RISC-V machine CSRs (mstatus, ...) are clobbers C3 tracks,
+// but not register names a C compiler accepts in an asm clobber list.
+bool asm_clobber_is_register(int index)
+{
+	if (compiler.platform.clobber_name_list == RISCVClobberNames) return index <= RISCV_F31;
+	return true;
+}
+
 AsmRegister *asm_reg_by_name(PlatformTarget *target, const char *name)
 {
 	uint32_t hash = ASM_PTR_HASH(name);

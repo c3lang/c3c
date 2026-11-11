@@ -166,23 +166,9 @@ static bool c_try_emit_table_builtin(GenContext *c, CValue *value, Type *return_
 			Type *flat_ret = return_type ? type_flatten(return_type) : NULL;
 			if (c_type_is_vec_or_arr(flat_ret))
 			{
-				int len        = c_type_aggregate_len(flat_ret);
-				int temp       = c_emit_temp_var(c, value, return_type);
-				const char *tn = c_type_name(c, return_type);
-				PRINTF("%s ___var_%d;\n", tn, temp);
-				for (int k = 0; k < len; k++)
-				{
-					PRINTF("___var_%d.ptr[%d] = %s(", temp, k, builtin_fn);
-					for (int j = 0; j < arg_idx; j++)
-					{
-						if (j != 0)
-						{
-							PRINT(", ");
-						}
-						PRINT(c_vec_elem_operand(c, &c_args[j], k));
-					}
-					PRINT(");\n");
-				}
+				const char *lane = str_printf("%s(", builtin_fn);
+				for (int j = 0; j < arg_idx; j++) lane = str_printf("%s%s$%d", lane, j ? ", " : "", j);
+				c_emit_lanewise(c, c_emit_temp_var(c, value, return_type), return_type, str_printf("%s)", lane), c_args, arg_idx);
 				return true;
 			}
 			PRINTF("%s ___var_%d = %s(", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type), builtin_fn);
@@ -235,60 +221,36 @@ static void c_emit_builtin_fshr(GenContext *c, CValue *value, Type *rtype, CValu
 	       temp, a->var, b->var, b->var);
 }
 
-static void c_emit_builtin_sat(GenContext *c, CValue *value, Type *rtype, BuiltinFunction op, CValue *a, CValue *b)
+// Saturating add/sub/mul of the integer lvalue strings `a` and `b` of type `t` into `dst`.
+static void c_emit_sat_lane(GenContext *c, const char *dst, Type *t, BuiltinFunction op, const char *a, const char *b)
 {
-	c_value_rvalue(c, a);
-	c_value_rvalue(c, b);
-	int temp          = c_emit_temp_var(c, value, rtype);
-	const char *tn    = c_type_name(c, rtype);
+	const char *tn    = c_type_name(c, t);
 	const char *bname = (op == BUILTIN_SAT_SUB) ? "__builtin_sub_overflow" : (op == BUILTIN_SAT_MUL) ? "__builtin_mul_overflow"
 	                                                                                                 : "__builtin_add_overflow";
-	PRINTF("%s ___var_%d = 0;\n", tn, temp);
-	PRINTF("if (%s(___var_%d, ___var_%d, &___var_%d)) {\n", bname, a->var, b->var, temp);
-	int bytes = (int)type_size(rtype);
-	if (type_is_signed(rtype))
+	PRINTF("if (%s(%s, %s, &%s)) {\n", bname, a, b, dst);
+	int bytes = (int)type_size(t);
+	if (type_is_signed(t))
 	{
-		char is_max_cond[128];
-		if (op == BUILTIN_SAT_SUB)
-		{
-			snprintf(is_max_cond, sizeof(is_max_cond), "___var_%d < 0", b->var);
-		}
-		else if (op == BUILTIN_SAT_MUL)
-		{
-			snprintf(is_max_cond, sizeof(is_max_cond), "(___var_%d < 0) == (___var_%d < 0)", a->var, b->var);
-		}
-		else
-		{
-			snprintf(is_max_cond, sizeof(is_max_cond), "___var_%d >= 0", b->var);
-		}
+		const char *is_max_cond = op == BUILTIN_SAT_SUB ? str_printf("%s < 0", b)
+		                        : op == BUILTIN_SAT_MUL ? str_printf("(%s < 0) == (%s < 0)", a, b)
+		                                                : str_printf("%s >= 0", b);
 		if (bytes == 16)
 		{
-			PRINTF("\t___var_%d = (%s) ? (__c3_int128)(~((__c3_uint128)1 << 127)) : (__c3_int128)((__c3_uint128)1 << 127);\n",
-			       temp, is_max_cond);
+			PRINTF("\t%s = (%s) ? (__c3_int128)(~((__c3_uint128)1 << 127)) : (__c3_int128)((__c3_uint128)1 << 127);\n", dst, is_max_cond);
 		}
 		else
 		{
-			PRINTF("\t___var_%d = (%s) ? (%s)(((uint64_t)1 << (sizeof(%s)*8-1)) - 1) : (%s)(~(((uint64_t)1 << (sizeof(%s)*8-1)) - 1));\n",
-			       temp, is_max_cond, tn, tn, tn, tn);
+			PRINTF("\t%s = (%s) ? (%s)(((uint64_t)1 << (sizeof(%s)*8-1)) - 1) : (%s)(~(((uint64_t)1 << (sizeof(%s)*8-1)) - 1));\n",
+			       dst, is_max_cond, tn, tn, tn, tn);
 		}
+	}
+	else if (op == BUILTIN_SAT_SUB)
+	{
+		PRINTF("\t%s = 0;\n", dst);
 	}
 	else
 	{
-		if (op == BUILTIN_SAT_SUB)
-		{
-			PRINTF("\t___var_%d = 0;\n", temp);
-		}
-		else
-		{
-			if (bytes == 16)
-			{
-				PRINTF("\t___var_%d = (__c3_uint128)~(__c3_uint128)0;\n", temp);
-			}
-			else
-			{
-				PRINTF("\t___var_%d = (%s)(~0ULL);\n", temp, tn);
-			}
-		}
+		PRINTF("\t%s = %s;\n", dst, bytes == 16 ? "(__c3_uint128)~(__c3_uint128)0" : str_printf("(%s)(~0ULL)", tn));
 	}
 	PRINT("}\n");
 }
@@ -306,58 +268,68 @@ static const char *c_unsigned_type_for_size(int bytes)
 	}
 }
 
-static void c_emit_builtin_sat_shl(GenContext *c, CValue *value, Type *rtype, CValue *a, CValue *b)
+// Saturating left shift of the integer lvalue string `a` of type `t` by `b` into `dst`.
+static void c_emit_sat_shl_lane(GenContext *c, const char *dst, Type *t, const char *a, const char *b)
 {
-	c_value_rvalue(c, a);
-	c_value_rvalue(c, b);
-	int temp        = c_emit_temp_var(c, value, rtype);
-	const char *tn  = c_type_name(c, rtype);
-	int bytes       = (int)type_size(rtype);
+	const char *tn  = c_type_name(c, t);
+	int bytes       = (int)type_size(t);
 	int bits        = bytes * 8;
 	const char *utn = c_unsigned_type_for_size(bytes);
-	bool is_signed  = type_is_signed(rtype);
-
-	PRINTF("%s ___var_%d = 0;\n", tn, temp);
-	PRINTF("{\n\tsize_t _shift = (size_t)___var_%d;\n", b->var);
+	bool is_signed  = type_is_signed(t);
+	const char *max_val, *min_val = NULL;
 	if (is_signed)
 	{
-		const char *max_val = (bytes == 16)
-			? "(__c3_int128)(~((__c3_uint128)1 << 127))"
-			: str_printf("(%s)(((uint64_t)1 << (%d - 1)) - 1)", tn, bits);
-		const char *min_val = (bytes == 16)
-			? "(__c3_int128)((__c3_uint128)1 << 127)"
-			: str_printf("(%s)(~(((uint64_t)1 << (%d - 1)) - 1))", tn, bits);
-
-		PRINTF("\tif (_shift >= %d) {\n", bits);
-		PRINTF("\t\t___var_%d = (___var_%d > 0) ? %s : ((___var_%d < 0) ? %s : 0);\n",
-		       temp, a->var, max_val, a->var, min_val);
-		PRINTF("\t} else {\n");
-		PRINTF("\t\t%s _res = (%s)((%s)___var_%d << _shift);\n", tn, tn, utn, a->var);
-		PRINTF("\t\tif (((%s)(_res >> _shift)) != ___var_%d) {\n", tn, a->var);
-		PRINTF("\t\t\t___var_%d = (___var_%d > 0) ? %s : %s;\n", temp, a->var, max_val, min_val);
-		PRINTF("\t\t} else {\n");
-		PRINTF("\t\t\t___var_%d = _res;\n", temp);
-		PRINTF("\t\t}\n");
-		PRINTF("\t}\n");
+		max_val = bytes == 16 ? "(__c3_int128)(~((__c3_uint128)1 << 127))" : str_printf("(%s)(((uint64_t)1 << (%d - 1)) - 1)", tn, bits);
+		min_val = bytes == 16 ? "(__c3_int128)((__c3_uint128)1 << 127)" : str_printf("(%s)(~(((uint64_t)1 << (%d - 1)) - 1))", tn, bits);
 	}
 	else
 	{
-		const char *max_val = (bytes == 16)
-			? "(__c3_uint128)~(__c3_uint128)0"
-			: str_printf("(%s)(~0ULL)", tn);
-
-		PRINTF("\tif (_shift >= %d) {\n", bits);
-		PRINTF("\t\t___var_%d = (___var_%d != 0) ? %s : 0;\n", temp, a->var, max_val);
-		PRINTF("\t} else {\n");
-		PRINTF("\t\t%s _res = (%s)((%s)___var_%d << _shift);\n", tn, tn, utn, a->var);
-		PRINTF("\t\tif (((%s)(_res >> _shift)) != ___var_%d) {\n", tn, a->var);
-		PRINTF("\t\t\t___var_%d = %s;\n", temp, max_val);
-		PRINTF("\t\t} else {\n");
-		PRINTF("\t\t\t___var_%d = _res;\n", temp);
-		PRINTF("\t\t}\n");
-		PRINTF("\t}\n");
+		max_val = bytes == 16 ? "(__c3_uint128)~(__c3_uint128)0" : str_printf("(%s)(~0ULL)", tn);
 	}
-	PRINT("}\n");
+	PRINTF("{\n\tsize_t _shift = (size_t)%s;\n", b);
+	PRINTF("\tif (_shift >= %d) {\n", bits);
+	if (is_signed)
+	{
+		PRINTF("\t\t%s = (%s > 0) ? %s : ((%s < 0) ? %s : 0);\n", dst, a, max_val, a, min_val);
+	}
+	else
+	{
+		PRINTF("\t\t%s = (%s != 0) ? %s : 0;\n", dst, a, max_val);
+	}
+	PRINTF("\t} else {\n");
+	PRINTF("\t\t%s _res = (%s)((%s)%s << _shift);\n", tn, tn, utn, a);
+	PRINTF("\t\tif (((%s)(_res >> _shift)) != %s) {\n", tn, a);
+	PRINTF("\t\t\t%s = %s;\n", dst, is_signed ? str_printf("(%s > 0) ? %s : %s", a, max_val, min_val) : max_val);
+	PRINTF("\t\t} else {\n");
+	PRINTF("\t\t\t%s = _res;\n", dst);
+	PRINT("\t\t}\n\t}\n}\n");
+}
+
+// Saturating builtins, as LLVM's intrinsics: lane by lane for vectors.
+static void c_emit_builtin_sat(GenContext *c, CValue *value, Type *rtype, BuiltinFunction op, CValue *a, CValue *b)
+{
+	c_value_rvalue(c, a);
+	c_value_rvalue(c, b);
+	int temp = c_emit_temp_var(c, value, rtype);
+	PRINTF("%s ___var_%d = {0};\n", c_type_name(c, rtype), temp);
+	bool is_vec = c_type_is_vec_or_arr(rtype);
+	int lanes   = is_vec ? (int)rtype->array.len : 1;
+	Type *lane  = is_vec ? c_safe_type_lower(rtype->array.base) : rtype;
+	for (int k = 0; k < lanes; k++)
+	{
+		const char *idx = is_vec ? str_printf(".ptr[%d]", k) : "";
+		const char *dst = str_printf("___var_%d%s", temp, idx);
+		const char *la  = str_printf("___var_%d%s", a->var, idx);
+		const char *lb  = str_printf("___var_%d%s", b->var, idx);
+		if (op == BUILTIN_SAT_SHL)
+		{
+			c_emit_sat_shl_lane(c, dst, lane, la, lb);
+		}
+		else
+		{
+			c_emit_sat_lane(c, dst, lane, op, la, lb);
+		}
+	}
 }
 
 static void c_emit_builtin_reduce(GenContext *c, CValue *value, Type *rtype, BuiltinFunction op, CValue *c_args, int num_args)
@@ -390,7 +362,7 @@ static void c_emit_builtin_reduce(GenContext *c, CValue *value, Type *rtype, Bui
 		}
 	}
 
-	Type *vt    = (vec_arg->type && is_valid_type_ptr(vec_arg->type)) ? type_flatten(vec_arg->type) : rtype;
+	Type *vt    = type_flatten(vec_arg->type);
 	bool is_ptr = false;
 	if (vt && vt->type_kind == TYPE_POINTER && vt->pointer)
 	{
@@ -491,7 +463,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 		}
 	}
 
-	Type *return_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
+	Type *return_type = c_safe_type_lower(expr->type);
 	bool has_return   = (return_type->type_kind != TYPE_VOID && !expr->call_expr.no_return);
 
 	if (c_try_emit_table_builtin(c, value, return_type, builtin, c_args, num_args, has_return))
@@ -688,18 +660,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 				c_value_rvalue(c, &c_args[2]);
 				if (c_type_is_aggregate(return_type))
 				{
-					int len          = c_type_aggregate_len(return_type);
-					bool cond_is_agg = (c_args[0].type && c_type_is_aggregate(c_args[0].type));
-					bool arg1_is_agg = (c_args[1].type && c_type_is_aggregate(c_args[1].type));
-					bool arg2_is_agg = (c_args[2].type && c_type_is_aggregate(c_args[2].type));
-					PRINTF("%s ___var_%d;\n", tn, temp);
-					for (int i = 0; i < len; i++)
-					{
-						const char *c_str = cond_is_agg ? str_printf("___var_%d.ptr[%d]", c_args[0].var, i) : str_printf("___var_%d", c_args[0].var);
-						const char *t_str = arg1_is_agg ? str_printf("___var_%d.ptr[%d]", c_args[1].var, i) : str_printf("___var_%d", c_args[1].var);
-						const char *e_str = arg2_is_agg ? str_printf("___var_%d.ptr[%d]", c_args[2].var, i) : str_printf("___var_%d", c_args[2].var);
-						PRINTF("___var_%d.ptr[%d] = %s ? %s : %s;\n", temp, i, c_str, t_str, e_str);
-					}
+					c_emit_lanewise(c, temp, return_type, "$0 ? $1 : $2", c_args, 3);
 				}
 				else
 				{
@@ -757,19 +718,11 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			int temp       = c_emit_temp_var(c, value, return_type);
 			const char *tn = c_type_name(c, return_type);
 			c_value_rvalue(c, &c_args[0]);
-			Type *flat_ret     = type_flatten(return_type);
-			int len            = c_type_is_vec_or_arr(flat_ret) ? (int)flat_ret->array.len : 0;
 			Type *arg0_type    = type_flatten(args[0]->type);
 			BitSize bits       = type_bit_size(arg0_type);
-			Type *u_type       = type_int_unsigned_by_bitsize(bits);
-			const char *u_tn   = c_type_name(c, u_type);
+			const char *u_tn   = c_type_name(c, type_int_unsigned_by_bitsize(bits));
 			const char *one_tn = (bits > 64) ? "__c3_uint128" : "uint64_t";
-			PRINTF("%s ___var_%d;\n", tn, temp);
-			for (int i = 0; i < len; i++)
-			{
-				PRINTF("___var_%d.ptr[%d] = (((%s)___var_%d & ((%s)1 << %d)) != 0);\n",
-				       temp, i, u_tn, c_args[0].var, one_tn, i);
-			}
+			c_emit_lanewise(c, temp, return_type, str_printf("(((%s)$0 & ((%s)1 << $k)) != 0)", u_tn, one_tn), c_args, 1);
 			break;
 		}
 		case BUILTIN_SWIZZLE:
@@ -850,10 +803,17 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			{
 				c_value_rvalue(c, &c_args[0]);
 				c_value_rvalue(c, &c_args[1]);
-				int temp          = c_emit_temp_var(c, value, type_bool);
+				Type *flag_type   = c_type_is_vec_or_arr(return_type) ? return_type : type_bool;
+				int temp          = c_emit_temp_var(c, value, flag_type);
 				const char *bname = (builtin == BUILTIN_OVERFLOW_SUB) ? "__builtin_sub_overflow" : (builtin == BUILTIN_OVERFLOW_MUL) ? "__builtin_mul_overflow"
 				                                                                                                                     : "__builtin_add_overflow";
-				Type *op_type     = (c_args[0].type && is_valid_type_ptr(c_args[0].type)) ? c_safe_type_lower(c_args[0].type) : type_int;
+				Type *op_type     = c_safe_type_lower(c_args[0].type);
+				if (c_type_is_vec_or_arr(op_type))
+				{
+					// As LLVM's vector overflow intrinsics: one flag per lane, the result is a bool vector.
+					c_emit_lanewise(c, temp, return_type, str_printf("%s($0, $1, &((%s*)$2)->ptr[$k])", bname, c_type_name(c, op_type)), c_args, 3);
+					break;
+				}
 				PRINTF("bool ___var_%d = %s(___var_%d, ___var_%d, (%s*)___var_%d);\n",
 				       temp, bname, c_args[0].var, c_args[1].var, c_type_name(c, op_type), c_args[2].var);
 			}
@@ -877,7 +837,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 		case BUILTIN_SAT_SHL:
 			if (num_args >= 2)
 			{
-				c_emit_builtin_sat_shl(c, value, return_type, &c_args[0], &c_args[1]);
+				c_emit_builtin_sat(c, value, return_type, builtin, &c_args[0], &c_args[1]);
 			}
 			else
 			{
@@ -890,7 +850,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 				c_value_rvalue(c, &c_args[0]);
 				int temp        = c_emit_temp_var(c, value, return_type);
 				const char *tn  = c_type_name(c, return_type);
-				Type *st        = (c_args[0].type && is_valid_type_ptr(c_args[0].type)) ? c_safe_type_lower(c_args[0].type) : return_type;
+				Type *st        = c_safe_type_lower(c_args[0].type);
 				int bytes       = (int)type_size(st);
 				const char *stn = c_type_name(c, st);
 				if (bytes == 16)
@@ -916,7 +876,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 				c_value_rvalue(c, &c_args[0]);
 				int temp        = c_emit_temp_var(c, value, return_type);
 				const char *tn  = c_type_name(c, return_type);
-				Type *st        = (c_args[0].type && is_valid_type_ptr(c_args[0].type)) ? c_safe_type_lower(c_args[0].type) : return_type;
+				Type *st        = c_safe_type_lower(c_args[0].type);
 				int bytes       = (int)type_size(st);
 				const char *stn = c_type_name(c, st);
 				if (bytes == 16)
@@ -942,7 +902,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 				c_value_rvalue(c, &c_args[0]);
 				int temp       = c_emit_temp_var(c, value, return_type);
 				const char *tn = c_type_name(c, return_type);
-				Type *st       = (c_args[0].type && is_valid_type_ptr(c_args[0].type)) ? c_safe_type_lower(c_args[0].type) : return_type;
+				Type *st       = c_safe_type_lower(c_args[0].type);
 				int bytes      = (int)type_size(st);
 				if (bytes == 16)
 				{
@@ -966,7 +926,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 				c_value_rvalue(c, &c_args[0]);
 				int temp       = c_emit_temp_var(c, value, return_type);
 				const char *tn = c_type_name(c, return_type);
-				Type *st       = (c_args[0].type && is_valid_type_ptr(c_args[0].type)) ? c_safe_type_lower(c_args[0].type) : return_type;
+				Type *st       = c_safe_type_lower(c_args[0].type);
 				int bytes      = (int)type_size(st);
 				if (bytes == 2)
 				{
@@ -1005,7 +965,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 				c_value_rvalue(c, &c_args[0]);
 				int temp        = c_emit_temp_var(c, value, return_type);
 				const char *tn  = c_type_name(c, return_type);
-				Type *st        = (c_args[0].type && is_valid_type_ptr(c_args[0].type)) ? c_safe_type_lower(c_args[0].type) : return_type;
+				Type *st        = c_safe_type_lower(c_args[0].type);
 				const char *stn = c_type_name(c, st);
 				int bytes       = (int)type_size(st);
 				if (bytes == 16)
@@ -1054,25 +1014,8 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 				Type *flat_ret = return_type ? type_flatten(return_type) : NULL;
 				if (c_type_is_vec_or_arr(flat_ret))
 				{
-					int len       = c_type_aggregate_len(flat_ret);
-					Type *elem_t  = flat_ret->array.base ? type_flatten(flat_ret->array.base) : return_type;
-					bool is_float = type_is_float(elem_t);
-
-					const char *arrow = c_arrow(&c_args[0]);
-					PRINTF("%s ___var_%d;\n", tn, temp);
-					for (int k = 0; k < len; k++)
-					{
-						if (is_float)
-						{
-							PRINTF("___var_%d.ptr[%d] = __builtin_fabs(___var_%d%sptr[%d]);\n",
-							       temp, k, c_args[0].var, arrow, k);
-						}
-						else
-						{
-							PRINTF("___var_%d.ptr[%d] = (___var_%d%sptr[%d] < 0 ? -___var_%d%sptr[%d] : ___var_%d%sptr[%d]);\n",
-							       temp, k, c_args[0].var, arrow, k, c_args[0].var, arrow, k, c_args[0].var, arrow, k);
-						}
-					}
+					bool is_float = type_is_float(type_flatten(flat_ret->array.base));
+					c_emit_lanewise(c, temp, return_type, is_float ? "__builtin_fabs($0)" : "($0 < 0 ? -$0 : $0)", c_args, 1);
 				}
 				else
 				{
@@ -1141,7 +1084,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			if (num_args >= 2)
 			{
 				c_value_rvalue(c, &c_args[1]);
-				Type *vt = c_expr_type_or(args[1], type_void);
+				Type *vt = c_expr_type(args[1]);
 				PRINTF("*(volatile %s*)___var_%d = ___var_%d;\n", c_type_name(c, vt), c_args[0].var, c_args[1].var);
 			}
 			c_value_set_void(value);
@@ -1160,7 +1103,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 		case BUILTIN_UNALIGNED_STORE:
 			if (num_args >= 2)
 			{
-				Type *vt            = c_expr_type_or(args[1], type_void);
+				Type *vt            = c_expr_type(args[1]);
 				const char *src_ref = (c_args[1].kind == CV_ADDRESS) ? "(void*)" : "&";
 				PRINTF("__c3_memcpy((void*)___var_%d, %s___var_%d, sizeof(%s));\n", c_args[0].var, src_ref, c_args[1].var, c_type_name(c, vt));
 			}
@@ -1198,7 +1141,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			if (num_args >= 2)
 			{
 				c_value_rvalue(c, &c_args[1]);
-				Type *vt = c_expr_type_or(args[1], type_void);
+				Type *vt = c_expr_type(args[1]);
 				if (type_is_float(vt))
 				{
 					const char *u_int = (type_size(vt) == 8) ? "uint64_t" : "uint32_t";
@@ -1354,16 +1297,90 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 				c_emit_temp_zero(c, value, return_type);
 			}
 			break;
-		default:
-			if (has_return)
+		case BUILTIN_REVERSE:
+		{
+			c_value_rvalue(c, &c_args[0]);
+			int temp = c_emit_temp_var(c, value, return_type);
+			int len  = (int)type_flatten(args[0]->type)->array.len;
+			PRINTF("%s ___var_%d;\n", c_type_name(c, return_type), temp);
+			for (int i = 0; i < len; i++)
 			{
-				c_emit_temp_zero(c, value, return_type);
+				PRINTF("___var_%d.ptr[%d] = ___var_%d.ptr[%d];\n", temp, i, c_args[0].var, len - i - 1);
+			}
+			break;
+		}
+		case BUILTIN_GET_ROUNDING_MODE:
+			compiler.linking.link_math = true;
+			PRINTF("%s ___var_%d = __c3_get_rounding_mode();\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type));
+			break;
+		case BUILTIN_SET_ROUNDING_MODE:
+			compiler.linking.link_math = true;
+			c_value_rvalue(c, &c_args[0]);
+			PRINTF("__c3_set_rounding_mode((int)___var_%d);\n", c_args[0].var);
+			c_value_set_void(value);
+			break;
+		case BUILTIN_ATOMIC_FETCH_INC_WRAP:
+		case BUILTIN_ATOMIC_FETCH_DEC_WRAP:
+		{
+			// LLVM atomicrmw uinc_wrap: old >= v ? 0 : old + 1; udec_wrap: old == 0 || old > v ? v : old - 1.
+			int temp       = c_emit_temp_var(c, value, return_type);
+			const char *tn = c_type_name(c, return_type);
+			c_value_rvalue(c, &c_args[1]);
+			int v = c_args[1].var;
+			PRINTF("%s ___var_%d;\n", tn, temp);
+			PRINT("{\n");
+			PRINTF("\t%s _old = *(volatile %s*)___var_%d;\n", tn, tn, c_args[0].var);
+			PRINTF("\t%s _new;\n", tn);
+			PRINT("\tdo {\n");
+			if (builtin == BUILTIN_ATOMIC_FETCH_INC_WRAP)
+			{
+				PRINTF("\t\t_new = _old >= ___var_%d ? (%s)0 : (%s)(_old + 1);\n", v, tn, tn);
 			}
 			else
 			{
-				c_value_set_void(value);
+				PRINTF("\t\t_new = (_old == 0 || _old > ___var_%d) ? ___var_%d : (%s)(_old - 1);\n", v, v, tn);
 			}
+			PRINTF("\t} while (!__atomic_compare_exchange_n((%s*)___var_%d, &_old, _new, 1, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));\n", tn, c_args[0].var);
+			PRINTF("\t___var_%d = _old;\n", temp);
+			PRINT("}\n");
 			break;
+		}
+		case BUILTIN_WASM_MEMORY_SIZE:
+		case BUILTIN_WASM_MEMORY_GROW:
+		{
+			const char *tn = c_type_name(c, return_type);
+			int temp       = c_emit_temp_var(c, value, return_type);
+			if (!arch_is_wasm(compiler.platform.arch))
+			{
+				// Like LLVM: no memory (0) and failed grow (-1) on non-wasm.
+				PRINTF("%s ___var_%d = %s;\n", tn, temp, builtin == BUILTIN_WASM_MEMORY_GROW ? "-1" : "0");
+				break;
+			}
+			// The memory index must be a constant for the C compiler, as for LLVM's immarg.
+			Expr *index = args[0];
+			char index_str[32];
+			if (expr_is_const(index))
+			{
+				snprintf(index_str, sizeof(index_str), "%llu", (unsigned long long)index->const_expr.ixx.i.low);
+			}
+			else
+			{
+				c_value_rvalue(c, &c_args[0]);
+				snprintf(index_str, sizeof(index_str), "___var_%d", c_args[0].var);
+			}
+			if (builtin == BUILTIN_WASM_MEMORY_SIZE)
+			{
+				PRINTF("%s ___var_%d = (%s)__builtin_wasm_memory_size(%s);\n", tn, temp, tn, index_str);
+				break;
+			}
+			c_value_rvalue(c, &c_args[1]);
+			PRINTF("%s ___var_%d = (%s)__builtin_wasm_memory_grow(%s, ___var_%d);\n", tn, temp, tn, index_str, c_args[1].var);
+			break;
+		}
+		default:
+			// Builtins folded or rewritten by sema (str_*, sprintf, rnd, widestring, veccomp*) and llrint/llround
+			// (no builtin name) never reach codegen.
+			UNREACHABLE_VOID
 	}
 	free(c_args);
 }
