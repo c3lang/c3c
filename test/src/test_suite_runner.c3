@@ -546,7 +546,8 @@ fn bool test_file(Path file_path, Path test_dir, OutStream output_stream, sz ind
 		cmdline.push(string::tformat("--backend=%s", context.backend));
 	}
 
-	if (settings.output_files.is_empty())
+	// `--test` keeps unused code for the IR expectations; the C backend has none.
+	if (settings.output_files.is_empty() || context.backend == "c")
 	{
 		cmdline.push("--strip-unused=yes");
 	}
@@ -631,44 +632,44 @@ fn bool test_file(Path file_path, Path test_dir, OutStream output_stream, sz ind
 
 	if (!parse_result(out, settings, &cmdline, output_stream, result)) return false;
 
-	if (context.backend != "c")
+	// `#expect: x.c` / `x.h` checks the C backend's output, any other name LLVM's.
+	foreach (file : settings.output_files)
 	{
-		foreach (file : settings.output_files)
+		bool is_c_output = file.name.ends_with(".c") || file.name.ends_with(".h");
+		if (is_c_output != (context.backend == "c")) continue;
+		Path expected_file = test_dir.tappend(file.name)!!;
+		if (!file::exists(expected_file))
 		{
-			Path expected_file = test_dir.tappend(file.name)!!;
-			if (!file::exists(expected_file))
-			{
-				io::fprintfn(output_stream, "FAILED - Did not compile file %s.", file.name)!!;
-				return false;
-			}
+			io::fprintfn(output_stream, "FAILED - Did not compile file %s.", file.name)!!;
+			return false;
+		}
 
-			File file_ll = file::open(expected_file, "rb")!!;
-			defer (void)file_ll.close();
+		File file_ll = file::open(expected_file, "rb")!!;
+		defer (void)file_ll.close();
 
-			String? next = file.expected_lines.pop_first();
-			while (try line = io::treadline(&file_ll) && try next_value = next)
+		String? next = file.expected_lines.pop_first();
+		while (try line = io::treadline(&file_ll) && try next_value = next)
+		{
+			line = line.trim();
+			if (line == "") continue;
+			if (line.contains(next_value))
 			{
-				line = line.trim();
-				if (line == "") continue;
-				if (line.contains(next_value))
-				{
-					next = file.expected_lines.pop_first();
-				}
+				next = file.expected_lines.pop_first();
 			}
+		}
 
-			if (try next)
-			{
-				io::fprintfn(output_stream,
-					"FAILED - %s did not contain: %s", file.name, next)!!;
-				io::fprintfn(output_stream,
-					"\n\n------------------------------------------------>>>> %s\n", file.name)!!;
-				(void)file_ll.seek(0);
-				io::fprintn(output_stream,
-					(String)io::read_fully(tmem, &file_ll))!!;
-				io::fprintfn(output_stream,
-					"<<<<------------------------------------------------- %s\n", file_path)!!;
-				return false;
-			}
+		if (try next)
+		{
+			io::fprintfn(output_stream,
+				"FAILED - %s did not contain: %s", file.name, next)!!;
+			io::fprintfn(output_stream,
+				"\n\n------------------------------------------------>>>> %s\n", file.name)!!;
+			(void)file_ll.seek(0);
+			io::fprintn(output_stream,
+				(String)io::read_fully(tmem, &file_ll))!!;
+			io::fprintfn(output_stream,
+				"<<<<------------------------------------------------- %s\n", file_path)!!;
+			return false;
 		}
 	}
 

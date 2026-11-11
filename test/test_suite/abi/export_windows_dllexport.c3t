@@ -1,0 +1,28 @@
+// #target: windows-x64
+module wintest;
+
+int counter @export("exported_counter");
+fn int sq(int x) @export("exported_sq") => x * x;
+fn int pub_fn(int x) => x + 1;
+fn int use_all() @export("use_all") => sq(counter) + pub_fn(1);
+
+/* #expect: wintest.ll
+
+@exported_counter = dllexport local_unnamed_addr global i32 0, align 4
+define dllexport i32 @exported_sq(i32 %0) #0 {
+define i32 @wintest.pub_fn(i32 %0) #0 {
+define dllexport i32 @use_all() #0 {
+
+/* #expect: __c3_shared.h
+
+__declspec(dllexport) extern int32_t exported_sq(int32_t);
+extern int32_t wintest__pub_fn(int32_t);
+__declspec(dllexport) extern int32_t use_all(void);
+__declspec(dllexport) extern int32_t exported_counter;
+
+/* #expect: wintest.c
+
+__declspec(dllexport) int32_t exported_counter = {0};
+__declspec(dllexport) int32_t exported_sq(int32_t
+int32_t wintest__pub_fn(int32_t
+__declspec(dllexport) int32_t use_all(void) {
