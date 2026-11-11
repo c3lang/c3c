@@ -264,3 +264,4 @@ INLINE Type *lowered_array_element_type(Type *array_type)
 // Definitions from std and libc, and templated ones, may be emitted by several link units and must merge.
 bool module_should_weaken(Module *module);
 bool decl_should_weaken(Decl *decl);
+bool builtin_needs_libm(BuiltinFunction func);

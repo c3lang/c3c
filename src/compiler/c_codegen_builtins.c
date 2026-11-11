@@ -159,7 +159,6 @@ static bool c_try_emit_table_builtin(GenContext *c, CValue *value, Type *return_
 			continue;
 		}
 		const char *builtin_fn     = simple_builtins_table[i].c_fn;
-		compiler.linking.link_math = true;
 		if (has_return)
 		{
 			c_emit_type_forward_decl(c, return_type);
@@ -449,6 +448,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 {
 	Expr *bfn               = expr->call_expr.function ? exprptrzero(expr->call_expr.function) : NULL;
 	BuiltinFunction builtin = bfn && bfn->expr_kind == EXPR_BUILTIN ? bfn->builtin_expr.builtin : BUILTIN_TRAP;
+	if (builtin_needs_libm(builtin)) compiler.linking.link_math = true;
 
 	Expr **args    = expr->call_expr.arguments;
 	int num_args   = vec_size(args);
@@ -1310,11 +1310,9 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			break;
 		}
 		case BUILTIN_GET_ROUNDING_MODE:
-			compiler.linking.link_math = true;
 			PRINTF("%s ___var_%d = __c3_get_rounding_mode();\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type));
 			break;
 		case BUILTIN_SET_ROUNDING_MODE:
-			compiler.linking.link_math = true;
 			c_value_rvalue(c, &c_args[0]);
 			PRINTF("__c3_set_rounding_mode((int)___var_%d);\n", c_args[0].var);
 			c_value_set_void(value);
