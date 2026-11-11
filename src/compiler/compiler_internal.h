@@ -2508,6 +2508,7 @@ void print_asm_list(PlatformTarget *target);
 AsmRegister *asm_reg_by_name(PlatformTarget *target, const char *name);
 AsmInstruction *asm_instr_by_name(const char *name);
 INLINE const char *asm_clobber_by_index(int index);
+bool asm_clobber_is_register(int index);
 INLINE AsmRegister *asm_reg_by_index(int index);
 
 AsmRegister *asm_reg_by_index(int index);

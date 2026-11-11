@@ -55,9 +55,13 @@ sat_shl never saturates: int::max.sat_shl(1) gives -2.
 17. Hello world doesn't compile on this clang. It emits typedef void (*f)(...) (c_codegen_type.c:820-827), which needs C23.
 (Fixed by 71485732d)
 
-18. Only four safe_mode_enabled() sites exist, versus 14+ in LLVM. Nothing checks slice ranges, array or slice indexing, null dereference, / or % by zero, or enum ordinal range. Division by zero silently returns 0 on arm64, and on x86 it crashes with SIGFPE and no panic. Panic messages are dropped too, so assert(x, "msg") becomes a bare trap. Contracts and shifts are checked. The unit tests pass because they don't exercise any of this.
+18. Safe mode checks and panic messages were missing (index, slice, null deref, / and % by zero, enum ordinal, unwrap, ...).
+(Fixed, test/unit/regression/panic_messages.c3 passes. Remaining: trap-on-wrap overflow still aborts without a message.)
 
 19. Unhandled builtins fall into a default: that yields 0 (llrint, llround, atomic inc/dec_wrap, rounding-mode, reverse).
+(Fixed: reverse, get/set_rounding_mode, atomic_fetch_inc/dec_wrap, wasm_memory_size/grow implemented, default: is
+UNREACHABLE. llrint/llround have no builtin name; str_*, sprintf, rnd, widestring are folded and veccomp* rewritten by
+sema. test/unit/regression/codegen_builtins.c3.)
 
 20. @section and @noinline are dropped; I confirmed this by diffing the emitted C against LLVM IR. @inline, @naked and @noreturn also look unhandled.
 
@@ -71,6 +75,27 @@ sat_shl never saturates: int::max.sat_shl(1) gives -2.
 
 24. Inline assembly (asm { ... }) is emitted as GNU extended inline assembly (__asm__ __volatile__). MSVC (cl.exe) on x64/ARM64 does not support inline assembly, so compiling code with inline asm under cl.exe triggers a compile-time #error. Use clang-cl, gcc, or LLVM when inline assembly is needed.
 
+25. The "No method" panic of a dynamic call reports the interface method, not the call site: the dispatcher is a shared
+function without access to the caller's location.
+
+26. Conversions to `any` built the typeid from the lowered type, so a typedef, enum or bitstruct would lose its type.
+(Fixed: sema makes every conversion explicit (EXPR_MAKE_ANY); stores only copy an `any`, see 30.)
+
+27. Optionals were a sticky fault flag: after an operand faulted the operation was still executed.
+(Fixed: faults jump to c->catch like LLVM. An optional function returns its fault and writes the value through a
+leading pointer parameter, the LLVM ABI.)
+
+28. cl.exe: no weak functions (__c3_weak_fn is empty), so std symbols of a static library clash with those of the program.
+Runtime global initializers rely on __attribute__((constructor)); without it only the entry point's module is initialized.
+
+29. A zero sized optional value (`Empty? f()`) gets no out pointer in C, while LLVM still passes one, so such a function
+is not ABI compatible between the backends.
+
+30. Stores used to guess a conversion from the (destination, source) type pair in several ladders (assign_var,
+lvalue_assign, call arguments, returns, initializers, global init). Sema makes every conversion an expression, so all
+stores now go through c_emit_store, which only handles the C form (zero, aggregate at an address) and asserts equal
+C types. The conversions live in their expressions: EXPR_RVALUE (pointer casts, typed as the expression),
+EXPR_ADDR_CONVERSION, and per cast kind c_emit_scalar_convert / c_emit_reinterpret / c_emit_vec_recast.
 */
 
 static HTable c_decl_name_cache;
@@ -173,6 +198,42 @@ const char *c_get_decl_asm_name(Decl *decl)
 		return decl->name;
 	}
 	return NULL;
+}
+
+// Export / import attributes LLVM sets on the symbol: wasm-import-name / wasm-import-module on extern functions and
+// wasm-export-name on exported functions defined here (llvm_emit_function_decl), DLL export of exported symbols on
+// Windows without a .def file (llvm_set_decl_linkage). Empty when none apply.
+const char *c_decl_export_attrs(Decl *decl, bool is_definition)
+{
+	const char *attrs = "";
+	bool is_wasm_fn   = arch_is_wasm(compiler.platform.arch) && decl->decl_kind == DECL_FUNC;
+	if (is_wasm_fn && (decl->is_extern || (decl->is_export && is_definition)))
+	{
+		scratch_buffer_push();
+		scratch_buffer_set_extern_decl_name(decl, true);
+		const char *name = scratch_buffer_copy();
+		scratch_buffer_pop();
+		const char *module = decl->attrs_resolved ? decl->attrs_resolved->wasm_module : NULL;
+		if (!decl->is_extern)
+		{
+			attrs = str_printf("__attribute__((export_name(\"%s\"))) ", name);
+		}
+		else if (module)
+		{
+			attrs = str_printf("__attribute__((import_name(\"%s\"), import_module(\"%s\"))) ", name, module);
+		}
+		else
+		{
+			attrs = str_printf("__attribute__((import_name(\"%s\"))) ", name);
+		}
+	}
+	if (compiler.platform.os == OS_TYPE_WIN32 && decl->is_export && !decl->is_extern && !compiler.build.win.def
+	    && decl->name != kw_main && decl->name != kw_mainstub
+	    && !(decl->decl_kind == DECL_VAR && decl->var.is_static))
+	{
+		attrs = str_printf("%s__declspec(dllexport) ", attrs);
+	}
+	return attrs;
 }
 
 bool c_decl_needs_asm_label(Decl *decl)
@@ -332,53 +393,143 @@ void c_emit_string_literal(GenContext *c, const char *bytes, ArrayIndex len)
 	PRINT("\"");
 }
 
+static void c_emit_string_slice(GenContext *c, const char *str)
+{
+	PRINT("(__c3_slice_uint8_t){(uint8_t*)");
+	c_emit_string_literal(c, str, (ArrayIndex)strlen(str));
+	PRINTF(", %zu}", strlen(str));
+}
+
+// Call the panic function then abort. `args` is a C expression for an `any*` holding `arg_count` format arguments.
+static void c_emit_panic_call(GenContext *c, const char *summary, SourceLocId loc, const char *format, const char *args, int arg_count)
+{
+	SourceLoc *location  = sourcelocptrzero(loc);
+	bool use_location    = panic_use_location();
+	File *file           = source_file_by_id(location ? location->file_id : 0);
+	const char *funcname = c->cur_func_name ? c->cur_func_name : (c->cur_func_decl ? c->cur_func_decl->name : "");
+	const char *panic_name = c_get_decl_name(compiler.context.panic_var);
+	PRINTF("if (%s) { ((void (*)(__c3_slice_uint8_t, __c3_slice_uint8_t, __c3_slice_uint8_t, int32_t, __c3_slice_uint8_t, __c3_slice___c3_any__))%s)(", panic_name, panic_name);
+	c_emit_string_slice(c, summary);
+	PRINT(", ");
+	c_emit_string_slice(c, use_location && file ? file->name : "");
+	PRINT(", ");
+	c_emit_string_slice(c, use_location ? funcname : "");
+	PRINTF(", %u, ", use_location && location ? location->row : 0);
+	if (format)
+	{
+		c_emit_string_slice(c, format);
+		PRINTF(", (__c3_slice___c3_any__){ .ptr = %s, .len = %d }); } __c3_abort();\n", args, arg_count);
+		return;
+	}
+	PRINT("(__c3_slice_uint8_t){0}, (__c3_slice___c3_any__){0}); } __c3_abort();\n");
+}
+
+// Panic with a user message, optionally formatted with `args`.
 void c_emit_panic(GenContext *c, const char *message, SourceLocId loc, Expr **args)
 {
-	Decl *panic_var = compiler.context.panic_var;
-	if (no_panic() || !panic_var)
+	if (no_panic() || !compiler.context.panic_var)
 	{
 		PRINT("__c3_abort();\n");
 		return;
 	}
-
-	SourceLoc *location = sourcelocptrzero(loc);
-	File *file = source_file_by_id(location ? location->file_id : 0);
-	const char *filename = file ? file->name : "";
-	const char *funcname = c->cur_func_name ? c->cur_func_name : (c->cur_func_decl ? c->cur_func_decl->name : "");
-	uint32_t line = location ? location->row : 0;
-
 	int num_args = vec_size(args);
-	const char *summary = num_args ? panic_fn_desc[PANIC_FN_ASSERT_VIOLATION].format : (message ? message : "");
-	VariableId arr_var = 0;
-	if (num_args)
+	if (!num_args)
 	{
-		arr_var = c_emit_alloca_array(c, type_any, num_args);
-		for (int i = 0; i < num_args; i++)
-		{
-			CValue arg_val = {0};
-			c_emit_expr(c, &arg_val, args[i]);
-			c_value_rvalue(c, &arg_val);
-			char slot[64];
-			snprintf(slot, sizeof(slot), "___var_%d[%d]", arr_var, i);
-			c_emit_assign_to_any(c, slot, &arg_val);
-		}
-	}
-	const char *panic_name = c_get_decl_name(panic_var);
-	PRINTF("if (%s) { ((void (*)(__c3_slice_uint8_t, __c3_slice_uint8_t, __c3_slice_uint8_t, int32_t, __c3_slice_uint8_t, __c3_slice___c3_any__))%s)((__c3_slice_uint8_t){(uint8_t*)", panic_name, panic_name);
-	c_emit_string_literal(c, summary, (ArrayIndex)strlen(summary));
-	PRINTF(", %zu}, (__c3_slice_uint8_t){(uint8_t*)", strlen(summary));
-	c_emit_string_literal(c, filename, (ArrayIndex)strlen(filename));
-	PRINTF(", %zu}, (__c3_slice_uint8_t){(uint8_t*)", strlen(filename));
-	c_emit_string_literal(c, funcname, (ArrayIndex)strlen(funcname));
-	PRINTF(", %zu}, %u, ", strlen(funcname), line);
-	if (num_args)
-	{
-		PRINT("(__c3_slice_uint8_t){(uint8_t*)");
-		c_emit_string_literal(c, message, (ArrayIndex)strlen(message));
-		PRINTF(", %zu}, (__c3_slice___c3_any__){ .ptr = ___var_%d, .len = %d }); } __c3_abort();\n", strlen(message), arr_var, num_args);
+		c_emit_panic_call(c, message ? message : "", loc, NULL, NULL, 0);
 		return;
 	}
-	PRINT("(__c3_slice_uint8_t){0}, (__c3_slice___c3_any__){0}); } __c3_abort();\n");
+	VariableId arr_var = c_emit_alloca_array(c, type_any, num_args);
+	for (int i = 0; i < num_args; i++)
+	{
+		CValue arg_val = {0};
+		c_emit_expr(c, &arg_val, args[i]);
+		c_value_rvalue(c, &arg_val);
+		// The typeid comes from the type as written, not the lowered one, so that e.g. a String prints as text.
+		if (arg_val.kind != CV_ADDRESS) c_value_addr(c, &arg_val);
+		PRINTF("___var_%d[%d] = (__c3_any__){ .ptr = (void*)&___var_%d, .typeid = (c3typeid_t)&%s };\n",
+		       arr_var, i, arg_val.var, c_typeid_name(type_no_optional(args[i]->type)));
+	}
+	c_emit_panic_call(c, panic_fn_desc[PANIC_FN_ASSERT_VIOLATION].format, loc, message, str_printf("___var_%d", arr_var), num_args);
+}
+
+// Integers are widened to 64 bits when passed to a panic, as the LLVM backend does.
+static Type *c_panic_value_type(Type *type)
+{
+	type = c_safe_type_lower(type);
+	if (!type_is_integer(type) || type_bit_size(type) > 64) return type;
+	return type_is_unsigned(type) ? type_ulong : type_long;
+}
+
+// Emit a compiler generated panic. `texts` and `values` hold the counts given by `panic_fn_desc[id]`.
+void c_emit_panic_fn(GenContext *c, PanicFunction id, SourceLocId loc, const char **texts, CPanicValue *values)
+{
+	if (no_panic() || !compiler.context.panic_var)
+	{
+		PRINT("__c3_abort();\n");
+		return;
+	}
+	const PanicFunctionDescriptor *info = &panic_fn_desc[id];
+	int text_count  = panic_fn_text_count(id);
+	int value_count = panic_fn_value_count(id);
+	if (id == PANIC_FN_MESSAGE)
+	{
+		c_emit_panic_call(c, texts[0], loc, NULL, NULL, 0);
+		return;
+	}
+	if (text_count + value_count == 0)
+	{
+		c_emit_panic_call(c, info->summary ? info->summary : info->format, loc, NULL, NULL, 0);
+		return;
+	}
+	// The format takes the first value, then the texts, then the remaining values.
+	PRINT("{\n");
+	const char *typeids[PANIC_FN_MAX_TEXTS + PANIC_FN_MAX_VALUES];
+	int count = 0;
+	for (int i = 0; i < value_count; i++)
+	{
+		if (i == 1)
+		{
+			for (int j = 0; j < text_count; j++)
+			{
+				PRINTF("__c3_slice_uint8_t __c3_panic_arg%d = ", count);
+				c_emit_string_slice(c, texts[j]);
+				PRINT(";\n");
+				typeids[count++] = c_typeid_name(type_string);
+			}
+		}
+		Type *type = c_panic_value_type(values[i].type);
+		PRINTF("%s __c3_panic_arg%d = (%s)(%s);\n", c_type_name(c, type), count, c_type_name(c, type), values[i].expr);
+		typeids[count++] = c_typeid_name(type);
+	}
+	if (value_count <= 1)
+	{
+		for (int j = 0; j < text_count; j++)
+		{
+			PRINTF("__c3_slice_uint8_t __c3_panic_arg%d = ", count);
+			c_emit_string_slice(c, texts[j]);
+			PRINT(";\n");
+			typeids[count++] = c_typeid_name(type_string);
+		}
+	}
+	PRINTF("__c3_any__ __c3_panic_args[%d] = {", count);
+	for (int i = 0; i < count; i++)
+	{
+		PRINTF("%s{ .ptr = (void*)&__c3_panic_arg%d, .typeid = (c3typeid_t)&%s }", i ? ", " : " ", i, typeids[i]);
+	}
+	PRINT(" };\n");
+	c_emit_panic_call(c, info->summary, loc, info->format, "__c3_panic_args", count);
+	PRINT("}\n");
+}
+
+// Emit a panic taken when the C expression `cond` is true.
+void c_emit_panic_if(GenContext *c, const char *cond, PanicFunction id, SourceLocId loc, const char *text, CPanicValue *value_1, CPanicValue *value_2)
+{
+	CPanicValue values[2];
+	if (value_1) values[0] = *value_1;
+	if (value_2) values[1] = *value_2;
+	PRINTF("if (__builtin_expect(!!(%s), 0)) {\n", cond);
+	c_emit_panic_fn(c, id, loc, &text, values);
+	PRINT("}\n");
 }
 
 static void c_traverse_decl(GenContext *c, Decl *d, CDeclVisitor visitor, void *userdata)
@@ -420,7 +571,12 @@ static void c_traverse_decl(GenContext *c, Decl *d, CDeclVisitor visitor, void *
 	{
 		return;
 	}
-	if (d->is_template || !c_decl_is_live(d))
+	if (d->is_template)
+	{
+		return;
+	}
+	// A method of an interface that is itself unused can still be called through an interface inheriting from it.
+	if (!c_decl_is_live(d) && !(c->traverse_unused_interfaces && d->decl_kind == DECL_INTERFACE))
 	{
 		return;
 	}
@@ -577,27 +733,15 @@ static bool c_module_has_live_code(Module *module)
 static void c_emit_decl_types(GenContext *c, Decl *d, bool forward_decl)
 {
 	bool (*emit_fn)(GenContext *, Type *) = forward_decl ? c_emit_type_forward_decl : c_emit_type_decl;
-	Type *dt = c_decl_type(d);
-	if (is_valid_type_ptr(dt) && dt->type_kind != TYPE_POISONED)
-	{
-		emit_fn(c, dt);
-	}
+	emit_fn(c, c_decl_type(d));
 	if (d->decl_kind != DECL_FUNC)
 	{
 		return;
 	}
-	Type *rtype = typeget(d->func_decl.signature.rtype);
-	if (is_valid_type_ptr(rtype) && rtype->type_kind != TYPE_POISONED)
-	{
-		emit_fn(c, rtype);
-	}
+	emit_fn(c, typeget(d->func_decl.signature.rtype));
 	FOREACH(Decl *, p, d->func_decl.signature.params)
 	{
-		Type *ptype = c_decl_type(p);
-		if (is_valid_type_ptr(ptype) && ptype->type_kind != TYPE_POISONED)
-		{
-			emit_fn(c, ptype);
-		}
+		emit_fn(c, c_decl_type(p));
 	}
 }
 
@@ -613,18 +757,23 @@ static void visit_type_decl(GenContext *c, Decl *d, void *ud)
 	c_emit_decl_types(c, d, false);
 }
 
+// C allows one prototype per symbol. Definitions go first, so a symbol defined here gets its definition's signature;
+// a call through an extern declaration of it with another signature casts to that one (as LLVM calls each
+// declaration's own function type). `ud` is non-NULL for the definitions pass.
 static void visit_fn_prototype(GenContext *c, Decl *d, void *ud)
 {
-	(void)ud;
 	if (d->decl_kind != DECL_FUNC)
 	{
 		return;
 	}
+	bool is_definition = !d->is_extern && d->func_decl.body;
+	if (is_definition != (ud != NULL)) return;
 	decl_append_links_to_global_during_codegen(d);
 	bool is_current = (!c->current_module || (d->unit && d->unit->module == c->current_module));
 	c_emit_function_decl(c, d, is_current);
 }
 
+// One dispatcher per interface method that is used, whether or not its interface is.
 static void visit_dynamic_dispatcher(GenContext *c, Decl *d, void *ud)
 {
 	(void)ud;
@@ -632,7 +781,7 @@ static void visit_dynamic_dispatcher(GenContext *c, Decl *d, void *ud)
 	{
 		FOREACH(Decl *, im, d->interface_methods)
 		{
-			c_emit_dynamic_dispatcher(c, im);
+			if (c_decl_is_live(im)) c_emit_dynamic_dispatcher(c, im);
 		}
 	}
 }
@@ -772,11 +921,16 @@ static void c_emit_shared_header(const char *dir)
 	fputs("\n", f);
 
 	fputs("/* FUNCTION PROTOTYPES */\n", f);
+	c_traverse_all_modules(c, visit_fn_prototype, (void *)1);
 	c_traverse_all_modules(c, visit_fn_prototype, NULL);
 	fputs("\n", f);
 
 	fputs("/* DYNAMIC DISPATCHERS */\n", f);
+	// Dispatchers panic when no method matches, so the panic variable must be declared first.
+	if (compiler.context.panic_var) c_emit_global_decl(c, compiler.context.panic_var);
+	c->traverse_unused_interfaces = true;
 	c_traverse_all_modules(c, visit_dynamic_dispatcher, NULL);
+	c->traverse_unused_interfaces = false;
 	fputs("\n", f);
 
 	fputs("/* GLOBAL FORWARD DECLARATIONS */\n", f);
@@ -1003,11 +1157,9 @@ static GenContext *c_gen_module(Module *module, int num)
 		ByteBuffer *prev_buf = c->buffer;
 		c->buffer            = &body_buf;
 
-		c->current_return_type      = type_void;
-		c->current_macro_ret_var    = 0;
-		c->current_macro_ret_type   = NULL;
-		c->current_macro_fault_var  = 0;
-		c->current_macro_exit_label = 0;
+		c->cur_ret                  = (CRet){0};
+		c->catch                    = NO_CATCH;
+		c->defer_error_var          = NULL;
 		c->current_break_label      = 0;
 		c->current_continue_label   = 0;
 		c->current_block_live       = true;
@@ -1019,27 +1171,20 @@ static GenContext *c_gen_module(Module *module, int num)
 		FOREACH(Decl *, var, runtime_inits)
 		{
 			PRINT("{\n");
+			COptionalAssign assign;
+			c_optional_assign_begin(c, &assign, c_decl_fault_ref(c, var), var->var.init_expr);
 			CValue val = {0};
 			c_emit_expr(c, &val, var->var.init_expr);
 			c_value_rvalue(c, &val);
-			const char *gname = c_get_decl_name(var);
-			Type *gt          = c_decl_type(var);
-			if (c_type_is_aggregate(gt))
-			{
-				const char *src_ref = (val.kind == CV_ADDRESS) ? "(void*)" : "&";
-				PRINTF("__c3_memcpy(&%s, %s___var_%d, sizeof(%s));\n", gname, src_ref, val.var, gname);
-			}
-			else
-			{
-				PRINTF("%s = (%s)___var_%d;\n", gname, c_type_name(c, gt), val.var);
-			}
+			c_emit_store(c, c_get_decl_name(var), c_decl_type(var), &val);
+			c_optional_assign_end(c, &assign);
 			PRINT("}\n");
 		}
 
 		c->buffer = prev_buf;
 
 		PRINT("#if defined(__GNUC__) || defined(__clang__)\n__attribute__((constructor(101)))\n#endif\n");
-		PRINTF("void %s(void) {\n", init_globals_name);
+		PRINTF("static void %s(void) {\n", init_globals_name);
 		PRINT("\tstatic bool initialized = false;\n");
 		PRINT("\tif (initialized) return;\n");
 		PRINT("\tinitialized = true;\n");
@@ -1055,12 +1200,13 @@ static GenContext *c_gen_module(Module *module, int num)
 	}
 	else
 	{
-		PRINTF("void %s(void) {}\n\n", init_globals_name);
+		PRINTF("static void %s(void) {}\n\n", init_globals_name);
 	}
 
 	if (c_has_main_function(modules, mod_count) || compiler.build.single_module == SINGLE_MODULE_ON)
 	{
-		PRINT("void __c3_init_runtime(void) {\n");
+		// Only called by the entry point of this file. Each link unit has its own.
+		PRINT("static void __c3_init_runtime(void) {\n");
 		PRINT("\tstatic bool initialized = false;\n");
 		PRINT("\tif (initialized) return;\n");
 		PRINT("\tinitialized = true;\n");
@@ -1301,6 +1447,38 @@ static const char *c_backend_build_cflags(const char *cc)
 	return scratch_buffer_copy();
 }
 
+// The C compiler for the target. Only clang takes the target on the command line, any other compiler would silently
+// compile for the host.
+static const char *c_find_target_c_compiler(void)
+{
+	const char *cc = find_c_compiler();
+	if (compiler.build.arch_os_target != default_target && !strstr(cc, "clang") && !strstr(cc, "zig") &&
+	    compiler.platform.os != OS_TYPE_EMSCRIPTEN)
+	{
+		error_exit("Cross compiling with the C backend requires clang, but the C compiler is '%s'. Use '--cc clang' or set C3C_CC.", cc);
+	}
+	return cc;
+}
+
+// --test: the C counterpart of LLVM's IR verification. The generated C is checked by the C compiler that a build
+// would use, with the same flags, without producing objects.
+static void c_syntax_check(GenContext **gen_contexts)
+{
+	const char *cc = c_find_target_c_compiler();
+	bool is_cl     = str_ends_with(cc, "cl.exe");
+	const char *flags = c_backend_build_cflags(cc);
+	const char *cmd   = str_printf("\"%s\" %s %s", cc, is_cl ? "/Zs" : "-fsyntax-only", flags);
+	FOREACH(GenContext *, c, gen_contexts)
+	{
+		cmd = str_printf("%s \"%s\"", cmd, c->c_filename);
+	}
+	if (compiler.build.print_linking) puts(cmd);
+	if (system(cmd) != 0)
+	{
+		error_exit("The generated C failed the syntax check: %s", cmd);
+	}
+}
+
 bool c_codegen(void *context, const char **out_name)
 {
 	*out_name = NULL;
@@ -1347,7 +1525,7 @@ void **c_gen(Module **modules, int module_count)
 		|| compiler.build.type == TARGET_TYPE_BENCHMARK;
 	if (will_compile)
 	{
-		c_backend_cc     = find_c_compiler();
+		c_backend_cc     = c_find_target_c_compiler();
 		c_backend_cflags = c_backend_build_cflags(c_backend_cc);
 	}
 	else
@@ -1385,6 +1563,7 @@ void **c_gen(Module **modules, int module_count)
 	{
 		vec_add(gen_contexts, rt);
 	}
+	if (compiler.build.test_output) c_syntax_check(gen_contexts);
 
 	return (void **)gen_contexts;
 }
