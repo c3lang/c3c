@@ -71,6 +71,7 @@
 - `--panicfn` now names a function rather than a function pointer variable, and sets the initial value of `builtin::panic` through the new `$$PANIC_FN`, so stdlib panics and `abort` also reach it. #3443
 - Make panic on infinite loops opt-in with `--infinite-loop-detect=yes` – and is only added in safe mode. #3630
 - Removed the unused TB (Tilde) backend: `--backend=tb` and the `C3_USE_TB` CMake option.
+- The experimental C backend now matches the LLVM backend and passes the full test suite.
 
 ### Fixes
 - Compressed `.c3l` libraries were not unpacked again when only files other than `manifest.json` had changed.
