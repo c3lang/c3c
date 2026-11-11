@@ -17,9 +17,14 @@
 #pragma message("warning: 128-bit integer types (int128/uint128) are not natively supported by TCC and are lowered to 64-bit integers.")
 typedef uint64_t __c3_uint128;
 typedef int64_t __c3_int128;
-#elif defined(__SIZEOF_INT128__) || (defined(__clang__) && !defined(_MSC_VER)) || (defined(__GNUC__) && defined(__x86_64__))
+#elif defined(__SIZEOF_INT128__) || (defined(__GNUC__) && defined(__x86_64__))
 typedef unsigned __int128 __c3_uint128;
 typedef __int128 __c3_int128;
+#elif defined(__clang__)
+// 32-bit targets have no __int128; clang's _BitInt(128) is the 128-bit integer there (LLVM's i128).
+// Aligned like C3's int128 (LLVM's i128), which may be stricter than _BitInt(128) on the target.
+typedef unsigned _BitInt(128) __c3_uint128 __attribute__((aligned(__C3_INT128_ALIGN)));
+typedef _BitInt(128) __c3_int128 __attribute__((aligned(__C3_INT128_ALIGN)));
 #else
 #if defined(_MSC_VER)
 #pragma message("warning: 128-bit integer types (int128/uint128) are not natively supported by MSVC (cl.exe) and are lowered to 64-bit integers.")
@@ -36,6 +41,25 @@ typedef int64_t __c3_int128;
 #else
 #define __c3_thread_local __thread
 #define __c3_aligned(n) __attribute__((aligned(n)))
+#endif
+
+// Runtime definitions are emitted by every C3 link unit (program, static or dynamic library),
+// so duplicates must merge, like LLVM's linkonce.
+// `__c3_linkonce` is for data, `__c3_weak_fn` for functions. cl.exe has no weak functions.
+#if defined(_MSC_VER) && !defined(__clang__)
+#define __c3_linkonce __declspec(selectany)
+#define __c3_weak_fn
+#else
+#define __c3_linkonce __attribute__((weak))
+#define __c3_weak_fn __attribute__((weak))
+#endif
+
+// The parameter list of a variadic function without named parameters: C23 spells it `(...)`; before C23 only the
+// unprototyped `()` declares such a function (C23 reads `()` as `(void)`).
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
+#define __C3_VARIADIC_ONLY ...
+#else
+#define __C3_VARIADIC_ONLY
 #endif
 
 #if defined(__GNUC__) || defined(__clang__)
@@ -109,7 +133,6 @@ typedef struct c3type_info__ {
 
 typedef const c3type_info_t* c3typeid_t;
 typedef void* c3fault_t;
-extern __c3_thread_local c3fault_t __c3_current_fault;
 typedef struct { void* ptr; c3typeid_t typeid; } __c3_any__;
 
 #define __C3_SLICE_EQ(a, b) \
@@ -682,4 +705,27 @@ static inline uint64_t __c3_sysclock(void) {
 }
 #endif
 
-void __c3_init_runtime(void);
+
+/* --- Floating point rounding mode, encoded as LLVM's llvm.get.rounding / llvm.set.rounding:
+ * 0 toward zero, 1 to nearest, 2 upward, 3 downward, -1 unknown. --- */
+#if defined(__has_include)
+#if __has_include(<fenv.h>)
+#include <fenv.h>
+static inline int __c3_get_rounding_mode(void)
+{
+	switch (fegetround())
+	{
+		case FE_TOWARDZERO: return 0;
+		case FE_TONEAREST: return 1;
+		case FE_UPWARD: return 2;
+		case FE_DOWNWARD: return 3;
+		default: return -1;
+	}
+}
+static inline void __c3_set_rounding_mode(int mode)
+{
+	static const int modes[4] = { FE_TOWARDZERO, FE_TONEAREST, FE_UPWARD, FE_DOWNWARD };
+	if (mode >= 0 && mode < 4) fesetround(modes[mode]);
+}
+#endif
+#endif

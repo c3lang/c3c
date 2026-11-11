@@ -2,23 +2,8 @@
 
 static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 {
-	Type *t = c_expr_type_or(expr, type_void);
-	if (t->type_kind == TYPE_VOID)
-	{
-		switch (expr->const_expr.const_kind)
-		{
-			case CONST_FLOAT: t = type_double; break;
-			case CONST_INTEGER: t = type_int; break;
-			case CONST_BOOL: t = type_bool; break;
-			case CONST_POINTER: t = type_voidptr; break;
-			case CONST_BYTES:
-			case CONST_STRING: t = type_chars; break;
-			case CONST_ENUM: t = type_int; break;
-			case CONST_FAULT: t = type_fault; break;
-			case CONST_SLICE: t = type_chars; break;
-			default: t = type_int; break;
-		}
-	}
+	Type *t = c_expr_type(expr);
+	ASSERT(t->type_kind != TYPE_VOID);
 	c_emit_type_forward_decl(c, t);
 	const char *tname = c_type_name(c, t);
 	int temp          = c_emit_temp_var(c, value, t);
@@ -165,61 +150,24 @@ static void c_emit_identifier_expr(GenContext *c, CValue *value, Expr *expr)
 		return;
 	}
 
+	const char *fault = c_ident_read_fault_ref(c, expr->ident_expr);
+	if (fault) c_emit_jump_to_optional_exit(c, fault);
+	const char *src   = c_decl_lvalue_str(c, decl);
 	int temp          = c_emit_temp_var(c, value, t);
 	const char *tname = c_type_name(c, t);
-	Decl *raw_ident   = expr->ident_expr ? decl_raw(expr->ident_expr) : NULL;
-	if (c_is_file_global(decl))
+	if (c_type_is_vec_or_arr(t))
 	{
-		c_emit_global_decl(c, decl);
-		const char *gname = c_get_decl_name(decl);
-		if (IS_OPTIONAL(decl) && (!raw_ident || raw_ident->var.kind != VARDECL_UNWRAPPED))
-		{
-			int fault_temp = c_emit_temp_var(c, NULL, type_fault);
-			PRINTF("c3fault_t ___var_%d = %s__f;\n", fault_temp, gname);
-			PRINTF("if (___var_%d != NULL && __c3_current_fault == NULL) { __c3_current_fault = ___var_%d; }\n", fault_temp, fault_temp);
-			value->optional = fault_temp;
-		}
-		if (c_type_is_vec_or_arr(t))
-		{
-			PRINTF("%s ___var_%d;\n", tname, temp);
-			PRINTF("__c3_memcpy(&___var_%d, &%s, sizeof(%s));\n", temp, gname, gname);
-		}
-		else if (type_is_pointer(t) || t->type_kind == TYPE_FUNC_PTR)
-		{
-			PRINTF("%s ___var_%d = (%s)%s;\n", tname, temp, tname, gname);
-		}
-		else
-		{
-			PRINTF("%s ___var_%d = %s;\n", tname, temp, gname);
-		}
+		PRINTF("%s ___var_%d;\n", tname, temp);
+		PRINTF("__c3_memcpy(&___var_%d, &%s, sizeof(%s));\n", temp, src, src);
+	}
+	else if (type_is_pointer(t) || t->type_kind == TYPE_FUNC_PTR)
+	{
+		// Explicit cast satisfies Clang's strict -Wincompatible-pointer-types
+		PRINTF("%s ___var_%d = (%s)%s;\n", tname, temp, tname, src);
 	}
 	else
 	{
-		VariableId vid  = c_get_or_create_decl_var(c, decl);
-		VariableId fvid = 0;
-		if (raw_ident && raw_ident->decl_kind == DECL_VAR && raw_ident->var.kind != VARDECL_UNWRAPPED)
-		{
-			fvid = c_get_decl_fault_var(c, decl);
-		}
-		if (fvid != 0)
-		{
-			value->optional = fvid;
-			PRINTF("if (___var_%d != NULL && __c3_current_fault == NULL) { __c3_current_fault = ___var_%d; }\n", fvid, fvid);
-		}
-		if (c_type_is_vec_or_arr(t))
-		{
-			PRINTF("%s ___var_%d;\n", tname, temp);
-			PRINTF("__c3_memcpy(&___var_%d, &___var_%d, sizeof(___var_%d));\n", temp, vid, vid);
-		}
-		else if (type_is_pointer(t) || t->type_kind == TYPE_FUNC_PTR)
-		{
-			// Explicit cast satisfies Clang's strict -Wincompatible-pointer-types
-			PRINTF("%s ___var_%d = (%s)___var_%d;\n", tname, temp, tname, vid);
-		}
-		else
-		{
-			PRINTF("%s ___var_%d = ___var_%d;\n", tname, temp, vid);
-		}
+		PRINTF("%s ___var_%d = %s;\n", tname, temp, src);
 	}
 }
 
@@ -236,6 +184,8 @@ static void c_emit_macro_body_expansion(GenContext *c, CValue *value, Expr *body
 		{
 			continue;
 		}
+		COptionalAssign assign;
+		c_optional_assign_begin(c, &assign, c_decl_fault_ref(c, decl), val_expr);
 		CValue v = {0};
 		c_emit_expr(c, &v, val_expr);
 		c_value_rvalue(c, &v);
@@ -246,10 +196,7 @@ static void c_emit_macro_body_expansion(GenContext *c, CValue *value, Expr *body
 		VariableId vid = c_get_or_create_decl_var(c, decl);
 		Type *dt       = c_decl_type(decl);
 		c_emit_assign_var(c, vid, dt, &v);
-		if (IS_OPTIONAL(decl))
-		{
-			c_emit_assign_decl_fault(c, decl, &v, val_expr);
-		}
+		c_optional_assign_end(c, &assign);
 	}
 	if (body_expr->body_expansion_expr.first_stmt)
 	{
@@ -261,36 +208,54 @@ static void c_emit_macro_body_expansion(GenContext *c, CValue *value, Expr *body
 	}
 }
 
-static void c_emit_call_invocation(GenContext *c, CValue *value, Type *return_type, bool has_return, bool has_optional_arg, const char *target)
+// Start the call `target(`. An optional call assigns its fault to a new variable, returned here (0 otherwise),
+// and passes the address of the value first: `*leading_arg` then tells that the caller's arguments follow a `, `.
+static int c_emit_call_invocation(GenContext *c, CValue *value, CRet ret, Type *return_type, bool has_return, const char *target, bool *leading_arg)
 {
+	*leading_arg = false;
+	if (ret.optional)
+	{
+		int ret_var = 0;
+		if (ret.value)
+		{
+			c_emit_type_forward_decl(c, ret.value);
+			ret_var = c_emit_temp_var(c, value, ret.value);
+			PRINTF("%s ___var_%d;\n", c_type_name(c, ret.value), ret_var);
+		}
+		else if (value && value->var == 0)
+		{
+			c_value_set_void(value);
+		}
+		int fault = c_create_variable(c);
+		PRINTF("c3fault_t ___var_%d = %s(", fault, target);
+		if (ret_var)
+		{
+			PRINTF("&___var_%d", ret_var);
+			*leading_arg = true;
+		}
+		return fault;
+	}
 	if (has_return)
 	{
 		c_emit_type_forward_decl(c, return_type);
 		int ret_var = c_emit_temp_var(c, value, return_type);
-		if (has_optional_arg)
-		{
-			PRINTF("%s ___var_%d = {0};\n", c_type_name(c, return_type), ret_var);
-			PRINTF("if (__c3_current_fault == NULL) {\n\t___var_%d = %s(", ret_var, target);
-		}
-		else
-		{
-			PRINTF("%s ___var_%d = %s(", c_type_name(c, return_type), ret_var, target);
-		}
-		return;
+		PRINTF("%s ___var_%d = %s(", c_type_name(c, return_type), ret_var, target);
+		return 0;
 	}
 
 	if (value && value->var == 0)
 	{
 		c_value_set_void(value);
 	}
-	if (has_optional_arg)
-	{
-		PRINTF("if (__c3_current_fault == NULL) {\n\t%s(", target);
-	}
-	else
-	{
-		PRINTF("%s(", target);
-	}
+	PRINTF("%s(", target);
+	return 0;
+}
+
+// After an optional call: jump to the catch target when it returned a fault.
+static void c_emit_call_fault_check(GenContext *c, int fault)
+{
+	if (!fault) return;
+	c_emit_jump_to_optional_exit(c, str_printf("___var_%d", fault));
 }
 
 static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
@@ -350,30 +315,22 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 			function_decl = NULL;
 		}
 	}
+	// A call through a function value uses the signature of its function pointer type, as LLVM does.
 	Signature *sig = function_decl ? &function_decl->func_decl.signature : NULL;
-	if (!sig && call->function && exprptr(call->function)->type)
+	if (!sig)
 	{
 		Type *ft = c_safe_type_lower(exprptr(call->function)->type);
-		if (ft)
-		{
-			if (ft->type_kind == TYPE_FUNC_PTR && ft->pointer && ft->pointer->type_kind == TYPE_FUNC_RAW)
-			{
-				sig = ft->pointer->function.signature;
-			}
-			else if (ft->type_kind == TYPE_POINTER && ft->pointer && ft->pointer->type_kind == TYPE_FUNC_RAW)
-			{
-				sig = ft->pointer->function.signature;
-			}
-		}
+		ASSERT(ft->type_kind == TYPE_FUNC_PTR);
+		sig = ft->pointer->function.signature;
 	}
 
 	Expr **args      = call->arguments;
 	Expr **varargs   = call->varargs;
 	int num_args     = vec_size(args);
 	int num_varargs  = vec_size(varargs);
-	bool is_variadic = sig && (sig->variadic == VARIADIC_TYPED || sig->variadic == VARIADIC_ANY);
-	int vararg_idx   = sig ? sig->vararg_index : (is_variadic ? num_args - 1 : -1);
-	int param_count  = sig ? vec_size(sig->params) : num_args;
+	bool is_variadic = sig->variadic == VARIADIC_TYPED || sig->variadic == VARIADIC_ANY;
+	int vararg_idx   = sig->vararg_index;
+	int param_count  = vec_size(sig->params);
 
 	int total_args = (param_count > 0 ? param_count : num_args) + (num_varargs > 0 ? num_varargs : 0);
 	if (total_args <= 0)
@@ -395,9 +352,9 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 			}
 			else
 			{
-				Decl *vararg_param = (sig && i < vec_size(sig->params)) ? sig->params[i] : NULL;
-				Type *slice_type   = (vararg_param && is_valid_type_ptr(vararg_param->type)) ? c_safe_type_lower(vararg_param->type) : type_get_slice(type_any);
-				Type *elem_type    = (slice_type && slice_type->type_kind == TYPE_SLICE && is_valid_type_ptr(slice_type->array.base)) ? c_safe_type_lower(slice_type->array.base) : type_any;
+				Decl *vararg_param = i < vec_size(sig->params) ? sig->params[i] : NULL;
+				Type *slice_type   = (vararg_param) ? c_safe_type_lower(vararg_param->type) : type_get_slice(type_any);
+				Type *elem_type    = (slice_type && slice_type->type_kind == TYPE_SLICE) ? c_safe_type_lower(slice_type->array.base) : type_any;
 				c_emit_type_forward_decl(c, slice_type);
 				const char *slice_tname = c_type_name(c, slice_type);
 				const char *elem_tname  = c_type_name(c, elem_type);
@@ -417,42 +374,9 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 						c_value_rvalue(c, &vvals[j]);
 					}
 					VariableId arr_var = c_emit_alloca_array(c, elem_type, num_varargs);
-					bool elem_is_any = (elem_type->type_kind == TYPE_ANY || elem_type->type_kind == TYPE_INTERFACE || strcmp(elem_tname, "__c3_any__") == 0);
 					for (int j = 0; j < num_varargs; j++)
 					{
-						if (elem_is_any)
-						{
-							char target_slot[64];
-							snprintf(target_slot, sizeof(target_slot), "___var_%d[%d]", arr_var, j);
-							c_emit_assign_to_any(c, target_slot, &vvals[j]);
-						}
-						else
-						{
-							Type *orig_vt = (varargs[j] && varargs[j]->type) ? varargs[j]->type : (vvals[j].type ? vvals[j].type : type_void);
-							Type *vtype   = c_safe_type_lower(orig_vt);
-							if (c_type_is_aggregate(elem_type))
-							{
-								if (elem_type == vtype || strcmp(elem_tname, c_type_name(c, vtype)) == 0)
-								{
-									PRINTF("___var_%d[%d] = ___var_%d;\n", arr_var, j, vvals[j].var);
-								}
-								else
-								{
-									PRINTF("__c3_memcpy(&___var_%d[%d], &___var_%d, sizeof(%s));\n", arr_var, j, vvals[j].var, elem_tname);
-								}
-							}
-							else
-							{
-								if (elem_type == vtype)
-								{
-									PRINTF("___var_%d[%d] = ___var_%d;\n", arr_var, j, vvals[j].var);
-								}
-								else
-								{
-									PRINTF("___var_%d[%d] = (%s)___var_%d;\n", arr_var, j, elem_tname, vvals[j].var);
-								}
-							}
-						}
+						c_emit_store(c, str_printf("___var_%d[%d]", arr_var, j), elem_type, &vvals[j]);
 					}
 					int slice_var = c_emit_temp_var(c, &c_args[arg_idx++], slice_type);
 					PRINTF("%s ___var_%d = (%s){ .ptr = ___var_%d, .len = %d };\n", slice_tname, slice_var, slice_tname, arr_var, num_varargs);
@@ -464,37 +388,19 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 		{
 			if (i < num_args && args[i])
 			{
-				Decl *param_decl      = (sig && i < vec_size(sig->params)) ? sig->params[i] : NULL;
-				Type *exp_type        = param_decl ? c_decl_type(param_decl) : NULL;
-				bool is_struct_to_ptr = exp_type && exp_type->type_kind == TYPE_POINTER && exp_type->pointer &&
-				                        args[i]->type && !type_is_pointer(args[i]->type) &&
-				                        (args[i]->type->type_kind == TYPE_STRUCT || args[i]->type->type_kind == TYPE_UNION) &&
-				                        c_safe_type_lower(exp_type->pointer) == c_safe_type_lower(args[i]->type);
-				if (is_struct_to_ptr)
-				{
-					c_emit_lvalue_addr(c, args[i], &c_args[arg_idx++], exp_type);
-				}
-				else
-				{
-					c_emit_expr(c, &c_args[arg_idx], args[i]);
-					bool exp_is_ptr = exp_type ? type_is_pointer(exp_type) : false;
-					bool exp_is_any = exp_type ? (exp_type->type_kind == TYPE_ANY || exp_type->type_kind == TYPE_INTERFACE) : false;
-					if (!exp_is_ptr && !exp_is_any)
-					{
-						c_value_rvalue(c, &c_args[arg_idx]);
-					}
-					arg_idx++;
-				}
+				c_emit_expr(c, &c_args[arg_idx], args[i]);
+				c_value_rvalue(c, &c_args[arg_idx]);
+				arg_idx++;
 			}
 			else
 			{
-				Type *pt          = (sig && i < vec_size(sig->params) && sig->params[i]) ? c_decl_type(sig->params[i]) : type_void;
+				Type *pt          = (i < vec_size(sig->params) && sig->params[i]) ? c_decl_type(sig->params[i]) : type_void;
 				c_args[arg_idx++] = (CValue){.var = 0, .type = pt, .kind = CV_VALUE};
 			}
 		}
 	}
 
-	if (sig && sig->variadic == VARIADIC_RAW && num_varargs > 0)
+	if (sig->variadic == VARIADIC_RAW && num_varargs > 0)
 	{
 		for (int j = 0; j < num_varargs; j++)
 		{
@@ -507,19 +413,10 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 		}
 	}
 
-	Type *fn_rtype = NULL;
-	if (sig)
-	{
-		Type *raw_rt = typeget(sig->rtype);
-		fn_rtype     = (raw_rt && is_valid_type_ptr(raw_rt)) ? c_safe_type_lower(raw_rt) : type_void;
-	}
-	else if (function_decl)
-	{
-		Type *raw_rt = typeget(function_decl->func_decl.signature.rtype);
-		fn_rtype     = (raw_rt && is_valid_type_ptr(raw_rt)) ? c_safe_type_lower(raw_rt) : type_void;
-	}
-
-	Type *return_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
+	Type *fn_rtype    = c_safe_type_lower(typeget(sig->rtype));
+	CRet ret          = c_signature_ret(sig);
+	Type *return_type = c_safe_type_lower(expr->type);
+	if (ret.optional) return_type = ret.value ? ret.value : c_safe_type_lower(type_no_optional(expr->type));
 	bool has_return   = (return_type->type_kind != TYPE_VOID && !call->no_return);
 	if (fn_rtype && fn_rtype->type_kind == TYPE_VOID)
 	{
@@ -541,30 +438,21 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 		if (dyn_fn)
 		{
 			const char *disp_name = c_intern(str_printf("__c3_dyn_%s", c_get_decl_name(dyn_fn)));
-			c_emit_call_invocation(c, value, return_type, has_return, call->has_optional_arg, disp_name);
+			bool leading_arg = false;
+			int fault        = c_emit_call_invocation(c, value, ret, return_type, has_return, disp_name, &leading_arg);
 			for (int i = 0; i < arg_idx; i++)
 			{
-				if (i != 0)
+				if (i != 0 || leading_arg)
 				{
 					PRINT(", ");
 				}
 				PRINTF("___var_%d", c_args[i].var);
 			}
-			if (call->has_optional_arg)
-			{
-				PRINT(");\n}\n");
-			}
-			else
-			{
-				PRINT(");\n");
-			}
-			if (call->no_return && !call->has_optional_arg)
+			PRINT(");\n");
+			c_emit_call_fault_check(c, fault);
+			if (call->no_return)
 			{
 				c->current_block_live = false;
-			}
-			if (value && expr->type && type_is_optional(expr->type))
-			{
-				value->optional = c_emit_capture_current_fault(c);
 			}
 			free(c_args);
 			return;
@@ -585,9 +473,12 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 			func_val = (CValue){.var = 0, .type = type_voidptr, .kind = CV_VALUE};
 		}
 
-		if (safe_mode_enabled())
+		if (safe_mode_enabled() && call->function)
 		{
-			PRINTF("if (___var_%d == NULL) { __c3_abort(); }\n", func_val.var);
+			scratch_buffer_clear();
+			loc_to_scratch(exprptr(call->function)->loc);
+			const char *name = scratch_buffer_copy();
+			c_emit_panic_if(c, str_printf("___var_%d == NULL", func_val.var), PANIC_FN_NULL_FUNCTION, exprptr(call->function)->loc, name, NULL, NULL);
 		}
 
 		if (func_val.var == 0)
@@ -614,75 +505,40 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 		}
 		else
 		{
-			char fn_cast_buf[512];
-			snprintf(fn_cast_buf, sizeof(fn_cast_buf), "%s (*)(", c_type_name(c, return_type));
-			if (sig && sig->params && vec_size(sig->params) > 0)
-			{
-				int p_emitted = 0;
-				FOREACH(Decl *, p, sig->params)
-				{
-					Type *ptype = c_decl_type(p);
-					if (ptype && is_valid_type_ptr(ptype) && c_type_is_resolved(ptype) && type_size(ptype) == 0)
-					{
-						continue;
-					}
-					if (p_emitted++ > 0)
-					{
-						strncat(fn_cast_buf, ", ", sizeof(fn_cast_buf) - strlen(fn_cast_buf) - 1);
-					}
-					strncat(fn_cast_buf, c_type_name(c, ptype), sizeof(fn_cast_buf) - strlen(fn_cast_buf) - 1);
-				}
-				if (sig->variadic == VARIADIC_RAW)
-				{
-					if (p_emitted > 0)
-					{
-						strncat(fn_cast_buf, ", ", sizeof(fn_cast_buf) - strlen(fn_cast_buf) - 1);
-					}
-					strncat(fn_cast_buf, "...", sizeof(fn_cast_buf) - strlen(fn_cast_buf) - 1);
-				}
-				if (p_emitted == 0)
-				{
-					strncat(fn_cast_buf, "void", sizeof(fn_cast_buf) - strlen(fn_cast_buf) - 1);
-				}
-			}
-			else if (arg_idx > 0)
-			{
-				for (int i = 0; i < arg_idx; i++)
-				{
-					if (i > 0)
-					{
-						strncat(fn_cast_buf, ", ", sizeof(fn_cast_buf) - strlen(fn_cast_buf) - 1);
-					}
-					Type *at = (c_args[i].type && is_valid_type_ptr(c_args[i].type)) ? c_safe_type_lower(c_args[i].type) : type_voidptr;
-					strncat(fn_cast_buf, c_type_name(c, at), sizeof(fn_cast_buf) - strlen(fn_cast_buf) - 1);
-				}
-			}
-			else
-			{
-				strncat(fn_cast_buf, "void", sizeof(fn_cast_buf) - strlen(fn_cast_buf) - 1);
-			}
-			strncat(fn_cast_buf, ")", sizeof(fn_cast_buf) - strlen(fn_cast_buf) - 1);
-			callee_str = str_printf("((%s)___var_%d)", fn_cast_buf, func_val.var);
+			const char *fn_cast = c_signature_str(c, sig, "(*)", (CSigOpts){0});
+			callee_str = str_printf("((%s)___var_%d)", fn_cast, func_val.var);
 		}
 	}
 	else
 	{
 		c_emit_function_decl(c, function_decl, false);
 		callee_str = c_get_decl_name(function_decl);
+		// Extern declarations of one C symbol may disagree between modules, while C allows a single prototype
+		// (the first one emitted). A call through a declaration with another signature casts to that signature,
+		// as LLVM calls each declaration's own function type.
+		if (function_decl->is_extern && sig)
+		{
+			const char *prototype = htable_get(c->decl_names, (void *)callee_str);
+			if (strcmp(prototype, c_signature_str(c, sig, callee_str, (CSigOpts){ .is_main = c_fn_is_main(function_decl) })) != 0)
+			{
+				callee_str = str_printf("((%s)%s)", c_signature_str(c, sig, "(*)", (CSigOpts){0}), callee_str);
+			}
+		}
 	}
 
-	c_emit_call_invocation(c, value, return_type, has_return, call->has_optional_arg, callee_str);
-
-	int emitted_call_args = 0;
+	bool leading_arg      = false;
+	int fault             = c_emit_call_invocation(c, value, ret, return_type, has_return, callee_str, &leading_arg);
+	int emitted_call_args = leading_arg ? 1 : 0;
 	for (int i = 0; i < arg_idx; i++)
 	{
+		// NULL for C variadic arguments past the declared parameters.
 		Type *expected_type = NULL;
-		if (sig && i < vec_size(sig->params) && sig->params[i])
+		if (i < vec_size(sig->params) && sig->params[i])
 		{
 			expected_type = c_decl_type(sig->params[i]);
 		}
 
-		if (expected_type && is_valid_type_ptr(expected_type) && c_type_is_resolved(expected_type) && type_size(expected_type) == 0)
+		if (expected_type && type_size(expected_type) == 0)
 		{
 			continue;
 		}
@@ -693,7 +549,7 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 		}
 		emitted_call_args++;
 
-		Type *arg_type = (c_args[i].type && is_valid_type_ptr(c_args[i].type)) ? c_safe_type_lower(c_args[i].type) : NULL;
+		Type *arg_type = c_safe_type_lower(c_args[i].type);
 
 		if (c_args[i].var == 0)
 		{
@@ -708,140 +564,15 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 			continue;
 		}
 
-		const char *arg_tname = arg_type ? c_type_name(c, arg_type) : "void*";
-		const char *exp_tname = expected_type ? c_type_name(c, expected_type) : "void*";
-		bool exp_is_any       = (strcmp(exp_tname, "__c3_any__") == 0);
-		bool arg_is_any       = (strcmp(arg_tname, "__c3_any__") == 0);
-		bool exp_is_ptr       = expected_type ? (type_is_pointer(expected_type) || exp_tname[strlen(exp_tname) - 1] == '*') : false;
-
-		if (exp_is_any)
-		{
-			if (arg_is_any)
-			{
-				PRINTF("___var_%d", c_args[i].var);
-			}
-			else if (arg_type && type_is_pointer(arg_type))
-			{
-				Type *ptype = arg_type->pointer ? arg_type->pointer : type_void;
-				PRINTF("(__c3_any__){ .ptr = (void*)___var_%d, .typeid = (c3typeid_t)&%s }", c_args[i].var, c_typeid_name(ptype));
-			}
-			else if (c_args[i].kind == CV_ADDRESS)
-			{
-				PRINTF("(__c3_any__){ .ptr = (void*)___var_%d, .typeid = (c3typeid_t)&%s }", c_args[i].var, c_typeid_name(arg_type));
-			}
-			else if (arg_type)
-			{
-				PRINTF("(__c3_any__){ .ptr = (void*)&___var_%d, .typeid = (c3typeid_t)&%s }", c_args[i].var, c_typeid_name(arg_type));
-			}
-			else
-			{
-				PRINTF("(__c3_any__){ .ptr = (void*)&___var_%d, .typeid = NULL }", c_args[i].var);
-			}
-		}
-		else if (arg_is_any)
-		{
-			if (exp_is_ptr)
-			{
-				PRINTF("(%s)___var_%d.ptr", exp_tname, c_args[i].var);
-			}
-			else if (expected_type && type_is_integer(expected_type))
-			{
-				PRINTF("(%s)(uintptr_t)___var_%d.ptr", exp_tname, c_args[i].var);
-			}
-			else
-			{
-				PRINTF("(void*)___var_%d.ptr", c_args[i].var);
-			}
-		}
-		else if (exp_is_ptr)
-		{
-			if (arg_type && arg_type->type_kind == TYPE_SLICE)
-			{
-				PRINTF("(%s)___var_%d.ptr", exp_tname, c_args[i].var);
-			}
-			else if (arg_type && type_is_pointer(arg_type))
-			{
-				if (strcmp(exp_tname, arg_tname) == 0)
-				{
-					PRINTF("___var_%d", c_args[i].var);
-				}
-				else
-				{
-					PRINTF("(void*)___var_%d", c_args[i].var);
-				}
-			}
-			else if (arg_type && c_type_is_aggregate(arg_type))
-			{
-				PRINTF("(%s)&___var_%d", exp_tname, c_args[i].var);
-			}
-			else if (arg_type && type_is_integer(arg_type))
-			{
-				PRINTF("(%s)(uintptr_t)___var_%d", exp_tname, c_args[i].var);
-			}
-			else
-			{
-				PRINTF("(%s)___var_%d", exp_tname, c_args[i].var);
-			}
-		}
-		else if (expected_type && type_is_integer(expected_type))
-		{
-			if (arg_type && type_is_pointer(arg_type))
-			{
-				PRINTF("(%s)(uintptr_t)___var_%d", exp_tname, c_args[i].var);
-			}
-			else if (arg_type && strcmp(exp_tname, arg_tname) != 0)
-			{
-				PRINTF("(%s)___var_%d", exp_tname, c_args[i].var);
-			}
-			else
-			{
-				PRINTF("___var_%d", c_args[i].var);
-			}
-		}
-		else if (expected_type && expected_type->type_kind == TYPE_SLICE && arg_type && (arg_type->type_kind == TYPE_ARRAY || arg_type->type_kind == TYPE_VECTOR || arg_type->type_kind == TYPE_SIMD_VECTOR))
-		{
-			PRINTF("(%s){ .ptr = (void*)(___var_%d%sptr), .len = %llu }",
-			       exp_tname, c_args[i].var, c_arrow(&c_args[i]), (unsigned long long)arg_type->array.len);
-		}
-		else if (expected_type && expected_type->type_kind == TYPE_SLICE && arg_type && arg_type->type_kind == TYPE_POINTER && arg_type->pointer && (arg_type->pointer->type_kind == TYPE_ARRAY || arg_type->pointer->type_kind == TYPE_VECTOR || arg_type->pointer->type_kind == TYPE_SIMD_VECTOR))
-		{
-			PRINTF("(%s){ .ptr = (void*)(___var_%d), .len = %llu }",
-			       exp_tname, c_args[i].var, (unsigned long long)arg_type->pointer->array.len);
-		}
-		else if (exp_is_ptr && arg_type && (arg_type->type_kind == TYPE_ARRAY || arg_type->type_kind == TYPE_VECTOR || arg_type->type_kind == TYPE_SIMD_VECTOR))
-		{
-			PRINTF("(%s)(___var_%d%sptr)", exp_tname, c_args[i].var, c_arrow(&c_args[i]));
-		}
-		else if (expected_type && c_type_is_aggregate(expected_type) && arg_type && c_type_is_aggregate(arg_type) && strcmp(exp_tname, arg_tname) != 0)
-		{
-			PRINTF("*(%s*)&___var_%d", exp_tname, c_args[i].var);
-		}
-		else if (expected_type && strcmp(exp_tname, arg_tname) != 0 && !c_type_is_aggregate(expected_type) && (!arg_type || !c_type_is_aggregate(arg_type)))
-		{
-			PRINTF("(%s)___var_%d", exp_tname, c_args[i].var);
-		}
-		else
-		{
-			PRINTF("___var_%d", c_args[i].var);
-		}
+		// Sema converts every argument to its parameter type. Without a signature the argument's type is used.
+		ASSERT(!expected_type || strcmp(c_type_name(c, expected_type), c_type_name(c, arg_type)) == 0);
+		PRINTF("___var_%d", c_args[i].var);
 	}
-	if (call->has_optional_arg)
-	{
-		PRINT(");\n}\n");
-	}
-	else
-	{
-		PRINT(");\n");
-	}
-	if (call->no_return && !call->has_optional_arg)
+	PRINT(");\n");
+	c_emit_call_fault_check(c, fault);
+	if (call->no_return)
 	{
 		c->current_block_live = false;
-	}
-	if (value && expr->type && type_is_optional(expr->type))
-	{
-		int fault_temp = c_emit_temp_var(c, NULL, type_fault);
-		PRINTF("c3fault_t ___var_%d = __c3_current_fault;\n", fault_temp);
-		value->optional = fault_temp;
 	}
 	free(c_args);
 }
@@ -869,6 +600,319 @@ static void c_emit_slice_elem_eq_loop(GenContext *c, int result_var, int left_va
 	}
 }
 
+// Load the current value of `left` ahead of a read-modify-write, evaluating its address once.
+// `addr` is left empty for plain variables, otherwise it is the address to pass to c_emit_lvalue_assign.
+static void c_emit_lvalue_load_for_update(GenContext *c, Expr *left, Type *target_t, CValue *addr, CValue *current)
+{
+	if (left->expr_kind == EXPR_IDENTIFIER || left->expr_kind == EXPR_DECL)
+	{
+		c_emit_expr(c, current, left);
+		c_value_rvalue(c, current);
+		return;
+	}
+	bool is_swizzle = left->expr_kind == EXPR_SWIZZLE;
+	Expr *target    = is_swizzle ? exprptr(left->swizzle_expr.parent) : left;
+	while (target->expr_kind == EXPR_RECAST || target->expr_kind == EXPR_ADDR_CONVERSION || target->expr_kind == EXPR_RVALUE)
+	{
+		target = target->inner_expr;
+	}
+	Type *parent_t = c_expr_type(target);
+	c_emit_lvalue_addr(c, target, addr, type_get_ptr(parent_t));
+	const char *target_tname = c_type_name(c, target_t);
+	int cur_temp             = c_emit_temp_var(c, current, target_t);
+	if (!is_swizzle)
+	{
+		PRINTF("%s ___var_%d = *(%s*)___var_%d;\n", target_tname, cur_temp, target_tname, addr->var);
+		return;
+	}
+	const char *parent_tname = c_type_name(c, parent_t);
+	const char *sw           = left->swizzle_expr.swizzle;
+	PRINTF("%s ___var_%d;\n", target_tname, cur_temp);
+	if (!c_type_is_vec_or_arr(target_t))
+	{
+		PRINTF("___var_%d = ((%s*)___var_%d)->ptr[%d];\n", cur_temp, parent_tname, addr->var, SWIZZLE_INDEX(sw[0]));
+		return;
+	}
+	for (int i = 0; sw[i]; i++)
+	{
+		PRINTF("___var_%d.ptr[%d] = ((%s*)___var_%d)->ptr[%d];\n", cur_temp, i, parent_tname, addr->var, SWIZZLE_INDEX(sw[i]));
+	}
+}
+
+// Panic if an integer divisor, or any lane of it, is zero.
+static void c_emit_zero_check(GenContext *c, CValue *divisor, Type *divisor_t, PanicFunction id, SourceLocId loc)
+{
+	if (!c_type_is_vec_or_arr(divisor_t))
+	{
+		c_emit_panic_if(c, str_printf("___var_%d == 0", divisor->var), id, loc, NULL, NULL, NULL);
+		return;
+	}
+	scratch_buffer_clear();
+	for (ArrayIndex k = 0; k < divisor_t->array.len; k++)
+	{
+		scratch_buffer_printf("%s___var_%d.ptr[%u] == 0", k ? " || " : "", divisor->var, (unsigned)k);
+	}
+	c_emit_panic_if(c, scratch_buffer_copy(), id, loc, NULL, NULL, NULL);
+}
+
+// Panic on a shift amount that is negative or not less than the bit width, reporting the amount like the LLVM backend:
+// converted to the width of the shifted value, with the signedness of the amount.
+static void c_emit_shift_check(GenContext *c, Type *shifted_t, CValue *amount, Type *amount_t, SourceLocId loc)
+{
+	bool is_vec          = c_type_is_vec_or_arr(shifted_t);
+	Type *base_t         = is_vec ? type_flatten(shifted_t->array.base) : shifted_t;
+	BitSize bits         = type_size(base_t) * 8;
+	bool amount_is_vec   = c_type_is_vec_or_arr(amount_t);
+	bool amount_signed   = type_is_signed(amount_is_vec ? type_flatten(amount_t->array.base) : amount_t);
+	Type *report_t       = amount_signed ? type_int_signed_by_bitsize(bits) : type_int_unsigned_by_bitsize(bits);
+	Type *compare_t      = type_is_unsigned(base_t) ? type_int_unsigned_by_bitsize(bits) : type_int_signed_by_bitsize(bits);
+	const char *cmp_name = c_type_name(c, compare_t);
+	const char *rep_name = c_type_name(c, report_t);
+	const char *min_expr;
+	const char *max_expr;
+	if (amount_is_vec)
+	{
+		// Reduce the lanes to their min and max in the compared type.
+		int min_var = c_emit_temp_var(c, NULL, compare_t);
+		int max_var = c_emit_temp_var(c, NULL, compare_t);
+		PRINTF("%s ___var_%d = (%s)(%s)___var_%d.ptr[0];\n", cmp_name, min_var, cmp_name, rep_name, amount->var);
+		PRINTF("%s ___var_%d = ___var_%d;\n", cmp_name, max_var, min_var);
+		for (ArrayIndex k = 1; k < amount_t->array.len; k++)
+		{
+			const char *lane = str_printf("(%s)(%s)___var_%d.ptr[%u]", cmp_name, rep_name, amount->var, (unsigned)k);
+			PRINTF("if (%s < ___var_%d) ___var_%d = %s;\n", lane, min_var, min_var, lane);
+			PRINTF("if (%s > ___var_%d) ___var_%d = %s;\n", lane, max_var, max_var, lane);
+		}
+		min_expr = str_printf("___var_%d", min_var);
+		max_expr = str_printf("___var_%d", max_var);
+	}
+	else
+	{
+		min_expr = max_expr = str_printf("(%s)(%s)___var_%d", cmp_name, rep_name, amount->var);
+	}
+	if (!type_is_unsigned(base_t))
+	{
+		CPanicValue min_value = { str_printf("(%s)%s", rep_name, min_expr), report_t };
+		c_emit_panic_if(c, str_printf("%s < 0", min_expr), PANIC_FN_SHIFT, loc, NULL, &min_value, NULL);
+	}
+	CPanicValue max_value = { str_printf("(%s)%s", rep_name, max_expr), report_t };
+	c_emit_panic_if(c, str_printf("%s >= %u", max_expr, (unsigned)bits), PANIC_FN_SHIFT, loc, NULL, &max_value, NULL);
+}
+
+// Emit `left op right` for already evaluated operands. Shared by binary and compound assign.
+static void c_emit_binary_op(GenContext *c, CValue *value, BinaryOp op, Type *expr_type, CValue left_value, CValue right_value, SourceLocId loc)
+{
+	bool is_comp = (op == BINARYOP_EQ || op == BINARYOP_NE || op == BINARYOP_LT || op == BINARYOP_LE || op == BINARYOP_GT || op == BINARYOP_GE ||
+	                op == BINARYOP_VEC_EQ || op == BINARYOP_VEC_NE || op == BINARYOP_VEC_LT || op == BINARYOP_VEC_LE || op == BINARYOP_VEC_GT || op == BINARYOP_VEC_GE);
+
+	c_emit_type_forward_decl(c, expr_type);
+	const char *type_string = c_type_name(c, expr_type);
+
+	value->var  = c_create_variable(c);
+	value->type = expr_type;
+	value->kind = CV_VALUE;
+
+	c_ensure_cvalue_var(c, &left_value, expr_type);
+	c_ensure_cvalue_var(c, &right_value, expr_type);
+
+	Type *left_t  = c_safe_type_lower(left_value.type);
+	Type *right_t = c_safe_type_lower(right_value.type);
+
+	if (safe_mode_enabled() && right_t)
+	{
+		if (op == BINARYOP_SHR || op == BINARYOP_SHL) c_emit_shift_check(c, expr_type, &right_value, right_t, loc);
+		bool is_int = type_is_integer(c_type_is_vec_or_arr(expr_type) ? type_flatten(expr_type->array.base) : expr_type);
+		if (is_int && (op == BINARYOP_DIV || op == BINARYOP_MOD))
+		{
+			c_emit_zero_check(c, &right_value, right_t, op == BINARYOP_DIV ? PANIC_FN_DIV_ZERO : PANIC_FN_REM_ZERO, loc);
+		}
+	}
+
+	if (!c_type_is_aggregate(expr_type) && (op == BINARYOP_SHR || op == BINARYOP_SHL))
+	{
+		bool is_shl = (op == BINARYOP_SHL);
+		if (left_t && type_is_unsigned(left_t))
+		{
+			PRINTF("%s ___var_%d = ((size_t)___var_%d >= sizeof(%s)*8) ? 0 : (___var_%d %s ___var_%d);\n",
+			       type_string, value->var, right_value.var, type_string, left_value.var, is_shl ? "<<" : ">>", right_value.var);
+			return;
+		}
+		else
+		{
+			PRINTF("%s ___var_%d = ___var_%d %s ___var_%d;\n",
+			       type_string, value->var, left_value.var, is_shl ? "<<" : ">>", right_value.var);
+			return;
+		}
+	}
+
+	if (compiler.build.feature.trap_on_wrap && left_t && right_t && type_is_integer(left_t) && type_is_integer(right_t) &&
+	    !c_type_is_aggregate(expr_type) && (op == BINARYOP_ADD || op == BINARYOP_SUB || op == BINARYOP_MULT))
+	{
+		const char *bname = (op == BINARYOP_ADD) ? "__builtin_add_overflow" : (op == BINARYOP_SUB ? "__builtin_sub_overflow" : "__builtin_mul_overflow");
+		PRINTF("%s ___var_%d;\n", type_string, value->var);
+		PanicFunction panic_fn = (op == BINARYOP_ADD) ? PANIC_FN_ADD_OVERFLOW : (op == BINARYOP_SUB ? PANIC_FN_SUB_OVERFLOW : PANIC_FN_MUL_OVERFLOW);
+		c_emit_panic_if(c, str_printf("%s(___var_%d, ___var_%d, &___var_%d)", bname, left_value.var, right_value.var, value->var), panic_fn, loc, NULL, NULL, NULL);
+		return;
+	}
+	if (op == BINARYOP_MOD && type_is_float(expr_type))
+	{
+		PRINTF("%s ___var_%d = __c3_fmod(___var_%d, ___var_%d);\n", type_string, value->var, left_value.var, right_value.var);
+		return;
+	}
+
+	const char *operator_string = c_binary_op_str(op);
+	bool left_is_ptr            = c_type_is_c_pointer(left_t);
+	bool right_is_ptr           = c_type_is_c_pointer(right_t);
+
+	if (left_t && right_t)
+	{
+		if (left_is_ptr && right_is_ptr && op == BINARYOP_SUB)
+		{
+			Type *base_t = (left_t->pointer && left_t->pointer->type_kind != TYPE_VOID) ? left_t->pointer : right_t->pointer;
+			if (!base_t || base_t->type_kind == TYPE_VOID)
+			{
+				PRINTF("%s ___var_%d = ((char*)___var_%d) - ((char*)___var_%d);\n",
+				       type_string, value->var, left_value.var, right_value.var);
+			}
+			else
+			{
+				const char *btn = c_type_name(c, base_t);
+				PRINTF("%s ___var_%d = ((%s*)___var_%d) - ((%s*)___var_%d);\n",
+				       type_string, value->var, btn, left_value.var, btn, right_value.var);
+			}
+			return;
+		}
+		if (left_is_ptr && type_is_integer(right_t) && (op == BINARYOP_ADD || op == BINARYOP_SUB))
+		{
+			if (left_t->pointer && left_t->pointer->type_kind == TYPE_VOID)
+			{
+				PRINTF("%s ___var_%d = (void*)(((char*)___var_%d) %s ___var_%d);\n",
+				       type_string, value->var, left_value.var, operator_string, right_value.var);
+				return;
+			}
+		}
+	}
+
+	if (is_comp)
+	{
+		// Sema converts both operands of a comparison to one type (llvm_emit_comp dispatches on the left type alone).
+		ASSERT(strcmp(c_type_name(c, left_t), c_type_name(c, right_t)) == 0);
+		if (left_t->type_kind == TYPE_SLICE)
+		{
+			Type *elem_t       = left_t->array.base ? type_flatten(left_t->array.base) : NULL;
+			bool elem_is_slice = elem_t && elem_t->type_kind == TYPE_SLICE;
+			bool elem_is_float = elem_t && type_is_float(elem_t);
+			bool is_eq         = (op == BINARYOP_EQ || op == BINARYOP_VEC_EQ);
+			if (elem_is_slice || elem_is_float)
+			{
+				c_emit_slice_elem_eq_loop(c, value->var, left_value.var, right_value.var,
+				                          str_printf("___var_%d.len", right_value.var), elem_is_slice, is_eq);
+				return;
+			}
+			PRINTF("bool ___var_%d = %s(___var_%d, ___var_%d);\n",
+			       value->var, is_eq ? "__C3_SLICE_EQ" : "__C3_SLICE_NE", left_value.var, right_value.var);
+			return;
+		}
+		if (left_is_ptr && right_is_ptr)
+		{
+			PRINTF("bool ___var_%d = ((uintptr_t)___var_%d %s (uintptr_t)___var_%d);\n",
+			       value->var, left_value.var, operator_string, right_value.var);
+			return;
+		}
+		if (c_type_is_aggregate(left_t) || c_type_is_aggregate(right_t))
+		{
+			if (expr_type->type_kind == TYPE_BOOL)
+			{
+				Type *base_t = (left_t && c_type_is_vec_or_arr(left_t)) ? left_t->array.base : NULL;
+				if (base_t)
+				{
+					base_t = type_flatten(base_t);
+				}
+				if (base_t && (type_is_float(base_t) || base_t->type_kind == TYPE_SLICE))
+				{
+					int len              = c_type_aggregate_len(left_t);
+					bool is_eq           = (op == BINARYOP_EQ || op == BINARYOP_VEC_EQ);
+					bool elem_is_slice   = (base_t->type_kind == TYPE_SLICE);
+					const char *logic_op = is_eq ? "&&" : "||";
+					const char *cmp_op   = is_eq ? "==" : "!=";
+					if (len == 0)
+					{
+						PRINTF("bool ___var_%d = %s;\n", value->var, is_eq ? "true" : "false");
+						return;
+					}
+					PRINTF("bool ___var_%d = (", value->var);
+					for (int k = 0; k < len; k++)
+					{
+						if (k > 0)
+						{
+							PRINTF(" %s ", logic_op);
+						}
+						if (elem_is_slice)
+						{
+							PRINTF("%s(___var_%d.ptr[%d], ___var_%d.ptr[%d])",
+							       is_eq ? "__C3_SLICE_EQ" : "__C3_SLICE_NE",
+							       left_value.var, k, right_value.var, k);
+						}
+						else
+						{
+							PRINTF("(___var_%d.ptr[%d] %s ___var_%d.ptr[%d])",
+							       left_value.var, k, cmp_op, right_value.var, k);
+						}
+					}
+					PRINT(");\n");
+					return;
+				}
+				PRINTF("bool ___var_%d = (__c3_memcmp(&___var_%d, &___var_%d, sizeof(%s)) %s 0);\n",
+				       value->var, left_value.var, right_value.var, c_type_name(c, left_t),
+				       (op == BINARYOP_EQ || op == BINARYOP_VEC_EQ) ? "==" : "!=");
+				return;
+			}
+			CValue operands[2] = { left_value, right_value };
+			c_emit_lanewise(c, value->var, expr_type, str_printf("($0 %s $1) ? -1 : 0", operator_string), operands, 2);
+			return;
+		}
+	}
+
+	if (c_type_is_vec_or_arr(expr_type))
+	{
+		// C has no `%` on floating point, lanes go through fmod.
+		bool is_fmod        = op == BINARYOP_MOD && type_is_float(type_flatten(expr_type->array.base));
+		CValue operands[2]  = { left_value, right_value };
+		c_emit_lanewise(c, value->var, expr_type, is_fmod ? "__c3_fmod($0, $1)" : str_printf("$0 %s $1", operator_string), operands, 2);
+		return;
+	}
+
+	PRINTF("%s ___var_%d = ___var_%d %s ___var_%d;\n", type_string, value->var, left_value.var, operator_string, right_value.var);
+}
+
+// The fault slot written by assigning to `left`: only an optional variable has one.
+static const char *c_assign_target_fault_ref(GenContext *c, Expr *left)
+{
+	while (left->expr_kind == EXPR_RECAST || left->expr_kind == EXPR_ADDR_CONVERSION || left->expr_kind == EXPR_RVALUE)
+	{
+		left = left->inner_expr;
+	}
+	Decl *decl;
+	switch (left->expr_kind)
+	{
+		case EXPR_IDENTIFIER:
+			decl = left->ident_expr;
+			break;
+		case EXPR_DECL:
+			decl = left->decl_expr;
+			break;
+		default:
+			return NULL;
+	}
+	if (!decl) return NULL;
+	Decl *unwrapped = c_decl_unwrap(decl);
+	if (unwrapped && unwrapped->decl_kind == DECL_VAR && unwrapped->var.kind == VARDECL_PARAM_EXPR && unwrapped->var.init_expr)
+	{
+		return c_assign_target_fault_ref(c, unwrapped->var.init_expr);
+	}
+	return c_decl_fault_ref(c, decl);
+}
+
 static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 {
 	ExprBinary *binary = &expr->binary_expr;
@@ -880,99 +924,82 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 		Expr *right     = exprptr(binary->right);
 		CValue addr_val = {0};
 
-		if (op > BINARYOP_ASSIGN)
+		// `a += e` with optional `e` must store the fault into `a`: emit as `a = a + e`.
+		if (op > BINARYOP_ASSIGN && left->expr_kind == EXPR_IDENTIFIER && (IS_OPTIONAL(right) || IS_OPTIONAL(left)))
 		{
-			Expr *target = (left->expr_kind == EXPR_SWIZZLE) ? exprptr(left->swizzle_expr.parent) : left;
-			while (target && (target->expr_kind == EXPR_RECAST || target->expr_kind == EXPR_ADDR_CONVERSION || target->expr_kind == EXPR_RVALUE))
-			{
-				target = target->inner_expr;
-			}
-			if (target->expr_kind != EXPR_IDENTIFIER && target->expr_kind != EXPR_DECL)
-			{
-				c_emit_lvalue_addr(c, target, &addr_val, type_get_ptr(c_expr_type(target)));
-				c_emit_null_deref_check(c, target, addr_val.var);
-			}
-		}
-
-		CValue right_val = {0};
-		c_emit_expr(c, &right_val, right);
-		c_value_rvalue(c, &right_val);
-
-		Type *target_t           = c_expr_type(left);
-		const char *target_tname = c_type_name(c, target_t);
-
-		if (!c_type_is_aggregate(target_t) && (op == BINARYOP_SHL_ASSIGN || op == BINARYOP_SHR_ASSIGN))
-		{
-			BitSize bit_limit = type_bit_size(target_t);
-			if (safe_mode_enabled())
-			{
-				if (type_is_signed(right_val.type))
-				{
-					PRINTF("if (___var_%d < 0 || (size_t)___var_%d >= %lluULL) { __c3_abort(); }\n",
-					       right_val.var, right_val.var, (unsigned long long)bit_limit);
-				}
-				else
-				{
-					PRINTF("if ((size_t)___var_%d >= %lluULL) { __c3_abort(); }\n",
-					       right_val.var, (unsigned long long)bit_limit);
-				}
-			}
-		}
-		else if (compiler.build.feature.trap_on_wrap && type_is_integer(target_t) && !c_type_is_aggregate(target_t) &&
-		         (op == BINARYOP_ADD_ASSIGN || op == BINARYOP_SUB_ASSIGN || op == BINARYOP_MULT_ASSIGN))
-		{
-			CValue current_left = {0};
-			bool is_ident       = (left->expr_kind == EXPR_IDENTIFIER || left->expr_kind == EXPR_DECL);
-			if (is_ident)
-			{
-				c_emit_lvalue_read(c, left, &current_left, target_t);
-			}
-			else
-			{
-				if (!addr_val.var)
-				{
-					c_emit_lvalue_addr(c, left, &addr_val, type_get_ptr(target_t));
-					c_emit_null_deref_check(c, left, addr_val.var);
-				}
-				int cur_temp = c_emit_temp_var(c, &current_left, target_t);
-				PRINTF("%s ___var_%d = *(%s*)___var_%d;\n", target_tname, cur_temp, target_tname, addr_val.var);
-			}
-			int res_temp      = c_emit_temp_var(c, NULL, target_t);
-			PRINTF("%s ___var_%d;\n", target_tname, res_temp);
-			const char *bname = (op == BINARYOP_ADD_ASSIGN) ? "__builtin_add_overflow" : (op == BINARYOP_SUB_ASSIGN) ? "__builtin_sub_overflow"
-			                                                                                                         : "__builtin_mul_overflow";
-			PRINTF("if (%s(___var_%d, ___var_%d, &___var_%d)) { __c3_abort(); }\n",
-			       bname, current_left.var, right_val.var, res_temp);
-			CValue res_val = {.var = res_temp, .type = target_t, .kind = CV_VALUE};
-			c_emit_lvalue_assign(c, left, addr_val.var ? &addr_val : NULL, &res_val, "=", NULL);
-			if (value) *value = res_val;
+			Expr *op_expr = expr_new(EXPR_BINARY, expr->loc);
+			*op_expr = *expr;
+			op_expr->binary_expr.operator = binaryop_assign_base_op(op);
+			Expr assign = *expr;
+			assign.binary_expr.operator = BINARYOP_ASSIGN;
+			assign.binary_expr.right = exprid(op_expr);
+			c_emit_binary_expr(c, value, &assign);
 			return;
 		}
 
-		const char *assign_op = c_assign_op_str(op);
-		c_emit_lvalue_assign(c, left, addr_val.var ? &addr_val : NULL, &right_val, assign_op, value);
+		if (op > BINARYOP_ASSIGN)
+		{
+			// `a op= b` is: take the address once, load, emit the plain binary op, store.
+			Type *target_t = c_expr_type(left);
+			CValue current = {0};
+			c_emit_lvalue_load_for_update(c, left, target_t, &addr_val, &current);
+			CValue right_val = {0};
+			c_emit_expr(c, &right_val, right);
+			c_value_rvalue(c, &right_val);
+			CValue result = {0};
+			c_emit_binary_op(c, &result, binaryop_assign_base_op(op), target_t, current, right_val, expr->loc);
+			c_emit_lvalue_assign(c, left, addr_val.var ? &addr_val : NULL, &result, NULL);
+			if (value) *value = result;
+			return;
+		}
+
+		COptionalAssign assign;
+		c_optional_assign_begin(c, &assign, c_assign_target_fault_ref(c, left), right);
+		CValue right_val = {0};
+		c_emit_expr(c, &right_val, right);
+		c_value_rvalue(c, &right_val);
+		c_emit_lvalue_assign(c, left, NULL, &right_val, value);
+		c_optional_assign_end(c, &assign);
 		return;
 	}
 
 	if (op == BINARYOP_ELSE)
 	{
-		Type *res_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
-		if (res_type->type_kind == TYPE_VOID)
+		// The value type: a fault in the right operand still leaves through the catch target.
+		Type *res_type = c_safe_type_lower(type_no_optional(expr->type));
+		bool is_void   = res_type->type_kind == TYPE_VOID;
+		int temp       = 0;
+		if (is_void)
 		{
-			res_type = type_int;
+			c_value_set_void(value);
 		}
-		int temp        = c_emit_temp_var(c, value, res_type);
-		PRINTF("%s ___var_%d;\n", c_type_name(c, res_type), temp);
+		else
+		{
+			temp = c_emit_temp_var(c, value, res_type);
+			PRINTF("%s ___var_%d;\n", c_type_name(c, res_type), temp);
+		}
+		int else_label  = c_create_label(c);
+		int end_label   = c_create_label(c);
+		CCatch saved    = c->catch;
+		c->catch        = (CCatch){ else_label, NULL };
 		CValue left_val = {0};
 		c_emit_expr(c, &left_val, exprptr(binary->left));
 		c_value_rvalue(c, &left_val);
-		c_emit_assign_var(c, temp, res_type, &left_val);
-		PRINTF("if (__c3_current_fault != NULL) {\n\t__c3_current_fault = NULL;\n");
+		if (!is_void)
+		{
+			c_emit_assign_var(c, temp, res_type, &left_val);
+		}
+		c->catch = saved;
+		PRINTF("goto __C3_LABEL_%d;\n", end_label);
+		c_emit_label(c, else_label);
 		CValue right_val = {0};
 		c_emit_expr(c, &right_val, exprptr(binary->right));
 		c_value_rvalue(c, &right_val);
-		c_emit_assign_var(c, temp, res_type, &right_val);
-		PRINT("}\n");
+		if (!is_void)
+		{
+			c_emit_assign_var(c, temp, res_type, &right_val);
+		}
+		c_emit_label(c, end_label);
 		return;
 	}
 
@@ -1009,467 +1036,48 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 	bool is_comp = (op == BINARYOP_EQ || op == BINARYOP_NE || op == BINARYOP_LT || op == BINARYOP_LE || op == BINARYOP_GT || op == BINARYOP_GE ||
 	                op == BINARYOP_VEC_EQ || op == BINARYOP_VEC_NE || op == BINARYOP_VEC_LT || op == BINARYOP_VEC_LE || op == BINARYOP_VEC_GT || op == BINARYOP_VEC_GE);
 
-	Type *expr_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
+	Type *expr_type = c_safe_type_lower(expr->type);
 	if (expr_type->type_kind == TYPE_VOID)
 	{
-		expr_type = is_comp ? type_bool : (exprptr(binary->left)->type && is_valid_type_ptr(exprptr(binary->left)->type) ? c_safe_type_lower(exprptr(binary->left)->type) : type_int);
+		expr_type = is_comp ? type_bool : (c_safe_type_lower(exprptr(binary->left)->type));
 	}
-	c_emit_type_forward_decl(c, expr_type);
-	const char *type_string = c_type_name(c, expr_type);
-
-	value->var  = c_create_variable(c);
-	value->type = expr_type;
-	value->kind = CV_VALUE;
-
-	bool is_opt        = (expr->type && type_is_optional(expr->type));
-	int opt_skip_label = 0;
-	if (is_opt)
-	{
-		opt_skip_label = c_create_label(c);
-	}
-
 	CValue left_value = {0}, right_value = {0};
 	c_emit_expr(c, &left_value, exprptr(binary->left));
 	c_value_rvalue(c, &left_value);
-
-	if (is_opt)
-	{
-		PRINTF("if (__c3_current_fault != NULL) goto __C3_LABEL_%d;\n", opt_skip_label);
-	}
-
 	c_emit_expr(c, &right_value, exprptr(binary->right));
 	c_value_rvalue(c, &right_value);
 
-	if (is_opt)
-	{
-		PRINTF("if (__c3_current_fault != NULL) goto __C3_LABEL_%d;\n", opt_skip_label);
-	}
-
-	c_ensure_cvalue_var(c, &left_value, expr_type);
-	c_ensure_cvalue_var(c, &right_value, expr_type);
-
-	Type *left_t  = (left_value.type && is_valid_type_ptr(left_value.type)) ? c_safe_type_lower(left_value.type) : NULL;
-	Type *right_t = (right_value.type && is_valid_type_ptr(right_value.type)) ? c_safe_type_lower(right_value.type) : NULL;
-
-	if (!c_type_is_aggregate(expr_type) && (op == BINARYOP_SHR || op == BINARYOP_SHL))
-	{
-		bool is_shl = (op == BINARYOP_SHL);
-		BitSize bit_limit = type_bit_size(expr_type);
-		if (safe_mode_enabled())
-		{
-			if (right_t && type_is_signed(right_t))
-			{
-				PRINTF("if (___var_%d < 0 || (size_t)___var_%d >= %lluULL) { __c3_abort(); }\n",
-				       right_value.var, right_value.var, (unsigned long long)bit_limit);
-			}
-			else
-			{
-				PRINTF("if ((size_t)___var_%d >= %lluULL) { __c3_abort(); }\n",
-				       right_value.var, (unsigned long long)bit_limit);
-			}
-		}
-		if (left_t && type_is_unsigned(left_t))
-		{
-			PRINTF("%s ___var_%d = ((size_t)___var_%d >= sizeof(%s)*8) ? 0 : (___var_%d %s ___var_%d);\n",
-			       type_string, value->var, right_value.var, type_string, left_value.var, is_shl ? "<<" : ">>", right_value.var);
-			goto done;
-		}
-		else
-		{
-			PRINTF("%s ___var_%d = ___var_%d %s ___var_%d;\n",
-			       type_string, value->var, left_value.var, is_shl ? "<<" : ">>", right_value.var);
-			goto done;
-		}
-	}
-
-	if (compiler.build.feature.trap_on_wrap && left_t && right_t && type_is_integer(left_t) && type_is_integer(right_t) &&
-	    !c_type_is_aggregate(expr_type) && (op == BINARYOP_ADD || op == BINARYOP_SUB || op == BINARYOP_MULT))
-	{
-		const char *bname = (op == BINARYOP_ADD) ? "__builtin_add_overflow" : (op == BINARYOP_SUB ? "__builtin_sub_overflow" : "__builtin_mul_overflow");
-		PRINTF("%s ___var_%d;\n", type_string, value->var);
-		PRINTF("if (%s(___var_%d, ___var_%d, &___var_%d)) { __c3_abort(); }\n", bname, left_value.var, right_value.var, value->var);
-		goto done;
-	}
-	if (op == BINARYOP_MOD && type_is_float(expr_type))
-	{
-		PRINTF("%s ___var_%d = __c3_fmod(___var_%d, ___var_%d);\n", type_string, value->var, left_value.var, right_value.var);
-		goto done;
-	}
-
-	const char *operator_string = c_binary_op_str(op);
-	bool left_is_ptr            = c_type_is_c_pointer(left_t);
-	bool right_is_ptr           = c_type_is_c_pointer(right_t);
-
-	if (left_t && right_t)
-	{
-		if (left_is_ptr && right_is_ptr && op == BINARYOP_SUB)
-		{
-			Type *base_t = (left_t->pointer && left_t->pointer->type_kind != TYPE_VOID) ? left_t->pointer : right_t->pointer;
-			if (!base_t || base_t->type_kind == TYPE_VOID)
-			{
-				PRINTF("%s ___var_%d = ((char*)___var_%d) - ((char*)___var_%d);\n",
-				       type_string, value->var, left_value.var, right_value.var);
-			}
-			else
-			{
-				const char *btn = c_type_name(c, base_t);
-				PRINTF("%s ___var_%d = ((%s*)___var_%d) - ((%s*)___var_%d);\n",
-				       type_string, value->var, btn, left_value.var, btn, right_value.var);
-			}
-			goto done;
-		}
-		if (left_is_ptr && type_is_integer(right_t) && (op == BINARYOP_ADD || op == BINARYOP_SUB))
-		{
-			if (left_t->pointer && left_t->pointer->type_kind == TYPE_VOID)
-			{
-				PRINTF("%s ___var_%d = (void*)(((char*)___var_%d) %s ___var_%d);\n",
-				       type_string, value->var, left_value.var, operator_string, right_value.var);
-				goto done;
-			}
-		}
-	}
-
-	if (left_t && right_t && is_comp)
-	{
-		if (left_t->type_kind == TYPE_SLICE && right_t->type_kind == TYPE_SLICE)
-		{
-			Type *elem_t       = left_t->array.base ? type_flatten(left_t->array.base) : NULL;
-			bool elem_is_slice = elem_t && elem_t->type_kind == TYPE_SLICE;
-			bool elem_is_float = elem_t && type_is_float(elem_t);
-			bool is_eq         = (op == BINARYOP_EQ || op == BINARYOP_VEC_EQ);
-			if (elem_is_slice || elem_is_float)
-			{
-				c_emit_slice_elem_eq_loop(c, value->var, left_value.var, right_value.var,
-				                          str_printf("___var_%d.len", right_value.var), elem_is_slice, is_eq);
-				goto done;
-			}
-			PRINTF("bool ___var_%d = %s(___var_%d, ___var_%d);\n",
-			       value->var, is_eq ? "__C3_SLICE_EQ" : "__C3_SLICE_NE", left_value.var, right_value.var);
-			goto done;
-		}
-		if ((left_t->type_kind == TYPE_SLICE && right_t->type_kind == TYPE_ARRAY) ||
-		    (left_t->type_kind == TYPE_ARRAY && right_t->type_kind == TYPE_SLICE))
-		{
-			bool left_is_slice         = (left_t->type_kind == TYPE_SLICE);
-			int s_var                  = left_is_slice ? left_value.var : right_value.var;
-			int a_var                  = left_is_slice ? right_value.var : left_value.var;
-			Type *arr_t                = left_is_slice ? right_t : left_t;
-			unsigned long long arr_len = (unsigned long long)arr_t->array.len;
-			bool is_eq                 = (op == BINARYOP_EQ || op == BINARYOP_VEC_EQ);
-			Type *elem_t               = arr_t->array.base ? type_flatten(arr_t->array.base) : NULL;
-			if (elem_t && (type_is_float(elem_t) || elem_t->type_kind == TYPE_SLICE))
-			{
-				c_emit_slice_elem_eq_loop(c, value->var, s_var, a_var,
-				                          str_printf("%llu", arr_len), elem_t->type_kind == TYPE_SLICE, is_eq);
-				goto done;
-			}
-			const char *cmp_op   = is_eq ? "==" : "!=";
-			const char *logic_op = is_eq ? "&&" : "||";
-			PRINTF("bool ___var_%d = (___var_%d.len %s %llu %s (___var_%d.len == 0 || __c3_memcmp(___var_%d.ptr, ___var_%d.ptr, ___var_%d.len * sizeof(*___var_%d.ptr)) %s 0));\n",
-			       value->var, s_var, cmp_op, arr_len, logic_op, s_var, s_var, a_var, s_var, s_var, cmp_op);
-			goto done;
-		}
-		if ((c_type_is_any(left_t) || left_t->type_kind == TYPE_SLICE) && right_is_ptr)
-		{
-			PRINTF("bool ___var_%d = (___var_%d.ptr %s (void*)___var_%d);\n",
-			       value->var, left_value.var, (op == BINARYOP_EQ || op == BINARYOP_VEC_EQ) ? "==" : "!=", right_value.var);
-			goto done;
-		}
-		if (left_is_ptr && (c_type_is_any(right_t) || right_t->type_kind == TYPE_SLICE))
-		{
-			PRINTF("bool ___var_%d = ((void*)___var_%d %s ___var_%d.ptr);\n",
-			       value->var, left_value.var, (op == BINARYOP_EQ || op == BINARYOP_VEC_EQ) ? "==" : "!=", right_value.var);
-			goto done;
-		}
-		if (left_is_ptr && right_is_ptr)
-		{
-			PRINTF("bool ___var_%d = ((uintptr_t)___var_%d %s (uintptr_t)___var_%d);\n",
-			       value->var, left_value.var, operator_string, right_value.var);
-			goto done;
-		}
-		if ((left_is_ptr && type_is_integer(right_t)) || (type_is_integer(left_t) && right_is_ptr))
-		{
-			PRINTF("bool ___var_%d = ((uintptr_t)___var_%d %s (uintptr_t)___var_%d);\n", value->var, left_value.var, operator_string, right_value.var);
-			goto done;
-		}
-		if (c_type_is_aggregate(left_t) || c_type_is_aggregate(right_t))
-		{
-			if (expr_type->type_kind == TYPE_BOOL)
-			{
-				Type *base_t = (left_t && c_type_is_vec_or_arr(left_t)) ? left_t->array.base : NULL;
-				if (base_t)
-				{
-					base_t = type_flatten(base_t);
-				}
-				if (base_t && (type_is_float(base_t) || base_t->type_kind == TYPE_SLICE))
-				{
-					int len              = c_type_aggregate_len(left_t);
-					bool is_eq           = (op == BINARYOP_EQ || op == BINARYOP_VEC_EQ);
-					bool elem_is_slice   = (base_t->type_kind == TYPE_SLICE);
-					const char *logic_op = is_eq ? "&&" : "||";
-					const char *cmp_op   = is_eq ? "==" : "!=";
-					if (len == 0)
-					{
-						PRINTF("bool ___var_%d = %s;\n", value->var, is_eq ? "true" : "false");
-						goto done;
-					}
-					PRINTF("bool ___var_%d = (", value->var);
-					for (int k = 0; k < len; k++)
-					{
-						if (k > 0)
-						{
-							PRINTF(" %s ", logic_op);
-						}
-						if (elem_is_slice)
-						{
-							PRINTF("%s(___var_%d.ptr[%d], ___var_%d.ptr[%d])",
-							       is_eq ? "__C3_SLICE_EQ" : "__C3_SLICE_NE",
-							       left_value.var, k, right_value.var, k);
-						}
-						else
-						{
-							PRINTF("(___var_%d.ptr[%d] %s ___var_%d.ptr[%d])",
-							       left_value.var, k, cmp_op, right_value.var, k);
-						}
-					}
-					PRINT(");\n");
-					goto done;
-				}
-				PRINTF("bool ___var_%d = (__c3_memcmp(&___var_%d, &___var_%d, sizeof(%s)) %s 0);\n",
-				       value->var, left_value.var, right_value.var, c_type_name(c, left_t),
-				       (op == BINARYOP_EQ || op == BINARYOP_VEC_EQ) ? "==" : "!=");
-				goto done;
-			}
-			int len = c_type_aggregate_len(expr_type);
-			PRINTF("%s ___var_%d;\n", type_string, value->var);
-			for (int k = 0; k < len; k++)
-			{
-				PRINTF("___var_%d.ptr[%d] = (___var_%d.ptr[%d] %s ___var_%d.ptr[%d]) ? -1 : 0;\n",
-				       value->var, k, left_value.var, k, operator_string, right_value.var, k);
-			}
-			goto done;
-		}
-	}
-
-	if (c_type_is_vec_or_arr(expr_type))
-	{
-		int len = c_type_aggregate_len(expr_type);
-		PRINTF("%s ___var_%d;\n", type_string, value->var);
-		bool left_is_vec  = c_type_is_vec_or_arr(left_t);
-		bool right_is_vec = c_type_is_vec_or_arr(right_t);
-		for (int k = 0; k < len; k++)
-		{
-			PRINTF("___var_%d.ptr[%d] = ", value->var, k);
-			if (left_is_vec)
-			{
-				PRINTF("___var_%d.ptr[%d]", left_value.var, k);
-			}
-			else
-			{
-				PRINTF("___var_%d", left_value.var);
-			}
-			PRINTF(" %s ", operator_string);
-			if (right_is_vec)
-			{
-				PRINTF("___var_%d.ptr[%d];\n", right_value.var, k);
-			}
-			else
-			{
-				PRINTF("___var_%d;\n", right_value.var);
-			}
-		}
-		goto done;
-	}
-
-	PRINTF("%s ___var_%d = ___var_%d %s ___var_%d;\n", type_string, value->var, left_value.var, operator_string, right_value.var);
-done:
-	if (is_opt)
-	{
-		c_emit_label(c, opt_skip_label);
-	}
+	// A fault in an operand has already jumped to the catch target.
+	c_emit_binary_op(c, value, op, expr_type, left_value, right_value, expr->loc);
 }
 
+// Bitstruct fields are read and written through the accessors c_emit_bitstruct_accessors_to_file generates.
 static void c_emit_bitstruct_read_container(GenContext *c, CValue *value, Expr *parent_expr, Decl *bitstruct_decl, Decl *member, Type *member_type, int container_ptr_var, const char *c_tname)
 {
-	int temp          = c_emit_temp_var(c, value, member_type);
-	const char *mname = c_type_name(c, member_type);
-
-	int start_bit = 0, end_bit = 0;
-	c_get_bitstruct_member_bits(member, &start_bit, &end_bit);
-	int bit_size = end_bit - start_bit + 1;
-	if (bit_size <= 0)
-	{
-		bit_size = 1;
-	}
-	uint64_t mask  = (bit_size >= 64) ? ~0ULL : (((uint64_t)1 << bit_size) - 1);
-	bool is_signed = type_is_signed(member_type);
-
-	bool is_arr = false;
-	if (bitstruct_decl)
-	{
-		is_arr = c_is_bitstruct_array(bitstruct_decl->type, NULL);
-		if (!is_arr && bitstruct_decl->decl_kind == DECL_BITSTRUCT && bitstruct_decl->strukt.container_type && is_valid_type_ptr(bitstruct_decl->strukt.container_type->type))
-		{
-			Type *cft = type_flatten(bitstruct_decl->strukt.container_type->type);
-			if (cft && cft->type_kind == TYPE_ARRAY)
-			{
-				is_arr = true;
-			}
-		}
-	}
-	if (!is_arr && parent_expr && parent_expr->type)
-	{
-		is_arr = c_is_bitstruct_array(parent_expr->type, NULL);
-	}
-
-	bool reverse    = (bitstruct_decl && bitstruct_decl->decl_kind == DECL_BITSTRUCT) ? c_is_bitstruct_big_endian(bitstruct_decl) : false;
-	bool need_bswap = (bitstruct_decl && bitstruct_decl->decl_kind == DECL_BITSTRUCT) ? c_is_bitstruct_requires_byteswap(bitstruct_decl) : false;
-
-	const char *shift_type = (bit_size > 64) ? "__c3_uint128" : "uint64_t";
-
-	PRINTF("%s ___var_%d;\n", mname, temp);
-	PRINTF("{\n");
-	if (is_arr)
-	{
-		PRINTF("\tconst uint8_t *_b = (const uint8_t *)___var_%d;\n", container_ptr_var);
-		PRINTF("\t%s _res = 0;\n", shift_type);
-		for (int bits_done = 0; bits_done < bit_size; )
-		{
-			CBitfieldStep s = c_bitfield_step(start_bit, bit_size, bits_done, reverse);
-			if (s.bit_in_byte > 0)
-			{
-				PRINTF("\t_res |= (((%s)(_b[%d] >> %d & 0x%X)) << %d);\n", shift_type, s.byte_idx, s.bit_in_byte, s.step_mask, s.shift);
-			}
-			else
-			{
-				PRINTF("\t_res |= (((%s)(_b[%d] & 0x%X)) << %d);\n", shift_type, s.byte_idx, s.step_mask, s.shift);
-			}
-			bits_done += s.step_bits;
-		}
-		if (is_signed && bit_size < 128)
-		{
-			if (bit_size < 64)
-			{
-				PRINTF("\tif (_res & (1ULL << %d)) _res |= ~((1ULL << %d) - 1);\n", bit_size - 1, bit_size);
-			}
-			else
-			{
-				PRINTF("\tif (_res & ((__c3_uint128)1 << %d)) _res |= ~(((__c3_uint128)1 << %d) - 1);\n", bit_size - 1, bit_size);
-			}
-		}
-		PRINTF("\t___var_%d = (%s)_res;\n", temp, mname);
-	}
-	else
-	{
-		PRINTF("\tuint64_t _v = (uint64_t)(*(const %s*)___var_%d);\n", c_tname, container_ptr_var);
-		if (need_bswap)
-		{
-			PRINTF("\tif (sizeof(%s) == 2) _v = __builtin_bswap16((uint16_t)_v);\n", c_tname);
-			PRINTF("\telse if (sizeof(%s) == 4) _v = __builtin_bswap32((uint32_t)_v);\n", c_tname);
-			PRINTF("\telse if (sizeof(%s) == 8) _v = __builtin_bswap64((uint64_t)_v);\n", c_tname);
-		}
-		PRINTF("\tuint64_t _r = (_v >> %d) & 0x%" PRIx64 "ULL;\n", start_bit, mask);
-		if (is_signed && bit_size < 64)
-		{
-			PRINTF("\tif (_r & (1ULL << %d)) { _r |= ~0x%" PRIx64 "ULL; }\n", bit_size - 1, mask);
-		}
-		PRINTF("\t___var_%d = (%s)_r;\n", temp, mname);
-	}
-	PRINTF("}\n");
+	ASSERT(bitstruct_decl->decl_kind == DECL_BITSTRUCT);
+	int temp = c_emit_temp_var(c, value, member_type);
+	PRINTF("%s ___var_%d = %s_get_%s((const void*)___var_%d);\n", c_type_name(c, member_type), temp,
+	       c_get_decl_name(bitstruct_decl), member->name, container_ptr_var);
 }
 
 static void c_emit_bitstruct_write_container(GenContext *c, Expr *parent_expr, Decl *bitstruct_decl, Decl *member, int container_ptr_var, const char *c_tname, CValue *val)
 {
+	ASSERT(bitstruct_decl->decl_kind == DECL_BITSTRUCT);
 	c_value_rvalue(c, val);
-	Type *m_type = member->type ? c_safe_type_lower(member->type) : type_uint;
-	c_ensure_cvalue_var(c, val, m_type);
-
-	int start_bit = 0, end_bit = 0;
-	c_get_bitstruct_member_bits(member, &start_bit, &end_bit);
-	int bit_size = end_bit - start_bit + 1;
-	if (bit_size <= 0)
-	{
-		bit_size = 1;
-	}
-	uint64_t mask         = (bit_size >= 64) ? ~0ULL : (((uint64_t)1 << bit_size) - 1);
-	uint64_t shifted_mask = (bit_size >= 64) ? ~0ULL : (mask << start_bit);
-
-	bool is_arr = false;
-	if (bitstruct_decl)
-	{
-		is_arr = c_is_bitstruct_array(bitstruct_decl->type, NULL);
-		if (!is_arr && bitstruct_decl->decl_kind == DECL_BITSTRUCT && bitstruct_decl->strukt.container_type && is_valid_type_ptr(bitstruct_decl->strukt.container_type->type))
-		{
-			Type *cft = type_flatten(bitstruct_decl->strukt.container_type->type);
-			if (cft && cft->type_kind == TYPE_ARRAY)
-			{
-				is_arr = true;
-			}
-		}
-	}
-	if (!is_arr && parent_expr && parent_expr->type)
-	{
-		is_arr = c_is_bitstruct_array(parent_expr->type, NULL);
-	}
-
-	bool reverse    = (bitstruct_decl && bitstruct_decl->decl_kind == DECL_BITSTRUCT) ? c_is_bitstruct_big_endian(bitstruct_decl) : false;
-	bool need_bswap = (bitstruct_decl && bitstruct_decl->decl_kind == DECL_BITSTRUCT) ? c_is_bitstruct_requires_byteswap(bitstruct_decl) : false;
-
-	const char *shift_type = (bit_size > 64) ? "__c3_uint128" : "uint64_t";
-
-	PRINTF("{\n");
-	if (is_arr)
-	{
-		PRINTF("\tuint8_t *_b = (uint8_t *)___var_%d;\n", container_ptr_var);
-		for (int bits_done = 0; bits_done < bit_size; )
-		{
-			CBitfieldStep s = c_bitfield_step(start_bit, bit_size, bits_done, reverse);
-			if (s.shift > 0)
-			{
-				PRINTF("\t_b[%d] = (_b[%d] & ~0x%02X) | (((uint8_t)(((%s)___var_%d) >> %d) & 0x%02X) << %d);\n",
-				       s.byte_idx, s.byte_idx, s.byte_mask, shift_type, val->var, s.shift, s.step_mask, s.bit_in_byte);
-			}
-			else
-			{
-				PRINTF("\t_b[%d] = (_b[%d] & ~0x%02X) | (((uint8_t)(((%s)___var_%d)) & 0x%02X) << %d);\n",
-				       s.byte_idx, s.byte_idx, s.byte_mask, shift_type, val->var, s.step_mask, s.bit_in_byte);
-			}
-			bits_done += s.step_bits;
-		}
-	}
-	else if (need_bswap)
-	{
-		PRINTF("\tuint64_t _cur = (uint64_t)(*(%s*)___var_%d);\n", c_tname, container_ptr_var);
-		PRINTF("\tif (sizeof(%s) == 2) _cur = __builtin_bswap16((uint16_t)_cur);\n", c_tname);
-		PRINTF("\telse if (sizeof(%s) == 4) _cur = __builtin_bswap32((uint32_t)_cur);\n", c_tname);
-		PRINTF("\telse if (sizeof(%s) == 8) _cur = __builtin_bswap64((uint64_t)_cur);\n", c_tname);
-		PRINTF("\t_cur = (_cur & ~(0x%" PRIx64 "ULL)) | (((uint64_t)___var_%d & 0x%" PRIx64 "ULL) << %d);\n",
-		       shifted_mask, val->var, mask, start_bit);
-		PRINTF("\tif (sizeof(%s) == 2) _cur = __builtin_bswap16((uint16_t)_cur);\n", c_tname);
-		PRINTF("\telse if (sizeof(%s) == 4) _cur = __builtin_bswap32((uint32_t)_cur);\n", c_tname);
-		PRINTF("\telse if (sizeof(%s) == 8) _cur = __builtin_bswap64((uint64_t)_cur);\n", c_tname);
-		PRINTF("\t*(%s*)___var_%d = (%s)_cur;\n", c_tname, container_ptr_var, c_tname);
-	}
-	else
-	{
-		PRINTF("\t*(%s*)___var_%d = (%s)((*(%s*)___var_%d & ~(0x%" PRIx64 "ULL)) | (((uint64_t)___var_%d & 0x%" PRIx64 "ULL) << %d));\n",
-		       c_tname, container_ptr_var, c_tname, c_tname, container_ptr_var, shifted_mask, val->var, mask, start_bit);
-	}
-	PRINTF("}\n");
+	c_ensure_cvalue_var(c, val, c_safe_type_lower(member->type));
+	PRINTF("%s_set_%s((void*)___var_%d, ___var_%d);\n", c_get_decl_name(bitstruct_decl), member->name, container_ptr_var, val->var);
 }
 
 void c_emit_inc_dec(GenContext *c, CValue *value, Expr *expr, bool is_post)
 {
 	UnaryOp uop        = expr->unary_expr.operator;
 	Expr *inner        = expr->unary_expr.expr;
-	const char *op_str = (uop == UNARYOP_INC) ? "+" : "-";
-	const char *bname  = (uop == UNARYOP_INC) ? "__builtin_add_overflow" : "__builtin_sub_overflow";
 
 	if (inner->expr_kind == EXPR_BITACCESS)
 	{
 		Expr *parent_expr = inner->access_resolved_expr.parent;
 		Decl *member      = inner->access_resolved_expr.ref;
-		Type *member_type = (inner->type && is_valid_type_ptr(inner->type)) ? c_safe_type_lower(inner->type) : type_uint;
+		Type *member_type = c_safe_type_lower(inner->type);
 		if (member_type->type_kind == TYPE_VOID)
 		{
 			member_type = type_uint;
@@ -1483,24 +1091,17 @@ void c_emit_inc_dec(GenContext *c, CValue *value, Expr *expr, bool is_post)
 		CValue cur_val = {0};
 		c_emit_bitstruct_read_container(c, &cur_val, parent_expr, bitstruct_decl, member, member_type, container_ptr_var, c_tname);
 
-		int new_temp = c_emit_temp_var(c, NULL, member_type);
-		if (compiler.build.feature.trap_on_wrap && type_is_integer(member_type))
-		{
-			PRINTF("%s ___var_%d;\n", mname, new_temp);
-			PRINTF("if (%s(___var_%d, 1, &___var_%d)) { __c3_abort(); }\n", bname, cur_val.var, new_temp);
-		}
-		else
-		{
-			PRINTF("%s ___var_%d = (%s)(___var_%d %s 1);\n", mname, new_temp, mname, cur_val.var, op_str);
-		}
-		CValue new_val = {.var = new_temp, .type = member_type, .kind = CV_VALUE};
+		CValue one = {0};
+		PRINTF("%s ___var_%d = 1;\n", mname, c_emit_temp_var(c, &one, member_type));
+		CValue new_val = {0};
+		c_emit_binary_op(c, &new_val, uop == UNARYOP_INC ? BINARYOP_ADD : BINARYOP_SUB, member_type, cur_val, one, expr->loc);
 		c_emit_bitstruct_write_container(c, parent_expr, bitstruct_decl, member, container_ptr_var, c_tname, &new_val);
 		*value = is_post ? cur_val : new_val;
 		return;
 	}
 
-	Type *target_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
-	if (target_type->type_kind == TYPE_VOID && inner && inner->type && is_valid_type_ptr(inner->type))
+	Type *target_type = c_safe_type_lower(expr->type);
+	if (target_type->type_kind == TYPE_VOID && inner)
 	{
 		target_type = c_safe_type_lower(inner->type);
 	}
@@ -1508,60 +1109,49 @@ void c_emit_inc_dec(GenContext *c, CValue *value, Expr *expr, bool is_post)
 	{
 		target_type = type_int;
 	}
-	const char *tname = c_type_name(c, target_type);
 
+	// `x++` is `x = x + 1` with a single evaluation of the address.
 	CValue old_val  = {0};
-	bool is_ident   = (inner->expr_kind == EXPR_IDENTIFIER || inner->expr_kind == EXPR_DECL);
 	CValue addr_val = {0};
-	if (is_ident)
-	{
-		c_emit_lvalue_read(c, inner, &old_val, target_type);
-	}
-	else
-	{
-		c_emit_lvalue_addr(c, inner, &addr_val, type_get_ptr(target_type));
-		c_emit_null_deref_check(c, inner, addr_val.var);
-		int cur_temp = c_emit_temp_var(c, &old_val, target_type);
-		PRINTF("%s ___var_%d = *(%s*)___var_%d;\n", tname, cur_temp, tname, addr_val.var);
-	}
-	c_value_rvalue(c, &old_val);
-	int new_temp = c_emit_temp_var(c, NULL, target_type);
-	if (c_type_is_aggregate(target_type))
-	{
-		int len = (int)target_type->array.len;
-		if (len <= 0)
-		{
-			len = 1;
-		}
-		PRINTF("%s ___var_%d;\n", tname, new_temp);
-		for (int k = 0; k < len; k++)
-		{
-			PRINTF("___var_%d.ptr[%d] = ___var_%d.ptr[%d] %s 1;\n", new_temp, k, old_val.var, k, op_str);
-		}
-	}
-	else if (compiler.build.feature.trap_on_wrap && type_is_integer(target_type))
-	{
-		PRINTF("%s ___var_%d;\n", tname, new_temp);
-		PRINTF("if (%s(___var_%d, 1, &___var_%d)) { __c3_abort(); }\n", bname, old_val.var, new_temp);
-	}
-	else
-	{
-		PRINTF("%s ___var_%d = ___var_%d %s 1;\n", tname, new_temp, old_val.var, op_str);
-	}
-	CValue new_val = {.var = new_temp, .type = target_type, .kind = CV_VALUE};
-	if (is_ident)
-	{
-		c_emit_lvalue_assign(c, inner, NULL, &new_val, "=", NULL);
-	}
-	else if (c_type_is_aggregate(target_type))
-	{
-		PRINTF("__c3_memcpy((void*)___var_%d, &___var_%d, sizeof(%s));\n", addr_val.var, new_temp, tname);
-	}
-	else
-	{
-		PRINTF("*(%s*)___var_%d = ___var_%d;\n", tname, addr_val.var, new_temp);
-	}
+	c_emit_lvalue_load_for_update(c, inner, target_type, &addr_val, &old_val);
+	// The step: 1 of the lane type, or an integer 1 for pointers (C scales it by the pointee size, as LLVM's GEP).
+	Type *lane_type = c_type_is_vec_or_arr(target_type) ? c_safe_type_lower(target_type->array.base) : target_type;
+	Type *one_type  = c_type_is_c_pointer(lane_type) ? type_sz : lane_type;
+	CValue one = {0};
+	PRINTF("%s ___var_%d = 1;\n", c_type_name(c, one_type), c_emit_temp_var(c, &one, one_type));
+	CValue new_val = {0};
+	c_emit_binary_op(c, &new_val, uop == UNARYOP_INC ? BINARYOP_ADD : BINARYOP_SUB, target_type, old_val, one, expr->loc);
+	c_emit_lvalue_assign(c, inner, addr_val.var ? &addr_val : NULL, &new_val, NULL);
 	*value = is_post ? old_val : new_val;
+}
+
+// `tmp = (T)x` for the numeric and pointer conversions of cast expressions (ext/trunc, int<->float, enum from
+// ordinal, int<->pointer). Through uintptr_t when only one side is a pointer in C (pointers, typeid, fault).
+// `sext_bool`: a signed extension from bool gives -1 for true, as LLVM's sext from i1.
+static void c_emit_scalar_convert(GenContext *c, int temp, Type *to, CValue *from, bool sext_bool)
+{
+	const char *tname = c_type_name(c, to);
+	if (sext_bool)
+	{
+		PRINTF("___var_%d = ___var_%d ? (%s)-1 : 0;\n", temp, from->var, tname);
+		return;
+	}
+	bool through_int = c_type_is_c_pointer(to) != c_type_is_c_pointer(from->type);
+	PRINTF("___var_%d = (%s)%s___var_%d;\n", temp, tname, through_int ? "(uintptr_t)" : "", from->var);
+}
+
+// `tmp` holds the bits of `from` (EXPR_RECAST: same size, other type).
+static void c_emit_reinterpret(GenContext *c, int temp, Type *to, CValue *from)
+{
+	ASSERT(type_size(to) == type_size(c_safe_type_lower(from->type)));
+	PRINTF("__c3_memcpy(&___var_%d, &___var_%d, sizeof(___var_%d));\n", temp, from->var, temp);
+}
+
+// A bool vector of type `result_type` from the lanes of the vector `inner`: `lane != 0`, or `lane == 0` when `negate`.
+static void c_emit_vector_truth(GenContext *c, CValue *value, Type *result_type, CValue *inner, bool negate)
+{
+	c_ensure_cvalue_var(c, inner, result_type);
+	c_emit_lanewise(c, c_emit_temp_var(c, value, result_type), result_type, negate ? "!$0" : "!!$0", inner, 1);
 }
 
 static void c_emit_vec_recast(GenContext *c, int temp, const char *tname, Type *target_type, CValue *inner_val, bool is_bitcast)
@@ -1576,28 +1166,238 @@ static void c_emit_vec_recast(GenContext *c, int temp, const char *tname, Type *
 		PRINTF("__c3_memcpy(&___var_%d, &___var_%d, sizeof(%s));\n", temp, inner_val->var, tname);
 		return;
 	}
-	int min_len            = t_len < i_len ? t_len : i_len;
+	ASSERT(t_len == i_len);
 	const char *base_tname = c_type_name(c, t_base);
-	PRINTF("%s ___var_%d = {0};\n", tname, temp);
-	for (int k = 0; k < min_len; k++)
+	const char *lane;
+	if (i_base->type_kind == TYPE_BOOL && type_is_integer(t_base))
 	{
-		if (i_base->type_kind == TYPE_BOOL && type_is_integer(t_base))
+		lane = str_printf("$0 ? (%s)-1 : 0", base_tname);
+	}
+	else if (i_base->type_kind == TYPE_BOOL && type_is_float(t_base))
+	{
+		lane = "$0 ? 1.0 : 0.0";
+	}
+	else if (t_base->type_kind == TYPE_BOOL)
+	{
+		lane = "($0 != 0)";
+	}
+	else
+	{
+		lane = str_printf("(%s)$0", base_tname);
+	}
+	c_emit_lanewise(c, temp, target_type, lane, inner_val, 1);
+}
+
+// The parts of a slice expression, as llvm_emit_slice_values: the element pointer of the parent and the
+// start and end indices (size_t variables). `exclusive`: end is one past the last element.
+// `is_signed`: an index expression is signed, so the indices compare as int64_t.
+typedef struct
+{
+	int base_ptr_var;
+	int start_idx_var;
+	int end_idx_var;
+	bool exclusive;
+	bool is_signed;
+	Type *elem_type;
+	Type *target_type;
+} CSliceValues;
+
+static CSliceValues c_emit_slice_values(GenContext *c, Expr *expr)
+{
+	Expr *parent_expr = exprptr(expr->slice_expr.expr);
+	Type *parent_type = c_expr_type(parent_expr);
+	if (parent_type->type_kind == TYPE_VOID)
+	{
+		parent_type = type_chars;
+	}
+	Type *target_type = c_expr_type(expr);
+	Type *elem_type   = (target_type && target_type->type_kind == TYPE_SLICE) ? c_safe_type_lower(target_type->array.base) : type_void;
+	if (elem_type->type_kind == TYPE_VOID)
+	{
+		if ((parent_type->type_kind == TYPE_SLICE || parent_type->type_kind == TYPE_ARRAY))
 		{
-			PRINTF("___var_%d.ptr[%d] = ___var_%d.ptr[%d] ? (%s)-1 : 0;\n", temp, k, inner_val->var, k, base_tname);
+			elem_type = c_safe_type_lower(parent_type->array.base);
 		}
-		else if (i_base->type_kind == TYPE_BOOL && type_is_float(t_base))
+		else if (parent_type->type_kind == TYPE_POINTER)
 		{
-			PRINTF("___var_%d.ptr[%d] = ___var_%d.ptr[%d] ? 1.0 : 0.0;\n", temp, k, inner_val->var, k);
-		}
-		else if (t_base->type_kind == TYPE_BOOL)
-		{
-			PRINTF("___var_%d.ptr[%d] = (___var_%d.ptr[%d] != 0);\n", temp, k, inner_val->var, k);
+			elem_type = c_safe_type_lower(parent_type->pointer);
 		}
 		else
 		{
-			PRINTF("___var_%d.ptr[%d] = (%s)___var_%d.ptr[%d];\n", temp, k, base_tname, inner_val->var, k);
+			elem_type = type_char;
 		}
 	}
+	if (target_type->type_kind == TYPE_VOID)
+	{
+		target_type = type_is_valid_for_array(elem_type) ? type_get_slice(elem_type) : type_chars;
+	}
+	const char *elem_tname = c_type_name(c, elem_type);
+	Range range      = expr->slice_expr.range;
+	int len_var      = 0;
+	bool has_len     = false;
+	int base_ptr_var = c_create_variable(c);
+
+	if (parent_type->type_kind == TYPE_POINTER)
+	{
+		CValue parent_val = {0};
+		c_emit_expr(c, &parent_val, parent_expr);
+		c_value_rvalue(c, &parent_val);
+		PRINTF("%s* ___var_%d = (%s*)___var_%d;\n", elem_tname, base_ptr_var, elem_tname, parent_val.var);
+	}
+	else if (parent_type->type_kind == TYPE_SLICE)
+	{
+		CValue parent_val = {0};
+		c_emit_expr(c, &parent_val, parent_expr);
+		c_value_rvalue(c, &parent_val);
+		PRINTF("%s* ___var_%d = (%s*)___var_%d.ptr;\n", elem_tname, base_ptr_var, elem_tname, parent_val.var);
+		len_var = c_create_variable(c);
+		PRINTF("size_t ___var_%d = ___var_%d.len;\n", len_var, parent_val.var);
+		has_len = true;
+	}
+	else
+	{
+		CValue parent_addr = {0};
+		c_emit_lvalue_addr(c, parent_expr, &parent_addr, type_get_ptr(parent_type));
+		PRINTF("%s* ___var_%d = (%s*)(((%s*)___var_%d)->ptr);\n",
+		       elem_tname, base_ptr_var, elem_tname, c_type_name(c, parent_type), parent_addr.var);
+		len_var = c_create_variable(c);
+		PRINTF("size_t ___var_%d = %llu;\n", len_var, (unsigned long long)parent_type->array.len);
+		has_len = parent_type->type_kind != TYPE_FLEXIBLE_ARRAY;
+	}
+
+	// 1. Resolve start_index
+	int start_idx_var = c_create_variable(c);
+	if (range.range_type == RANGE_CONST_RANGE)
+	{
+		PRINTF("size_t ___var_%d = %lld;\n", start_idx_var, (long long)range.start_index);
+	}
+	else
+	{
+		int raw_start_var = 0;
+		if (range.start)
+		{
+			CValue start_val = {0};
+			c_emit_expr(c, &start_val, exprptr(range.start));
+			c_value_rvalue(c, &start_val);
+			c_ensure_cvalue_var(c, &start_val, type_sz);
+			raw_start_var = start_val.var;
+		}
+		if (range.start_from_end)
+		{
+			PRINTF("size_t ___var_%d = ___var_%d - ___var_%d;\n", start_idx_var, len_var, raw_start_var);
+		}
+		else if (raw_start_var)
+		{
+			PRINTF("size_t ___var_%d = ___var_%d;\n", start_idx_var, raw_start_var);
+		}
+		else
+		{
+			PRINTF("size_t ___var_%d = 0;\n", start_idx_var);
+		}
+	}
+
+	// The indices are held as size_t, the checks compare them with the signedness of their expressions.
+	bool is_safe       = safe_mode_enabled();
+	bool is_dynamic    = range.range_type != RANGE_CONST_RANGE;
+	bool start_signed  = is_dynamic && range.start && type_is_signed(c_safe_type_lower(exprptr(range.start)->type));
+	Type *start_type   = start_signed ? type_long : type_ulong;
+	const char *start_str = str_printf("(%s)___var_%d", start_signed ? "int64_t" : "uint64_t", start_idx_var);
+	const char *len_str   = str_printf("(%s)___var_%d", start_signed ? "int64_t" : "uint64_t", len_var);
+	CPanicValue start_value = { start_str, start_type };
+	CPanicValue len_value   = { len_str, start_type };
+	if (is_safe && has_len)
+	{
+		c_emit_panic_if(c, str_printf("%s > %s", start_str, len_str), PANIC_FN_SLICE_START, expr->loc, NULL, &len_value, &start_value);
+	}
+	if (is_safe && start_signed && parent_type->type_kind != TYPE_POINTER)
+	{
+		c_emit_panic_if(c, str_printf("%s < 0", start_str), PANIC_FN_SLICE_START_NEGATIVE, expr->loc, NULL, &start_value, NULL);
+	}
+
+	// 2. Resolve end_index
+	bool has_end    = (range.range_type != RANGE_DYNAMIC || range.end != 0);
+	int end_idx_var = c_create_variable(c);
+	if (has_end)
+	{
+		int raw_end_var = 0;
+		if (range.range_type == RANGE_CONST_RANGE)
+		{
+			raw_end_var = c_create_variable(c);
+			PRINTF("size_t ___var_%d = %lld;\n", raw_end_var, (long long)range.len_index);
+		}
+		else if (range.range_type == RANGE_CONST_LEN || range.range_type == RANGE_CONST_END)
+		{
+			raw_end_var = c_create_variable(c);
+			PRINTF("size_t ___var_%d = %lld;\n", raw_end_var, (long long)range.const_end);
+		}
+		else if (range.end)
+		{
+			CValue end_val = {0};
+			c_emit_expr(c, &end_val, exprptr(range.end));
+			c_value_rvalue(c, &end_val);
+			c_ensure_cvalue_var(c, &end_val, type_sz);
+			raw_end_var = end_val.var;
+		}
+
+		if (range.end_from_end)
+		{
+			PRINTF("size_t ___var_%d = ___var_%d - ___var_%d;\n", end_idx_var, len_var, raw_end_var);
+		}
+		else
+		{
+			PRINTF("size_t ___var_%d = ___var_%d;\n", end_idx_var, raw_end_var);
+		}
+
+		if (range.is_len)
+		{
+			PRINTF("___var_%d += ___var_%d;\n", end_idx_var, start_idx_var);
+		}
+		if (is_safe)
+		{
+			bool end_signed = range.range_type == RANGE_DYNAMIC && type_is_signed(c_safe_type_lower(exprptr(range.end)->type));
+			bool any_signed = start_signed || end_signed;
+			Type *type      = any_signed ? type_long : type_ulong;
+			const char *cast = any_signed ? "int64_t" : "uint64_t";
+			const char *start_cmp = str_printf("(%s)___var_%d", cast, start_idx_var);
+			const char *end_cmp   = str_printf("(%s)___var_%d", cast, end_idx_var);
+			const char *len_cmp   = str_printf("(%s)___var_%d", cast, len_var);
+			CPanicValue start_v = { start_cmp, type };
+			CPanicValue end_v   = { end_cmp, type };
+			CPanicValue len_v   = { len_cmp, type };
+			if (range.is_len)
+			{
+				CPanicValue given_len = { str_printf("%s - %s", end_cmp, start_cmp), type };
+				c_emit_panic_if(c, str_printf("%s > %s", start_cmp, end_cmp), PANIC_FN_SLICE_LEN_NEGATIVE, expr->loc, NULL, &given_len, NULL);
+				if (has_len)
+				{
+					CPanicValue last = { str_printf("%s - 1", end_cmp), type };
+					c_emit_panic_if(c, str_printf("%s > %s", end_cmp, len_cmp), PANIC_FN_SLICE_END, expr->loc, NULL, &last, &len_v);
+				}
+			}
+			else
+			{
+				c_emit_panic_if(c, str_printf("%s > %s + 1", start_cmp, end_cmp), PANIC_FN_SLICE_RANGE_NEGATIVE, expr->loc, NULL, &start_v, &end_v);
+				if (has_len)
+				{
+					c_emit_panic_if(c, str_printf("%s >= %s", end_cmp, len_cmp), PANIC_FN_SLICE_END, expr->loc, NULL, &end_v, &len_v);
+				}
+			}
+		}
+	}
+	else
+	{
+		PRINTF("size_t ___var_%d = ___var_%d;\n", end_idx_var, len_var);
+	}
+
+
+	bool end_signed = has_end && range.range_type == RANGE_DYNAMIC && type_is_signed(c_safe_type_lower(exprptr(range.end)->type));
+	return (CSliceValues){ .base_ptr_var  = base_ptr_var,
+	                       .start_idx_var = start_idx_var,
+	                       .end_idx_var   = end_idx_var,
+	                       .exclusive     = range.is_len || !has_end || range.range_type == RANGE_CONST_RANGE,
+	                       .is_signed     = start_signed || end_signed,
+	                       .elem_type     = elem_type,
+	                       .target_type   = target_type };
 }
 
 static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
@@ -1631,9 +1431,12 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			c_emit_expression_list_expr(c, value, expr);
 			return;
 		case EXPR_TWO:
-			c_emit_ignored_expr(c, expr->two_expr.first);
+		{
+			CValue first = {0};
+			c_emit_expr(c, &first, expr->two_expr.first);
 			c_emit_expr(c, value, expr->two_expr.last);
 			return;
+		}
 		case EXPR_TYPEID:
 		{
 			Type *t = expr->type_expr ? expr->type_expr->type : expr->type;
@@ -1647,18 +1450,19 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 		}
 		case EXPR_SLICE_ASSIGN:
 		{
-			CValue dst_val = {0}, src_val = {0};
+			// As llvm_emit_slice_assign: the value first, then `for (i = start; i <= end; i++) ptr[i] = value`,
+			// which stores nothing for a reversed range.
+			CValue src_val = {0};
 			c_emit_expr(c, &src_val, exprptr(expr->slice_assign_expr.right));
 			c_value_rvalue(c, &src_val);
 			c_ensure_cvalue_var(c, &src_val, NULL);
-			c_emit_expr(c, &dst_val, exprptr(expr->slice_assign_expr.left));
-			if (dst_val.var != 0)
-			{
-				int loop_i = c_create_variable(c);
-				PRINTF("for (size_t ___var_%d = 0; ___var_%d < ___var_%d.len; ___var_%d++) { ___var_%d.ptr[___var_%d] = ___var_%d; }\n",
-				       loop_i, loop_i, dst_val.var, loop_i, dst_val.var, loop_i, src_val.var);
-			}
-			*value = dst_val;
+			CSliceValues slice = c_emit_slice_values(c, exprptr(expr->slice_assign_expr.left));
+			const char *cast   = slice.is_signed ? "int64_t" : "uint64_t";
+			int loop_i         = c_create_variable(c);
+			PRINTF("for (size_t ___var_%d = ___var_%d; (%s)___var_%d %s (%s)___var_%d; ___var_%d++) { ___var_%d[___var_%d] = ___var_%d; }\n",
+			       loop_i, slice.start_idx_var, cast, loop_i, slice.exclusive ? "<" : "<=", cast, slice.end_idx_var,
+			       loop_i, slice.base_ptr_var, loop_i, src_val.var);
+			*value = src_val;
 			return;
 		}
 		case EXPR_MACRO_BODY_EXPANSION:
@@ -1668,8 +1472,8 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 		{
 			UnaryOp uop       = expr->unary_expr.operator;
 			Expr *inner       = expr->unary_expr.expr;
-			Type *target_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
-			if (target_type->type_kind == TYPE_VOID && inner && inner->type && is_valid_type_ptr(inner->type))
+			Type *target_type = c_safe_type_lower(expr->type);
+			if (target_type->type_kind == TYPE_VOID && inner)
 			{
 				target_type = c_safe_type_lower(inner->type);
 			}
@@ -1700,6 +1504,12 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 				CValue inner_val = {0};
 				c_emit_expr(c, &inner_val, inner);
 				c_value_rvalue(c, &inner_val);
+				if (c_type_is_vec_or_arr(target_type))
+				{
+					// As LLVM: lane-wise `lane == 0`, giving a bool vector (sema's type for `!vec`).
+					c_emit_vector_truth(c, value, target_type, &inner_val, true);
+					return;
+				}
 				int temp = c_emit_temp_var(c, value, type_bool);
 				if (inner_val.type && inner_val.type->type_kind == TYPE_SLICE)
 				{
@@ -1734,8 +1544,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			if (uop == UNARYOP_NEG && compiler.build.feature.trap_on_wrap && type_is_signed(target_type) && !c_type_is_aggregate(target_type))
 			{
 				PRINTF("%s ___var_%d;\n", tname, temp);
-				PRINTF("if (__builtin_sub_overflow(0, ___var_%d, &___var_%d)) { __c3_abort(); }\n",
-				       inner_val.var, temp);
+				c_emit_panic_if(c, str_printf("__builtin_sub_overflow(0, ___var_%d, &___var_%d)", inner_val.var, temp), PANIC_FN_NEG_OVERFLOW, expr->loc, NULL, NULL, NULL);
 				return;
 			}
 
@@ -1744,16 +1553,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			                                                                          : "-";
 			if (target_type->type_kind == TYPE_ARRAY || target_type->type_kind == TYPE_VECTOR || target_type->type_kind == TYPE_SIMD_VECTOR)
 			{
-				int len = (int)target_type->array.len;
-				if (len <= 0)
-				{
-					len = 1;
-				}
-				PRINTF("%s ___var_%d;\n", tname, temp);
-				for (int k = 0; k < len; k++)
-				{
-					PRINTF("___var_%d.ptr[%d] = %s___var_%d.ptr[%d];\n", temp, k, op_str, inner_val.var, k);
-				}
+				c_emit_lanewise(c, temp, target_type, str_printf("%s$0", op_str), &inner_val, 1);
 				return;
 			}
 			PRINTF("%s ___var_%d = %s___var_%d;\n", tname, temp, op_str, inner_val.var);
@@ -1765,7 +1565,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_ACCESS_RESOLVED:
 		case EXPR_SUBSCRIPT:
 		{
-			Type *target_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
+			Type *target_type = c_safe_type_lower(expr->type);
 			c_emit_lvalue_read(c, expr, value, target_type);
 			return;
 		}
@@ -1777,7 +1577,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 				return;
 			}
 			Decl *member      = expr->access_resolved_expr.ref;
-			Type *member_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_uint;
+			Type *member_type = c_safe_type_lower(expr->type);
 			if (member_type->type_kind == TYPE_VOID)
 			{
 				member_type = type_uint;
@@ -1796,24 +1596,18 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			BinaryOp op = expr->binary_expr.operator;
 
 			Decl *member      = left->access_resolved_expr.ref;
-			Type *member_type = (left->type && is_valid_type_ptr(left->type)) ? c_safe_type_lower(left->type) : type_uint;
+			Type *member_type = c_safe_type_lower(left->type);
 			if (member_type->type_kind == TYPE_VOID)
 			{
 				member_type = type_uint;
 			}
 			const char *mname = c_type_name(c, member_type);
 
-			CValue result_val = {0};
-			if (op == BINARYOP_ASSIGN)
-			{
-				c_emit_expr(c, &result_val, right);
-				c_value_rvalue(c, &result_val);
-			}
-
 			int container_ptr_var = 0;
 			Decl *bitstruct_decl  = NULL;
 			const char *c_tname   = c_emit_bitstruct_container(c, left->access_resolved_expr.parent, member, &container_ptr_var, &bitstruct_decl);
 
+			CValue result_val = {0};
 			if (op != BINARYOP_ASSIGN)
 			{
 				CValue cur_val = {0};
@@ -1824,55 +1618,12 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 				c_value_rvalue(c, &right_val);
 				c_ensure_cvalue_var(c, &right_val, member_type);
 
-				BinaryOp base_op   = binaryop_assign_base_op(op);
-				const char *op_str = "+";
-				switch (base_op)
-				{
-					case BINARYOP_ADD: op_str = "+"; break;
-					case BINARYOP_SUB: op_str = "-"; break;
-					case BINARYOP_MULT: op_str = "*"; break;
-					case BINARYOP_DIV: op_str = "/"; break;
-					case BINARYOP_MOD: op_str = "%"; break;
-					case BINARYOP_BIT_AND: op_str = "&"; break;
-					case BINARYOP_BIT_OR: op_str = "|"; break;
-					case BINARYOP_BIT_XOR: op_str = "^"; break;
-					case BINARYOP_SHL: op_str = "<<"; break;
-					case BINARYOP_SHR: op_str = ">>"; break;
-					default: op_str = "+"; break;
-				}
-
-				if (!c_type_is_aggregate(member_type) && (base_op == BINARYOP_SHL || base_op == BINARYOP_SHR))
-				{
-					if (safe_mode_enabled())
-					{
-						if (type_is_signed(right_val.type))
-						{
-							PRINTF("if (___var_%d < 0 || (size_t)___var_%d >= sizeof(%s)*8) { __c3_abort(); }\n",
-							       right_val.var, right_val.var, mname);
-						}
-						else
-						{
-							PRINTF("if ((size_t)___var_%d >= sizeof(%s)*8) { __c3_abort(); }\n",
-							       right_val.var, mname);
-						}
-					}
-				}
-
-				int res_temp = c_emit_temp_var(c, &result_val, member_type);
-				if (compiler.build.feature.trap_on_wrap && type_is_integer(member_type) &&
-				    (base_op == BINARYOP_ADD || base_op == BINARYOP_SUB || base_op == BINARYOP_MULT))
-				{
-					const char *bname = (base_op == BINARYOP_ADD) ? "__builtin_add_overflow" : (base_op == BINARYOP_SUB) ? "__builtin_sub_overflow"
-					                                                                                                     : "__builtin_mul_overflow";
-					PRINTF("%s ___var_%d;\n", mname, res_temp);
-					PRINTF("if (%s(___var_%d, ___var_%d, &___var_%d)) { __c3_abort(); }\n",
-					       bname, cur_val.var, right_val.var, res_temp);
-				}
-				else
-				{
-					PRINTF("%s ___var_%d = (%s)(___var_%d %s ___var_%d);\n",
-					       mname, res_temp, mname, cur_val.var, op_str, right_val.var);
-				}
+				c_emit_binary_op(c, &result_val, binaryop_assign_base_op(op), member_type, cur_val, right_val, expr->loc);
+			}
+			else
+			{
+				c_emit_expr(c, &result_val, right);
+				c_value_rvalue(c, &result_val);
 			}
 
 			c_emit_bitstruct_write_container(c, left->access_resolved_expr.parent, bitstruct_decl, member, container_ptr_var, c_tname, &result_val);
@@ -1881,7 +1632,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 		}
 		case EXPR_SUBSCRIPT_ADDR:
 		{
-			Type *target_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
+			Type *target_type = c_safe_type_lower(expr->type);
 			c_emit_lvalue_addr(c, expr, value, target_type);
 			return;
 		}
@@ -1892,7 +1643,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			c_value_rvalue(c, &inner_val);
 			c_ensure_cvalue_var(c, &inner_val, type_chars);
 
-			Type *target_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
+			Type *target_type = c_safe_type_lower(expr->type);
 			if (target_type->type_kind == TYPE_VOID)
 			{
 				target_type = type_voidptr;
@@ -1908,7 +1659,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			c_value_rvalue(c, &inner_val);
 			c_ensure_cvalue_var(c, &inner_val, type_chars);
 
-			Type *target_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
+			Type *target_type = c_safe_type_lower(expr->type);
 			if (target_type->type_kind == TYPE_VOID)
 			{
 				target_type = type_sz;
@@ -1919,160 +1670,18 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 		}
 		case EXPR_SLICE:
 		{
-			Expr *parent_expr = exprptr(expr->slice_expr.expr);
-			Type *parent_type = c_expr_type(parent_expr);
-			if (parent_type->type_kind == TYPE_VOID)
-			{
-				parent_type = type_chars;
-			}
-			Type *target_type = c_expr_type(expr);
-			Type *elem_type   = (target_type && target_type->type_kind == TYPE_SLICE && is_valid_type_ptr(target_type->array.base)) ? c_safe_type_lower(target_type->array.base) : type_void;
-			if (elem_type->type_kind == TYPE_VOID)
-			{
-				if ((parent_type->type_kind == TYPE_SLICE || parent_type->type_kind == TYPE_ARRAY) && parent_type->array.base && is_valid_type_ptr(parent_type->array.base))
-				{
-					elem_type = c_safe_type_lower(parent_type->array.base);
-				}
-				else if (parent_type->type_kind == TYPE_POINTER && parent_type->pointer && is_valid_type_ptr(parent_type->pointer))
-				{
-					elem_type = c_safe_type_lower(parent_type->pointer);
-				}
-				else
-				{
-					elem_type = type_char;
-				}
-			}
-			if (target_type->type_kind == TYPE_VOID)
-			{
-				target_type = type_is_valid_for_array(elem_type) ? type_get_slice(elem_type) : type_chars;
-			}
-			const char *elem_tname = c_type_name(c, elem_type);
-			int temp               = c_emit_temp_var(c, value, target_type);
-			const char *tname      = c_type_name(c, target_type);
-
-			Range range      = expr->slice_expr.range;
-			int len_var      = 0;
-			int base_ptr_var = c_create_variable(c);
-
-			if (parent_type->type_kind == TYPE_POINTER)
-			{
-				CValue parent_val = {0};
-				c_emit_expr(c, &parent_val, parent_expr);
-				c_value_rvalue(c, &parent_val);
-				PRINTF("%s* ___var_%d = (%s*)___var_%d;\n", elem_tname, base_ptr_var, elem_tname, parent_val.var);
-			}
-			else if (parent_type->type_kind == TYPE_SLICE)
-			{
-				CValue parent_val = {0};
-				c_emit_expr(c, &parent_val, parent_expr);
-				c_value_rvalue(c, &parent_val);
-				PRINTF("%s* ___var_%d = (%s*)___var_%d.ptr;\n", elem_tname, base_ptr_var, elem_tname, parent_val.var);
-				len_var = c_create_variable(c);
-				PRINTF("size_t ___var_%d = ___var_%d.len;\n", len_var, parent_val.var);
-			}
-			else
-			{
-				CValue parent_addr = {0};
-				c_emit_lvalue_addr(c, parent_expr, &parent_addr, type_get_ptr(parent_type));
-				PRINTF("%s* ___var_%d = (%s*)(((%s*)___var_%d)->ptr);\n",
-				       elem_tname, base_ptr_var, elem_tname, c_type_name(c, parent_type), parent_addr.var);
-				len_var = c_create_variable(c);
-				PRINTF("size_t ___var_%d = %llu;\n", len_var, (unsigned long long)parent_type->array.len);
-			}
-
-			// 1. Resolve start_index
-			int start_idx_var = c_create_variable(c);
-			if (range.range_type == RANGE_CONST_RANGE)
-			{
-				PRINTF("size_t ___var_%d = %lld;\n", start_idx_var, (long long)range.start_index);
-			}
-			else
-			{
-				int raw_start_var = 0;
-				if (range.start)
-				{
-					CValue start_val = {0};
-					c_emit_expr(c, &start_val, exprptr(range.start));
-					c_value_rvalue(c, &start_val);
-					c_ensure_cvalue_var(c, &start_val, type_sz);
-					raw_start_var = start_val.var;
-				}
-				if (range.start_from_end)
-				{
-					PRINTF("size_t ___var_%d = ___var_%d - ___var_%d;\n", start_idx_var, len_var, raw_start_var);
-				}
-				else if (raw_start_var)
-				{
-					PRINTF("size_t ___var_%d = ___var_%d;\n", start_idx_var, raw_start_var);
-				}
-				else
-				{
-					PRINTF("size_t ___var_%d = 0;\n", start_idx_var);
-				}
-			}
-
-			// 2. Resolve end_index
-			bool has_end    = (range.range_type != RANGE_DYNAMIC || range.end != 0);
-			int end_idx_var = c_create_variable(c);
-			if (has_end)
-			{
-				int raw_end_var = 0;
-				if (range.range_type == RANGE_CONST_RANGE)
-				{
-					raw_end_var = c_create_variable(c);
-					PRINTF("size_t ___var_%d = %lld;\n", raw_end_var, (long long)range.len_index);
-				}
-				else if (range.range_type == RANGE_CONST_LEN || range.range_type == RANGE_CONST_END)
-				{
-					raw_end_var = c_create_variable(c);
-					PRINTF("size_t ___var_%d = %lld;\n", raw_end_var, (long long)range.const_end);
-				}
-				else if (range.end)
-				{
-					CValue end_val = {0};
-					c_emit_expr(c, &end_val, exprptr(range.end));
-					c_value_rvalue(c, &end_val);
-					c_ensure_cvalue_var(c, &end_val, type_sz);
-					raw_end_var = end_val.var;
-				}
-
-				if (range.end_from_end)
-				{
-					PRINTF("size_t ___var_%d = ___var_%d - ___var_%d;\n", end_idx_var, len_var, raw_end_var);
-				}
-				else
-				{
-					PRINTF("size_t ___var_%d = ___var_%d;\n", end_idx_var, raw_end_var);
-				}
-
-				if (range.is_len)
-				{
-					PRINTF("___var_%d += ___var_%d;\n", end_idx_var, start_idx_var);
-				}
-			}
-			else
-			{
-				PRINTF("size_t ___var_%d = ___var_%d;\n", end_idx_var, len_var);
-			}
-
-			// 3. Compute slice_len
-			int slice_len_var = c_create_variable(c);
-			if (range.is_len || !has_end || range.range_type == RANGE_CONST_RANGE)
-			{
-				PRINTF("size_t ___var_%d = ___var_%d - ___var_%d;\n", slice_len_var, end_idx_var, start_idx_var);
-			}
-			else
-			{
-				PRINTF("size_t ___var_%d = (___var_%d - ___var_%d) + 1;\n", slice_len_var, end_idx_var, start_idx_var);
-			}
-
+			CSliceValues slice = c_emit_slice_values(c, expr);
+			int temp           = c_emit_temp_var(c, value, slice.target_type);
+			const char *tname  = c_type_name(c, slice.target_type);
+			int slice_len_var  = c_create_variable(c);
+			PRINTF("size_t ___var_%d = (___var_%d - ___var_%d)%s;\n", slice_len_var, slice.end_idx_var, slice.start_idx_var, slice.exclusive ? "" : " + 1");
 			PRINTF("%s ___var_%d = (%s){ .ptr = ___var_%d + ___var_%d, .len = ___var_%d };\n",
-			       tname, temp, tname, base_ptr_var, start_idx_var, slice_len_var);
+			       tname, temp, tname, slice.base_ptr_var, slice.start_idx_var, slice_len_var);
 			return;
 		}
 		case EXPR_MAKE_SLICE:
 		{
-			Type *target_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
+			Type *target_type = c_safe_type_lower(expr->type);
 			if (target_type->type_kind == TYPE_VOID)
 			{
 				target_type = type_chars;
@@ -2095,13 +1704,20 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 		}
 		case EXPR_SLICE_COPY:
 		{
+			// The source is evaluated before the destination, as in the LLVM backend.
 			CValue dst_val = {0}, src_val = {0};
-			c_emit_expr(c, &dst_val, exprptr(expr->slice_assign_expr.left));
-			c_value_rvalue(c, &dst_val);
 			c_emit_expr(c, &src_val, exprptr(expr->slice_assign_expr.right));
 			c_value_rvalue(c, &src_val);
+			c_emit_expr(c, &dst_val, exprptr(expr->slice_assign_expr.left));
+			c_value_rvalue(c, &dst_val);
 			if (dst_val.var != 0 && src_val.var != 0)
 			{
+				if (safe_mode_enabled())
+				{
+					CPanicValue to_len   = { str_printf("___var_%d.len", dst_val.var), type_usz };
+					CPanicValue from_len = { str_printf("___var_%d.len", src_val.var), type_usz };
+					c_emit_panic_if(c, str_printf("%s != %s", to_len.expr, from_len.expr), PANIC_FN_SLICE_COPY, expr->loc, NULL, &to_len, &from_len);
+				}
 				PRINTF("__c3_memmove(___var_%d.ptr, ___var_%d.ptr, ___var_%d.len * sizeof(*___var_%d.ptr));\n",
 				       dst_val.var, src_val.var, src_val.var, dst_val.var);
 			}
@@ -2113,7 +1729,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			CValue inner_val = {0};
 			c_emit_expr(c, &inner_val, expr->inner_expr);
 			c_value_rvalue(c, &inner_val);
-			Type *target_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
+			Type *target_type = c_safe_type_lower(expr->type);
 			if (target_type->type_kind == TYPE_VOID)
 			{
 				target_type = type_int;
@@ -2129,29 +1745,33 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			CValue inner_val = {0};
 			c_emit_expr(c, &inner_val, expr->inner_expr);
 			c_value_rvalue(c, &inner_val);
-			Type *target_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
+			Type *target_type = c_safe_type_lower(expr->type);
 			if (target_type->type_kind == TYPE_VOID)
 			{
 				target_type = type_int;
 			}
 			int temp          = c_emit_temp_var(c, value, target_type);
 			const char *tname = c_type_name(c, target_type);
-			int len           = (int)target_type->array.len;
-			if (len <= 0)
-			{
-				len = 1;
-			}
-			PRINTF("%s ___var_%d;\n", tname, temp);
-			for (int k = 0; k < len; k++)
-			{
-				PRINTF("___var_%d.ptr[%d] = ___var_%d;\n", temp, k, inner_val.var);
-			}
+			c_emit_lanewise(c, temp, target_type, "$0", &inner_val, 1);
+			return;
+		}
+		case EXPR_ADDR_CONVERSION:
+		{
+			// A struct converted to its inline first member. As LLVM, the struct's memory is read as the member type.
+			CValue inner_val = {0};
+			c_emit_expr(c, &inner_val, expr->inner_expr);
+			c_value_rvalue(c, &inner_val);
+			c_ensure_cvalue_var(c, &inner_val, expr->inner_expr->type);
+			Type *target_type = c_expr_type(expr);
+			c_emit_type_forward_decl(c, target_type);
+			int temp = c_emit_temp_var(c, value, target_type);
+			PRINTF("%s ___var_%d;\n", c_type_name(c, target_type), temp);
+			PRINTF("__c3_memcpy(&___var_%d, &___var_%d, sizeof(___var_%d));\n", temp, inner_val.var, temp);
 			return;
 		}
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_VECTOR_TO_ARRAY:
 		case EXPR_RECAST:
-		case EXPR_ADDR_CONVERSION:
 		case EXPR_INT_TO_PTR:
 		case EXPR_PTR_TO_INT:
 		case EXPR_INT_TO_FLOAT:
@@ -2162,7 +1782,23 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			CValue inner_val = {0};
 			c_emit_expr(c, &inner_val, expr->inner_expr);
 			c_value_rvalue(c, &inner_val);
-			Type *target_type = c_expr_type_or(expr, type_int);
+			Type *target_type = c_expr_type(expr);
+
+			if (expr->expr_kind == EXPR_ENUM_FROM_ORD && safe_mode_enabled())
+			{
+				// The ordinal must be in 0 ..< number of enum values.
+				Decl *decl            = type_flatten(expr->type)->decl;
+				unsigned count        = vec_size(decl->enums.values);
+				Type *ordinal_type    = c_safe_type_lower(inner_val.type);
+				const char *ordinal   = str_printf("___var_%d", inner_val.var);
+				CPanicValue ord_value = { ordinal, ordinal_type };
+				CPanicValue max_value = { str_printf("%u", count - 1), ordinal_type };
+				if (type_is_signed(ordinal_type))
+				{
+					c_emit_panic_if(c, str_printf("%s < 0", ordinal), PANIC_FN_ENUM_NEGATIVE, expr->loc, decl->name, &ord_value, NULL);
+				}
+				c_emit_panic_if(c, str_printf("%s >= %u", ordinal, count), PANIC_FN_ENUM_RANGE, expr->loc, decl->name, &ord_value, &max_value);
+			}
 
 			if (inner_val.var != 0 && !c_type_is_aggregate(target_type) && inner_val.type &&
 			    (target_type == inner_val.type || strcmp(c_type_name(c, target_type), c_type_name(c, inner_val.type)) == 0))
@@ -2187,7 +1823,13 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			}
 
 			PRINTF("%s ___var_%d;\n", tname, temp);
-			c_emit_assign_var(c, temp, target_type, &inner_val);
+			if (expr->expr_kind == EXPR_RECAST)
+			{
+				c_emit_reinterpret(c, temp, target_type, &inner_val);
+				return;
+			}
+			bool sext_bool = expr->expr_kind == EXPR_EXT_TRUNC && expr->ext_trunc_expr.is_signed && type_flatten(inner_val.type)->type_kind == TYPE_BOOL;
+			c_emit_scalar_convert(c, temp, target_type, &inner_val, sext_bool);
 			return;
 		}
 		case EXPR_INT_TO_BOOL:
@@ -2195,10 +1837,29 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			CValue inner_val = {0};
 			c_emit_expr(c, &inner_val, expr->int_to_bool_expr.inner);
 			c_value_rvalue(c, &inner_val);
+			Type *result_type = c_expr_type(expr);
+			if (c_type_is_vec_or_arr(result_type))
+			{
+				// As LLVM: lane-wise `lane != 0` (`== 0` when negated) for int and pointer vectors.
+				c_emit_vector_truth(c, value, result_type, &inner_val, expr->int_to_bool_expr.negate);
+				return;
+			}
 			int temp = c_emit_temp_var(c, value, type_bool);
 			if (inner_val.var == 0)
 			{
 				PRINTF("bool ___var_%d = %s;\n", temp, expr->int_to_bool_expr.negate ? "true" : "false");
+			}
+			else if (c_safe_type_lower(inner_val.type)->type_kind == TYPE_ARRAY)
+			{
+				// A bitstruct with a char array container, as LLVM: true when any byte is set.
+				Type *arr = c_safe_type_lower(inner_val.type);
+				ASSERT(arr->array.base == type_char || arr->array.base == type_ichar);
+				scratch_buffer_clear();
+				for (ArrayIndex i = 0; i < arr->array.len; i++)
+				{
+					scratch_buffer_printf("%s___var_%d.ptr[%u]", i ? " | " : "", inner_val.var, (unsigned)i);
+				}
+				PRINTF("bool ___var_%d = ((%s) %s 0);\n", temp, scratch_buffer_to_string(), expr->int_to_bool_expr.negate ? "==" : "!=");
 			}
 			else if (inner_val.type && inner_val.type->type_kind == TYPE_SLICE)
 			{
@@ -2234,7 +1895,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			CValue cond_val = {0};
 			c_emit_expr(c, &cond_val, exprptr(expr->ternary_expr.cond));
 			c_value_rvalue(c, &cond_val);
-			Type *target_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
+			Type *target_type = c_safe_type_lower(expr->type);
 			if (target_type->type_kind == TYPE_VOID && expr->ternary_expr.then_expr && exprptr(expr->ternary_expr.then_expr)->type)
 			{
 				target_type = c_safe_type_lower(exprptr(expr->ternary_expr.then_expr)->type);
@@ -2256,12 +1917,14 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 				}
 				if (expr->ternary_expr.then_expr)
 				{
-					c_emit_ignored_expr(c, exprptr(expr->ternary_expr.then_expr));
+					CValue ignored = {0};
+					c_emit_expr(c, &ignored, exprptr(expr->ternary_expr.then_expr));
 				}
 				PRINT("} else {\n");
 				if (expr->ternary_expr.else_expr)
 				{
-					c_emit_ignored_expr(c, exprptr(expr->ternary_expr.else_expr));
+					CValue ignored = {0};
+					c_emit_expr(c, &ignored, exprptr(expr->ternary_expr.else_expr));
 				}
 				PRINT("}\n");
 				value->var  = 0;
@@ -2306,7 +1969,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_INITIALIZER_LIST:
 		{
 			Type *raw_type    = expr->type ? type_flatten(expr->type) : NULL;
-			Type *target_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
+			Type *target_type = c_safe_type_lower(expr->type);
 			if (target_type->type_kind == TYPE_VOID)
 			{
 				target_type = type_int;
@@ -2342,20 +2005,12 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 					CValue el_val = {0};
 					c_emit_expr(c, &el_val, elements[i]);
 					c_value_rvalue(c, &el_val);
-					c_ensure_cvalue_var(c, &el_val, elements[i]->type);
-					if (c_type_is_aggregate(el_val.type))
-					{
-						PRINTF("__c3_memcpy(&___var_%d.ptr[%d], &___var_%d, sizeof(%s));\n", temp, i, el_val.var, c_type_name(c, el_val.type));
-					}
-					else
-					{
-						PRINTF("___var_%d.ptr[%d] = ___var_%d;\n", temp, i, el_val.var);
-					}
+					c_emit_store(c, str_printf("___var_%d.ptr[%d]", temp, i), target_type->array.base, &el_val);
 				}
 			}
 			else if (target_type->type_kind == TYPE_SLICE)
 			{
-				Type *base_type        = (target_type->array.base && is_valid_type_ptr(target_type->array.base)) ? c_safe_type_lower(target_type->array.base) : type_void;
+				Type *base_type        = c_safe_type_lower(target_type->array.base);
 				int arr_len            = count > 0 ? count : 1;
 				VariableId arr_var     = c_emit_alloca_array(c, base_type, arr_len);
 				for (int i = 0; i < count; i++)
@@ -2363,15 +2018,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 					CValue el_val = {0};
 					c_emit_expr(c, &el_val, elements[i]);
 					c_value_rvalue(c, &el_val);
-					c_ensure_cvalue_var(c, &el_val, base_type);
-					if (c_type_is_aggregate(el_val.type))
-					{
-						PRINTF("__c3_memcpy(&___var_%d[%d], &___var_%d, sizeof(%s));\n", arr_var, i, el_val.var, c_type_name(c, el_val.type));
-					}
-					else
-					{
-						PRINTF("___var_%d[%d] = ___var_%d;\n", arr_var, i, el_val.var);
-					}
+					c_emit_store(c, str_printf("___var_%d[%d]", arr_var, i), base_type, &el_val);
 				}
 				PRINTF("___var_%d = (%s){ .ptr = ___var_%d, .len = %d };\n", temp, tname, arr_var, count);
 			}
@@ -2383,21 +2030,8 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 					CValue el_val = {0};
 					c_emit_expr(c, &el_val, elements[i]);
 					c_value_rvalue(c, &el_val);
-					c_ensure_cvalue_var(c, &el_val, elements[i]->type);
 					Decl *m  = (d && d->strukt.members && i < vec_size(d->strukt.members)) ? d->strukt.members[i] : NULL;
-					Type *mt = m ? c_decl_type(m) : el_val.type;
-					if (c_type_is_aggregate(el_val.type))
-					{
-						PRINTF("__c3_memcpy(&___var_%d.m%d, &___var_%d, sizeof(%s));\n", temp, i, el_val.var, c_type_name(c, el_val.type));
-					}
-					else if (mt && mt->type_kind == TYPE_POINTER)
-					{
-						PRINTF("___var_%d.m%d = (%s)___var_%d;\n", temp, i, c_type_name(c, mt), el_val.var);
-					}
-					else
-					{
-						PRINTF("___var_%d.m%d = ___var_%d;\n", temp, i, el_val.var);
-					}
+					c_emit_store(c, str_printf("___var_%d.m%d", temp, i), m ? c_decl_type(m) : el_val.type, &el_val);
 				}
 			}
 			return;
@@ -2405,7 +2039,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		{
 			Type *raw_type    = expr->type ? type_flatten(expr->type) : NULL;
-			Type *target_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
+			Type *target_type = c_safe_type_lower(expr->type);
 			if (target_type->type_kind == TYPE_VOID)
 			{
 				target_type = type_int;
@@ -2478,7 +2112,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 							char seg[32];
 							snprintf(seg, sizeof(seg), ".m%d", (int)de->index);
 							strncat(path_buf, seg, sizeof(path_buf) - strlen(path_buf) - 1);
-							if (m && is_valid_type_ptr(m->type))
+							if (m)
 							{
 								Type *raw_m = type_flatten(m->type);
 								if (raw_m && raw_m->type_kind == TYPE_BITSTRUCT && p + 1 < path_len)
@@ -2522,35 +2156,9 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 						PRINTF("%s_set_%s((void*)&___var_%d%s, ___var_%d);\n",
 						       bs_name, m_name, temp, path_buf, dval.var);
 					}
-					else if (curr_type && curr_type->type_kind == TYPE_POINTER && dval.type && c_type_is_aggregate(dval.type))
-					{
-						if (dval.type->type_kind == TYPE_ARRAY || dval.type->type_kind == TYPE_VECTOR || dval.type->type_kind == TYPE_SIMD_VECTOR)
-						{
-							PRINTF("___var_%d%s = (void*)(___var_%d%sptr);\n", temp, path_buf, dval.var, c_arrow(&dval));
-						}
-						else
-						{
-							PRINTF("___var_%d%s = (void*)(&___var_%d);\n", temp, path_buf, dval.var);
-						}
-					}
-					else if (curr_type && curr_type->type_kind == TYPE_POINTER && dval.type && type_is_pointer(dval.type))
-					{
-						PRINTF("___var_%d%s = (%s)___var_%d;\n", temp, path_buf, c_type_name(c, curr_type), dval.var);
-					}
-					else if (c_type_is_aggregate(dval.type))
-					{
-						PRINTF("__c3_memcpy(&___var_%d%s, &___var_%d, sizeof(%s));\n", temp, path_buf, dval.var, c_type_name(c, dval.type));
-					}
 					else
 					{
-						if (curr_type && curr_type->type_kind == TYPE_POINTER)
-						{
-							PRINTF("___var_%d%s = (%s)___var_%d;\n", temp, path_buf, c_type_name(c, curr_type), dval.var);
-						}
-						else
-						{
-							PRINTF("___var_%d%s = ___var_%d;\n", temp, path_buf, dval.var);
-						}
+						c_emit_store(c, str_printf("___var_%d%s", temp, path_buf), curr_type, &dval);
 					}
 				}
 			}
@@ -2566,6 +2174,30 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			value->kind = CV_VALUE;
 			return;
 		case EXPR_RVALUE:
+		{
+			// Sema's pointer (and pointer vector) casts: the value takes the expression's type, as LLVM.
+			// C needs the cast that LLVM's opaque pointers do not.
+			c_emit_expr(c, value, expr->inner_expr);
+			c_value_rvalue(c, value);
+			Type *target_type = c_expr_type(expr);
+			if (value->var == 0 || strcmp(c_type_name(c, target_type), c_type_name(c, value->type)) == 0)
+			{
+				value->type = target_type;
+				return;
+			}
+			CValue inner_val = *value;
+			c_emit_type_forward_decl(c, target_type);
+			int temp          = c_emit_temp_var(c, value, target_type);
+			const char *tname = c_type_name(c, target_type);
+			if (c_type_is_vec_or_arr(target_type))
+			{
+				const char *lane_tname = c_type_name(c, c_safe_type_lower(target_type->array.base));
+				c_emit_lanewise(c, temp, target_type, str_printf("(%s)$0", lane_tname), &inner_val, 1);
+				return;
+			}
+			PRINTF("%s ___var_%d = (%s)___var_%d;\n", tname, temp, tname, inner_val.var);
+			return;
+		}
 		case EXPR_MAYBE_DEREF:
 		case EXPR_SPLAT:
 			c_emit_expr(c, value, expr->inner_expr);
@@ -2584,7 +2216,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			return;
 		case EXPR_COMPILER_CONST:
 		{
-			Type *target_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
+			Type *target_type = c_safe_type_lower(expr->type);
 			if (target_type->type_kind == TYPE_VOID)
 			{
 				target_type = type_int;
@@ -2599,7 +2231,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			CValue inner_val = {0};
 			c_emit_expr(c, &inner_val, inner);
 			c_value_rvalue(c, &inner_val);
-			Type *target_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
+			Type *target_type = c_safe_type_lower(expr->type);
 			if (target_type->type_kind == TYPE_VOID)
 			{
 				target_type = type_chars;
@@ -2663,7 +2295,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 		{
 			BuiltinDefine hook = (expr->expr_kind == EXPR_TEST_HOOK) ? expr->test_hook_expr : expr->benchmark_hook_expr;
 			bool is_fns        = (hook == BUILTIN_DEF_TEST_FNS || hook == BUILTIN_DEF_BENCHMARK_FNS);
-			Type *target_type  = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
+			Type *target_type  = c_safe_type_lower(expr->type);
 			if (target_type->type_kind == TYPE_VOID)
 			{
 				target_type = type_chars;
@@ -2778,8 +2410,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			return;
 		case EXPR_MACRO_BLOCK:
 		{
-			Type *target_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
-			bool is_opt       = expr->type && type_is_optional(expr->type);
+			Type *target_type = c_safe_type_lower(expr->type);
 			int ret_var       = 0;
 			if (target_type->type_kind != TYPE_VOID)
 			{
@@ -2793,33 +2424,15 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 				value->kind = CV_VALUE;
 			}
 
-			int fault_var = 0;
-			if (is_opt)
-			{
-				fault_var = c_emit_temp_var(c, NULL, type_fault);
-				PRINTF("c3fault_t ___var_%d = NULL;\n", fault_var);
-				value->optional = fault_var;
-			}
-
-			int old_macro_ret           = c->current_macro_ret_var;
-			int old_macro_fault         = c->current_macro_fault_var;
-			Type *old_macro_ret_type    = c->current_macro_ret_type;
-			int old_macro_exit          = c->current_macro_exit_label;
-			int macro_exit              = c_create_label(c);
-			c->current_macro_ret_var    = ret_var;
-			c->current_macro_fault_var  = fault_var;
-			c->current_macro_ret_type   = target_type;
-			c->current_macro_exit_label = macro_exit;
-
-			BlockExit c_exit = {.block_return_out    = (void *)(uintptr_t)ret_var,
-			                    .block_return_exit   = (void *)(uintptr_t)macro_exit,
-			                    .block_error_var     = (void *)(uintptr_t)fault_var,
-			                    .block_optional_exit = (void *)target_type};
+			int macro_exit    = c_create_label(c);
+			CCatch outer      = c->catch;
+			CBlockExit c_exit = {.return_out = ret_var, .return_type = target_type, .return_exit = macro_exit, .catch = outer};
 			if (expr->macro_block.block_exit)
 			{
-				*expr->macro_block.block_exit = &c_exit;
+				*expr->macro_block.block_exit = (BlockExit *)&c_exit;
 			}
 
+			// A fault in an argument jumps to the outer catch target.
 			FOREACH(Decl *, param, expr->macro_block.params)
 			{
 				if (!param)
@@ -2840,15 +2453,6 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 						}
 						CValue pval = {0};
 						c_emit_local_decl(c, d, &pval);
-						if (expr->macro_block.had_optional_arg)
-						{
-							PRINTF("if (__c3_current_fault != NULL) {\n");
-							if (fault_var != 0)
-							{
-								PRINTF("\t___var_%d = __c3_current_fault;\n", fault_var);
-							}
-							PRINTF("\tgoto __C3_LABEL_%d;\n}\n", macro_exit);
-						}
 					}
 					continue;
 				}
@@ -2866,31 +2470,17 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 				}
 				CValue pval = {0};
 				c_emit_local_decl(c, param, &pval);
-				if (expr->macro_block.had_optional_arg)
-				{
-					PRINTF("if (__c3_current_fault != NULL) {\n");
-					if (fault_var != 0)
-					{
-						PRINTF("\t___var_%d = __c3_current_fault;\n", fault_var);
-					}
-					PRINTF("\tgoto __C3_LABEL_%d;\n}\n", macro_exit);
-				}
 			}
 
+			// The body only sees faults through its block exit statements.
+			c->catch = NO_CATCH;
 			if (expr->macro_block.first_stmt)
 			{
 				c_emit_stmt_chain(c, expr->macro_block.first_stmt);
 			}
 
 			c_emit_label(c, macro_exit);
-			if (fault_var != 0)
-			{
-				PRINTF("__c3_current_fault = ___var_%d;\n", fault_var);
-			}
-			c->current_macro_ret_var    = old_macro_ret;
-			c->current_macro_fault_var  = old_macro_fault;
-			c->current_macro_ret_type   = old_macro_ret_type;
-			c->current_macro_exit_label = old_macro_exit;
+			c->catch = outer;
 			return;
 		}
 		case EXPR_POINTER_OFFSET:
@@ -2900,7 +2490,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			c_value_rvalue(c, &ptr_val);
 			c_emit_expr(c, &offset_val, exprptr(expr->pointer_offset_expr.offset));
 			c_value_rvalue(c, &offset_val);
-			Type *target_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
+			Type *target_type = c_safe_type_lower(expr->type);
 			if (target_type->type_kind == TYPE_VOID)
 			{
 				target_type = type_voidptr;
@@ -2909,29 +2499,10 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			const char *tname = c_type_name(c, target_type);
 			if (c_type_is_aggregate(target_type))
 			{
-				int len = (int)target_type->array.len;
-				if (len <= 0)
-				{
-					len = 1;
-				}
 				Type *elem_t       = target_type->array.base;
-				bool offset_is_vec = (offset_val.type && c_type_is_aggregate(offset_val.type));
-				bool ptr_is_vec    = (ptr_val.type && c_type_is_aggregate(ptr_val.type));
-				bool is_void_ptr   = elem_t && elem_t->type_kind == TYPE_POINTER && elem_t->pointer && elem_t->pointer->type_kind == TYPE_VOID;
-				PRINTF("%s ___var_%d;\n", tname, temp);
-				for (int i = 0; i < len; i++)
-				{
-					const char *p_str = ptr_is_vec ? str_printf("___var_%d.ptr[%d]", ptr_val.var, i) : str_printf("___var_%d", ptr_val.var);
-					const char *o_str = offset_is_vec ? str_printf("___var_%d.ptr[%d]", offset_val.var, i) : str_printf("___var_%d", offset_val.var);
-					if (is_void_ptr)
-					{
-						PRINTF("___var_%d.ptr[%d] = (void*)(((char*)%s) + %s);\n", temp, i, p_str, o_str);
-					}
-					else
-					{
-						PRINTF("___var_%d.ptr[%d] = %s + %s;\n", temp, i, p_str, o_str);
-					}
-				}
+				bool is_void_ptr   = elem_t->type_kind == TYPE_POINTER && elem_t->pointer->type_kind == TYPE_VOID;
+				CValue operands[2] = { ptr_val, offset_val };
+				c_emit_lanewise(c, temp, target_type, is_void_ptr ? "(void*)(((char*)$0) + $1)" : "$0 + $1", operands, 2);
 				return;
 			}
 			if (target_type->type_kind == TYPE_POINTER && target_type->pointer && target_type->pointer->type_kind == TYPE_VOID)
@@ -2949,7 +2520,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			CValue parent_val = {0};
 			c_emit_expr(c, &parent_val, exprptr(expr->swizzle_expr.parent));
 			c_value_rvalue(c, &parent_val);
-			Type *target_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
+			Type *target_type = c_safe_type_lower(expr->type);
 			if (target_type->type_kind == TYPE_VOID)
 			{
 				target_type = type_int;
@@ -2967,28 +2538,29 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 		}
 		case EXPR_FORCE_UNWRAP:
 		{
-			if (expr->inner_expr)
-			{
-				c_emit_expr(c, value, expr->inner_expr);
-				c_value_rvalue(c, value);
-				PRINTF("if (__c3_current_fault != NULL) { __c3_abort(); }\n");
-				value->optional = 0;
-			}
-			else
-			{
-				Type *target_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
-				if (target_type->type_kind == TYPE_VOID)
-				{
-					target_type = type_int;
-				}
-				int temp = c_emit_temp_var(c, value, target_type);
-				c_emit_var_zero_init(c, temp, target_type);
-			}
+			int err_var = c_create_variable(c);
+			const char *err = str_printf("___var_%d", err_var);
+			int panic_label = c_create_label(c);
+			int ok_label    = c_create_label(c);
+			PRINTF("c3fault_t %s = NULL;\n", err);
+			CCatch saved = c->catch;
+			c->catch     = (CCatch){ panic_label, err };
+			c_emit_expr(c, value, expr->inner_expr);
+			c_value_rvalue(c, value);
+			c->catch = saved;
+			PRINTF("goto __C3_LABEL_%d;\n", ok_label);
+			c_emit_label(c, panic_label);
+			c_emit_panic_fn(c, PANIC_FN_UNWRAP, expr->loc, NULL, &(CPanicValue){ err, type_fault });
+			c_emit_label(c, ok_label);
 			return;
 		}
 		case EXPR_OPTIONAL:
 		{
-			Type *target_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
+			Type *target_type = c_safe_type_lower(expr->type);
+			CValue inner_val  = {0};
+			c_emit_expr(c, &inner_val, expr->inner_expr);
+			c_value_rvalue(c, &inner_val);
+			c_emit_fault_to_optional_exit(c, str_printf("___var_%d", inner_val.var));
 			if (target_type->type_kind != TYPE_VOID)
 			{
 				int temp = c_emit_temp_var(c, value, target_type);
@@ -2996,79 +2568,58 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			}
 			else
 			{
-				value->var  = 0;
-				value->type = type_void;
-				value->kind = CV_VALUE;
-			}
-
-			if (expr->inner_expr)
-			{
-				CValue inner_val = {0};
-				c_emit_expr(c, &inner_val, expr->inner_expr);
-				c_value_rvalue(c, &inner_val);
-				if (inner_val.var != 0)
-				{
-					PRINTF("__c3_current_fault = (c3fault_t)(uintptr_t)___var_%d;\n", inner_val.var);
-					if (c->current_macro_fault_var != 0)
-					{
-						PRINTF("___var_%d = (c3fault_t)(uintptr_t)___var_%d;\n", c->current_macro_fault_var, inner_val.var);
-					}
-					value->optional = inner_val.var;
-					if (target_type == type_fault || target_type->type_kind == TYPE_ANYFAULT)
-					{
-						value->var = inner_val.var;
-					}
-				}
+				c_value_set_void(value);
 			}
 			return;
 		}
 		case EXPR_RETHROW:
 		{
-			if (expr->rethrow_expr.inner)
+			int err_var = c_create_variable(c);
+			const char *err = str_printf("___var_%d", err_var);
+			int guard_label = c_create_label(c);
+			int noerr_label = c_create_label(c);
+			PRINTF("c3fault_t %s = NULL;\n", err);
+			CCatch saved = c->catch;
+			c->catch     = (CCatch){ guard_label, err };
+			c_emit_expr(c, value, expr->rethrow_expr.inner);
+			c_value_rvalue(c, value);
+			c->catch = saved;
+			PRINTF("goto __C3_LABEL_%d;\n", noerr_label);
+			c_emit_label(c, guard_label);
+			if (expr->rethrow_expr.cleanup)
 			{
-				CValue inner_val = {0};
-				c_emit_expr(c, &inner_val, expr->rethrow_expr.inner);
-				c_value_rvalue(c, &inner_val);
-				*value = inner_val;
-				if (inner_val.optional != 0)
-				{
-					PRINTF("if (___var_%d != NULL) {\n", inner_val.optional);
-					PRINTF("\t__c3_current_fault = ___var_%d;\n", inner_val.optional);
-					if (expr->rethrow_expr.cleanup)
-					{
-						int err_temp = c_create_variable(c);
-						PRINTF("\tc3fault_t ___var_%d = __c3_current_fault;\n", err_temp);
-						c_emit_stmt_chain(c, expr->rethrow_expr.cleanup);
-						PRINTF("\t__c3_current_fault = ___var_%d;\n", err_temp);
-					}
-					c_emit_check_fault_and_return(c, expr);
-					PRINT("}\n");
-					value->optional = 0;
-				}
-				else
-				{
-					PRINT("if (__c3_current_fault != NULL) {\n");
-					if (expr->rethrow_expr.cleanup)
-					{
-						int err_temp = c_create_variable(c);
-						PRINTF("\tc3fault_t ___var_%d = __c3_current_fault;\n", err_temp);
-						c_emit_stmt_chain(c, expr->rethrow_expr.cleanup);
-						PRINTF("\t__c3_current_fault = ___var_%d;\n", err_temp);
-					}
-					c_emit_check_fault_and_return(c, expr);
-					PRINT("}\n");
-					value->optional = 0;
-				}
+				const char *saved_defer_error = c->defer_error_var;
+				c->defer_error_var            = err;
+				PRINT("{\n");
+				c_emit_stmt_chain(c, expr->rethrow_expr.cleanup);
+				PRINT("}\n");
+				c->defer_error_var = saved_defer_error;
+			}
+			if (expr->rethrow_expr.in_block)
+			{
+				CBlockExit *exit = (CBlockExit *)*expr->rethrow_expr.in_block;
+				ASSERT(exit->catch.label && "Optional evaluated without a catch target");
+				if (exit->catch.fault) PRINTF("%s = %s;\n", exit->catch.fault, err);
+				PRINTF("goto __C3_LABEL_%d;\n", exit->catch.label);
 			}
 			else
 			{
-				Type *target_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
-				if (target_type->type_kind == TYPE_VOID)
+				c_emit_fault_return(c, err);
+			}
+			c_emit_label(c, noerr_label);
+			// An inner expression of wildcard type always fails (`FAULT~!`), and sema gives the rethrow whatever type its
+			// context needs. Nothing reaches this point; the value only has to have that type.
+			if (type_no_optional(expr->rethrow_expr.inner->type)->canonical->type_kind == TYPE_WILDCARD)
+			{
+				Type *type = c_safe_type_lower(expr->type);
+				if (type->type_kind == TYPE_VOID)
 				{
-					target_type = type_int;
+					c_value_set_void(value);
 				}
-				int temp = c_emit_temp_var(c, value, target_type);
-				c_emit_var_zero_init(c, temp, target_type);
+				else
+				{
+					c_emit_var_zero_init(c, c_emit_temp_var(c, value, type), type);
+				}
 			}
 			return;
 		}
@@ -3079,32 +2630,21 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			value->kind = CV_VALUE;
 			if (!expr->try_expr.optional)
 			{
-				VariableId fvid = c_get_decl_fault_var(c, expr->try_expr.decl);
-				if (fvid != 0)
-				{
-					PRINTF("bool ___var_%d = (___var_%d == NULL);\n", value->var, fvid);
-				}
-				else
-				{
-					PRINTF("bool ___var_%d = true;\n", value->var);
-				}
+				const char *fault = c_decl_fault_ref(c, expr->try_expr.decl);
+				PRINTF("bool ___var_%d = %s;\n", value->var, fault ? str_printf("(%s == NULL)", fault) : "true");
 				return;
 			}
+			int catch_label = c_create_label(c);
+			int end_label   = c_create_label(c);
+			PRINTF("bool ___var_%d;\n", value->var);
+			CCatch saved = c->catch;
+			c->catch     = (CCatch){ catch_label, NULL };
 			CValue opt_val = {0};
 			c_emit_expr(c, &opt_val, expr->try_expr.optional);
 			c_value_rvalue(c, &opt_val);
-			if (opt_val.optional != 0)
-			{
-				PRINTF("bool ___var_%d = (__c3_current_fault == NULL && ___var_%d == NULL);\n", value->var, opt_val.optional);
-			}
-			else
-			{
-				PRINTF("bool ___var_%d = (__c3_current_fault == NULL);\n", value->var);
-			}
-			PRINTF("if (___var_%d) {\n", value->var);
 			if (expr->try_expr.assign_existing && expr->try_expr.lhs)
 			{
-				c_emit_lvalue_assign(c, expr->try_expr.lhs, NULL, &opt_val, "=", NULL);
+				c_emit_lvalue_assign(c, expr->try_expr.lhs, NULL, &opt_val, NULL);
 			}
 			else if (expr->try_expr.decl)
 			{
@@ -3117,40 +2657,44 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 				VariableId vid = c_get_or_create_decl_var(c, expr->try_expr.decl);
 				c_emit_assign_var(c, vid, dt, &opt_val);
 			}
-			PRINT("}\n");
-			PRINT("__c3_current_fault = NULL;\n");
+			c->catch = saved;
+			PRINTF("___var_%d = true;\ngoto __C3_LABEL_%d;\n", value->var, end_label);
+			c_emit_label(c, catch_label);
+			PRINTF("___var_%d = false;\n", value->var);
+			c_emit_label(c, end_label);
 			return;
 		}
 		case EXPR_CATCH:
 		{
-			CValue last_val = {0};
-			FOREACH(Expr *, e, expr->catch_expr.exprs)
-			{
-				c_emit_expr(c, &last_val, e);
-				c_value_rvalue(c, &last_val);
-			}
-			int fault_temp = c_emit_temp_var(c, value, type_fault);
-			if (last_val.optional != 0)
-			{
-				PRINTF("c3fault_t ___var_%d = (c3fault_t)(uintptr_t)___var_%d;\n", fault_temp, last_val.optional);
-			}
-			else
-			{
-				PRINTF("c3fault_t ___var_%d = __c3_current_fault;\n", fault_temp);
-			}
-			PRINT("__c3_current_fault = NULL;\n");
+			const char *fault;
 			if (expr->catch_expr.decl)
 			{
 				Type *dt = c_decl_type(expr->catch_expr.decl);
 				if (dt->type_kind == TYPE_VOID)
 				{
-					dt                          = type_fault;
-					expr->catch_expr.decl->type = dt;
+					expr->catch_expr.decl->type = type_fault;
 				}
-				VariableId vid = c_get_or_create_decl_var(c, expr->catch_expr.decl);
-				CValue fval    = {.var = fault_temp, .type = type_fault, .kind = CV_VALUE};
-				c_emit_assign_var(c, vid, dt, &fval);
+				fault = str_printf("___var_%d", c_get_or_create_decl_var(c, expr->catch_expr.decl));
 			}
+			else
+			{
+				fault = str_printf("___var_%d", c_create_variable(c));
+				PRINTF("c3fault_t %s;\n", fault);
+			}
+			int end_label = c_create_label(c);
+			CCatch saved  = c->catch;
+			c->catch      = (CCatch){ end_label, fault };
+			FOREACH(Expr *, e, expr->catch_expr.exprs)
+			{
+				CValue val = {0};
+				c_emit_expr(c, &val, e);
+				c_value_rvalue(c, &val);
+			}
+			c->catch = saved;
+			PRINTF("%s = NULL;\n", fault);
+			c_emit_label(c, end_label);
+			int temp = c_emit_temp_var(c, value, type_fault);
+			PRINTF("c3fault_t ___var_%d = (c3fault_t)%s;\n", temp, fault);
 			return;
 		}
 		case EXPR_TRY_UNWRAP_CHAIN:
@@ -3163,25 +2707,18 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 				CValue eval = {0};
 				c_emit_expr(c, &eval, e);
 				c_value_rvalue(c, &eval);
-				if (eval.type && eval.type->type_kind == TYPE_BOOL && eval.var != 0)
-				{
-					PRINTF("\tif (!___var_%d || __c3_current_fault != NULL) { ___var_%d = false; }\n", eval.var, temp);
-				}
-				else
-				{
-					PRINTF("\tif (__c3_current_fault != NULL) { ___var_%d = false; }\n", temp);
-				}
+				PRINTF("___var_%d = ___var_%d;\n", temp, eval.var);
 				PRINT("}\n");
 			}
-			PRINT("__c3_current_fault = NULL;\n");
 			return;
 		}
 		case EXPR_LAST_FAULT:
-			value->var  = c_create_variable(c);
-			value->type = type_fault;
-			value->kind = CV_VALUE;
-			PRINTF("c3fault_t ___var_%d = __c3_current_fault;\n", value->var);
+		{
+			ASSERT(c->defer_error_var);
+			int temp = c_emit_temp_var(c, value, type_fault);
+			PRINTF("c3fault_t ___var_%d = (c3fault_t)%s;\n", temp, c->defer_error_var);
 			return;
+		}
 		case EXPR_RETVAL:
 		{
 			if (c->retval.var != 0)
@@ -3189,7 +2726,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 				*value = c->retval;
 				return;
 			}
-			Type *target_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
+			Type *target_type = c_safe_type_lower(expr->type);
 			if (target_type->type_kind == TYPE_VOID)
 			{
 				target_type = type_int;
@@ -3203,7 +2740,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			CValue parent_val = {0};
 			c_emit_expr(c, &parent_val, exprptr(expr->typeid_info_expr.parent));
 			c_value_rvalue(c, &parent_val);
-			Type *target_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
+			Type *target_type = c_safe_type_lower(expr->type);
 			if (target_type->type_kind == TYPE_VOID)
 			{
 				target_type = type_sz;
@@ -3211,6 +2748,34 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			int temp          = c_emit_temp_var(c, value, target_type);
 			const char *tname = c_type_name(c, target_type);
 			const char *pname = (parent_val.var != 0) ? str_printf("___var_%d", parent_val.var) : "NULL";
+			if (safe_mode_enabled())
+			{
+				// Each property only exists for some kinds of types.
+				static const IntrospectType inner_kinds[] = { INTROSPECT_TYPE_ARRAY, INTROSPECT_TYPE_POINTER, INTROSPECT_TYPE_VECTOR,
+				                                              INTROSPECT_TYPE_ENUM, INTROSPECT_TYPE_SLICE, INTROSPECT_TYPE_DISTINCT,
+				                                              INTROSPECT_TYPE_CONSTSET, INTROSPECT_TYPE_BITSTRUCT, INTROSPECT_TYPE_OPTIONAL };
+				static const IntrospectType names_kinds[] = { INTROSPECT_TYPE_ENUM };
+				static const IntrospectType len_kinds[]   = { INTROSPECT_TYPE_ARRAY, INTROSPECT_TYPE_VECTOR, INTROSPECT_TYPE_ENUM, INTROSPECT_TYPE_SLICE };
+				const IntrospectType *kinds = NULL;
+				int kind_count              = 0;
+				PanicFunction panic_fn      = PANIC_FN_ACCESS_INNER;
+				switch (expr->typeid_info_expr.kind)
+				{
+					case TYPEID_INFO_INNER: kinds = inner_kinds; kind_count = ELEMENTLEN(inner_kinds); break;
+					case TYPEID_INFO_NAMES: kinds = names_kinds; kind_count = ELEMENTLEN(names_kinds); panic_fn = PANIC_FN_ACCESS_NAMES; break;
+					case TYPEID_INFO_LEN: kinds = len_kinds; kind_count = ELEMENTLEN(len_kinds); panic_fn = PANIC_FN_ACCESS_LEN; break;
+					default: break;
+				}
+				if (kinds)
+				{
+					scratch_buffer_clear();
+					for (int i = 0; i < kind_count; i++)
+					{
+						scratch_buffer_printf("%s((const c3type_info_t*)%s)->kind != %d", i ? " && " : "", pname, (int)kinds[i]);
+					}
+					c_emit_panic_if(c, scratch_buffer_copy(), panic_fn, expr->loc, NULL, NULL, NULL);
+				}
+			}
 			switch (expr->typeid_info_expr.kind)
 			{
 				case TYPEID_INFO_KIND:
@@ -3238,7 +2803,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 		}
 		default:
 		{
-			Type *t = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
+			Type *t = c_safe_type_lower(expr->type);
 			if (t->type_kind == TYPE_VOID)
 			{
 				value->var  = 0;
@@ -3255,17 +2820,24 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 
 void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 {
+	// Every expression produces its value from scratch; emitters set only the fields they use.
+	*value = (CValue){0};
 	c_emit_expr_internal(c, value, expr);
-	if (value && value->optional == 0 && expr && expr->type && is_valid_type_ptr(expr->type) && type_is_optional(expr->type))
-	{
-		int fault_temp = c_emit_temp_var(c, NULL, type_fault);
-		PRINTF("c3fault_t ___var_%d = __c3_current_fault;\n", fault_temp);
-		value->optional = fault_temp;
-	}
 }
 
+// Evaluate for side effects. A fault in an optional expression is discarded.
 void c_emit_ignored_expr(GenContext *c, Expr *expr)
 {
 	CValue value = {0};
+	if (!IS_OPTIONAL(expr))
+	{
+		c_emit_expr(c, &value, expr);
+		return;
+	}
+	int label    = c_create_label(c);
+	CCatch saved = c->catch;
+	c->catch     = (CCatch){ label, NULL };
 	c_emit_expr(c, &value, expr);
+	c->catch = saved;
+	c_emit_label(c, label);
 }

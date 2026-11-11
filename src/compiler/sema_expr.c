@@ -4451,13 +4451,19 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 			goto DEFAULT;
 		case EXPR_SUBSCRIPT:
 		{
+			// Rewritten to `*(&subscript)` in place. A subscript that is already resolved is not analysed again, so
+			// then the `&` gets its pointer type here and the `*` keeps the subscript's type.
+			bool resolved = subscripted->resolve_status == RESOLVE_DONE;
+			Type *type = subscripted->type;
 			Expr *inner = expr_copy(subscripted);
 			subscripted->expr_kind = EXPR_UNARY;
 			subscripted->unary_expr = (ExprUnary) { .operator = UNARYOP_ADDR, .expr = inner };
+			if (resolved) subscripted->type = type_add_optional(type_get_ptr(type_no_optional(type)), type_is_optional(type));
 
 			inner = expr_copy(subscripted);
 			subscripted->expr_kind = EXPR_UNARY;
 			subscripted->unary_expr = (ExprUnary) { .operator = UNARYOP_DEREF, .expr = inner, .no_read = true };
+			if (resolved) subscripted->type = type;
 			FALLTHROUGH;
 		}
 		default:
@@ -11461,6 +11467,7 @@ static inline bool sema_expr_analyse_embed(SemaContext *context, Expr *expr, boo
 		expr->inner_expr = filename;
 		filename->expr_kind = EXPR_CONST;
 		filename->const_expr.const_kind = CONST_FAULT;
+		filename->type = type_fault;
 		expr->type = type_wildcard_optional;
 		filename->const_expr.fault = compiler.context.io_error_file_not_found;
 		filename->resolve_status = RESOLVE_DONE;

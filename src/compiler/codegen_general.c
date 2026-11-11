@@ -330,3 +330,14 @@ void codegen_setup_object_names(Module *module, const char **base_name, const ch
 		if (compiler.build.asm_file_dir) *asm_filename = file_append_path(compiler.build.asm_file_dir, *asm_filename);
 	}
 }
+
+bool module_should_weaken(Module *module)
+{
+	Module *top = module->top_module;
+	return top && (top->name->module == kw_std || top->name->module == kw_libc);
+}
+
+bool decl_should_weaken(Decl *decl)
+{
+	return decl->is_weak_link || (!decl->is_extern && (decl->is_templated || module_should_weaken(decl->unit->module)));
+}
