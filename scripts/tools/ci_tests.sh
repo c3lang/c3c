@@ -42,7 +42,8 @@ echo ">>> OS Mode: $OS_MODE (Detected System: $SYSTEM_NAME)"
 
 C3_BACKEND="${C3_BACKEND:-llvm}"
 if [[ "$C3_BACKEND" == "c" ]]; then
-    export CC="${CC:-clang}"
+    # c3c reads the C compiler from C3C_CC. Cross targets (wasm, bsd) need clang.
+    export C3C_CC="${C3C_CC:-clang}"
 fi
 
 # --- Create Disposable Workspace ---
