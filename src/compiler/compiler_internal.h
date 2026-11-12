@@ -329,15 +329,7 @@ struct Type_
 	const char *name;
 	Type **type_cache;
 	Type *func_ptr;
-	union
-	{
-		void *backend_type;
-		struct
-		{
-			uint16_t tb_set;
-			uint16_t tb_type;
-		};
-	};
+	void *backend_type;
 	TypeSize size;
 	void *backend_typeid;
 	void *backend_debug_type;
@@ -501,7 +493,6 @@ typedef struct VarDecl_
 				// Variable
 				void *optional_ref;
 				int optional_id;
-				int tb_optional_reg;
 			};
 		};
 		struct
@@ -713,11 +704,7 @@ typedef struct
 {
 	AstId defer;
 	bool next_target : 1;
-	union
-	{
-		void *break_target;
-		int tb_break_target;
-	};
+	void *break_target;
 	void *continue_target;
 	AstId scope_defer;
 	AstId parent;
@@ -773,9 +760,7 @@ typedef struct Decl_
 	{
 		void *backend_ref;
 		int backend_id;
-		int tb_register;
 		void *backend_value;
-		void *tb_symbol;
 		Decl *replacement;
 		struct
 		{
@@ -1439,11 +1424,7 @@ typedef struct
 		};
 		struct
 		{
-			union
-			{
-				void *break_block;
-				int tb_break_block;
-			};
+			void *break_block;
 		} codegen;
 	};
 } AstIfStmt;
@@ -2557,7 +2538,6 @@ bool c_codegen(void *context, const char **out_name);
 bool llvm_codegen(void *context, const char **out_name);
 void *llvm_load_ir_file(const char *filename, const char *object_filename);
 bool llvm_codegen_ir_file(void *context, const char **out_name);
-const char *tilde_codegen(void *context);
 void **c_gen(Module** modules, int module_count);
 void **llvm_gen(Module** modules, int module_count);
 void llvm_collect_module_times(void);
@@ -2567,7 +2547,6 @@ StatsOrigin stats_module_origin(Module *module);
 int64_t stats_physical_lines(File *file);
 void stats_collect_after_sema(void);
 void stats_collect_object_size(const char **obj_files, int count);
-void **tilde_gen(Module** modules, int module_count);
 
 void header_gen(Module **modules, int module_count);
 const char *build_base_name(void);

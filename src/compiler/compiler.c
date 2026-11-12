@@ -237,13 +237,6 @@ static bool thread_compile_task_c(void *compile_data)
 	return c_codegen(data->context, &data->object_name);
 }
 
-static bool thread_compile_task_tb(void *compile_data)
-{
-	CompileData *data = compile_data;
-	data->object_name = tilde_codegen(data->context);
-	return data->object_name != NULL;
-}
-
 static bool thread_compile_task_timed(void *compile_data)
 {
 	CompileData *data = compile_data;
@@ -259,20 +252,6 @@ static Task *compile_data_task(CompileData *data, bool (*compile)(void *compile_
 	data->task = (Task){ compiler.build.collect_stats ? &thread_compile_task_timed : compile, data };
 	return &data->task;
 }
-
-#if !TB_AVAILABLE
-const char *tilde_codegen(void *context)
-{
-	eprintf("TB backend not available.\n");
-	return NULL;
-}
-void **tilde_gen(Module** modules, int module_count)
-{
-	error_exit("TB backend not available.");
-	UNREACHABLE
-}
-
-#endif
 
 const char *build_base_name(void)
 {
@@ -711,10 +690,6 @@ void compiler_compile(void)
 #else 
 			error_exit("C3C compiled without LLVM!");
 #endif
-			break;
-		case BACKEND_TB:
-			gen_contexts = tilde_gen(modules, module_count);
-			task = &thread_compile_task_tb;
 			break;
 		default:
 			UNREACHABLE_VOID
