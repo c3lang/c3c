@@ -100,7 +100,8 @@ switch.entry:                                     ; preds = %entry
   br i1 %2, label %switch.exit, label %jumpblock
 
 jumpblock:                                        ; preds = %switch.entry
-  %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable, i32 %1
+  %zext = zext i32 %1 to i64
+  %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable, i64 %zext
   %target = load ptr, ptr %ptroffset, align 8
   indirectbr ptr %target, [label %switch.case, label %switch.case1, label %switch.exit]
 
@@ -130,7 +131,8 @@ switch.entry:                                     ; preds = %entry
   br i1 %3, label %switch.exit, label %jumpblock
 
 jumpblock:                                        ; preds = %switch.entry
-  %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable.1, i32 %2
+  %zext = zext i32 %2 to i64
+  %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable.1, i64 %zext
   %target = load ptr, ptr %ptroffset, align 8
   indirectbr ptr %target, [label %switch.case, label %switch.case1, label %switch.exit]
 
@@ -159,7 +161,8 @@ switch.entry:                                     ; preds = %entry
   br i1 %3, label %switch.exit, label %jumpblock
 
 jumpblock:                                        ; preds = %switch.entry
-  %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable.2, i32 %2
+  %zext = zext i32 %2 to i64
+  %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable.2, i64 %zext
   %target = load ptr, ptr %ptroffset, align 8
   indirectbr ptr %target, [label %switch.case, label %switch.case1, label %switch.exit, label %switch.exit]
 
@@ -188,7 +191,8 @@ switch.entry:                                     ; preds = %entry
   br i1 %3, label %switch.default, label %jumpblock
 
 jumpblock:                                        ; preds = %switch.entry
-  %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable.3, i32 %2
+  %zext = zext i32 %2 to i64
+  %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable.3, i64 %zext
   %target = load ptr, ptr %ptroffset, align 8
   indirectbr ptr %target, [label %switch.case, label %switch.default]
 
@@ -217,7 +221,8 @@ switch.entry:                                     ; preds = %entry
   br i1 %3, label %switch.default, label %jumpblock
 
 jumpblock:                                        ; preds = %switch.entry
-  %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable.4, i32 %2
+  %zext = zext i32 %2 to i64
+  %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable.4, i64 %zext
   %target = load ptr, ptr %ptroffset, align 8
   indirectbr ptr %target, [label %switch.case, label %switch.case1, label %switch.default, label %switch.default]
 
@@ -251,7 +256,8 @@ switch.entry:                                     ; preds = %entry
   br i1 %3, label %switch.default, label %jumpblock
 
 jumpblock:                                        ; preds = %switch.entry
-  %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable.5, i32 %2
+  %zext = zext i32 %2 to i64
+  %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable.5, i64 %zext
   %target = load ptr, ptr %ptroffset, align 8
   indirectbr ptr %target, [label %switch.case, label %switch.case1, label %switch.case2, label %switch.default, label %switch.default]
 
@@ -270,9 +276,10 @@ switch.case2:                                     ; preds = %jumpblock, %jumpblo
   br i1 %5, label %switch.default, label %jumpblock3
 
 jumpblock3:                                       ; preds = %switch.case2
-  %ptroffset4 = getelementptr inbounds [8 x i8], ptr @jumptable.5, i32 %4
-  %target5 = load ptr, ptr %ptroffset4, align 8
-  indirectbr ptr %target5, [label %switch.case, label %switch.case1, label %switch.case2, label %switch.default]
+  %zext4 = zext i32 %4 to i64
+  %ptroffset5 = getelementptr inbounds [8 x i8], ptr @jumptable.5, i64 %zext4
+  %target6 = load ptr, ptr %ptroffset5, align 8
+  indirectbr ptr %target6, [label %switch.case, label %switch.case1, label %switch.case2, label %switch.default]
 
 switch.default:                                   ; preds = %jumpblock, %jumpblock, %jumpblock3, %switch.case2, %switch.entry
   call void @simple_jump.res(i32 -1)

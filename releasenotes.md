@@ -19,8 +19,12 @@
 - `$defined` on an out of range `$vaarg` index was an error instead of `false`.
 - The alignment arguments of `$$memcpy`, `$$memmove`, `$$memset` are now correctly checked to be power-of-2.
 - An enum switch with a non-constant `case` was counted as exhaustive when the other cases covered all but one value.
+- `@jump` on an `ichar`, `char` or `short` switch could crash the compiler when the cases spanned more than half the type's range.
+- `@str_replace` didn't work properly with an empty pattern. 
+- `String.replace` and `String.treplace` would never return on an empty pattern. 
 
 ### Stdlib changes
+- `String.tokenize` and `String.tokenize_all` with an empty split now return each character.
 
 ## 0.8.6 Change list
 

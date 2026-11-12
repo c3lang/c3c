@@ -803,6 +803,7 @@ static LLVMValueRef llvm_emit_switch_jump_stmt(GenContext *c,
 	{
 		switch_value->value = LLVMBuildSub(c->builder, switch_value->value, min_val.value, "");
 	}
+	switch_value->type = type_int_unsigned_by_bitsize(type_bit_size(type_lowering(switch_value->type)));
 	LLVMValueRef is_valid = LLVMBuildICmp(c->builder, LLVMIntUGT, switch_value->value, llvm_const_int(c, switch_value->type, count - 1), "");
 	LLVMBasicBlockRef switch_block = llvm_basic_block_new(c, "jumpblock");
 	LLVMBuildCondBr(c->builder, is_valid, default_block, switch_block);
@@ -897,6 +898,8 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 	}
 	switch_ast->switch_stmt.codegen.jump.default_index = default_index;
 	switch_ast->switch_stmt.codegen.jump.min_index = min_index;
+	min.type = TYPE_I128;
+	max.type = TYPE_I128;
 	max = int_sub(max, min);
 	ASSERT(max.i.low <= 0xFFFF);
 	uint64_t count = switch_ast->switch_stmt.codegen.jump.count = max.i.low + 1;
@@ -930,6 +933,8 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 		{
 			Int value, to_value;
 			llvm_set_jump_table_values(case_stmt->case_stmt.expr, case_stmt->case_stmt.to_expr, &value, &to_value);
+			value.type = TYPE_I128;
+			to_value.type = TYPE_I128;
 			value = int_sub(value, min);
 			to_value = int_sub(to_value, min);
 			uint64_t from_val = value.i.low;

@@ -2713,6 +2713,8 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 		max_ranged = false;
 		if (low.type != TYPE_POISONED)
 		{
+			high.type = TYPE_I128;
+			low.type = TYPE_I128;
 			Int range = int_sub(high, low);
 			Int max = { .i.low = compiler.build.switchjump_max_size, .type = range.type };
 			if (int_comp(range, max, BINARYOP_GE))

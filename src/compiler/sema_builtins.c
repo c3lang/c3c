@@ -341,6 +341,20 @@ static bool sema_expr_analyse_str_replace(SemaContext *context, Expr *expr, Expr
 	scratch_buffer_clear();
 	ArrayIndex index = 0;
 	if (limit_int == 0) limit_int = MAX_ARRAY_SIZE;
+	if (!pattern_len)
+	{
+		for (ArrayIndex i = 0; i <= len; i++)
+		{
+			if (limit_int)
+			{
+				scratch_buffer_append(replace_str);
+				limit_int--;
+			}
+			if (i < len) scratch_buffer_append_char(inner_str[i]);
+		}
+		expr_rewrite_const_string_from_scratch(expr);
+		return true;
+	}
 	while (index < len)
 	{
 		const char *end = strstr(inner_str + index, pattern_str);
