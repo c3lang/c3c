@@ -10,6 +10,8 @@
 - Overwriting a full array, like `{ .c = { 1, 2, 3 }, .c[2] = 7 };` would be lowered incorrectly.
 - Evaluation order for array comparison was incorrectly right->left.
 - A lambda created in a macro could be reused for a compile time argument with the same value but a different type.
+- `foreach_r` over a type indexed by an enum, such as `EnumMap`, failed to compile.
+- `$case` ranges were rejected when switching over a typedef of an integer.
 
 ### Stdlib changes
 

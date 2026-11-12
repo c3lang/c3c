@@ -1892,7 +1892,7 @@ SKIP_OVERLOAD:;
 	if (is_reverse)
 	{
 		// Create __idx$ > 0
-		Expr *rhs = expr_new_const_int(enumerator->loc, index_type, 0);
+		Expr *rhs = expr_new_const_int(enumerator->loc, actual_index_type, 0);
 		cond = expr_new_binary(idx_decl->loc, expr_variable(idx_decl), rhs, BINARYOP_GT);
 
 		// Create --__idx$
@@ -2783,7 +2783,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 				Expr *expr = exprptr(stmt->case_stmt.expr);
 				assert(expr);
 				Expr *to_expr = exprptrzero(stmt->case_stmt.to_expr);
-				if (to_expr && !type_is_integer(type))
+				if (to_expr && !type_is_integer(type_flatten(type)))
 				{
 					SEMA_ERROR(to_expr, "$case ranges are only allowed for integers.");
 					goto FAILED;
