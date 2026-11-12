@@ -7,7 +7,7 @@ fn int? static_optional()
 	return x;
 }
 
-module c_backend_syntax_fixes @test;
+module std::c_backend_syntax_fixes @test;
 import c_backend_syntax_fixes_helper;
 
 const String STRING_NULL = (String)null[0..0];

@@ -136,7 +136,7 @@ typedef struct GenContext
 	bool current_block_live;
 
 	CRet cur_ret;
-	// Make c_traverse_all_modules visit interfaces that are not live (see visit_dynamic_dispatcher).
+	// Make c_traverse_all_modules visit interfaces that are not live (see c_emit_dynamic_dispatcher).
 	bool traverse_unused_interfaces;
 	// The catch target of the expression being emitted.
 	CCatch catch;
@@ -150,16 +150,34 @@ typedef struct GenContext
 	const char *cur_func_name;
 	Decl *cur_func_decl;
 
-	HTable *gen_decl;
-	HTable *gen_def;
+	// A file declares only what its code uses. Type declarations, other declarations and dispatchers are written to
+	// their own buffers, which go in front of the code; types named while recording get full definitions, between
+	// the type declarations and the rest (c_type_name).
+	ByteBuffer *type_decl_buffer;
+	ByteBuffer *decl_buffer;
+	ByteBuffer *dispatch_buffer;
+	bool record_types;
+	HTable used_type_set;
+	Type **used_types;
+
+	HTable gen_decl;
+	HTable gen_def;
 	HTable local_vars;
 	HTable local_fault_vars;
 	HTable declared_vars;
-	HTable *decl_names;
+	HTable decl_names;
 	HTable emitted_func_defs;
-	HTable *emitted_global_decls;
+	HTable emitted_global_decls;
 	HTable emitted_global_defs;
 } GenContext;
+
+// Direct output to a declaration buffer, if the file has one; returns the buffer to restore.
+static inline ByteBuffer *c_decl_stream_enter(GenContext *c, ByteBuffer *stream)
+{
+	ByteBuffer *prev = c->buffer;
+	if (stream) c->buffer = stream;
+	return prev;
+}
 
 VariableId c_emit_alloca(GenContext *c, Type *type);
 VariableId c_emit_alloca_array(GenContext *c, Type *base_type, ArrayIndex count);
@@ -180,6 +198,8 @@ const char *c_get_decl_asm_name(Decl *decl);
 bool c_decl_needs_asm_label(Decl *decl);
 bool c_fn_is_main(Decl *fn);
 const char *c_decl_lvalue_str(GenContext *c, Decl *decl);
+// The name of a function or global the code refers to, declared in the file on first use.
+const char *c_decl_ref(GenContext *c, Decl *decl);
 const char *c_decl_export_attrs(Decl *decl, bool is_definition);
 const char *c_get_enum_assoc_name(Decl *enum_decl, Decl *param);
 void c_emit_string_literal(GenContext *c, const char *bytes, ArrayIndex len);
@@ -266,6 +286,7 @@ bool c_can_emit_static_initializer(Expr *expr);
 void c_emit_const_initializer_rec(GenContext *c, ConstInitializer *init);
 void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type);
 void c_emit_global_decl(GenContext *c, Decl *var);
+void c_emit_enum_assoc_decl(GenContext *c, Decl *enum_decl, Decl *param);
 void c_emit_global_def(GenContext *c, Decl *var);
 void c_emit_dynamic_dispatcher(GenContext *c, Decl *dyn_fn);
 void c_emit_runtime_header(const char *dir);
