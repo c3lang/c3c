@@ -1,0 +1,2 @@
+#pragma once
+#define GIT_HASH "@VCS_TAG@"
