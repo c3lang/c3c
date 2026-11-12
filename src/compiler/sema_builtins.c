@@ -813,6 +813,8 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 						     (BuiltinArg[]) {BA_POINTER, BA_POINTER, BA_SIZE, BA_BOOL, BA_SIZE, BA_SIZE},
 						     6)) return false;
 			if (!sema_check_builtin_args_const(context, &args[2], 4)) return false;
+			if (!sema_check_alignment_expression(context, args[4], true)) return false;
+			if (!sema_check_alignment_expression(context, args[5], true)) return false;
 			rtype = type_void;
 			break;
 		case BUILTIN_MEMCOPY:
@@ -822,6 +824,8 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 						     (BuiltinArg[]) {BA_POINTER, BA_POINTER, BA_SIZE, BA_BOOL, BA_SIZE, BA_SIZE},
 						     6)) return false;
 			if (!sema_check_builtin_args_const(context, &args[3], 3)) return false;
+			if (!sema_check_alignment_expression(context, args[4], true)) return false;
+			if (!sema_check_alignment_expression(context, args[5], true)) return false;
 			rtype = type_void;
 			break;
 		case BUILTIN_MEMSET:
@@ -829,6 +833,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_CHAR, BA_SIZE, BA_BOOL, BA_SIZE},
 						     5)) return false;
 			if (!sema_check_builtin_args_const(context, &args[3], 2)) return false;
+			if (!sema_check_alignment_expression(context, args[4], true)) return false;
 			rtype = type_void;
 			break;
 		case BUILTIN_MEMSET_INLINE:
@@ -836,6 +841,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_CHAR, BA_SIZE, BA_BOOL, BA_SIZE},
 						     5)) return false;
 			if (!sema_check_builtin_args_const(context, &args[2], 3)) return false;
+			if (!sema_check_alignment_expression(context, args[4], true)) return false;
 			rtype = type_void;
 			break;
 		case BUILTIN_BITREVERSE:

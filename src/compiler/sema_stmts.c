@@ -2475,12 +2475,12 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 
 	bool is_range = to_expr != NULL;
 	bool first_is_const = sema_cast_const(expr) && (expr_is_const_int(expr) || expr_is_const_enum(expr));
-	(*actual_cases_ref)++;
 	if (!is_range && !first_is_const)
 	{
 		*if_chained = true;
 		return true;
 	}
+	(*actual_cases_ref)++;
 	if (is_range)
 	{
 		bool second_is_const = sema_cast_const(to_expr) && (expr_is_const_int(to_expr) || expr_is_const_enum(to_expr));

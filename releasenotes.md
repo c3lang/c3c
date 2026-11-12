@@ -17,6 +17,8 @@
 - `$defined` analysed a compound literal, `$reflect` or `$vaarg` passed as a `#` macro argument in the macro's scope instead of the caller's.
 - A `void?` macro with only compile time parameters lost its optional, so `!`, `!!` and `@catch` on it were rejected.
 - `$defined` on an out of range `$vaarg` index was an error instead of `false`.
+- The alignment arguments of `$$memcpy`, `$$memmove`, `$$memset` are now correctly checked to be power-of-2.
+- An enum switch with a non-constant `case` was counted as exhaustive when the other cases covered all but one value.
 
 ### Stdlib changes
 
