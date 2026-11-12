@@ -117,7 +117,7 @@ static void c_emit_identifier_expr(GenContext *c, CValue *value, Expr *expr)
 	{
 		Type *ptr_t = type_is_func_ptr(decl->type) ? decl->type : type_get_func_ptr(decl->type);
 		int temp    = c_emit_temp_var(c, value, ptr_t);
-		PRINTF("%s ___var_%d = (void*)&%s;\n", c_type_name(c, ptr_t), temp, c_get_decl_name(decl));
+		PRINTF("%s ___var_%d = (void*)&%s;\n", c_type_name(c, ptr_t), temp, c_decl_ref(c, decl));
 		return;
 	}
 	if (decl->decl_kind == DECL_ENUM_CONSTANT)
@@ -437,6 +437,7 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 		Decl *dyn_fn = declptrzero(call->func_ref);
 		if (dyn_fn)
 		{
+			c_emit_dynamic_dispatcher(c, dyn_fn);
 			const char *disp_name = c_intern(str_printf("__c3_dyn_%s", c_get_decl_name(dyn_fn)));
 			bool leading_arg = false;
 			int fault        = c_emit_call_invocation(c, value, ret, return_type, has_return, disp_name, &leading_arg);
@@ -518,7 +519,7 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 		// as LLVM calls each declaration's own function type.
 		if (function_decl->is_extern && sig)
 		{
-			const char *prototype = htable_get(c->decl_names, (void *)callee_str);
+			const char *prototype = htable_get(&c->decl_names, (void *)callee_str);
 			if (strcmp(prototype, c_signature_str(c, sig, callee_str, (CSigOpts){ .is_main = c_fn_is_main(function_decl) })) != 0)
 			{
 				callee_str = str_printf("((%s)%s)", c_signature_str(c, sig, "(*)", (CSigOpts){0}), callee_str);

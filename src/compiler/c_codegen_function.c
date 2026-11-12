@@ -448,22 +448,32 @@ bool c_fn_is_main(Decl *fn)
 	return strcmp(c_get_decl_name(fn), "main") == 0 && vec_size(fn->func_decl.signature.params) <= 3;
 }
 
+static bool c_emit_function_decl_here(GenContext *c, Decl *fn);
+
 bool c_emit_function_decl(GenContext *c, Decl *fn, bool is_current_module)
 {
 	(void)is_current_module;
+	ByteBuffer *prev = c_decl_stream_enter(c, c->decl_buffer);
+	bool emitted     = c_emit_function_decl_here(c, fn);
+	c->buffer        = prev;
+	return emitted;
+}
+
+static bool c_emit_function_decl_here(GenContext *c, Decl *fn)
+{
 	if (!fn || fn->replacement || fn->decl_kind != DECL_FUNC || fn->is_template || fn->func_decl.attr_interface_method)
 	{
 		return false;
 	}
 	const char *fn_name = c_get_decl_name(fn);
 
-	if (htable_get(c->decl_names, (void *)fn_name))
+	if (htable_get(&c->decl_names, (void *)fn_name))
 	{
 		return false;
 	}
 	const char *signature = c_signature_str(c, &fn->func_decl.signature, fn_name, (CSigOpts){ .is_main = c_fn_is_main(fn) });
 	// The prototype is kept: calls through an extern declaration with another signature cast to their own.
-	htable_set(c->decl_names, (void *)fn_name, (void *)signature);
+	htable_set(&c->decl_names, (void *)fn_name, (void *)signature);
 	PRINTF("%s%s %s", c_decl_export_attrs(fn, false), c_fn_is_internal(fn) ? "static" : "extern", signature);
 	if (c_decl_needs_asm_label(fn))
 	{

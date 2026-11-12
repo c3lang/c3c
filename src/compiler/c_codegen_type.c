@@ -202,9 +202,33 @@ size_t c_get_type_size(Type *type)
 	}
 }
 
+// Types whose C form is defined by the file; the scalar ones come from the runtime header.
+static void c_record_used_type(GenContext *c, Type *type)
+{
+	switch (type->type_kind)
+	{
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_SLICE:
+		case TYPE_ARRAY:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_VECTOR:
+		case TYPE_SIMD_VECTOR:
+		case TYPE_FUNC_PTR:
+			if (htable_get(&c->used_type_set, type)) return;
+			htable_set(&c->used_type_set, type, type);
+			vec_add(c->used_types, type);
+			return;
+		default:
+			return;
+	}
+}
+
 const char *c_type_name(GenContext *c, Type *type)
 {
 	type = c_safe_type_lower(type);
+	// Without a file (runtime header accessors) nothing is recorded.
+	if (c && c->record_types) c_record_used_type(c, type);
 	switch (type->type_kind)
 	{
 		case TYPE_VOID: return "void";
@@ -294,11 +318,11 @@ const char *c_type_zero_literal(Type *t)
 static bool c_emit_struct_or_union_forward_decl(GenContext *c, Type *type, const char *keyword)
 {
 	const char *name = c_type_name(c, type);
-	if (htable_get(c->gen_decl, (void *)name))
+	if (htable_get(&c->gen_decl, (void *)name))
 	{
 		return false;
 	}
-	htable_set(c->gen_decl, (void *)name, (void *)1);
+	htable_set(&c->gen_decl, (void *)name, (void *)1);
 	Decl *d = type->decl;
 	PRINTF("typedef %s %s__ %s;\n", keyword, name, name);
 	if (d && d->strukt.members)
@@ -317,11 +341,11 @@ static bool c_emit_struct_or_union_forward_decl(GenContext *c, Type *type, const
 static bool c_emit_struct_or_union_decl(GenContext *c, Type *type, const char *keyword)
 {
 	const char *name = c_type_name(c, type);
-	if (htable_get(c->gen_def, (void *)name))
+	if (htable_get(&c->gen_def, (void *)name))
 	{
 		return false;
 	}
-	htable_set(c->gen_def, (void *)name, (void *)1);
+	htable_set(&c->gen_def, (void *)name, (void *)1);
 
 	Decl *d         = type->decl;
 	int field_count = 0;
@@ -395,13 +419,23 @@ static bool c_emit_struct_or_union_decl(GenContext *c, Type *type, const char *k
 	return true;
 }
 
+static bool c_emit_type_forward_decl_here(GenContext *c, Type *type);
+
 bool c_emit_type_forward_decl(GenContext *c, Type *type)
+{
+	ByteBuffer *prev = c_decl_stream_enter(c, c->type_decl_buffer);
+	bool emitted     = c_emit_type_forward_decl_here(c, type);
+	c->buffer        = prev;
+	return emitted;
+}
+
+static bool c_emit_type_forward_decl_here(GenContext *c, Type *type)
 {
 	type = c_safe_type_lower(type);
 
 	if (type == type_u128 || type == type_i128)
 	{
-		htable_set(c->gen_decl, (void *)c_type_name(c, type), (void *)1);
+		htable_set(&c->gen_decl, (void *)c_type_name(c, type), (void *)1);
 		return true;
 	}
 	switch (type->type_kind)
@@ -415,11 +449,11 @@ bool c_emit_type_forward_decl(GenContext *c, Type *type)
 		case TYPE_SLICE:
 		{
 			const char *slice_name = c_type_name(c, type);
-			if (htable_get(c->gen_decl, (void *)slice_name))
+			if (htable_get(&c->gen_decl, (void *)slice_name))
 			{
 				return false;
 			}
-			htable_set(c->gen_decl, (void *)slice_name, (void *)1);
+			htable_set(&c->gen_decl, (void *)slice_name, (void *)1);
 			c_emit_type_forward_decl(c, type->array.base);
 			const char *base_tname = c_type_name(c, type->array.base);
 			PRINTF("#ifndef %s_defined__\n#define %s_defined__\n", slice_name, slice_name);
@@ -433,11 +467,11 @@ bool c_emit_type_forward_decl(GenContext *c, Type *type)
 		case TYPE_VECTOR:
 		{
 			const char *arr_name = c_type_name(c, type);
-			if (htable_get(c->gen_decl, (void *)arr_name))
+			if (htable_get(&c->gen_decl, (void *)arr_name))
 			{
 				return false;
 			}
-			htable_set(c->gen_decl, (void *)arr_name, (void *)1);
+			htable_set(&c->gen_decl, (void *)arr_name, (void *)1);
 			c_emit_type_forward_decl(c, type->array.base);
 			PRINTF("#ifndef %s_defined__\n#define %s_defined__\n", arr_name, arr_name);
 			PRINTF("typedef struct %s__ %s;\n", arr_name, arr_name);
@@ -447,11 +481,11 @@ bool c_emit_type_forward_decl(GenContext *c, Type *type)
 		case TYPE_FUNC_PTR:
 		{
 			const char *fnptr_name = c_type_name(c, type);
-			if (htable_get(c->gen_decl, (void *)fnptr_name))
+			if (htable_get(&c->gen_decl, (void *)fnptr_name))
 			{
 				return false;
 			}
-			htable_set(c->gen_decl, (void *)fnptr_name, (void *)1);
+			htable_set(&c->gen_decl, (void *)fnptr_name, (void *)1);
 
 			Type *raw_func = type->pointer;
 			Signature *sig = (raw_func->type_kind == TYPE_FUNC_RAW) ? raw_func->function.signature : NULL;
@@ -482,11 +516,11 @@ bool c_emit_type_decl(GenContext *c, Type *type)
 		case TYPE_VECTOR:
 		{
 			const char *arr_name = c_type_name(c, type);
-			if (htable_get(c->gen_def, (void *)arr_name))
+			if (htable_get(&c->gen_def, (void *)arr_name))
 			{
 				return false;
 			}
-			htable_set(c->gen_def, (void *)arr_name, (void *)1);
+			htable_set(&c->gen_def, (void *)arr_name, (void *)1);
 
 			c_emit_type_decl(c, type->array.base);
 			const char *base_tname = c_type_name(c, type->array.base);
@@ -515,11 +549,11 @@ bool c_emit_type_decl(GenContext *c, Type *type)
 				return false;
 			}
 			const char *bs_name = c_get_decl_name(d);
-			if (htable_get(c->gen_def, (void *)bs_name))
+			if (htable_get(&c->gen_def, (void *)bs_name))
 			{
 				return false;
 			}
-			htable_set(c->gen_def, (void *)bs_name, (void *)1);
+			htable_set(&c->gen_def, (void *)bs_name, (void *)1);
 			return true;
 		}
 		default:
