@@ -4144,6 +4144,12 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 	// We need the rvalue.
 	llvm_fold_for_compare(c, &lhs);
 	RETURN_ON_EMPTY_BLOCK(be_value);
+	if (llvm_value_is_addr(&lhs) && !llvm_is_global_eval(c) && !expr_is_pure(exprptr(expr->binary_expr.right)))
+	{
+		BEValue temp = llvm_emit_alloca_b(c, lhs.type, "");
+		llvm_emit_memcpy(c, temp.value, temp.alignment, lhs.value, lhs.alignment, type_size(lhs.type));
+		lhs = temp;
+	}
 
 	// Evaluate rhs
 	BEValue rhs;

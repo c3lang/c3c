@@ -8,6 +8,8 @@
 ### Fixes
 - `nextcase x` in a `@jump` switch read `x` after the defers of the case had run.
 - Overwriting a full array, like `{ .c = { 1, 2, 3 }, .c[2] = 7 };` would be lowered incorrectly.
+- Evaluation order for array comparison was incorrectly right->left.
+- A lambda created in a macro could be reused for a compile time argument with the same value but a different type.
 
 ### Stdlib changes
 

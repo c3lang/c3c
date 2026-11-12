@@ -11353,6 +11353,8 @@ INLINE bool lambda_parameter_match(Decl **ct_lambda_params, Decl *candidate)
 			case VARDECL_PARAM_CT:
 				if (!expr_is_const(ct_param->var.init_expr)) return false;
 				if (!expr_is_const(param->var.init_expr)) return false;
+				if (type_no_optional(ct_param->var.init_expr->type)->canonical
+					!= type_no_optional(param->var.init_expr->type)->canonical) return false;
 				if (!expr_both_const_foldable(ct_param->var.init_expr, param->var.init_expr, BINARYOP_EQ)) return false;
 				if (!expr_const_compare(&ct_param->var.init_expr->const_expr,
 										&param->var.init_expr->const_expr, BINARYOP_EQ)) return false;
