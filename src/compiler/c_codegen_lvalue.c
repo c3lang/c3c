@@ -569,7 +569,7 @@ static void c_emit_struct_member_addr(GenContext *c, const char *tname, int temp
 	{
 		if (member && member->decl_kind == DECL_FUNC)
 		{
-			PRINTF("%s ___var_%d = (%s)&%s;\n", tname, temp, tname, c_get_decl_name(member));
+			PRINTF("%s ___var_%d = (%s)&%s;\n", tname, temp, tname, c_decl_ref(c, member));
 			return;
 		}
 		PRINTF("%s ___var_%d = (%s)___var_%d;\n", tname, temp, tname, ptr_var);
@@ -586,6 +586,7 @@ static void c_emit_struct_member_addr(GenContext *c, const char *tname, int temp
 
 static void c_emit_enum_assoc_access(GenContext *c, Decl *enum_decl, Decl *member, Expr *parent_expr, bool parent_is_ptr, int temp, const char *tname, Type *target_type, bool is_addr)
 {
+	c_emit_enum_assoc_decl(c, enum_decl, member);
 	const char *arr_name = c_get_enum_assoc_name(enum_decl, member);
 	CValue parent_val    = {0};
 	c_emit_expr(c, &parent_val, parent_expr);
@@ -706,7 +707,7 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 			}
 			if (d->decl_kind == DECL_FUNC)
 			{
-				PRINTF("%s ___var_%d = (%s)&%s;\n", tname, temp, tname, c_get_decl_name(d));
+				PRINTF("%s ___var_%d = (%s)&%s;\n", tname, temp, tname, c_decl_ref(c, d));
 				return;
 			}
 			PRINTF("%s ___var_%d = (%s)&%s;\n", tname, temp, tname, c_decl_lvalue_str(c, d));
@@ -751,6 +752,7 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 			{
 				if (member && member->decl_kind == DECL_FUNC)
 				{
+					c_emit_dynamic_dispatcher(c, member);
 					const char *disp_resolver = c_intern(str_printf("__c3_dyn_resolve_%s", c_get_decl_name(member)));
 					PRINTF("%s ___var_%d = (%s)%s((c3typeid_t)(((__c3_any__*)___var_%d)->typeid));\n", tname, temp, tname, disp_resolver, parent_val.var);
 					return;
@@ -771,7 +773,7 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 
 			if (member && member->decl_kind == DECL_FUNC)
 			{
-				PRINTF("%s ___var_%d = (%s)&%s;\n", tname, temp, tname, c_get_decl_name(member));
+				PRINTF("%s ___var_%d = (%s)&%s;\n", tname, temp, tname, c_decl_ref(c, member));
 				return;
 			}
 			const char *fname = (member && member->name && strcmp(member->name, "len") == 0) ? "len" : "ptr";
@@ -787,6 +789,7 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 
 			if (member && member->decl_kind == DECL_FUNC)
 			{
+				c_emit_dynamic_dispatcher(c, member);
 				const char *disp_resolver = c_intern(str_printf("__c3_dyn_resolve_%s", c_get_decl_name(member)));
 				PRINTF("%s ___var_%d = (%s)%s((c3typeid_t)___var_%d.typeid);\n", tname, temp, tname, disp_resolver, parent_val.var);
 				return;
@@ -890,6 +893,19 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 	}
 }
 
+const char *c_decl_ref(GenContext *c, Decl *decl)
+{
+	if (decl->decl_kind == DECL_FUNC)
+	{
+		c_emit_function_decl(c, decl, false);
+	}
+	else
+	{
+		c_emit_global_decl(c, decl);
+	}
+	return c_get_decl_name(decl);
+}
+
 // The C lvalue that holds a variable: the global's name (declared on first use) or the local's ___var_N.
 const char *c_decl_lvalue_str(GenContext *c, Decl *decl)
 {
@@ -971,6 +987,7 @@ void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target
 				CValue parent_val = {0};
 				c_emit_expr(c, &parent_val, expr->access_resolved_expr.parent);
 				c_value_rvalue(c, &parent_val);
+				c_emit_dynamic_dispatcher(c, member);
 				const char *disp_resolver = c_intern(str_printf("__c3_dyn_resolve_%s", c_get_decl_name(member)));
 				if (parent_val.var != 0)
 				{
@@ -985,7 +1002,7 @@ void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target
 				}
 				return;
 			}
-			PRINTF("%s ___var_%d = (%s)&%s;\n", tname, temp, tname, c_get_decl_name(member));
+			PRINTF("%s ___var_%d = (%s)&%s;\n", tname, temp, tname, c_decl_ref(c, member));
 			return;
 		}
 	}

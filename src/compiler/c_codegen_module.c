@@ -686,8 +686,7 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 				Decl *d = (inner->expr_kind == EXPR_DECL) ? inner->decl_expr : c_decl_unwrap(inner->ident_expr);
 				if (d && (d->decl_kind == DECL_FUNC || c_is_file_global(d)))
 				{
-					c_emit_global_decl(c, d);
-					PRINTF("(%s)&%s", tname, c_get_decl_name(d));
+					PRINTF("(%s)&%s", tname, c_decl_ref(c, d));
 					return;
 				}
 			}
@@ -756,7 +755,7 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 		{
 			if (d->decl_kind == DECL_FUNC)
 			{
-				PRINTF("(%s)&%s", tname, c_get_decl_name(d));
+				PRINTF("(%s)&%s", tname, c_decl_ref(c, d));
 				return;
 			}
 			if (d->decl_kind == DECL_ENUM_CONSTANT)
@@ -977,7 +976,7 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 				d       = c_decl_unwrap(d);
 				if (d->decl_kind == DECL_FUNC || c_is_file_global(d))
 				{
-					PRINTF("(%s)&%s", tname, c_get_decl_name(d));
+					PRINTF("(%s)&%s", tname, c_decl_ref(c, d));
 				}
 				else
 				{
@@ -1081,7 +1080,28 @@ static bool c_global_is_c_const(Decl *var)
 	return var->var.kind == VARDECL_CONST && (!var->var.init_expr || c_can_emit_static_initializer(var->var.init_expr));
 }
 
+static void c_emit_global_decl_here(GenContext *c, Decl *var);
+
 void c_emit_global_decl(GenContext *c, Decl *var)
+{
+	ByteBuffer *prev = c_decl_stream_enter(c, c->decl_buffer);
+	c_emit_global_decl_here(c, var);
+	c->buffer = prev;
+}
+
+void c_emit_enum_assoc_decl(GenContext *c, Decl *enum_decl, Decl *param)
+{
+	const char *arr_name = c_get_enum_assoc_name(enum_decl, param);
+	if (htable_get(&c->emitted_global_decls, (void *)arr_name)) return;
+	htable_set(&c->emitted_global_decls, (void *)arr_name, (void *)1);
+	ByteBuffer *prev = c_decl_stream_enter(c, c->decl_buffer);
+	Type *ptype      = param->type ? c_safe_type_lower(param->type) : type_int;
+	c_emit_type_forward_decl(c, ptype);
+	PRINTF("extern const %s %s[%d];\n", c_type_name(c, ptype), arr_name, vec_size(enum_decl->enums.values));
+	c->buffer = prev;
+}
+
+static void c_emit_global_decl_here(GenContext *c, Decl *var)
 {
 	if (!var || var->replacement || var->is_template)
 	{
@@ -1094,7 +1114,7 @@ void c_emit_global_decl(GenContext *c, Decl *var)
 	}
 
 	const char *vname = c_get_decl_name(var);
-	if (htable_get(c->emitted_global_decls, (void *)vname))
+	if (htable_get(&c->emitted_global_decls, (void *)vname))
 	{
 		return;
 	}
@@ -1105,7 +1125,7 @@ void c_emit_global_decl(GenContext *c, Decl *var)
 		var_type = type_voidptr;
 	}
 
-	htable_set(c->emitted_global_decls, (void *)vname, (void *)1);
+	htable_set(&c->emitted_global_decls, (void *)vname, (void *)1);
 	c_emit_type_forward_decl(c, var_type);
 	const char *tname     = c_type_name(c, var_type);
 	const char *align_str = c_get_align_attr_str(var, var_type);
@@ -1279,7 +1299,17 @@ static void c_find_dyn_impl_visitor(GenContext *c, Decl *m, void *ud)
 	vec_add(*(search->out_impls), m);
 }
 
+static void c_emit_dynamic_dispatcher_here(GenContext *c, Decl *dyn_fn);
+
 void c_emit_dynamic_dispatcher(GenContext *c, Decl *dyn_fn)
+{
+	ByteBuffer *prev = c->buffer;
+	if (c->dispatch_buffer) c->buffer = c->dispatch_buffer;
+	c_emit_dynamic_dispatcher_here(c, dyn_fn);
+	c->buffer = prev;
+}
+
+static void c_emit_dynamic_dispatcher_here(GenContext *c, Decl *dyn_fn)
 {
 	if (!dyn_fn || !dyn_fn->name)
 	{
@@ -1293,15 +1323,18 @@ void c_emit_dynamic_dispatcher(GenContext *c, Decl *dyn_fn)
 
 	const char *fn_decl_name = c_get_decl_name(dyn_fn);
 	const char *disp_name    = c_intern(str_printf("__c3_dyn_%s", fn_decl_name));
-	if (htable_get(c->decl_names, (void *)disp_name))
+	if (htable_get(&c->decl_names, (void *)disp_name))
 	{
 		return;
 	}
-	htable_set(c->decl_names, (void *)disp_name, (void *)1);
+	htable_set(&c->decl_names, (void *)disp_name, (void *)1);
 
 	Decl **impls             = NULL;
 	DynamicImplSearch search = {.dyn_fn = dyn_fn, .out_impls = &impls};
+	// The method may be called through an interface inheriting from an unused one.
+	c->traverse_unused_interfaces = true;
 	c_traverse_all_modules(c, c_find_dyn_impl_visitor, &search);
+	c->traverse_unused_interfaces = false;
 
 	FOREACH(Decl *, impl, impls)
 	{
@@ -1319,7 +1352,7 @@ void c_emit_dynamic_dispatcher(GenContext *c, Decl *dyn_fn)
 	}
 
 	const char *resolve_name = c_intern(str_printf("__c3_dyn_resolve_%s", fn_decl_name));
-	htable_set(c->decl_names, (void *)resolve_name, (void *)1);
+	htable_set(&c->decl_names, (void *)resolve_name, (void *)1);
 
 	PRINTF("static inline void *%s(c3typeid_t ___typeid) {\n", resolve_name);
 	PRINTF("\tif (!___typeid) { return NULL; }\n");

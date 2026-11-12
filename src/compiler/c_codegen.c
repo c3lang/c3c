@@ -41,10 +41,6 @@ Known issues:
 */
 
 static HTable c_decl_name_cache;
-static HTable c_shared_gen_decl;
-static HTable c_shared_gen_def;
-static HTable c_shared_decl_names;
-static HTable c_shared_emitted_global_decls;
 
 const char *c_intern(const char *str)
 {
@@ -337,7 +333,7 @@ void c_emit_string_literal(GenContext *c, const char *bytes, ArrayIndex len)
 
 static void c_emit_string_slice(GenContext *c, const char *str)
 {
-	PRINT("(__c3_slice_uint8_t){(uint8_t*)");
+	PRINTF("(%s){(uint8_t*)", c_type_name(c, type_get_slice(type_char)));
 	c_emit_string_literal(c, str, (ArrayIndex)strlen(str));
 	PRINTF(", %zu}", strlen(str));
 }
@@ -350,7 +346,10 @@ static void c_emit_panic_call(GenContext *c, const char *summary, SourceLocId lo
 	File *file           = source_file_by_id(location ? location->file_id : 0);
 	const char *funcname = c->cur_func_name ? c->cur_func_name : (c->cur_func_decl ? c->cur_func_decl->name : "");
 	const char *panic_name = c_get_decl_name(compiler.context.panic_var);
-	PRINTF("if (%s) { ((void (*)(__c3_slice_uint8_t, __c3_slice_uint8_t, __c3_slice_uint8_t, int32_t, __c3_slice_uint8_t, __c3_slice___c3_any__))%s)(", panic_name, panic_name);
+	c_emit_global_decl(c, compiler.context.panic_var);
+	const char *str_slice  = c_type_name(c, type_get_slice(type_char));
+	const char *any_slice  = c_type_name(c, type_get_slice(type_any));
+	PRINTF("if (%s) { ((void (*)(%s, %s, %s, int32_t, %s, %s))%s)(", panic_name, str_slice, str_slice, str_slice, str_slice, any_slice, panic_name);
 	c_emit_string_slice(c, summary);
 	PRINT(", ");
 	c_emit_string_slice(c, use_location && file ? file->name : "");
@@ -360,10 +359,10 @@ static void c_emit_panic_call(GenContext *c, const char *summary, SourceLocId lo
 	if (format)
 	{
 		c_emit_string_slice(c, format);
-		PRINTF(", (__c3_slice___c3_any__){ .ptr = %s, .len = %d }); } __c3_abort();\n", args, arg_count);
+		PRINTF(", (%s){ .ptr = %s, .len = %d }); } __c3_abort();\n", any_slice, args, arg_count);
 		return;
 	}
-	PRINT("(__c3_slice_uint8_t){0}, (__c3_slice___c3_any__){0}); } __c3_abort();\n");
+	PRINTF("(%s){0}, (%s){0}); } __c3_abort();\n", str_slice, any_slice);
 }
 
 // Panic with a user message, optionally formatted with `args`.
@@ -433,7 +432,7 @@ void c_emit_panic_fn(GenContext *c, PanicFunction id, SourceLocId loc, const cha
 		{
 			for (int j = 0; j < text_count; j++)
 			{
-				PRINTF("__c3_slice_uint8_t __c3_panic_arg%d = ", count);
+				PRINTF("%s __c3_panic_arg%d = ", c_type_name(c, type_get_slice(type_char)), count);
 				c_emit_string_slice(c, texts[j]);
 				PRINT(";\n");
 				typeids[count++] = c_typeid_name(type_string);
@@ -447,7 +446,7 @@ void c_emit_panic_fn(GenContext *c, PanicFunction id, SourceLocId loc, const cha
 	{
 		for (int j = 0; j < text_count; j++)
 		{
-			PRINTF("__c3_slice_uint8_t __c3_panic_arg%d = ", count);
+			PRINTF("%s __c3_panic_arg%d = ", c_type_name(c, type_get_slice(type_char)), count);
 			c_emit_string_slice(c, texts[j]);
 			PRINT(";\n");
 			typeids[count++] = c_typeid_name(type_string);
@@ -672,95 +671,12 @@ static bool c_module_has_live_code(Module *module)
 	return false;
 }
 
-static void c_emit_decl_types(GenContext *c, Decl *d, bool forward_decl)
+// Libraries named by @link on used declarations.
+static void visit_links(GenContext *c, Decl *d, void *ud)
 {
-	bool (*emit_fn)(GenContext *, Type *) = forward_decl ? c_emit_type_forward_decl : c_emit_type_decl;
-	emit_fn(c, c_decl_type(d));
-	if (d->decl_kind != DECL_FUNC)
-	{
-		return;
-	}
-	emit_fn(c, typeget(d->func_decl.signature.rtype));
-	FOREACH(Decl *, p, d->func_decl.signature.params)
-	{
-		emit_fn(c, c_decl_type(p));
-	}
-}
-
-static void visit_forward_decl(GenContext *c, Decl *d, void *ud)
-{
-	(void)ud;
-	c_emit_decl_types(c, d, true);
-}
-
-static void visit_type_decl(GenContext *c, Decl *d, void *ud)
-{
-	(void)ud;
-	c_emit_decl_types(c, d, false);
-}
-
-// C allows one prototype per symbol. Definitions go first, so a symbol defined here gets its definition's signature;
-// a call through an extern declaration of it with another signature casts to that one (as LLVM calls each
-// declaration's own function type). `ud` is non-NULL for the definitions pass.
-static void visit_fn_prototype(GenContext *c, Decl *d, void *ud)
-{
-	if (d->decl_kind != DECL_FUNC)
-	{
-		return;
-	}
-	bool is_definition = !d->is_extern && d->func_decl.body;
-	if (is_definition != (ud != NULL)) return;
-	decl_append_links_to_global_during_codegen(d);
-	bool is_current = (!c->current_module || (d->unit && d->unit->module == c->current_module));
-	c_emit_function_decl(c, d, is_current);
-}
-
-// One dispatcher per interface method that is used, whether or not its interface is.
-static void visit_dynamic_dispatcher(GenContext *c, Decl *d, void *ud)
-{
-	(void)ud;
-	if (d->decl_kind == DECL_INTERFACE && d->interface_methods)
-	{
-		FOREACH(Decl *, im, d->interface_methods)
-		{
-			if (c_decl_is_live(im)) c_emit_dynamic_dispatcher(c, im);
-		}
-	}
-}
-
-static void visit_global_forward_decl(GenContext *c, Decl *d, void *ud)
-{
+	(void)c;
 	(void)ud;
 	decl_append_links_to_global_during_codegen(d);
-	if (d->decl_kind == DECL_VAR && c_is_file_global(d))
-	{
-		c_emit_global_decl(c, d);
-		return;
-	}
-	if (d->decl_kind == DECL_ENUM && d->enums.parameters && d->enums.values)
-	{
-		int num_values = vec_size(d->enums.values);
-		if (num_values == 0)
-		{
-			return;
-		}
-		FOREACH(Decl *, p, d->enums.parameters)
-		{
-			if (!p || !p->name)
-			{
-				continue;
-			}
-			const char *arr_name = c_get_enum_assoc_name(d, p);
-			if (htable_get(c->emitted_global_decls, (void *)arr_name))
-			{
-				continue;
-			}
-			htable_set(c->emitted_global_decls, (void *)arr_name, (void *)1);
-			Type *ptype = p->type ? c_safe_type_lower(p->type) : type_int;
-			c_emit_type_forward_decl(c, ptype);
-			PRINTF("extern const %s %s[%d];\n", c_type_name(c, ptype), arr_name, num_values);
-		}
-	}
 }
 
 static void visit_global_def(GenContext *c, Decl *d, void *ud)
@@ -813,88 +729,24 @@ static void visit_global_def(GenContext *c, Decl *d, void *ud)
 	}
 }
 
-static void c_emit_shared_header(const char *dir)
+static bool c_function_def_is_emitted(Decl *decl, bool only_used)
 {
-	const char *h_filename = file_append_path(dir, "__c3_shared.h");
-	FILE *f                = fopen(h_filename, "wb");
-	if (!f)
-	{
-		error_exit("Failed to open output shared header '%s'.", h_filename);
-	}
+	if (!decl || !decl->func_decl.body || decl->is_extern || decl->replacement) return false;
+	if (decl_skip_benchtest_function(decl)) return false;
+	return !only_used || decl->is_live;
+}
 
-	GenContext *c = cmalloc(sizeof(GenContext));
-	*c = (GenContext){
-	    .file                 = f,
-	    .current_module       = NULL,
-	    .gen_decl             = &c_shared_gen_decl,
-	    .gen_def              = &c_shared_gen_def,
-	    .decl_names           = &c_shared_decl_names,
-	    .emitted_global_decls = &c_shared_emitted_global_decls,
-	};
-
-	fputs("/* Generated by C3 Compiler (Shared Header) */\n", f);
-	fputs("#ifndef __C3_SHARED_H__\n", f);
-	fputs("#define __C3_SHARED_H__\n\n", f);
-	fputs("#include \"__c3_runtime.h\"\n\n", f);
-
-	fputs("/* TYPE FORWARD DECLARATIONS */\n", f);
-	int type_count = vec_size(compiler.context.type);
-	for (int i = 0; i < type_count; i++)
-	{
-		Type *t = compiler.context.type[i];
-		if (c_type_needs_emission(t))
-		{
-			c_emit_type_forward_decl(c, t);
-		}
-	}
-	c_traverse_all_modules(c, visit_forward_decl, NULL);
-	fputs("\n", f);
-
-	fputs("/* TYPE DEFINITIONS */\n", f);
-	for (int i = 0; i < type_count; i++)
-	{
-		Type *t = compiler.context.type[i];
-		if (c_type_needs_emission(t))
-		{
-			c_emit_type_decl(c, t);
-		}
-	}
-	c_traverse_all_modules(c, visit_type_decl, NULL);
-	fputs("\n", f);
-
-	fputs("/* FUNCTION PROTOTYPES */\n", f);
-	c_traverse_all_modules(c, visit_fn_prototype, (void *)1);
-	c_traverse_all_modules(c, visit_fn_prototype, NULL);
-	fputs("\n", f);
-
-	fputs("/* DYNAMIC DISPATCHERS */\n", f);
-	// Dispatchers panic when no method matches, so the panic variable must be declared first.
-	if (compiler.context.panic_var) c_emit_global_decl(c, compiler.context.panic_var);
-	c->traverse_unused_interfaces = true;
-	c_traverse_all_modules(c, visit_dynamic_dispatcher, NULL);
-	c->traverse_unused_interfaces = false;
-	fputs("\n", f);
-
-	fputs("/* GLOBAL FORWARD DECLARATIONS */\n", f);
-	c_traverse_all_modules(c, visit_global_forward_decl, NULL);
-	fputs("\n", f);
-
-	fputs("#endif /* __C3_SHARED_H__ */\n", f);
-	fclose(f);
-	free(c);
+// C allows one prototype per symbol. The file's definitions are declared first, so a symbol defined here gets its
+// definition's signature; a call through an extern declaration of it with another signature casts to that one (as
+// LLVM calls each declaration's own function type).
+static void c_try_declare_function_def(GenContext *c, Decl *decl, bool only_used)
+{
+	if (c_function_def_is_emitted(decl, only_used)) c_emit_function_decl(c, decl, true);
 }
 
 static void c_try_emit_function_def(GenContext *c, Decl *decl, bool only_used)
 {
-	if (!decl || !decl->func_decl.body || decl->is_extern || decl->replacement)
-	{
-		return;
-	}
-	if (decl_skip_benchtest_function(decl)) return;
-	if (only_used && !decl->is_live)
-	{
-		return;
-	}
+	if (!c_function_def_is_emitted(decl, only_used)) return;
 	const char *fname = c_get_decl_name(decl);
 	if (htable_get(&c->emitted_func_defs, (void *)fname))
 	{
@@ -974,6 +826,27 @@ static Decl **c_collect_and_sort_init_functions(void)
 	return init_funcs;
 }
 
+// The functions a file defines, in the order they are emitted.
+static void c_visit_function_defs(GenContext *c, Module **modules, int mod_count, bool only_used,
+                                  void (*visit)(GenContext *, Decl *, bool))
+{
+	for (int m = 0; m < mod_count; m++)
+	{
+		Module *mod = modules[m];
+		if (!mod || !vec_size(mod->units) || (compiler.build.emit_stdlib == EMIT_STDLIB_OFF && module_is_stdlib(mod)))
+		{
+			continue;
+		}
+		FOREACH(CompilationUnit *, unit, mod->units)
+		{
+			FOREACH(Decl *, decl, unit->functions) visit(c, decl, only_used);
+			FOREACH(Decl *, func, unit->lambdas) visit(c, func, only_used);
+			if (unit->main_function && unit->main_function->is_synthetic) visit(c, unit->main_function, only_used);
+			FOREACH(Decl *, decl, unit->methods) visit(c, decl, only_used);
+		}
+	}
+}
+
 static GenContext *c_gen_module(Module *module, int num)
 {
 	(void)num;
@@ -1023,21 +896,36 @@ static GenContext *c_gen_module(Module *module, int num)
 	    .object_filename      = object_filename,
 	    .current_module       = module,
 	    .current_block_live   = true,
-	    .gen_decl             = &c_shared_gen_decl,
-	    .gen_def              = &c_shared_gen_def,
-	    .decl_names           = &c_shared_decl_names,
-	    .emitted_global_decls = &c_shared_emitted_global_decls,
+	    .record_types         = true,
 	};
 	htable_init(&c->local_vars, 4096);
 	htable_init(&c->local_fault_vars, 4096);
 	htable_init(&c->declared_vars, 4096);
 	htable_init(&c->emitted_func_defs, 8192);
 	htable_init(&c->emitted_global_defs, 8192);
+	htable_init(&c->gen_decl, 4096);
+	htable_init(&c->gen_def, 4096);
+	htable_init(&c->decl_names, 4096);
+	htable_init(&c->emitted_global_decls, 4096);
+	htable_init(&c->used_type_set, 4096);
 
-	fputs("/* Generated by C3 Compiler */\n", f);
-	fputs("#include \"__c3_shared.h\"\n\n", f);
+	ByteBuffer type_decls, type_defs, decls, dispatchers, code;
+	byte_buffer_init(&type_decls, 0);
+	byte_buffer_init(&decls, 0);
+	byte_buffer_init(&type_defs, 0);
+	byte_buffer_init(&dispatchers, 0);
+	byte_buffer_init(&code, 0);
+	c->type_decl_buffer = &type_decls;
+	c->decl_buffer      = &decls;
+	c->dispatch_buffer  = &dispatchers;
+	c->buffer           = &code;
 
-	fputs("/* GLOBALS */\n", f);
+	bool only_used   = strip_unused();
+	Module **modules = module ? &module : compiler.context.module_list;
+	int mod_count    = module ? 1 : vec_size(compiler.context.module_list);
+	c_visit_function_defs(c, modules, mod_count, only_used, c_try_declare_function_def);
+
+	PRINT("/* GLOBALS */\n");
 	if (module)
 	{
 		FOREACH(CompilationUnit *, unit, module->units)
@@ -1049,13 +937,7 @@ static GenContext *c_gen_module(Module *module, int num)
 	{
 		c_traverse_all_modules(c, visit_global_def, NULL);
 	}
-	fputs("\n", f);
-
-	fputs("/* FUNCTION BODIES */\n", f);
-	bool only_used = strip_unused();
-
-	Module **modules = module ? &module : compiler.context.module_list;
-	int mod_count    = module ? 1 : vec_size(compiler.context.module_list);
+	PRINT("\n/* FUNCTION BODIES */\n");
 
 	Decl **runtime_inits = NULL;
 	for (int m = 0; m < mod_count; m++)
@@ -1164,35 +1046,27 @@ static GenContext *c_gen_module(Module *module, int num)
 		PRINT("}\n\n");
 	}
 
-	for (int m = 0; m < mod_count; m++)
+	c_visit_function_defs(c, modules, mod_count, only_used, c_try_emit_function_def);
+
+	// The file: type declarations, the types its code names in full, other declarations, dispatchers, code.
+	c->record_types = false;
+	c->buffer       = &type_defs;
+	FOREACH(Type *, t, c->used_types)
 	{
-		Module *mod = modules[m];
-		if (!mod || !vec_size(mod->units) || (compiler.build.emit_stdlib == EMIT_STDLIB_OFF && module_is_stdlib(mod)))
-		{
-			continue;
-		}
-
-		FOREACH(CompilationUnit *, unit, mod->units)
-		{
-			FOREACH(Decl *, decl, unit->functions)
-			{
-				c_try_emit_function_def(c, decl, only_used);
-			}
-			FOREACH(Decl *, func, unit->lambdas)
-			{
-				c_try_emit_function_def(c, func, only_used);
-			}
-			if (unit->main_function && unit->main_function->is_synthetic)
-			{
-				c_try_emit_function_def(c, unit->main_function, only_used);
-			}
-			FOREACH(Decl *, decl, unit->methods)
-			{
-				c_try_emit_function_def(c, decl, only_used);
-			}
-		}
+		c_emit_type_forward_decl(c, t);
+		c_emit_type_decl(c, t);
 	}
-
+	c->buffer           = NULL;
+	c->type_decl_buffer = NULL;
+	c->decl_buffer      = NULL;
+	c->dispatch_buffer  = NULL;
+	fputs("/* Generated by C3 Compiler */\n#include \"__c3_runtime.h\"\n\n", f);
+	ByteBuffer *parts[5] = { &type_decls, &type_defs, &decls, &dispatchers, &code };
+	for (int i = 0; i < 5; i++)
+	{
+		fwrite(parts[i]->bytes.ptr, 1, parts[i]->write_idx, f);
+		byte_buffer_free(parts[i]);
+	}
 	fclose(f);
 	return c;
 }
@@ -1445,10 +1319,6 @@ void **c_gen(Module **modules, int module_count)
 		return NULL;
 	}
 	htable_init(&c_decl_name_cache, 16384);
-	htable_init(&c_shared_gen_decl, 16384);
-	htable_init(&c_shared_gen_def, 16384);
-	htable_init(&c_shared_decl_names, 8192);
-	htable_init(&c_shared_emitted_global_decls, 8192);
 	htable_init(&c_needed_typeids, 1024);
 	c_needed_typeids_vec = NULL;
 	c_recording_typeids = true;
@@ -1457,7 +1327,7 @@ void **c_gen(Module **modules, int module_count)
 	scratch_buffer_clear();
 	scratch_buffer_append(dir);
 	dir_make_recursive(scratch_buffer_to_string());
-	c_emit_shared_header(dir);
+	c_traverse_all_modules(&(GenContext){0}, visit_links, NULL);
 
 	bool will_compile = compiler.build.emit_object_files
 		|| compiler.build.type == TARGET_TYPE_EXECUTABLE
