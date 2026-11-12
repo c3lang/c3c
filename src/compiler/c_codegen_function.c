@@ -66,7 +66,7 @@ VariableId c_emit_alloca(GenContext *c, Type *type)
 	return id;
 }
 
-VariableId c_emit_alloca_array(GenContext *c, Type *base_type, int count)
+VariableId c_emit_alloca_array(GenContext *c, Type *base_type, ArrayIndex count)
 {
 	Type *lowered = c_safe_type_lower(base_type);
 	if (lowered->type_kind == TYPE_VOID)
@@ -106,14 +106,14 @@ VariableId c_get_or_create_decl_var(GenContext *c, Decl *decl)
 		return v;
 	}
 	decl    = c_decl_unwrap(decl);
-	void *v = htable_get(&c->local_vars, decl);
+	VariableId v = c_ptr_to_id(htable_get(&c->local_vars, decl));
 	if (v)
 	{
-		return (VariableId)(uintptr_t)v;
+		return v;
 	}
 
 	VariableId var = c_create_variable(c);
-	htable_set(&c->local_vars, decl, (void *)(uintptr_t)var);
+	htable_set(&c->local_vars, decl, c_id_to_ptr(var));
 	Type *var_type = c_decl_type(decl);
 	if (!var_type || var_type->type_kind == TYPE_VOID)
 	{
@@ -139,13 +139,13 @@ VariableId c_get_decl_fault_var(GenContext *c, Decl *decl)
 	{
 		return 0;
 	}
-	void *v = htable_get(&c->local_fault_vars, decl);
+	VariableId v = c_ptr_to_id(htable_get(&c->local_fault_vars, decl));
 	if (v)
 	{
-		return (VariableId)(uintptr_t)v;
+		return v;
 	}
 	VariableId fvar = c_create_variable(c);
-	htable_set(&c->local_fault_vars, decl, (void *)(uintptr_t)fvar);
+	htable_set(&c->local_fault_vars, decl, c_id_to_ptr(fvar));
 	bool is_static = (decl->var.is_static || decl->var.kind == VARDECL_CONST);
 	c_register_function_local(c, fvar, type_fault, is_static, decl);
 	return fvar;
@@ -481,11 +481,11 @@ void c_emit_local_var_declarations(GenContext *c)
 		{
 			continue;
 		}
-		if (htable_get(&c->declared_vars, (void *)(uintptr_t)lv.id))
+		if (htable_get(&c->declared_vars, c_id_to_ptr(lv.id)))
 		{
 			continue;
 		}
-		htable_set(&c->declared_vars, (void *)(uintptr_t)lv.id, (void *)1);
+		htable_set(&c->declared_vars, c_id_to_ptr(lv.id), (void *)1);
 		Type *vt = lv.type ? c_safe_type_lower(lv.type) : type_int;
 		if (vt->type_kind == TYPE_VOID)
 		{
@@ -497,7 +497,7 @@ void c_emit_local_var_declarations(GenContext *c)
 
 		if (lv.alloca_count > 0)
 		{
-			PRINTF("\t%s%s ___var_%d[%d] = {0};\n", align_str, tname, lv.id, lv.alloca_count);
+			PRINTF("\t%s%s ___var_%d[%lld] = {0};\n", align_str, tname, lv.id, (long long)lv.alloca_count);
 		}
 		else if (c_type_is_aggregate(vt))
 		{
@@ -552,7 +552,7 @@ void c_emit_function(GenContext *c, Decl *fn)
 		if (d)
 		{
 			d = c_decl_unwrap(d);
-			htable_set(&c->local_vars, d, (void *)(uintptr_t)vid);
+			htable_set(&c->local_vars, d, c_id_to_ptr(vid));
 			if (IS_OPTIONAL(d))
 			{
 				c_get_decl_fault_var(c, d);
@@ -564,7 +564,7 @@ void c_emit_function(GenContext *c, Decl *fn)
 		}
 		else
 		{
-			htable_set(&c->declared_vars, (void *)(uintptr_t)vid, (void *)1);
+			htable_set(&c->declared_vars, c_id_to_ptr(vid), (void *)1);
 		}
 		if (d && d->var.not_null && safe_mode_enabled() && type_is_pointer(ptype))
 		{
@@ -605,11 +605,11 @@ void c_emit_function(GenContext *c, Decl *fn)
 
 	FOREACH(CLocalVar, lv, c->function_locals)
 	{
-		if (htable_get(&c->declared_vars, (void *)(uintptr_t)lv.id) || !lv.is_static)
+		if (htable_get(&c->declared_vars, c_id_to_ptr(lv.id)) || !lv.is_static)
 		{
 			continue;
 		}
-		htable_set(&c->declared_vars, (void *)(uintptr_t)lv.id, (void *)1);
+		htable_set(&c->declared_vars, c_id_to_ptr(lv.id), (void *)1);
 		Type *vt = lv.type ? c_safe_type_lower(lv.type) : type_int;
 		if (vt->type_kind == TYPE_VOID)
 		{
@@ -621,7 +621,7 @@ void c_emit_function(GenContext *c, Decl *fn)
 		const char *align_str = c_local_align_str(lv.decl, vt);
 		PRINTF("static %s%s%s ___var_%d", align_str, is_tls ? "__c3_thread_local " : "", tname, lv.id);
 		// The fault slot of an optional static starts empty (no fault); the initializer is the value's.
-		bool is_fault_slot = lv.decl && (VariableId)(uintptr_t)htable_get(&c->local_fault_vars, decl_raw(lv.decl)) == lv.id;
+		bool is_fault_slot = lv.decl && c_ptr_to_id(htable_get(&c->local_fault_vars, decl_raw(lv.decl))) == lv.id;
 		if (lv.decl && !is_fault_slot && lv.decl->var.init_expr && expr_is_const(lv.decl->var.init_expr))
 		{
 			PRINT(" = ");
@@ -648,7 +648,7 @@ void c_emit_function(GenContext *c, Decl *fn)
 	FOREACH(Decl *, d, sig->params)
 	{
 		Decl *rd       = d ? c_decl_unwrap(d) : NULL;
-		VariableId vid = (VariableId)(uintptr_t)htable_get(&c->local_vars, rd);
+		VariableId vid = c_ptr_to_id(htable_get(&c->local_vars, rd));
 		vec_add(names, str_printf("___var_%d", vid));
 	}
 	// A NULL list means unnamed parameters, but ___ret_out still needs its name without parameters.

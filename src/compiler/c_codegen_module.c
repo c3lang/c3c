@@ -975,11 +975,7 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 			{
 				Decl *d = expr->const_expr.global_ref;
 				d       = c_decl_unwrap(d);
-				if (d && d->decl_kind == DECL_FUNC)
-				{
-					PRINTF("(%s)&%s", tname, c_get_decl_name(d));
-				}
-				else if (c_is_file_global(d))
+				if (d->decl_kind == DECL_FUNC || c_is_file_global(d))
 				{
 					PRINTF("(%s)&%s", tname, c_get_decl_name(d));
 				}
