@@ -130,6 +130,7 @@ typedef struct GenContext
 	ByteBuffer *buffer;
 	const char *base_name;
 	const char *c_filename;
+	size_t c_file_size;
 	const char *object_filename;
 	Module *current_module;
 	int id_gen;

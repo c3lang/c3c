@@ -1074,6 +1074,7 @@ static GenContext *c_gen_module(Module *module, int num)
 		fwrite(parts[i]->bytes.ptr, 1, parts[i]->write_idx, f);
 		byte_buffer_free(parts[i]);
 	}
+	c->c_file_size = (size_t)ftell(f);
 	fclose(f);
 	return c;
 }
@@ -1300,6 +1301,11 @@ static void c_syntax_check(GenContext **gen_contexts)
 	{
 		error_exit("The generated C failed the syntax check: %s", cmd);
 	}
+}
+
+size_t c_codegen_cost(void *context)
+{
+	return context ? ((GenContext *)context)->c_file_size : 0;
 }
 
 bool c_codegen(void *context, const char **out_name)
