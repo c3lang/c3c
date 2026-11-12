@@ -101,12 +101,8 @@ static void c_emit_if_stmt(GenContext *c, Ast *stmt)
 	if (label || has_break)
 	{
 		break_label = c_create_label(c);
-		if (label)
-		{
-			label->label.break_target = (void *)(uintptr_t)break_label;
-		}
 	}
-	if_stmt->codegen.break_block = (void *)(uintptr_t)break_label;
+	if_stmt->codegen.break_block = c_id_to_ptr(break_label);
 
 	CValue condition = {0};
 	if (cond_id)
@@ -183,14 +179,8 @@ static void c_emit_for_stmt(GenContext *c, Ast *stmt)
 	c->current_break_label    = loop_exit;
 	c->current_continue_label = loop_cont;
 
-	stmt->for_stmt.codegen.continue_block = (void *)(uintptr_t)loop_cont;
-	stmt->for_stmt.codegen.exit_block     = (void *)(uintptr_t)loop_exit;
-	Decl *label                           = declptrzero(stmt->for_stmt.flow.label);
-	if (label)
-	{
-		label->label.break_target    = (void *)(uintptr_t)loop_exit;
-		label->label.continue_target = (void *)(uintptr_t)loop_cont;
-	}
+	stmt->for_stmt.codegen.continue_block = c_id_to_ptr(loop_cont);
+	stmt->for_stmt.codegen.exit_block     = c_id_to_ptr(loop_exit);
 
 	if (init_id)
 	{
@@ -299,7 +289,7 @@ static void c_emit_nextcase_stmt(GenContext *c, Ast *stmt)
 			c_emit_stmt_chain(c, stmt->nextcase_stmt.defer_id);
 		}
 		Ast *target_case = parent->switch_stmt.cases[stmt->nextcase_stmt.case_number];
-		int target_label = (int)(uintptr_t)target_case->case_stmt.backend_block;
+		int target_label = c_ptr_to_id(target_case->case_stmt.backend_block);
 		PRINTF("goto __C3_LABEL_%d;\n", target_label);
 		c->current_block_live = false;
 		return;
@@ -310,8 +300,8 @@ static void c_emit_nextcase_stmt(GenContext *c, Ast *stmt)
 	c_value_rvalue(c, &next_val);
 	c_ensure_cvalue_var(c, &next_val, stmt->nextcase_stmt.nextcase_value->type);
 
-	int retry_var   = (int)(uintptr_t)parent->switch_stmt.codegen.retry.var;
-	int retry_block = (int)(uintptr_t)parent->switch_stmt.codegen.retry.block;
+	int retry_var   = c_ptr_to_id(parent->switch_stmt.codegen.retry.var);
+	int retry_block = c_ptr_to_id(parent->switch_stmt.codegen.retry.block);
 
 	PRINTF("___var_%d = ___var_%d;\n", retry_var, next_val.var);
 	if (stmt->nextcase_stmt.defer_id)
@@ -335,27 +325,27 @@ static int c_emit_switch_case_labels(GenContext *c, Ast **cases, int case_count,
 		Ast *cs = cases[i];
 		if (cs == default_case)
 		{
-			cs->case_stmt.backend_block = cs->case_stmt.body ? (void *)(uintptr_t)default_label : NULL;
+			cs->case_stmt.backend_block = c_id_to_ptr(cs->case_stmt.body ? default_label : 0);
 		}
 		else
 		{
-			cs->case_stmt.backend_block = cs->case_stmt.body ? (void *)(uintptr_t)c_create_label(c) : NULL;
+			cs->case_stmt.backend_block = c_id_to_ptr(cs->case_stmt.body ? c_create_label(c) : 0);
 		}
 	}
 
-	void *next_block = (void *)(uintptr_t)switch_exit;
+	int next_label = switch_exit;
 	for (int i = case_count; i > 0; i--)
 	{
 		Ast *cs = cases[i - 1];
 		if (cs->case_stmt.backend_block)
 		{
-			next_block = cs->case_stmt.backend_block;
+			next_label = c_ptr_to_id(cs->case_stmt.backend_block);
 			continue;
 		}
-		cs->case_stmt.backend_block = next_block;
+		cs->case_stmt.backend_block = c_id_to_ptr(next_label);
 		if (cs == default_case)
 		{
-			default_label = (int)(uintptr_t)next_block;
+			default_label = next_label;
 		}
 	}
 	return default_label;
@@ -368,10 +358,10 @@ static void c_emit_switch_stmt(GenContext *c, Ast *stmt)
 	Ast **cases       = sw->cases;
 	bool is_const_int = is_constant_int_switch(sw, cond_id);
 
-	int old_break                        = c->current_break_label;
-	int switch_exit                      = c_create_label(c);
-	c->current_break_label               = switch_exit;
-	stmt->switch_stmt.codegen.exit_block = (void *)(uintptr_t)switch_exit;
+	int old_break                          = c->current_break_label;
+	int switch_exit                        = c_create_label(c);
+	c->current_break_label                 = switch_exit;
+	stmt->switch_stmt.codegen.exit_block = c_id_to_ptr(switch_exit);
 
 	Ast *default_case = NULL;
 	FOREACH(Ast *, cs, cases)
@@ -396,8 +386,8 @@ static void c_emit_switch_stmt(GenContext *c, Ast *stmt)
 		PRINTF("___var_%d = ___var_%d;\n", cond_var, cond_val.var);
 
 		int switch_entry                      = c_create_label(c);
-		stmt->switch_stmt.codegen.retry.block = (void *)(uintptr_t)switch_entry;
-		stmt->switch_stmt.codegen.retry.var   = (void *)(uintptr_t)cond_var;
+		stmt->switch_stmt.codegen.retry.block = c_id_to_ptr(switch_entry);
+		stmt->switch_stmt.codegen.retry.var   = c_id_to_ptr(cond_var);
 
 		c_emit_switch_case_labels(c, cases, case_count, NULL, switch_exit);
 
@@ -432,7 +422,7 @@ static void c_emit_switch_stmt(GenContext *c, Ast *stmt)
 			}
 			if (case_stmt->case_stmt.body)
 			{
-				c_emit_label(c, (int)(uintptr_t)case_stmt->case_stmt.backend_block);
+				c_emit_label(c, c_ptr_to_id(case_stmt->case_stmt.backend_block));
 				PRINT("{\n");
 				c->current_block_live = true;
 				c_emit_stmt(c, case_stmt->case_stmt.body);
@@ -469,8 +459,8 @@ static void c_emit_switch_stmt(GenContext *c, Ast *stmt)
 		}
 
 		int switch_entry                      = c_create_label(c);
-		stmt->switch_stmt.codegen.retry.block = (void *)(uintptr_t)switch_entry;
-		stmt->switch_stmt.codegen.retry.var   = (void *)(uintptr_t)cond_var;
+		stmt->switch_stmt.codegen.retry.block = c_id_to_ptr(switch_entry);
+		stmt->switch_stmt.codegen.retry.var   = c_id_to_ptr(cond_var);
 
 		int default_label = c_emit_switch_case_labels(c, cases, case_count, default_case, switch_exit);
 
@@ -590,7 +580,7 @@ static void c_emit_switch_stmt(GenContext *c, Ast *stmt)
 				}
 			}
 
-			int target_label = (int)(uintptr_t)case_stmt->case_stmt.backend_block;
+			int target_label = c_ptr_to_id(case_stmt->case_stmt.backend_block);
 			PRINTF("goto __C3_LABEL_%d;\n} else {\n", target_label);
 			else_depth++;
 		}
@@ -606,7 +596,7 @@ static void c_emit_switch_stmt(GenContext *c, Ast *stmt)
 			{
 				continue;
 			}
-			c_emit_label(c, (int)(uintptr_t)case_stmt->case_stmt.backend_block);
+			c_emit_label(c, c_ptr_to_id(case_stmt->case_stmt.backend_block));
 			c_emit_stmt(c, case_stmt->case_stmt.body);
 			if (c->current_block_live)
 			{
@@ -1074,15 +1064,15 @@ void c_emit_stmt(GenContext *c, Ast *stmt)
 				int lbl = 0;
 				if (target->ast_kind == AST_FOR_STMT)
 				{
-					lbl = (int)(uintptr_t)target->for_stmt.codegen.exit_block;
+					lbl = c_ptr_to_id(target->for_stmt.codegen.exit_block);
 				}
 				else if (target->ast_kind == AST_IF_STMT)
 				{
-					lbl = (int)(uintptr_t)target->if_stmt.codegen.break_block;
+					lbl = c_ptr_to_id(target->if_stmt.codegen.break_block);
 				}
 				else if (target->ast_kind == AST_SWITCH_STMT)
 				{
-					lbl = (int)(uintptr_t)target->switch_stmt.codegen.exit_block;
+					lbl = c_ptr_to_id(target->switch_stmt.codegen.exit_block);
 				}
 				if (lbl)
 				{
@@ -1114,7 +1104,7 @@ void c_emit_stmt(GenContext *c, Ast *stmt)
 				int lbl = 0;
 				if (target->ast_kind == AST_FOR_STMT)
 				{
-					lbl = (int)(uintptr_t)target->for_stmt.codegen.continue_block;
+					lbl = c_ptr_to_id(target->for_stmt.codegen.continue_block);
 				}
 				if (lbl)
 				{
