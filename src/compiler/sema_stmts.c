@@ -2675,6 +2675,14 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 		POP_NEXT();
 	}
 
+	if (success && if_chain && default_case && cases[case_count - 1] != default_case)
+	{
+		int i = 0;
+		while (cases[i] != default_case) i++;
+		SEMA_ERROR(cases[i + 1], "A 'case' may not follow 'default' in this switch: its cases are evaluated in order, so this case would never be evaluated.");
+		SEMA_NOTE(default_case, "The 'default' is here.");
+		return false;
+	}
 	if (!exhaustive && is_enum_switch) exhaustive = actual_enum_cases == vec_size(enum_values);
 	bool all_jump_end = exhaustive;
 	for (int i = 0; i < case_count; i++)

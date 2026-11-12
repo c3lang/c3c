@@ -1,8 +1,12 @@
 # C3C Release Notes
 
 ## 0.8.7 Change list
+
 ### Changes / improvements
+- A `case` after `default` is now an error in switches that are evaluated as an if-chain, since it cannot be reached.
+
 ### Fixes
+
 ### Stdlib changes
 
 ## 0.8.6 Change list
