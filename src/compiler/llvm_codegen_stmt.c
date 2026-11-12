@@ -1167,6 +1167,7 @@ void gencontext_emit_next_stmt(GenContext *context, Ast *ast)
 	}
 	BEValue be_value;
 	llvm_emit_expr(context, &be_value, ast->nextcase_stmt.nextcase_value);
+	llvm_value_rvalue(context, &be_value);
 	if (parent->switch_stmt.flow.jump)
 	{
 		llvm_emit_statement_chain(context, ast->nextcase_stmt.defer_id);

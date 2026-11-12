@@ -6,6 +6,7 @@
 - A `case` after `default` is now an error in switches that are evaluated as an if-chain, since it cannot be reached.
 
 ### Fixes
+- `nextcase x` in a `@jump` switch read `x` after the defers of the case had run.
 
 ### Stdlib changes
 
