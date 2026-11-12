@@ -3841,8 +3841,6 @@ void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, 
 		case TYPE_ARRAY:
 			llvm_emit_array_comp(c, result, lhs, rhs, binary_op);
 			return;
-		case TYPE_FUNC_RAW:
-			break;
 		case TYPE_ANY:
 			llvm_emit_any_comparison(c, result, lhs, rhs, binary_op);
 			return;
@@ -3850,6 +3848,7 @@ void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, 
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
+		case TYPE_FUNC_RAW:
 			UNREACHABLE_VOID
 		case TYPE_SLICE:
 			llvm_emit_slice_comp(c, result, lhs, rhs, binary_op);
@@ -3867,7 +3866,7 @@ void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, 
 			}
 			return;
 	}
-	TODO // When updated, also update tilde_codegen_expr
+	UNREACHABLE_VOID
 }
 
 static void llvm_emit_else(GenContext *c, BEValue *be_value, Expr *expr)

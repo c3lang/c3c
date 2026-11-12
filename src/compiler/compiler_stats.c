@@ -254,8 +254,6 @@ static const char *backend_name(void)
 #else
 			return "LLVM";
 #endif
-		case BACKEND_TB:
-			return "TB";
 		case BACKEND_C:
 			return "C";
 	}
