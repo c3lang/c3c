@@ -1871,6 +1871,7 @@ GenContext *c_emit_runtime_c(const char *dir)
 		}
 	}
 	fputs("\n", f);
+	c->c_file_size = (size_t)ftell(f);
 	fclose(f);
 	return c;
 }
