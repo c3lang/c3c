@@ -2536,6 +2536,7 @@ void cast_no_check(Expr *expr, Type *to_type, bool add_optional);
 bool cast_to_index_len(SemaContext *context, Expr *index, bool is_len);
 
 bool c_codegen(void *context, const char **out_name);
+size_t c_codegen_cost(void *context);
 bool llvm_codegen(void *context, const char **out_name);
 void *llvm_load_ir_file(const char *filename, const char *object_filename);
 bool llvm_codegen_ir_file(void *context, const char **out_name);
