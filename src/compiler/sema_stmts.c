@@ -2947,19 +2947,18 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 			}
 			else
 			{
-				// Empty list
-				if (init_type == CONST_INIT_ZERO)
+				count = sema_len_from_const(collection);
+				if (count <= 0)
 				{
+					if (count < 0 && init_type != CONST_INIT_ZERO)
+					{
+						SEMA_ERROR(collection, "Only regular arrays are allowed here.");
+						goto FAILED;
+					}
 					sema_context_pop_ct_stack(context, ct_context);
 					statement->ast_kind = AST_NOP_STMT;
 					return true;
 				}
-				if (init_type != CONST_INIT_ARRAY_FULL)
-				{
-					SEMA_ERROR(collection, "Only regular arrays are allowed here.");
-					goto FAILED;
-				}
-				count = vec_size(initializer->init_array_full);
 			}
 			break;
 		case CONST_UNTYPED_LIST:

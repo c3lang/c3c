@@ -4,6 +4,7 @@
 
 ### Changes / improvements
 - A `case` after `default` is now an error in switches that are evaluated as an if-chain, since it cannot be reached.
+- `@const` macros may no longer return `void?`.
 
 ### Fixes
 - `nextcase x` in a `@jump` switch read `x` after the defers of the case had run.
@@ -12,6 +13,10 @@
 - A lambda created in a macro could be reused for a compile time argument with the same value but a different type.
 - `foreach_r` over a type indexed by an enum, such as `EnumMap`, failed to compile.
 - `$case` ranges were rejected when switching over a typedef of an integer.
+- `$foreach` over a constant slice with designated elements, like `{ [2] = 7 }`, was rejected.
+- `$defined` analysed a compound literal, `$reflect` or `$vaarg` passed as a `#` macro argument in the macro's scope instead of the caller's.
+- A `void?` macro with only compile time parameters lost its optional, so `!`, `!!` and `@catch` on it were rejected.
+- `$defined` on an out of range `$vaarg` index was an error instead of `false`.
 
 ### Stdlib changes
 
