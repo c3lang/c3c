@@ -7,6 +7,7 @@
 
 ### Fixes
 - `nextcase x` in a `@jump` switch read `x` after the defers of the case had run.
+- Overwriting a full array, like `{ .c = { 1, 2, 3 }, .c[2] = 7 };` would be lowered incorrectly.
 
 ### Stdlib changes
 

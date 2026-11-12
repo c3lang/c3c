@@ -1094,6 +1094,11 @@ static inline ConstInitializer *sema_update_const_initializer_at_index(ConstInit
                                                                        ArrayIndex index,
                                                                        ArrayIndex *insert_index_ref)
 {
+	if (const_init->kind == CONST_INIT_ARRAY_FULL)
+	{
+		return const_init->init_array_full[index];
+	}
+
 	ConstInitializer **array_elements = const_init->init_array.elements;
 	ArrayIndex insert_index = *insert_index_ref;
 	ArrayIndex array_count = (ArrayIndex)vec_size(array_elements);
