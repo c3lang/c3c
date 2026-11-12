@@ -17,24 +17,24 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 			return;
 		}
 		Type *elem_t = (init->type && init->type->type_kind == TYPE_ARRAY && init->type->array.base) ? c_safe_type_lower(init->type->array.base) : (t->array.base ? c_safe_type_lower(t->array.base) : type_void);
-		int count = (init->type && init->type->type_kind == TYPE_ARRAY) ? (int)init->type->array.len : 0;
+		ArrayIndex count = (init->type && init->type->type_kind == TYPE_ARRAY) ? init->type->array.len : 0;
 		VariableId arr_var = c_emit_alloca_array(c, elem_t, count > 0 ? count : 1);
 		ConstInitializer **elements = init->kind == CONST_INIT_ARRAY_FULL ? init->init_array_full : (init->kind == CONST_INIT_ARRAY ? init->init_array.elements : NULL);
-		int el_count = (init->kind == CONST_INIT_ARRAY_FULL) ? count : (elements ? vec_size(elements) : 0);
-		for (int i = 0; i < el_count; i++)
+		ArrayIndex el_count = (init->kind == CONST_INIT_ARRAY_FULL) ? count : (elements ? vec_size(elements) : 0);
+		for (ArrayIndex i = 0; i < el_count; i++)
 		{
-			int index = i;
+			ArrayIndex index = i;
 			ConstInitializer *el = elements[i];
 			if (init->kind == CONST_INIT_ARRAY && el->kind == CONST_INIT_ARRAY_VALUE)
 			{
 				index = el->init_array_value.index;
 				el = el->init_array_value.element;
 			}
-			PRINTF("___var_%d[%d] = (%s)", arr_var, index, c_type_name(c, elem_t));
+			PRINTF("___var_%d[%lld] = (%s)", arr_var, (long long)index, c_type_name(c, elem_t));
 			c_emit_const_initializer_rec(c, el);
 			PRINT(";\n");
 		}
-		PRINTF("%s ___var_%d = (%s){ .ptr = ___var_%d, .len = %d };\n", tname, temp, tname, arr_var, count);
+		PRINTF("%s ___var_%d = (%s){ .ptr = ___var_%d, .len = %lld };\n", tname, temp, tname, arr_var, (long long)count);
 		return;
 	}
 

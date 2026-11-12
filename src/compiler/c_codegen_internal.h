@@ -54,6 +54,10 @@ static inline uint64_t c_bswap64(uint64_t x)
 
 typedef int VariableId;
 
+// Variable and label ids stored in pointer fields. Ids start at 1, so NULL means none.
+static inline void *c_id_to_ptr(VariableId id) { return (void *)(uintptr_t)id; } // NOLINT(performance-no-int-to-ptr)
+static inline VariableId c_ptr_to_id(void *ptr) { return (VariableId)(uintptr_t)ptr; }
+
 typedef enum
 {
 	CV_VALUE,
@@ -86,7 +90,7 @@ typedef struct
 	Type *type;
 	bool is_static;
 	bool is_alloca;
-	int alloca_count;
+	ArrayIndex alloca_count;
 	Decl *decl;
 } CLocalVar;
 
@@ -158,7 +162,7 @@ typedef struct GenContext
 } GenContext;
 
 VariableId c_emit_alloca(GenContext *c, Type *type);
-VariableId c_emit_alloca_array(GenContext *c, Type *base_type, int count);
+VariableId c_emit_alloca_array(GenContext *c, Type *base_type, ArrayIndex count);
 
 typedef void (*CDeclVisitor)(GenContext *c, Decl *d, void *userdata);
 
