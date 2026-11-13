@@ -8,6 +8,7 @@ bitstruct AeeBits : uint
 }
 
 macro int? aee_bad() => io::EOF~;
+macro int[]? aee_bad_slice() => io::EOF~;
 
 int aee_calls;
 
@@ -21,6 +22,14 @@ fn int aee_side()
 {
 	aee_calls++;
 	return 0;
+}
+
+int[3] aee_arr;
+
+fn int[] aee_side_slice()
+{
+	aee_calls++;
+	return aee_arr[..];
 }
 
 fn void? arr_r() { int[3] a; a[aee_side()] = aee_bad()!; }
@@ -40,6 +49,8 @@ fn void? swz_l() { int[<4>][2] v; v[aee_bad()!].xy = { aee_side(), 1 }; }
 fn void? swz_both() { int[<4>][2] v; v[aee_bad()!].xy = { aee_bad()!, 1 }; }
 fn void? slice_r() { int[3] a; a[aee_side()..1] = aee_bad()!; }
 fn void? slice_l() { int[3] a; a[aee_bad()!..1] = aee_side(); }
+fn void? slice_copy_r() { aee_side_slice()[..] = aee_bad_slice()![..]; }
+fn void? slice_copy_l() { aee_bad_slice()![..] = aee_side_slice()[..]; }
 fn void? vec_add_r() { int[<3>] v; v[aee_side()] += aee_bad()!; }
 fn void? vec_add_l() { int[<3>] v; v[aee_bad()!] += aee_side(); }
 fn void? bits_add_r() { AeeBits[2] b; b[aee_side()].a += aee_bad()!; }
@@ -69,6 +80,7 @@ fn void rhs_exit_skips_lhs() @test
 	@expect_eof(bits_single_r(), 0);
 	@expect_eof(swz_r(), 0);
 	@expect_eof(slice_r(), 0);
+	@expect_eof(slice_copy_r(), 0);
 	@expect_eof(vec_value(), 0);
 	@expect_eof(bits_value(), 0);
 }
@@ -80,6 +92,7 @@ fn void lhs_exit_after_rhs() @test
 	@expect_eof(bits_l(), 1);
 	@expect_eof(swz_l(), 1);
 	@expect_eof(slice_l(), 1);
+	@expect_eof(slice_copy_l(), 1);
 }
 
 fn void both_exit() @test

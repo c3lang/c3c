@@ -37,6 +37,93 @@ bool c_is_file_global(Decl *decl)
 	return false;
 }
 
+static bool c_is_const_lvalue(Expr *expr)
+{
+	Expr *base;
+	switch (expr->expr_kind)
+	{
+		case EXPR_IDENTIFIER:
+		{
+			Decl *d = c_decl_unwrap(expr->ident_expr);
+			return d && d->decl_kind == DECL_VAR && (c_is_file_global(d) || d->var.is_static);
+		}
+		case EXPR_SUBSCRIPT:
+		case EXPR_SUBSCRIPT_ADDR:
+			if (!c_can_emit_static_initializer(exprptr(expr->subscript_expr.index.expr))) return false;
+			base = exprptr(expr->subscript_expr.expr);
+			break;
+		case EXPR_ACCESS_RESOLVED:
+			base = expr->access_resolved_expr.parent;
+			break;
+		case EXPR_UNARY:
+			if (expr->unary_expr.operator != UNARYOP_DEREF) return false;
+			base = expr->unary_expr.expr;
+			break;
+		default:
+			return false;
+	}
+	switch (c_expr_type(base)->type_kind)
+	{
+		case TYPE_POINTER:
+			return c_can_emit_static_initializer(base);
+		case TYPE_ARRAY:
+		case TYPE_VECTOR:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+			return c_is_const_lvalue(base);
+		default:
+			return false;
+	}
+}
+
+static void c_emit_const_lvalue(GenContext *c, Expr *expr)
+{
+	if (expr->expr_kind == EXPR_IDENTIFIER)
+	{
+		Decl *d = c_decl_unwrap(expr->ident_expr);
+		if (c_is_file_global(d))
+		{
+			PRINTF("%s", c_get_decl_name(d));
+			return;
+		}
+		PRINTF("___var_%d", c_get_or_create_decl_var(c, d));
+		return;
+	}
+	Expr *base = expr->expr_kind == EXPR_ACCESS_RESOLVED ? expr->access_resolved_expr.parent
+	           : expr->expr_kind == EXPR_UNARY ? expr->unary_expr.expr : exprptr(expr->subscript_expr.expr);
+	Type *type = c_expr_type(base);
+	bool is_ptr = type->type_kind == TYPE_POINTER;
+	PRINT("(");
+	if (is_ptr)
+	{
+		c_emit_const_init_expr(c, base, type);
+	}
+	else
+	{
+		c_emit_const_lvalue(c, base);
+	}
+	PRINT(")");
+	switch (expr->expr_kind)
+	{
+		case EXPR_UNARY:
+			PRINT("[0]");
+			return;
+		case EXPR_ACCESS_RESOLVED:
+		{
+			int indices[16];
+			int depth = 0;
+			c_find_member_index_rec(get_struct_decl_from_type(type), expr->access_resolved_expr.ref, indices, &depth, 16);
+			for (int i = 0; i < depth; i++) PRINTF("%sm%d", i || !is_ptr ? "." : "->", indices[i]);
+			return;
+		}
+		default:
+			PRINT(is_ptr ? "[" : ".ptr[");
+			c_emit_const_init_expr(c, exprptr(expr->subscript_expr.index.expr), type_sz);
+			PRINT("]");
+			return;
+	}
+}
+
 bool c_can_emit_static_initializer(Expr *expr)
 {
 	if (!expr)
@@ -100,7 +187,7 @@ bool c_can_emit_static_initializer(Expr *expr)
 						return true;
 					}
 				}
-				return c_can_emit_static_initializer(inner);
+				return c_is_const_lvalue(inner) || c_can_emit_static_initializer(inner);
 			}
 			if (uop == UNARYOP_NEG || uop == UNARYOP_BITNEG || uop == UNARYOP_NOT)
 			{
@@ -112,8 +199,7 @@ bool c_can_emit_static_initializer(Expr *expr)
 			return c_can_emit_static_initializer(exprptr(expr->binary_expr.left)) &&
 			       c_can_emit_static_initializer(exprptr(expr->binary_expr.right));
 		case EXPR_SUBSCRIPT_ADDR:
-			return c_can_emit_static_initializer(exprptr(expr->subscript_expr.expr)) &&
-			       c_can_emit_static_initializer(exprptr(expr->subscript_expr.index.expr));
+			return c_is_const_lvalue(expr);
 		case EXPR_IDENTIFIER:
 		{
 			Decl *d = c_decl_unwrap(expr->ident_expr);
@@ -553,17 +639,13 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 		PRINTF(", .len = %llu }", (unsigned long long)expr->make_slice_expr.len);
 		return;
 	}
-	if (expr->expr_kind == EXPR_SUBSCRIPT_ADDR)
+	Expr *addr_of = expr->expr_kind == EXPR_SUBSCRIPT_ADDR ? expr : NULL;
+	if (expr->expr_kind == EXPR_UNARY && (expr->unary_expr.operator == UNARYOP_ADDR || expr->unary_expr.operator == UNARYOP_TADDR)) addr_of = expr->unary_expr.expr;
+	if (addr_of && c_is_const_lvalue(addr_of))
 	{
-		Expr *parent = exprptr(expr->subscript_expr.expr);
-		Expr *index  = exprptr(expr->subscript_expr.index.expr);
-		Type *pt     = c_expr_type(parent);
-		const char *acc = (pt && (pt->type_kind == TYPE_ARRAY || pt->type_kind == TYPE_VECTOR)) ? ".ptr[" : "[";
 		PRINTF("(%s)&(", tname);
-		c_emit_const_init_expr(c, parent, pt);
-		PRINTF("%s", acc);
-		c_emit_const_init_expr(c, index, type_sz);
-		PRINT("])");
+		c_emit_const_lvalue(c, addr_of);
+		PRINT(")");
 		return;
 	}
 	if (expr->expr_kind == EXPR_UNARY)

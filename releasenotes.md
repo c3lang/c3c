@@ -29,6 +29,9 @@
 - `$eval` printed an "Unlocalized error" for a string with a type before `::`, like `"Col::GREEN"`, and could intern such a name as a plain identifier.
 - Assignment to a vector element, bitstruct field or swizzle (and a slice, in the C backend) evaluated the LHS before RHS.
 - An early exit, such as `foo()!` on a fault, in a subscript index or on either side of a vector element, bitstruct field, swizzle or slice assignment could crash the compiler.
+- C backend: a static local initialized with an address, like `static int* p = &arr[1];`, was left as null.
+- C backend: `&C_PTR[1]` and `&C_ARR[2]` in a global initializer, where `C_PTR` and `C_ARR` are constants, generated invalid C.
+- C backend: `$$overflow_add`, `$$overflow_sub` and `$$overflow_mul` on vectors generated invalid C.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.

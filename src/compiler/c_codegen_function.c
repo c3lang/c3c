@@ -669,7 +669,7 @@ void c_emit_function(GenContext *c, Decl *fn)
 		bool is_tls           = lv.decl && lv.decl->var.is_threadlocal;
 		const char *align_str = c_local_align_str(lv.decl, vt);
 		PRINTF("static %s%s%s ___var_%d", align_str, is_tls ? "__c3_thread_local " : "", tname, lv.id);
-		if (lv.decl && lv.decl->var.init_expr && expr_is_const(lv.decl->var.init_expr))
+		if (lv.decl && lv.decl->var.init_expr && c_can_emit_static_initializer(lv.decl->var.init_expr))
 		{
 			PRINT(" = ");
 			c_emit_const_init_expr(c, lv.decl->var.init_expr, vt);

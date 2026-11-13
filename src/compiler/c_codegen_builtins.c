@@ -850,10 +850,22 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			{
 				c_value_rvalue(c, &c_args[0]);
 				c_value_rvalue(c, &c_args[1]);
-				int temp          = c_emit_temp_var(c, value, type_bool);
+				int temp          = c_emit_temp_var(c, value, return_type);
 				const char *bname = (builtin == BUILTIN_OVERFLOW_SUB) ? "__builtin_sub_overflow" : (builtin == BUILTIN_OVERFLOW_MUL) ? "__builtin_mul_overflow"
 				                                                                                                                     : "__builtin_add_overflow";
 				Type *op_type     = (c_args[0].type && is_valid_type_ptr(c_args[0].type)) ? c_safe_type_lower(c_args[0].type) : type_int;
+				if (c_type_is_vec_or_arr(return_type))
+				{
+					c_emit_type_forward_decl(c, return_type);
+					PRINTF("%s ___var_%d;\n", c_type_name(c, return_type), temp);
+					for (int k = 0; k < return_type->array.len; k++)
+					{
+						PRINTF("___var_%d.ptr[%d] = %s(%s, %s, &((%s*)___var_%d)->ptr[%d]);\n", temp, k, bname,
+						       c_vec_elem_operand(c, &c_args[0], k), c_vec_elem_operand(c, &c_args[1], k),
+						       c_type_name(c, op_type), c_args[2].var, k);
+					}
+					break;
+				}
 				PRINTF("bool ___var_%d = %s(___var_%d, ___var_%d, (%s*)___var_%d);\n",
 				       temp, bname, c_args[0].var, c_args[1].var, c_type_name(c, op_type), c_args[2].var);
 			}

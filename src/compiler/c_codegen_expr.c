@@ -2095,17 +2095,16 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 		}
 		case EXPR_SLICE_COPY:
 		{
-			CValue dst_val = {0}, src_val = {0};
+			CValue dst_val = {0};
+			c_emit_expr(c, value, exprptr(expr->slice_assign_expr.right));
+			c_value_rvalue(c, value);
 			c_emit_expr(c, &dst_val, exprptr(expr->slice_assign_expr.left));
 			c_value_rvalue(c, &dst_val);
-			c_emit_expr(c, &src_val, exprptr(expr->slice_assign_expr.right));
-			c_value_rvalue(c, &src_val);
-			if (dst_val.var != 0 && src_val.var != 0)
+			if (dst_val.var != 0 && value->var != 0)
 			{
 				PRINTF("__c3_memmove(___var_%d.ptr, ___var_%d.ptr, ___var_%d.len * sizeof(*___var_%d.ptr));\n",
-				       dst_val.var, src_val.var, src_val.var, dst_val.var);
+				       dst_val.var, value->var, value->var, dst_val.var);
 			}
-			*value = dst_val;
 			return;
 		}
 		case EXPR_SLICE_TO_VEC_ARRAY:
