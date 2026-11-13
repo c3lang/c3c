@@ -224,6 +224,43 @@ static void c_record_used_type(GenContext *c, Type *type)
 	}
 }
 
+static Signature *c_fnptr_signature(Type *fnptr)
+{
+	Type *raw = fnptr->pointer;
+	if (!raw || raw->type_kind != TYPE_FUNC_RAW) return NULL;
+	if (raw->function.prototype) raw = raw->function.prototype->raw_type;
+	return raw->function.signature;
+}
+
+static HTable c_fnptr_name_by_sig;
+static HTable c_fnptr_text_by_name;
+
+void c_type_names_init(void)
+{
+	htable_init(&c_fnptr_name_by_sig, 1024);
+	htable_init(&c_fnptr_text_by_name, 1024);
+}
+
+// Hash of the C signature: deterministic, and equal signatures share a typedef.
+static const char *c_fnptr_name(Signature *sig)
+{
+	const char *name = htable_get(&c_fnptr_name_by_sig, sig);
+	if (name) return name;
+	const char *text = c_signature_str(NULL, sig, "(*)", (CSigOpts){0});
+	name = c_intern(str_printf("__c3_fnptr_%016" PRIx64, a5hash(text, (uint32_t)strlen(text), 0)));
+	const char *known = htable_get(&c_fnptr_text_by_name, (void *)name);
+	if (!known)
+	{
+		htable_set(&c_fnptr_text_by_name, (void *)name, (void *)text);
+	}
+	else if (strcmp(known, text) != 0)
+	{
+		error_exit("C backend: '%s' and '%s' hash to the same typedef name %s.", known, text, name);
+	}
+	htable_set(&c_fnptr_name_by_sig, sig, (void *)name);
+	return name;
+}
+
 const char *c_type_name(GenContext *c, Type *type)
 {
 	type = c_safe_type_lower(type);
@@ -261,10 +298,8 @@ const char *c_type_name(GenContext *c, Type *type)
 		case TYPE_POINTER: return c_intern(str_printf("%s*", c_type_name(c, type->pointer)));
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		{
-			Decl *d = type->decl;
-			return d ? c_get_decl_name(d) : c_intern(str_printf("__c3_struct_%" PRIxPTR, (uintptr_t)type));
-		}
+			ASSERT(type->decl);
+			return c_get_decl_name(type->decl);
 		case TYPE_BITSTRUCT:
 			return c_type_name(c, type->decl->strukt.container_type->type);
 		case TYPE_SLICE:
@@ -287,10 +322,9 @@ const char *c_type_name(GenContext *c, Type *type)
 		}
 		case TYPE_FUNC_PTR:
 		{
-			// Equal signatures share one interned prototype type (sema_types.c), so they get one C name.
-			Type *raw = type->pointer;
-			if (raw && raw->type_kind == TYPE_FUNC_RAW && raw->function.prototype) raw = raw->function.prototype->raw_type;
-			return c_intern(str_printf("__c3_fnptr_%" PRIxPTR, (uintptr_t)raw));
+			Signature *sig = c_fnptr_signature(type);
+			if (!sig) return "__c3_fnptr_void";
+			return c_fnptr_name(sig);
 		}
 		default: return "void*";
 	}
@@ -487,8 +521,7 @@ static bool c_emit_type_forward_decl_here(GenContext *c, Type *type)
 			}
 			htable_set(&c->gen_decl, (void *)fnptr_name, (void *)1);
 
-			Type *raw_func = type->pointer;
-			Signature *sig = (raw_func->type_kind == TYPE_FUNC_RAW) ? raw_func->function.signature : NULL;
+			Signature *sig = c_fnptr_signature(type);
 			const char *declarator = str_printf("(*%s)", fnptr_name);
 			const char *signature  = sig ? c_signature_str(c, sig, declarator, (CSigOpts){0}) : str_printf("void %s(void)", declarator);
 			PRINTF("#ifndef %s_defined__\n#define %s_defined__\n", fnptr_name, fnptr_name);
@@ -574,14 +607,19 @@ void c_record_needed_typeid(Type *type, const char *sym)
 	vec_add(c_needed_typeids_vec, type);
 }
 
-// The typeid symbol: LLVM's introspection name (type_mangle_introspect_name_to_buffer) made a C identifier. That name
-// uses `$` as separator, which C does not allow portably, so it is escaped injectively: `_` -> `__`, `$` -> `_d`, any
-// other non-alphanumeric byte -> `_x` and two hex digits.
+static void c_append_decl_name(Decl *decl)
+{
+	scratch_buffer_append(c_get_decl_name(decl));
+}
+
+// The typeid symbol: LLVM's introspection name made a C identifier, with declarations named by
+// c_get_decl_name. `$` is not portable C, so it is escaped injectively: `_` -> `__`, `$` -> `_d`,
+// any other non-alphanumeric byte -> `_x` and two hex digits.
 const char *c_typeid_name(Type *type)
 {
 	scratch_buffer_push();
 	scratch_buffer_clear();
-	type_mangle_introspect_name_to_buffer(type->canonical);
+	type_mangle_introspect_name_with(type->canonical, c_append_decl_name);
 	const char *mangled = scratch_buffer_copy();
 	scratch_buffer_clear();
 	scratch_buffer_append("__c3_typeid_");
@@ -611,6 +649,18 @@ const char *c_typeid_name(Type *type)
 	return sym;
 }
 
+const char *c_typeid_ref(GenContext *c, Type *type)
+{
+	const char *sym = c_typeid_name(type);
+	if (strcmp(sym, "__c3_typeid_void") == 0 || htable_get(&c->declared_typeids, (void *)sym)) return sym;
+	ASSERT(c->decl_buffer);
+	htable_set(&c->declared_typeids, (void *)sym, (void *)1);
+	ByteBuffer *prev = c_decl_stream_enter(c, c->decl_buffer);
+	PRINTF("extern const c3type_info_t %s;\n", sym);
+	c->buffer = prev;
+	return sym;
+}
+
 const char *c_fault_symbol_name(Decl *decl)
 {
 	if (!decl)
@@ -619,6 +669,18 @@ const char *c_fault_symbol_name(Decl *decl)
 	}
 	const char *name = c_get_decl_name(decl);
 	return c_intern(str_printf("__c3_fault_%s", name));
+}
+
+const char *c_fault_ref(GenContext *c, Decl *decl)
+{
+	const char *sym = c_fault_symbol_name(decl);
+	if (htable_get(&c->declared_faults, (void *)sym)) return sym;
+	ASSERT(c->decl_buffer);
+	htable_set(&c->declared_faults, (void *)sym, (void *)1);
+	ByteBuffer *prev = c_decl_stream_enter(c, c->decl_buffer);
+	PRINTF("extern const char %s[];\n", sym);
+	c->buffer = prev;
+	return sym;
 }
 
 static Type *c_unwrap_target_type(Type *t)
