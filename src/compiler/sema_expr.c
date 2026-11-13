@@ -10005,7 +10005,7 @@ RETRY:;
 	if (inner->expr_kind == EXPR_IDENTIFIER)
 	{
 		Decl *ident = inner->ident_expr;
-		if (decl_is_global(ident))
+		if (decl_is_global_ref(ident))
 		{
 			expr_rewrite_const_ref(expr, ident);
 			return true;

@@ -29,6 +29,7 @@
 - `$eval` printed an "Unlocalized error" for a string with a type before `::`, like `"Col::GREEN"`, and could intern such a name as a plain identifier.
 - Assignment to a vector element, bitstruct field or swizzle (and a slice, in the C backend) evaluated the LHS before RHS.
 - An early exit, such as `foo()!` on a fault, in a subscript index or on either side of a vector element, bitstruct field, swizzle or slice assignment could crash the compiler.
+- The address of a thread-local variable was incorrectly considered a compile time constant.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.

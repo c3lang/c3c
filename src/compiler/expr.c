@@ -434,31 +434,7 @@ RETRY:;
 		{
 			// The address of an identifier is side effect free.
 			Decl *decl = inner->ident_expr;
-			if (decl->decl_kind == DECL_FUNC) return true;
-			if (decl->decl_kind != DECL_VAR) return false;
-			switch (decl->var.kind)
-			{
-				case VARDECL_CONST:
-				case VARDECL_GLOBAL:
-					// Fine for both local and global init.
-					return true;
-				case VARDECL_LOCAL:
-					// Getting the address of a local can never be constant init unless it is static.
-					return decl->var.is_static;
-				case VARDECL_PARAM:
-				case VARDECL_MEMBER:
-				case VARDECL_BITMEMBER:
-				case VARDECL_PARAM_CT:
-				case VARDECL_PARAM_CT_TYPE:
-				case VARDECL_PARAM_EXPR:
-				case VARDECL_LOCAL_CT:
-				case VARDECL_LOCAL_CT_TYPE:
-				case VARDECL_UNWRAPPED:
-				case VARDECL_ERASE:
-				case VARDECL_REWRAPPED:
-					// None of these are constant.
-					return false;
-			}
+			return decl_is_global_ref(decl);
 		}
 		default:
 			return false;

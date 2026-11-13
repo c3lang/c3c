@@ -2612,7 +2612,7 @@ bool decl_needs_prefix(Decl *decl);
 AlignSize decl_find_member_offset(Decl *decl, Decl *member);
 bool decl_is_externally_visible(Decl *decl);
 bool decl_is_local(Decl *decl);
-bool decl_is_global(Decl *decl);
+bool decl_is_global_ref(Decl *decl);
 void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear);
 
 // --- Expression functions
