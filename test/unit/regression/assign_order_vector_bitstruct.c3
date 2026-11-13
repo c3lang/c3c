@@ -28,6 +28,20 @@ fn int aob_r(int v = 5)
 }
 
 AobHolder aob_holder;
+int[4] aob_dst;
+int[4] aob_src = { 1, 2, 3, 4 };
+
+fn int[] aob_dst_slice()
+{
+	aob_log[aob_len++] = 'L';
+	return aob_dst[..];
+}
+
+fn int[] aob_src_slice()
+{
+	aob_log[aob_len++] = 'R';
+	return aob_src[..];
+}
 
 fn AobHolder* aob_ptr()
 {
@@ -71,6 +85,9 @@ fn void plain_assign_rhs_first() @test
 	aob_ptr().v.zw = { aob_r(8), 9 };
 	assert(aob_take() == "RL");
 	assert(aob_holder.v.z == 8 && aob_holder.v.w == 9);
+	aob_dst_slice()[..] = aob_src_slice()[..];
+	assert(aob_take() == "RL");
+	assert(aob_dst == aob_src);
 }
 
 fn void compound_assign_lhs_first() @test

@@ -227,6 +227,11 @@ static inline bool c_fn_is_internal(Decl *fn)
 	if (!decl_is_local(fn) || fn->is_extern || fn->is_weak || !fn->func_decl.body) return false;
 	return !fn->func_decl.attr_init && !fn->func_decl.attr_finalizer && !fn->func_decl.attr_dynamic;
 }
+// A global only referenced inside its own module, as in the LLVM backend.
+static inline bool c_global_is_internal(Decl *var)
+{
+	return decl_is_local(var) && !var->is_extern && !var->is_weak_link;
+}
 int c_create_label(GenContext *c);
 int c_create_variable(GenContext *c);
 void c_register_function_local(GenContext *c, VariableId id, Type *type, bool is_static, Decl *decl);

@@ -1605,11 +1605,17 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			}
 			const char *mname = c_type_name(c, member_type);
 
+			CValue result_val = {0};
+			if (op == BINARYOP_ASSIGN)
+			{
+				c_emit_expr(c, &result_val, right);
+				c_value_rvalue(c, &result_val);
+			}
+
 			int container_ptr_var = 0;
 			Decl *bitstruct_decl  = NULL;
 			const char *c_tname   = c_emit_bitstruct_container(c, left->access_resolved_expr.parent, member, &container_ptr_var, &bitstruct_decl);
 
-			CValue result_val = {0};
 			if (op != BINARYOP_ASSIGN)
 			{
 				CValue cur_val = {0};
@@ -1621,11 +1627,6 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 				c_ensure_cvalue_var(c, &right_val, member_type);
 
 				c_emit_binary_op(c, &result_val, binaryop_assign_base_op(op), member_type, cur_val, right_val, expr->loc);
-			}
-			else
-			{
-				c_emit_expr(c, &result_val, right);
-				c_value_rvalue(c, &result_val);
 			}
 
 			c_emit_bitstruct_write_container(c, left->access_resolved_expr.parent, bitstruct_decl, member, container_ptr_var, c_tname, &result_val);
