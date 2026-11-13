@@ -196,7 +196,7 @@ static const char *c_bit_mask_str(int bits)
 	return str_printf("0x%" PRIx64 "ULL", ((uint64_t)1 << bits) - 1);
 }
 
-void c_emit_bitstruct_accessors_to_file(FILE *f, Decl *decl)
+static void c_emit_bitstruct_accessors(GenContext *c, Decl *decl)
 {
 	if (!decl || decl->decl_kind != DECL_BITSTRUCT || !decl->strukt.members)
 	{
@@ -237,10 +237,10 @@ void c_emit_bitstruct_accessors_to_file(FILE *f, Decl *decl)
 		bool is_signed         = type_is_signed(m_type);
 		const char *shift_type = (bit_size > 64) ? "__c3_uint128" : "uint64_t";
 
-		fprintf(f, "static inline %s %s_get_%s(const void *p) {\n", ret_tname, bs_name, m_name);
+		PRINTF("static inline %s %s_get_%s(const void *p) {\n", ret_tname, bs_name, m_name);
 		if (is_array)
 		{
-			fputs("\tconst uint8_t *b = (const uint8_t *)p;\n", f);
+			PRINT("\tconst uint8_t *b = (const uint8_t *)p;\n");
 			char expr_buf[2048];
 			expr_buf[0]    = '\0';
 			int term_count = 0;
@@ -292,67 +292,67 @@ void c_emit_bitstruct_accessors_to_file(FILE *f, Decl *decl)
 			}
 			if (is_signed && bit_size < 128)
 			{
-				fprintf(f, "\t%s res = %s;\n", shift_type, expr_buf);
-				fprintf(f, "\tif (res & ((%s)1 << %d)) res |= ~(((%s)1 << %d) - 1);\n", shift_type, bit_size - 1, shift_type, bit_size);
-				fprintf(f, "\treturn (%s)res;\n", ret_tname);
+				PRINTF("\t%s res = %s;\n", shift_type, expr_buf);
+				PRINTF("\tif (res & ((%s)1 << %d)) res |= ~(((%s)1 << %d) - 1);\n", shift_type, bit_size - 1, shift_type, bit_size);
+				PRINTF("\treturn (%s)res;\n", ret_tname);
 			}
 			else
 			{
-				fprintf(f, "\treturn (%s)(%s);\n", ret_tname, expr_buf);
+				PRINTF("\treturn (%s)(%s);\n", ret_tname, expr_buf);
 			}
 		}
 		else if (type_size(container_type) > 8)
 		{
-			fputs("\t__c3_uint128 v = *(const __c3_uint128 *)p;\n", f);
+			PRINT("\t__c3_uint128 v = *(const __c3_uint128 *)p;\n");
 			if (c_is_bitstruct_requires_byteswap(decl))
 			{
-				fputs("\tv = (((__c3_uint128)__builtin_bswap64((uint64_t)v)) << 64) | ((__c3_uint128)__builtin_bswap64((uint64_t)(v >> 64)));\n", f);
+				PRINT("\tv = (((__c3_uint128)__builtin_bswap64((uint64_t)v)) << 64) | ((__c3_uint128)__builtin_bswap64((uint64_t)(v >> 64)));\n");
 			}
 			if (bit_size >= 128)
 			{
-				fprintf(f, "\treturn (%s)v;\n", ret_tname);
+				PRINTF("\treturn (%s)v;\n", ret_tname);
 			}
 			else
 			{
-				fprintf(f, "\t%s res = (%s)((v >> %d) & %s);\n", shift_type, shift_type, start_bit, c_bit_mask_str(bit_size));
+				PRINTF("\t%s res = (%s)((v >> %d) & %s);\n", shift_type, shift_type, start_bit, c_bit_mask_str(bit_size));
 				if (is_signed)
 				{
-					fprintf(f, "\tif (res & ((%s)1 << %d)) res |= ~(%s)%s;\n", shift_type, bit_size - 1, shift_type, c_bit_mask_str(bit_size));
+					PRINTF("\tif (res & ((%s)1 << %d)) res |= ~(%s)%s;\n", shift_type, bit_size - 1, shift_type, c_bit_mask_str(bit_size));
 				}
-				fprintf(f, "\treturn (%s)res;\n", ret_tname);
+				PRINTF("\treturn (%s)res;\n", ret_tname);
 			}
 		}
 		else
 		{
 			const char *c_tname = c_type_name(NULL, container_type);
 			uint64_t mask       = (bit_size >= 64) ? ~0ULL : (((uint64_t)1 << bit_size) - 1);
-			fprintf(f, "\tuint64_t v = (uint64_t)*(const %s *)p;\n", c_tname);
+			PRINTF("\tuint64_t v = (uint64_t)*(const %s *)p;\n", c_tname);
 			if (c_is_bitstruct_requires_byteswap(decl))
 			{
-				fprintf(f, "\tif (sizeof(%s) == 2) v = __builtin_bswap16((uint16_t)v);\n", c_tname);
-				fprintf(f, "\telse if (sizeof(%s) == 4) v = __builtin_bswap32((uint32_t)v);\n", c_tname);
-				fprintf(f, "\telse if (sizeof(%s) == 8) v = __builtin_bswap64((uint64_t)v);\n", c_tname);
+				PRINTF("\tif (sizeof(%s) == 2) v = __builtin_bswap16((uint16_t)v);\n", c_tname);
+				PRINTF("\telse if (sizeof(%s) == 4) v = __builtin_bswap32((uint32_t)v);\n", c_tname);
+				PRINTF("\telse if (sizeof(%s) == 8) v = __builtin_bswap64((uint64_t)v);\n", c_tname);
 			}
 			if (start_bit == 0)
 			{
-				fprintf(f, "\tuint64_t res = v & 0x%" PRIx64 "ULL;\n", mask);
+				PRINTF("\tuint64_t res = v & 0x%" PRIx64 "ULL;\n", mask);
 			}
 			else
 			{
-				fprintf(f, "\tuint64_t res = (v >> %d) & 0x%" PRIx64 "ULL;\n", start_bit, mask);
+				PRINTF("\tuint64_t res = (v >> %d) & 0x%" PRIx64 "ULL;\n", start_bit, mask);
 			}
 			if (is_signed && bit_size < 64)
 			{
-				fprintf(f, "\tif (res & (1ULL << %d)) res |= ~0x%" PRIx64 "ULL;\n", bit_size - 1, mask);
+				PRINTF("\tif (res & (1ULL << %d)) res |= ~0x%" PRIx64 "ULL;\n", bit_size - 1, mask);
 			}
-			fprintf(f, "\treturn (%s)res;\n", ret_tname);
+			PRINTF("\treturn (%s)res;\n", ret_tname);
 		}
-		fputs("}\n", f);
+		PRINT("}\n");
 
-		fprintf(f, "static inline void %s_set_%s(void *p, %s val) {\n", bs_name, m_name, ret_tname);
+		PRINTF("static inline void %s_set_%s(void *p, %s val) {\n", bs_name, m_name, ret_tname);
 		if (is_array)
 		{
-			fputs("\tuint8_t *b = (uint8_t *)p;\n", f);
+			PRINT("\tuint8_t *b = (uint8_t *)p;\n");
 			for (int bits_done = 0; bits_done < bit_size; )
 			{
 				CBitfieldStep s = c_bitfield_step(start_bit, bit_size, bits_done, reverse);
@@ -360,23 +360,23 @@ void c_emit_bitstruct_accessors_to_file(FILE *f, Decl *decl)
 				{
 					if (s.shift > 0)
 					{
-						fprintf(f, "\tb[%d] = (uint8_t)((%s)val >> %d);\n", s.byte_idx, shift_type, s.shift);
+						PRINTF("\tb[%d] = (uint8_t)((%s)val >> %d);\n", s.byte_idx, shift_type, s.shift);
 					}
 					else
 					{
-						fprintf(f, "\tb[%d] = (uint8_t)val;\n", s.byte_idx);
+						PRINTF("\tb[%d] = (uint8_t)val;\n", s.byte_idx);
 					}
 				}
 				else
 				{
 					if (s.shift > 0)
 					{
-						fprintf(f, "\tb[%d] = (b[%d] & ~0x%02X) | (((uint8_t)((%s)val >> %d) & 0x%02X) << %d);\n",
+						PRINTF("\tb[%d] = (b[%d] & ~0x%02X) | (((uint8_t)((%s)val >> %d) & 0x%02X) << %d);\n",
 						        s.byte_idx, s.byte_idx, s.byte_mask, shift_type, s.shift, s.step_mask, s.bit_in_byte);
 					}
 					else
 					{
-						fprintf(f, "\tb[%d] = (b[%d] & ~0x%02X) | (((uint8_t)val & 0x%02X) << %d);\n",
+						PRINTF("\tb[%d] = (b[%d] & ~0x%02X) | (((uint8_t)val & 0x%02X) << %d);\n",
 						        s.byte_idx, s.byte_idx, s.byte_mask, s.step_mask, s.bit_in_byte);
 					}
 				}
@@ -385,31 +385,31 @@ void c_emit_bitstruct_accessors_to_file(FILE *f, Decl *decl)
 		}
 		else if (type_size(container_type) > 8)
 		{
-			fputs("\t__c3_uint128 *v = (__c3_uint128 *)p;\n", f);
+			PRINT("\t__c3_uint128 *v = (__c3_uint128 *)p;\n");
 			if (c_is_bitstruct_requires_byteswap(decl))
 			{
-				fputs("\t__c3_uint128 _cur = (((__c3_uint128)__builtin_bswap64((uint64_t)*v)) << 64) | ((__c3_uint128)__builtin_bswap64((uint64_t)(*v >> 64)));\n", f);
+				PRINT("\t__c3_uint128 _cur = (((__c3_uint128)__builtin_bswap64((uint64_t)*v)) << 64) | ((__c3_uint128)__builtin_bswap64((uint64_t)(*v >> 64)));\n");
 				if (bit_size >= 128)
 				{
-					fprintf(f, "\t_cur = (__c3_uint128)val;\n");
+					PRINTF("\t_cur = (__c3_uint128)val;\n");
 				}
 				else
 				{
-					fprintf(f, "\t__c3_uint128 mask = ((__c3_uint128)%s) << %d;\n", c_bit_mask_str(bit_size), start_bit);
-					fprintf(f, "\t_cur = (_cur & ~mask) | ((((__c3_uint128)val) & %s) << %d);\n", c_bit_mask_str(bit_size), start_bit);
+					PRINTF("\t__c3_uint128 mask = ((__c3_uint128)%s) << %d;\n", c_bit_mask_str(bit_size), start_bit);
+					PRINTF("\t_cur = (_cur & ~mask) | ((((__c3_uint128)val) & %s) << %d);\n", c_bit_mask_str(bit_size), start_bit);
 				}
-				fputs("\t*v = (((__c3_uint128)__builtin_bswap64((uint64_t)_cur)) << 64) | ((__c3_uint128)__builtin_bswap64((uint64_t)(_cur >> 64)));\n", f);
+				PRINT("\t*v = (((__c3_uint128)__builtin_bswap64((uint64_t)_cur)) << 64) | ((__c3_uint128)__builtin_bswap64((uint64_t)(_cur >> 64)));\n");
 			}
 			else
 			{
 				if (bit_size >= 128)
 				{
-					fprintf(f, "\t*v = (__c3_uint128)val;\n");
+					PRINTF("\t*v = (__c3_uint128)val;\n");
 				}
 				else
 				{
-					fprintf(f, "\t__c3_uint128 mask = ((__c3_uint128)%s) << %d;\n", c_bit_mask_str(bit_size), start_bit);
-					fprintf(f, "\t*v = (*v & ~mask) | ((((__c3_uint128)val) & %s) << %d);\n", c_bit_mask_str(bit_size), start_bit);
+					PRINTF("\t__c3_uint128 mask = ((__c3_uint128)%s) << %d;\n", c_bit_mask_str(bit_size), start_bit);
+					PRINTF("\t*v = (*v & ~mask) | ((((__c3_uint128)val) & %s) << %d);\n", c_bit_mask_str(bit_size), start_bit);
 				}
 			}
 		}
@@ -418,40 +418,50 @@ void c_emit_bitstruct_accessors_to_file(FILE *f, Decl *decl)
 			const char *c_tname   = c_type_name(NULL, container_type);
 			uint64_t mask         = (bit_size >= 64) ? ~0ULL : (((uint64_t)1 << bit_size) - 1);
 			uint64_t shifted_mask = (bit_size >= 64) ? ~0ULL : (mask << start_bit);
-			fprintf(f, "\t%s *v = (%s *)p;\n", c_tname, c_tname);
+			PRINTF("\t%s *v = (%s *)p;\n", c_tname, c_tname);
 			if (c_is_bitstruct_requires_byteswap(decl))
 			{
-				fprintf(f, "\tuint64_t _cur = (uint64_t)*v;\n");
-				fprintf(f, "\tif (sizeof(%s) == 2) _cur = __builtin_bswap16((uint16_t)_cur);\n", c_tname);
-				fprintf(f, "\telse if (sizeof(%s) == 4) _cur = __builtin_bswap32((uint32_t)_cur);\n", c_tname);
-				fprintf(f, "\telse if (sizeof(%s) == 8) _cur = __builtin_bswap64((uint64_t)_cur);\n", c_tname);
+				PRINTF("\tuint64_t _cur = (uint64_t)*v;\n");
+				PRINTF("\tif (sizeof(%s) == 2) _cur = __builtin_bswap16((uint16_t)_cur);\n", c_tname);
+				PRINTF("\telse if (sizeof(%s) == 4) _cur = __builtin_bswap32((uint32_t)_cur);\n", c_tname);
+				PRINTF("\telse if (sizeof(%s) == 8) _cur = __builtin_bswap64((uint64_t)_cur);\n", c_tname);
 				if (start_bit == 0)
 				{
-					fprintf(f, "\t_cur = (_cur & ~0x%" PRIx64 "ULL) | ((uint64_t)(%s)val & 0x%" PRIx64 "ULL);\n", shifted_mask, c_tname, mask);
+					PRINTF("\t_cur = (_cur & ~0x%" PRIx64 "ULL) | ((uint64_t)(%s)val & 0x%" PRIx64 "ULL);\n", shifted_mask, c_tname, mask);
 				}
 				else
 				{
-					fprintf(f, "\t_cur = (_cur & ~0x%" PRIx64 "ULL) | (((uint64_t)(%s)val & 0x%" PRIx64 "ULL) << %d);\n", shifted_mask, c_tname, mask, start_bit);
+					PRINTF("\t_cur = (_cur & ~0x%" PRIx64 "ULL) | (((uint64_t)(%s)val & 0x%" PRIx64 "ULL) << %d);\n", shifted_mask, c_tname, mask, start_bit);
 				}
-				fprintf(f, "\tif (sizeof(%s) == 2) _cur = __builtin_bswap16((uint16_t)_cur);\n", c_tname);
-				fprintf(f, "\telse if (sizeof(%s) == 4) _cur = __builtin_bswap32((uint32_t)_cur);\n", c_tname);
-				fprintf(f, "\telse if (sizeof(%s) == 8) _cur = __builtin_bswap64((uint64_t)_cur);\n", c_tname);
-				fprintf(f, "\t*v = (%s)_cur;\n", c_tname);
+				PRINTF("\tif (sizeof(%s) == 2) _cur = __builtin_bswap16((uint16_t)_cur);\n", c_tname);
+				PRINTF("\telse if (sizeof(%s) == 4) _cur = __builtin_bswap32((uint32_t)_cur);\n", c_tname);
+				PRINTF("\telse if (sizeof(%s) == 8) _cur = __builtin_bswap64((uint64_t)_cur);\n", c_tname);
+				PRINTF("\t*v = (%s)_cur;\n", c_tname);
 			}
 			else
 			{
 				if (start_bit == 0)
 				{
-					fprintf(f, "\t*v = (%s)((*v & ~0x%" PRIx64 "ULL) | ((uint64_t)(%s)val & 0x%" PRIx64 "ULL));\n", c_tname, shifted_mask, c_tname, mask);
+					PRINTF("\t*v = (%s)((*v & ~0x%" PRIx64 "ULL) | ((uint64_t)(%s)val & 0x%" PRIx64 "ULL));\n", c_tname, shifted_mask, c_tname, mask);
 				}
 				else
 				{
-					fprintf(f, "\t*v = (%s)((*v & ~0x%" PRIx64 "ULL) | (((uint64_t)(%s)val & 0x%" PRIx64 "ULL) << %d));\n", c_tname, shifted_mask, c_tname, mask, start_bit);
+					PRINTF("\t*v = (%s)((*v & ~0x%" PRIx64 "ULL) | (((uint64_t)(%s)val & 0x%" PRIx64 "ULL) << %d));\n", c_tname, shifted_mask, c_tname, mask, start_bit);
 				}
 			}
 		}
-		fputs("}\n\n", f);
+		PRINT("}\n\n");
 	}
+}
+
+void c_declare_bitstruct_accessors(GenContext *c, Decl *decl)
+{
+	if (htable_get(&c->declared_bitstructs, decl)) return;
+	ASSERT(c->decl_buffer);
+	htable_set(&c->declared_bitstructs, decl, decl);
+	ByteBuffer *prev = c_decl_stream_enter(c, c->decl_buffer);
+	c_emit_bitstruct_accessors(c, decl);
+	c->buffer = prev;
 }
 
 const char *c_emit_bitstruct_container(GenContext *c, Expr *parent_expr, Decl *member, int *out_container_var, Decl **out_bitstruct_decl)

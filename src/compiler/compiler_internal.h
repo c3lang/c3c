@@ -2616,6 +2616,8 @@ bool decl_is_externally_visible(Decl *decl);
 bool decl_is_local(Decl *decl);
 bool decl_is_global_ref(Decl *decl);
 void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear);
+bool scratch_buffer_set_stable_extern_decl_name(Decl *decl, bool clear);
+void scratch_buffer_append_decl_pos(Decl *decl);
 
 // --- Expression functions
 
@@ -2883,6 +2885,7 @@ bool type_is_comparable(Type *type);
 bool type_is_ordered(Type *type);
 int type_get_introspection_kind(TypeKind kind);
 void type_mangle_introspect_name_to_buffer(Type *type);
+void type_mangle_introspect_name_with(Type *type, void (*append_decl_name)(Decl *));
 AlignSize type_alloca_alignment(Type *type);
 AlignSize type_abi_alignment(Type *type);
 bool type_func_match(Type *fn_type, Type *rtype, int arg_count, ...);

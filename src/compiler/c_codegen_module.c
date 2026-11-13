@@ -618,7 +618,7 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 		{
 			t = type_void;
 		}
-		PRINTF("(c3typeid_t)&%s", c_typeid_name(t));
+		PRINTF("(c3typeid_t)&%s", c_typeid_ref(c, t));
 		return;
 	}
 	if (expr->expr_kind == EXPR_MAKE_ANY)
@@ -765,7 +765,7 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 			}
 			if (d->decl_kind == DECL_FAULT)
 			{
-				const char *fsym = c_fault_symbol_name(d);
+				const char *fsym = c_fault_ref(c, d);
 				PRINTF("(c3fault_t)%s", fsym);
 				return;
 			}
@@ -922,7 +922,7 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 				{
 					tval = type_void;
 				}
-				PRINTF("(c3typeid_t)&%s", c_typeid_name(tval));
+				PRINTF("(c3typeid_t)&%s", c_typeid_ref(c, tval));
 				return;
 			}
 			case CONST_INTEGER:
@@ -991,7 +991,7 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 			case CONST_FAULT:
 				if (expr->const_expr.fault)
 				{
-					const char *fsym = c_fault_symbol_name(expr->const_expr.fault);
+					const char *fsym = c_fault_ref(c, expr->const_expr.fault);
 					PRINTF("(c3fault_t)%s", fsym);
 				}
 				else
@@ -1363,7 +1363,7 @@ static void c_emit_dynamic_dispatcher_here(GenContext *c, Decl *dyn_fn)
 		const char *impl_fn_name = c_get_decl_name(impl);
 		if (target_type)
 		{
-			const char *tsym = c_typeid_name(target_type);
+			const char *tsym = c_typeid_ref(c, target_type);
 			PRINTF("\t\tif (___t == (c3typeid_t)&%s) { return (void *)&%s; }\n", tsym, impl_fn_name);
 		}
 	}
@@ -1418,7 +1418,7 @@ static void c_emit_dynamic_dispatcher_here(GenContext *c, Decl *dyn_fn)
 			                           ? str_printf("*(%s*)___self.ptr", c_type_name(c, first_ptype))
 			                           : str_printf("(%s)___self.ptr", c_type_name(c, first_ptype));
 
-			const char *tsym         = c_typeid_name(target_type);
+			const char *tsym         = c_typeid_ref(c, target_type);
 			const char *impl_fn_name = c_get_decl_name(impl);
 			if (pass == 0)
 			{
@@ -1472,35 +1472,6 @@ static void c_emit_dynamic_dispatcher_here(GenContext *c, Decl *dyn_fn)
 		}
 	}
 	PRINTF("}\n\n");
-}
-
-// Anonymous inner members (struct/union/bitstruct) have no liveness of their own; they follow the outer type.
-static void c_collect_and_emit_bitstructs(FILE *f, HTable *emitted, Decl *d, bool is_member)
-{
-	if (!d || d->is_template || d->replacement || (!is_member && strip_unused() && !d->is_live))
-	{
-		return;
-	}
-	if (d->decl_kind == DECL_BITSTRUCT)
-	{
-		if (!d->strukt.container_type)
-		{
-			return;
-		}
-		const char *bname = c_get_decl_name(d);
-		if (!htable_get(emitted, (void *)bname))
-		{
-			htable_set(emitted, (void *)bname, (void *)1);
-			c_emit_bitstruct_accessors_to_file(f, d);
-		}
-	}
-	if (decl_has_members(d) && d->strukt.members)
-	{
-		FOREACH(Decl *, m, d->strukt.members)
-		{
-			c_collect_and_emit_bitstructs(f, emitted, m, true);
-		}
-	}
 }
 
 #include "c_runtime_header.h"
@@ -1651,93 +1622,9 @@ void c_emit_runtime_header(const char *dir)
 	fprintf(f, "#define __C3_INT128_ALIGN %d\n", (int)type_abi_alignment(type_i128));
 	fwrite(c_runtime_header_boilerplate, 1, c_runtime_header_boilerplate_len, f);
 
-	HTable emitted_types;
-	Type **all_types = c_collect_runtime_types(&emitted_types);
+	// Program specific declarations go in the files using them, keeping this header constant.
+	fputs("extern const c3type_info_t __c3_typeid_void;\n\n", f);
 
-	fputs("extern const c3type_info_t __c3_typeid_void;\n", f);
-	FOREACH(Type *, t, all_types)
-	{
-		const char *sym = c_typeid_name(t);
-		if (strcmp(sym, "__c3_typeid_void") == 0)
-		{
-			continue;
-		}
-		fprintf(f, "extern const c3type_info_t %s;\n", sym);
-	}
-	fputs("\n", f);
-
-	HTable emitted_bs;
-	htable_init(&emitted_bs, 256);
-	int type_count = vec_size(compiler.context.type);
-	for (int i = 0; i < type_count; i++)
-	{
-		Type *t = compiler.context.type[i];
-		if (t->type_kind != TYPE_BITSTRUCT || !c_type_is_resolved(t))
-		{
-			continue;
-		}
-		Decl *d = t->decl;
-		if (d->replacement || (strip_unused() && !d->is_live))
-		{
-			continue;
-		}
-		const char *bname = c_get_decl_name(d);
-		if (htable_get(&emitted_bs, (void *)bname))
-		{
-			continue;
-		}
-		htable_set(&emitted_bs, (void *)bname, (void *)1);
-		c_emit_bitstruct_accessors_to_file(f, d);
-	}
-	FOREACH(Module *, mod, compiler.context.module_list)
-	{
-		if (!mod)
-		{
-			continue;
-		}
-		FOREACH(CompilationUnit *, unit, mod->units)
-		{
-			if (!unit)
-			{
-				continue;
-			}
-			FOREACH(Decl *, d, unit->types)
-			{
-				c_collect_and_emit_bitstructs(f, &emitted_bs, d, false);
-			}
-		}
-	}
-
-	HTable emitted_faults;
-	htable_init(&emitted_faults, 1024);
-	FOREACH(Module *, mod, compiler.context.module_list)
-	{
-		if (!mod)
-		{
-			continue;
-		}
-		FOREACH(CompilationUnit *, unit, mod->units)
-		{
-			if (!unit)
-			{
-				continue;
-			}
-			FOREACH(Decl *, d, unit->faults)
-			{
-				if (!d || d->decl_kind != DECL_FAULT || (strip_unused() && !d->is_live))
-				{
-					continue;
-				}
-				const char *sym = c_fault_symbol_name(d);
-				if (htable_get(&emitted_faults, (void *)sym))
-				{
-					continue;
-				}
-				htable_set(&emitted_faults, (void *)sym, (void *)1);
-				fprintf(f, "extern const char %s[];\n", sym);
-			}
-		}
-	}
 	fclose(f);
 }
 
@@ -1767,6 +1654,14 @@ GenContext *c_emit_runtime_c(const char *dir)
 
 	HTable emitted_types;
 	Type **all_types = c_collect_runtime_types(&emitted_types);
+
+	// parentof and inner refer to each other.
+	FOREACH(Type *, t, all_types)
+	{
+		const char *sym = c_typeid_name(t);
+		if (strcmp(sym, "__c3_typeid_void") == 0) continue;
+		fprintf(f, "extern const c3type_info_t %s;\n", sym);
+	}
 
 	FOREACH(Type *, t, all_types)
 	{

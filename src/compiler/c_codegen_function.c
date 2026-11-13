@@ -413,10 +413,11 @@ CRet c_signature_ret(Signature *sig)
 	return c_type_ret(typeget(sig->rtype));
 }
 
+// c == NULL: declares nothing.
 const char *c_signature_str(GenContext *c, Signature *sig, const char *declarator, CSigOpts opts)
 {
 	CRet ret = c_signature_ret(sig);
-	if (ret.value) c_emit_type_forward_decl(c, ret.value);
+	if (c && ret.value) c_emit_type_forward_decl(c, ret.value);
 	const char *ret_tname = ret.optional ? "c3fault_t" : (ret.value ? c_type_name(c, ret.value) : "void");
 	// The value of an optional comes back through a pointer in front of the other parameters.
 	const char *params = (ret.optional && ret.value) ? str_printf("%s *%s", c_type_name(c, ret.value), opts.names ? "___ret_out" : "") : "";
@@ -426,7 +427,7 @@ const char *c_signature_str(GenContext *c, Signature *sig, const char *declarato
 	{
 		Type *ptype = (i == 0 && opts.self_type) ? opts.self_type : c_decl_type(p);
 		if (c_type_is_zero_sized(ptype)) continue;
-		c_emit_type_forward_decl(c, ptype);
+		if (c) c_emit_type_forward_decl(c, ptype);
 		const char *tname = (opts.is_main && (arg_index == 1 || arg_index == 2)) ? "char**" : c_type_name(c, ptype);
 		params            = str_printf("%s%s%s%s%s", params, count ? ", " : "", tname, opts.names ? " " : "", opts.names ? opts.names[i] : "");
 		count++;

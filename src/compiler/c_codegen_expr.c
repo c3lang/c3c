@@ -130,7 +130,7 @@ static void c_emit_identifier_expr(GenContext *c, CValue *value, Expr *expr)
 	if (decl->decl_kind == DECL_FAULT)
 	{
 		int temp         = c_emit_temp_var(c, value, type_fault);
-		const char *fsym = c_fault_symbol_name(decl);
+		const char *fsym = c_fault_ref(c, decl);
 		PRINTF("c3fault_t ___var_%d = (c3fault_t)%s;\n", temp, fsym);
 		return;
 	}
@@ -1052,10 +1052,10 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 	c_emit_binary_op(c, value, op, expr_type, left_value, right_value, expr->loc);
 }
 
-// Bitstruct fields are read and written through the accessors c_emit_bitstruct_accessors_to_file generates.
 static void c_emit_bitstruct_read_container(GenContext *c, CValue *value, Expr *parent_expr, Decl *bitstruct_decl, Decl *member, Type *member_type, int container_ptr_var, const char *c_tname)
 {
 	ASSERT(bitstruct_decl->decl_kind == DECL_BITSTRUCT);
+	c_declare_bitstruct_accessors(c, bitstruct_decl);
 	int temp = c_emit_temp_var(c, value, member_type);
 	PRINTF("%s ___var_%d = %s_get_%s((const void*)___var_%d);\n", c_type_name(c, member_type), temp,
 	       c_get_decl_name(bitstruct_decl), member->name, container_ptr_var);
@@ -1066,6 +1066,7 @@ static void c_emit_bitstruct_write_container(GenContext *c, Expr *parent_expr, D
 	ASSERT(bitstruct_decl->decl_kind == DECL_BITSTRUCT);
 	c_value_rvalue(c, val);
 	c_ensure_cvalue_var(c, val, c_safe_type_lower(member->type));
+	c_declare_bitstruct_accessors(c, bitstruct_decl);
 	PRINTF("%s_set_%s((void*)___var_%d, ___var_%d);\n", c_get_decl_name(bitstruct_decl), member->name, container_ptr_var, val->var);
 }
 
@@ -1446,7 +1447,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 				t = type_void;
 			}
 			int temp = c_emit_temp_var(c, value, type_typeid);
-			PRINTF("c3typeid_t ___var_%d = (c3typeid_t)&%s;\n", temp, c_typeid_name(t));
+			PRINTF("c3typeid_t ___var_%d = (c3typeid_t)&%s;\n", temp, c_typeid_ref(c, t));
 			return;
 		}
 		case EXPR_SLICE_ASSIGN:
@@ -1986,6 +1987,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 				Decl **members      = d ? d->strukt.members : NULL;
 				int member_count    = vec_size(members);
 				const char *bs_name = c_get_decl_name(d);
+				c_declare_bitstruct_accessors(c, d);
 				for (int i = 0; i < count && i < member_count; i++)
 				{
 					Decl *m       = members[i];
@@ -2066,6 +2068,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 				Decl **members      = d ? d->strukt.members : NULL;
 				int member_count    = vec_size(members);
 				const char *bs_name = c_get_decl_name(d);
+				c_declare_bitstruct_accessors(c, d);
 				FOREACH(Expr *, des, elements)
 				{
 					if (des->expr_kind == EXPR_DESIGNATOR && vec_size(des->designator_expr.path))
@@ -2153,6 +2156,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 					if (is_bitfield && bitstruct_decl && bitstruct_member)
 					{
 						const char *bs_name = c_get_decl_name(bitstruct_decl);
+						c_declare_bitstruct_accessors(c, bitstruct_decl);
 						const char *m_name  = bitstruct_member->name ? bitstruct_member->name : "_anon";
 						PRINTF("%s_set_%s((void*)&___var_%d%s, ___var_%d);\n",
 						       bs_name, m_name, temp, path_buf, dval.var);
@@ -2262,7 +2266,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 				case ACCESS_ENUMNAME:
 				{
 					Type *inner_type = type_no_optional(inner->type)->canonical;
-					const char *sym  = c_typeid_name(inner_type);
+					const char *sym  = c_typeid_ref(c, inner_type);
 					if (target_type->type_kind == TYPE_SLICE)
 					{
 						PRINTF("%s ___var_%d = (%s){ .ptr = (%s.names && (size_t)___var_%d < %s.len) ? (uint8_t*)%s.names[(size_t)___var_%d].ptr : (uint8_t*)\"\", .len = (%s.names && (size_t)___var_%d < %s.len) ? %s.names[(size_t)___var_%d].len : 0 };\n",
