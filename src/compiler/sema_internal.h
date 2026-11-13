@@ -58,6 +58,7 @@ void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags, Sou
 SemaContext *context_transform_for_eval(SemaContext *context, SemaContext *temp_context, CompilationUnit *eval_unit);
 
 TokenType sema_splitpathref(const char *string, ArrayIndex len, Path **path_ref, const char **ident_ref);
+TypeInfo *sema_type_info_from_string(SemaContext *context, Expr *expr, bool report_missing);
 void sema_print_inline(SemaContext *context, SourceLocId original);
 void sema_error_at(SemaContext *context, SourceLocId loc, const char *message, ...);
 bool sema_warn_at(SemaContext *context, SourceLocId loc, WarningLevel level, const char *message, ...);
