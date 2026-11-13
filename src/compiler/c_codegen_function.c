@@ -19,6 +19,12 @@ AlignSize c_get_effective_alignment(Decl *decl, Type *type)
 	return align;
 }
 
+static Type *c_local_static_type(CLocalVar lv)
+{
+	Type *vt = lv.type ? c_safe_type_lower(lv.type) : type_int;
+	return vt->type_kind == TYPE_VOID ? type_int : vt;
+}
+
 static const char *c_local_align_str(Decl *decl, Type *type)
 {
 	AlignSize align     = c_get_effective_alignment(decl, type);
@@ -614,34 +620,45 @@ void c_emit_function(GenContext *c, Decl *fn)
 
 	c->buffer = prev_buf;
 
-	FOREACH(CLocalVar, lv, c->function_locals)
+	// Static initializers may take the address of a static the body never used, which registers it, so they are
+	// rendered before anything is printed, and the statics are tentatively defined before any initializer.
+	const char **static_inits = NULL;
+	for (int i = 0; i < (int)vec_size(c->function_locals); i++)
 	{
-		if (htable_get(&c->declared_vars, c_id_to_ptr(lv.id)) || !lv.is_static)
-		{
-			continue;
-		}
-		htable_set(&c->declared_vars, c_id_to_ptr(lv.id), (void *)1);
-		Type *vt = lv.type ? c_safe_type_lower(lv.type) : type_int;
-		if (vt->type_kind == TYPE_VOID)
-		{
-			vt = type_int;
-		}
-		c_emit_type_forward_decl(c, vt);
-		const char *tname     = c_type_name(c, vt);
-		bool is_tls           = lv.decl && lv.decl->var.is_threadlocal;
-		const char *align_str = c_local_align_str(lv.decl, vt);
-		PRINTF("static %s%s%s ___var_%d", align_str, is_tls ? "__c3_thread_local " : "", tname, lv.id);
+		CLocalVar lv = c->function_locals[i];
+		vec_add(static_inits, NULL);
+		if (!lv.is_static || htable_get(&c->declared_vars, c_id_to_ptr(lv.id))) continue;
 		// The fault slot of an optional static starts empty (no fault); the initializer is the value's.
 		bool is_fault_slot = lv.decl && c_ptr_to_id(htable_get(&c->local_fault_vars, decl_raw(lv.decl))) == lv.id;
-		if (lv.decl && !is_fault_slot && lv.decl->var.init_expr && expr_is_const(lv.decl->var.init_expr))
+		Expr *init         = lv.decl && !is_fault_slot ? lv.decl->var.init_expr : NULL;
+		if (!init || !c_can_emit_static_initializer(init)) continue;
+		ByteBuffer init_buf;
+		byte_buffer_init(&init_buf, 0);
+		c->buffer = &init_buf;
+		c_emit_const_init_expr(c, init, c_local_static_type(lv));
+		c->buffer = prev_buf;
+		static_inits[i] = str_copy((const char *)init_buf.bytes.ptr, init_buf.write_idx);
+		byte_buffer_free(&init_buf);
+	}
+	for (int pass = 0; pass < 2; pass++)
+	{
+		FOREACH_IDX(i, CLocalVar, lv, c->function_locals)
 		{
-			PRINT(" = ");
-			c_emit_const_init_expr(c, lv.decl->var.init_expr, vt);
-			PRINT(";\n");
-		}
-		else
-		{
-			PRINT(" = {0};\n");
+			if (!lv.is_static || htable_get(&c->declared_vars, c_id_to_ptr(lv.id))) continue;
+			bool is_tls = lv.decl && lv.decl->var.is_threadlocal;
+			// C has no tentative definition of a thread local.
+			if (pass == 0 && is_tls) continue;
+			Type *vt = c_local_static_type(lv);
+			c_emit_type_forward_decl(c, vt);
+			PRINTF("static %s%s%s ___var_%d", c_local_align_str(lv.decl, vt), is_tls ? "__c3_thread_local " : "",
+			       c_type_name(c, vt), lv.id);
+			if (pass == 0)
+			{
+				PRINT(";\n");
+				continue;
+			}
+			htable_set(&c->declared_vars, c_id_to_ptr(lv.id), (void *)1);
+			PRINTF(" = %s;\n", static_inits[i] ? static_inits[i] : "{0}");
 		}
 	}
 
