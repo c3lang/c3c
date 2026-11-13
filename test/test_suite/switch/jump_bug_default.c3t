@@ -35,7 +35,8 @@ switch.entry:                                     ; preds = %entry
   br i1 %3, label %switch.case, label %jumpblock
 
 jumpblock:                                        ; preds = %switch.entry
-  %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable, i32 %2
+  %zext = zext i32 %2 to i64
+  %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable, i64 %zext
   %target = load ptr, ptr %ptroffset, align 8
   indirectbr ptr %target, [label %switch.case, label %switch.case]
 

@@ -280,7 +280,7 @@ Expr *sema_enter_inline_member(Expr *parent, CanonicalType *type)
  *
  * @return a poisoned expr if it fails
  */
-Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, SubscriptIndex *index)
+Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, SubscriptIndex *index, bool *no_match_ref)
 {
 	int args = vec_size(context->macro_varargs);
 	Expr *index_expr = exprptr(index->expr);
@@ -308,6 +308,11 @@ Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, SubscriptIndex *index
 	if (idx < 0 || idx >= args) goto OUT_OF_RANGE;
 	return context->macro_varargs[idx];
 OUT_OF_RANGE:
+	if (no_match_ref)
+	{
+		*no_match_ref = true;
+		return poisoned_expr;
+	}
 	RETURN_VAL_SEMA_ERROR(poisoned_expr, index_expr, "Only %d vaarg%s exist.", args, args == 1 ? "" : "s");
 }
 
@@ -3492,6 +3497,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		Ast *ret = returns_found ? macro_context.block_returns[0] : NULL;
 		Expr *result = ret ? ret->return_stmt.expr : NULL;
 		if (result && !expr_is_runtime_const(result)) goto NOT_CT;
+		if (optional_return && (!result || !IS_OPTIONAL(result))) goto NOT_CT;
 		FOREACH(Decl *, param, params)
 		{
 			// Skip raw vararg
@@ -3656,7 +3662,22 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 		}
 		Ast *ast = copy_ast_single(macro_context->yield_body);
 		call->body_expansion_expr.first_stmt = astid(ast);
-		if (!sema_analyse_statement(context, ast))
+		bool body_ok;
+		Ast *macro_in_defer = macro_context->active_scope.in_defer;
+		if (macro_in_defer)
+		{
+			context->active_scope.in_defer = macro_in_defer;
+			PUSH_BREAKCONT(NULL);
+			PUSH_NEXT(NULL, NULL);
+			body_ok = sema_analyse_statement(context, ast);
+			POP_NEXT();
+			POP_BREAKCONT();
+		}
+		else
+		{
+			body_ok = sema_analyse_statement(context, ast);
+		}
+		if (!body_ok)
 		{
 			sema_context_pop_ct_stack(context, ct_context);
 			return SCOPE_POP_ERROR();
@@ -10181,14 +10202,14 @@ static inline bool sema_expr_analyse_not(SemaContext *context, Expr *expr)
 		if (type_flatten(flat->array.base) == type_bool)
 		{
 			// If so then we're done.
-			expr->type = type;
+			expr->type = inner->type;
 			return true;
 		}
 		Type *canonical = type->canonical;
 		switch (canonical->type_kind)
 		{
 			case VECTORS:
-				expr->type = type_get_vector_from_vector(type_bool, canonical);
+				expr->type = type_add_optional(type_get_vector_from_vector(type_bool, canonical), IS_OPTIONAL(inner));
 				return true;
 			case TYPE_INFERRED_VECTOR:
 				UNREACHABLE
@@ -11338,6 +11359,8 @@ INLINE bool lambda_parameter_match(Decl **ct_lambda_params, Decl *candidate)
 			case VARDECL_PARAM_CT:
 				if (!expr_is_const(ct_param->var.init_expr)) return false;
 				if (!expr_is_const(param->var.init_expr)) return false;
+				if (type_no_optional(ct_param->var.init_expr->type)->canonical
+					!= type_no_optional(param->var.init_expr->type)->canonical) return false;
 				if (!expr_both_const_foldable(ct_param->var.init_expr, param->var.init_expr, BINARYOP_EQ)) return false;
 				if (!expr_const_compare(&ct_param->var.init_expr->const_expr,
 										&param->var.init_expr->const_expr, BINARYOP_EQ)) return false;
@@ -11943,7 +11966,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_CONTRACT:
 					UNREACHABLE
 			case EXPR_DECL:
-				if (!sema_analyse_local(context, main_expr->decl_expr, &failed))
+				if (!sema_analyse_local(active_context, main_expr->decl_expr, &failed))
 				{
 					if (!failed) goto FAIL;
 					success = false;
@@ -11958,21 +11981,28 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 				}
 				break;
 			case EXPR_CT_REFLECT:
-				if (!sema_expr_analyse_ct_reflect(context, main_expr, &failed))
+				if (!sema_expr_analyse_ct_reflect(active_context, main_expr, &failed))
 				{
 					if (!failed) goto FAIL;
 					success = false;
 				}
 				break;
 			case EXPR_COMPOUND_LITERAL:
-				if (!sema_expr_analyse_compound_literal(context, main_expr, &failed))
+				if (!sema_expr_analyse_compound_literal(active_context, main_expr, &failed))
 				{
 					if (!failed) goto FAIL;
 					success = false;
 				}
 				break;
 			case EXPR_VAARG:
-				if (!sema_expr_analyse_vaarg(context, NULL, main_expr, &failed))
+				if (active_context->macro_has_vaargs && !expr_ok(sema_expr_analyse_ct_arg_index(active_context, &main_expr->vaarg_index, &failed)))
+				{
+					if (!failed) goto FAIL;
+					success = false;
+					break;
+				}
+				main_expr->resolve_status = RESOLVE_RUNNING;
+				if (!sema_expr_analyse_vaarg(active_context, NULL, main_expr, &failed))
 				{
 					if (!failed) goto FAIL;
 					success = false;
@@ -12059,7 +12089,7 @@ static inline bool sema_expr_analyse_vaarg(SemaContext *context, Type *infer_typ
 		RETURN_SEMA_ERROR(expr, "'$vaarg' can only be used inside of a macro with untyped vaargs.");
 	}
 	// A normal argument, this means we only evaluate it once.
-	ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, &expr->vaarg_index), false);
+	ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, &expr->vaarg_index, NULL), false);
 	arg_expr = copy_expr_single(arg_expr);
 	if (!sema_analyse_inferred_expr(context, infer_type, arg_expr, no_match_ref)) return false;
 	expr_replace(expr, arg_expr);
@@ -12124,7 +12154,7 @@ static inline bool sema_expr_analyse_ct_stringify(SemaContext *context, Expr *ex
 		{
 			case EXPR_VAARG:
 			{
-				ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, &inner->vaarg_index), false);
+				ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, &inner->vaarg_index, NULL), false);
 				inner = arg_expr;
 				continue;
 			}

@@ -32,19 +32,20 @@ entry:
   %error_var2 = alloca i64, align 8
   %error_var8 = alloca i64, align 8
   %switch14 = alloca i32, align 4
-  %retparam20 = alloca i64, align 8
+  %retparam21 = alloca i64, align 8
   store i32 0, ptr %switch, align 4
   br label %switch.entry
 
 switch.entry:                                     ; preds = %entry
   %0 = load i32, ptr %switch, align 4
   %1 = icmp ugt i32 %0, 0
-  br i1 %1, label %switch.exit23, label %jumpblock
+  br i1 %1, label %switch.exit24, label %jumpblock
 
 jumpblock:                                        ; preds = %switch.entry
-  %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable, i32 %0
+  %zext = zext i32 %0 to i64
+  %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable, i64 %zext
   %target = load ptr, ptr %ptroffset, align 8
-  indirectbr ptr %target, [label %switch.case, label %switch.exit23]
+  indirectbr ptr %target, [label %switch.case, label %switch.exit24]
 
 switch.case:                                      ; preds = %jumpblock
   %2 = call ptr @std.io.stdout()
@@ -110,18 +111,19 @@ switch.entry15:                                   ; preds = %voiderr
   br i1 %10, label %switch.exit, label %jumpblock16
 
 jumpblock16:                                      ; preds = %switch.entry15
-  %ptroffset17 = getelementptr inbounds [8 x i8], ptr @jumptable.1, i32 %9
-  %target18 = load ptr, ptr %ptroffset17, align 8
-  indirectbr ptr %target18, [label %switch.case19, label %switch.exit]
+  %zext17 = zext i32 %9 to i64
+  %ptroffset18 = getelementptr inbounds [8 x i8], ptr @jumptable.1, i64 %zext17
+  %target19 = load ptr, ptr %ptroffset18, align 8
+  indirectbr ptr %target19, [label %switch.case20, label %switch.exit]
 
-switch.case19:                                    ; preds = %jumpblock16
-  %11 = call i64 @std.io.printfn(ptr %retparam20, [2 x i64] [i64 ptrtoint (ptr @.str.2 to i64), i64 24], [2 x i64] zeroinitializer)
+switch.case20:                                    ; preds = %jumpblock16
+  %11 = call i64 @std.io.printfn(ptr %retparam21, [2 x i64] [i64 ptrtoint (ptr @.str.2 to i64), i64 24], [2 x i64] zeroinitializer)
   br label %switch.exit
 
-switch.exit:                                      ; preds = %jumpblock16, %switch.case19, %switch.entry15
-  br label %switch.exit23
+switch.exit:                                      ; preds = %jumpblock16, %switch.case20, %switch.entry15
+  br label %switch.exit24
 
-switch.exit23:                                    ; preds = %jumpblock, %switch.exit, %switch.entry
+switch.exit24:                                    ; preds = %jumpblock, %switch.exit, %switch.entry
   ret void
 }
 

@@ -216,9 +216,15 @@ macro String tjoin(String[] s, String joiner) => join(tmem, s, joiner);
 *>
 fn String String.replace(self, Allocator allocator, String needle, String new_str) @nodiscard => @pool()
 {
-	Splitter s = self.tokenize_all(needle);
 	DString d;
 	d.init(tmem, new_str.len * 2 + self.len + 16);
+	if (!needle.len)
+	{
+		d.append(self);
+		d.replace(needle, new_str);
+		return d.copy_str(allocator);
+	}
+	Splitter s = self.tokenize_all(needle);
 	(void)d.append(s.next());
 	while (try element = s.next())
 	{
@@ -238,9 +244,15 @@ fn String String.replace(self, Allocator allocator, String needle, String new_st
 *>
 fn String String.treplace(self, String needle, String new_str)
 {
-	Splitter s = self.tokenize_all(needle);
 	DString d;
 	d.init(tmem, new_str.len * 2 + self.len + 16);
+	if (!needle.len)
+	{
+		d.append(self);
+		d.replace(needle, new_str);
+		return d.str_view();
+	}
+	Splitter s = self.tokenize_all(needle);
 	(void)d.append(s.next());
 	while (try element = s.next())
 	{
@@ -1377,7 +1389,7 @@ fn float? String.to_float(self) => _string_to_real(self, float);
  instead.
 
  @param [in] self
- @param [in] split : "The string to use for splitting"
+ @param [in] split : "The string to use for splitting, an empty string gives each byte as a token"
  @return "A Splitter to track the state"
 *>
 fn Splitter String.tokenize(self, String split)
@@ -1391,7 +1403,7 @@ fn Splitter String.tokenize(self, String split)
  instead.
 
  @param [in] self
- @param [in] split : "The string to use for splitting"
+ @param [in] split : "The string to use for splitting, an empty string gives each byte as a token"
  @param skip_last : "Set to true to not include the last empty token if present (default: false)"
  @return "A Splitter to track the state"
 *>
@@ -1472,6 +1484,7 @@ fn void Splitter.reset(&self)
 *>
 fn bool Splitter.at_end(&self)
 {
+	if (!self.split.len) return self.current >= self.string.len;
 	return self.current > self.string.len;
 }
 
@@ -1488,6 +1501,12 @@ fn String? Splitter.next(&self)
 	{
 		sz len = self.string.len;
 		sz current = self.current;
+		if (!self.split.len)
+		{
+			if (current >= len) return NO_MORE_ELEMENT~;
+			self.current++;
+			return self.string[current:1];
+		}
 		if (current > len) return NO_MORE_ELEMENT~;
 		if (current == len)
 		{

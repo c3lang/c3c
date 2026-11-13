@@ -2341,15 +2341,10 @@ static inline void llvm_emit_pre_post_inc_dec_vector(GenContext *c, BEValue *val
 	// First grab the address
 	BEValue addr;
 	llvm_emit_exprid(c, &addr, expr->subscript_expr.expr);
-	*value = addr;
 	llvm_value_addr(c, &addr);
-
-	// But we also want the value (of the full vector)
-	llvm_value_rvalue(c, value);
-	Type *vec = value->type;
+	Type *vec = addr.type;
 	ASSERT(type_kind_is_real_vector(vec->type_kind));
 	Type *element = vec->array.base;
-	LLVMValueRef vector = value->value;
 
 	// Now let's get the subscript and store it in value
 	bool start_from_end = expr->subscript_expr.index.start_from_end;
@@ -2360,6 +2355,11 @@ static inline void llvm_emit_pre_post_inc_dec_vector(GenContext *c, BEValue *val
 	{
 		index = LLVMBuildNUWSub(c->builder, llvm_const_int(c, value->type, vec->array.len), index, "");
 	}
+
+	// But we also want the value (of the full vector)
+	*value = addr;
+	llvm_value_rvalue(c, value);
+	LLVMValueRef vector = value->value;
 
 	// We're now done, we can extract the current value:
 	BEValue current_res;
@@ -2381,6 +2381,32 @@ static inline void llvm_emit_pre_post_inc_dec_vector(GenContext *c, BEValue *val
 	llvm_value_set(value, pre ? new_value : current_res.value, element);
 }
 
+static inline void llvm_emit_pre_post_inc_dec_swizzle(GenContext *c, BEValue *value, Expr *expr, int diff, bool pre)
+{
+	BEValue addr;
+	llvm_emit_exprid(c, &addr, expr->swizzle_expr.parent);
+	llvm_value_addr(c, &addr);
+	LLVMValueRef vector = llvm_load_value_store(c, &addr);
+
+	BEValue current_res;
+	llvm_emit_swizzle_from_value(c, vector, &current_res, expr);
+
+	Type *flat = type_flatten(current_res.type->array.base);
+	int enum_values = flat->type_kind == TYPE_ENUM ? vec_size(flat->decl->enums.values) : 0;
+	LLVMValueRef new_value = llvm_emit_inc_dec_value(c, expr->loc, &current_res, diff, false, enum_values);
+
+	const char *sw_ptr = expr->swizzle_expr.swizzle;
+	int vec_len = current_res.type->array.len;
+	for (int i = 0; i < vec_len; i++)
+	{
+		LLVMValueRef val = llvm_emit_extract_value(c, new_value, i);
+		vector = llvm_emit_insert_value(c, vector, val, SWIZZLE_INDEX(sw_ptr[i]));
+	}
+	llvm_store_raw(c, &addr, vector);
+
+	llvm_value_set(value, pre ? new_value : current_res.value, current_res.type);
+}
+
 /**
  * This method implements the common ++x and --x operators
  */
@@ -2389,6 +2415,11 @@ static inline void llvm_emit_pre_inc_dec(GenContext *c, BEValue *value, Expr *ex
 	if (expr_is_vector_subscript(expr))
 	{
 		llvm_emit_pre_post_inc_dec_vector(c, value, expr, diff, true);
+		return;
+	}
+	if (expr->expr_kind == EXPR_SWIZZLE)
+	{
+		llvm_emit_pre_post_inc_dec_swizzle(c, value, expr, diff, true);
 		return;
 	}
 	if (expr->expr_kind == EXPR_BITACCESS)
@@ -2476,6 +2507,11 @@ static inline void llvm_emit_post_inc_dec(GenContext *c, BEValue *value, Expr *e
 		llvm_emit_pre_post_inc_dec_vector(c, value, expr, diff, false);
 		return;
 	}
+	if (expr->expr_kind == EXPR_SWIZZLE)
+	{
+		llvm_emit_pre_post_inc_dec_swizzle(c, value, expr, diff, false);
+		return;
+	}
 	if (expr->expr_kind == EXPR_BITACCESS)
 	{
 		llvm_emit_pre_post_inc_dec_bitstruct(c, value, expr, diff, false);
@@ -2530,9 +2566,7 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 				{
 					llvm_value = LLVMBuildICmp(c->builder, LLVMIntEQ, value->value, LLVMConstNull(LLVMTypeOf(value->value)), "not");
 				}
-				Type *res_type = type_get_vector_bool(type, TYPE_SIMD_VECTOR);
-				llvm_value = LLVMBuildSExt(c->builder, llvm_value, llvm_get_type(c, res_type), "");
-				llvm_value_set(value, llvm_value, res_type);
+				llvm_value_set(value, llvm_value, type_lowering(expr->type));
 				return;
 			}
 			value->value = LLVMBuildNot(c->builder, value->value, "not");
@@ -4110,6 +4144,12 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 	// We need the rvalue.
 	llvm_fold_for_compare(c, &lhs);
 	RETURN_ON_EMPTY_BLOCK(be_value);
+	if (llvm_value_is_addr(&lhs) && !llvm_is_global_eval(c) && !expr_is_pure(exprptr(expr->binary_expr.right)))
+	{
+		BEValue temp = llvm_emit_alloca_b(c, lhs.type, "");
+		llvm_emit_memcpy(c, temp.value, temp.alignment, lhs.value, lhs.alignment, type_size(lhs.type));
+		lhs = temp;
+	}
 
 	// Evaluate rhs
 	BEValue rhs;
@@ -4136,6 +4176,7 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 	LoweredType *rhs_type = rhs.type;
 	Type *vector_type = type_kind_is_real_vector(lhs_type->type_kind) ? lhs_type->array.base : NULL;
 	bool is_float = type_is_float(lhs_type) || (vector_type && type_is_float(vector_type));
+	bool is_unsigned = type_is_unsigned(lhs_type) || (vector_type && type_is_unsigned(vector_type));
 	LLVMValueRef val = NULL;
 	LLVMValueRef lhs_value = lhs.value;
 	LLVMValueRef rhs_value = rhs.value;
@@ -4217,7 +4258,7 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 				break;
 			}
 			llvm_emit_trap_zero(c, rhs_type, rhs_value, PANIC_FN_DIV_ZERO, expr->loc);
-			val = type_is_unsigned(lhs_type)
+			val = is_unsigned
 				  ? LLVMBuildUDiv(c->builder, lhs_value, rhs_value, "udiv")
 				  : LLVMBuildSDiv(c->builder, lhs_value, rhs_value, "sdiv");
 			break;
@@ -4228,13 +4269,13 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 				break;
 			}
 			llvm_emit_trap_zero(c, rhs_type, rhs_value, PANIC_FN_REM_ZERO, expr->loc);
-			val = type_is_unsigned(lhs_type)
+			val = is_unsigned
 				  ? LLVMBuildURem(c->builder, lhs_value, rhs_value, "umod")
 				  : LLVMBuildSRem(c->builder, lhs_value, rhs_value, "smod");
 			break;
 		case BINARYOP_SHR:
 			rhs_value = llvm_emit_shift_amount(c, rhs_value, rhs_type, lhs_value, lhs_type, expr->loc);
-			val = type_is_unsigned(lhs_type)
+			val = is_unsigned
 				  ? LLVMBuildLShr(c->builder, lhs_value, rhs_value, "lshr")
 				  : LLVMBuildAShr(c->builder, lhs_value, rhs_value, "ashr");
 			val = LLVMBuildFreeze(c->builder, val, "");
@@ -4496,10 +4537,8 @@ static void llvm_emit_vector_assign_expr(GenContext *c, BEValue *be_value, Expr 
 	// Emit the variable
 	llvm_value_addr(c, &addr);
 
-	LLVMValueRef vector_value = llvm_load_value_store(c, &addr);
 	if (is_swizzle)
 	{
-		if (addr.type->array.base == type_bool) vector_value = llvm_emit_trunc_bool(c, vector_value);
 		if (binary_op > BINARYOP_ASSIGN)
 		{
 			BEValue lhs;
@@ -4516,6 +4555,8 @@ static void llvm_emit_vector_assign_expr(GenContext *c, BEValue *be_value, Expr 
 		RETURN_ON_EMPTY_BLOCK(be_value);
 		llvm_value_rvalue(c, be_value);
 		RETURN_ON_EMPTY_BLOCK(be_value);
+		LLVMValueRef vector_value = llvm_load_value_store(c, &addr);
+		if (addr.type->array.base == type_bool) vector_value = llvm_emit_trunc_bool(c, vector_value);
 		const char *sw_ptr = left->swizzle_expr.swizzle;
 		int vec_len = be_value->type->array.len;
 		LLVMValueRef result = be_value->value;
@@ -4535,12 +4576,16 @@ static void llvm_emit_vector_assign_expr(GenContext *c, BEValue *be_value, Expr 
 	llvm_emit_exprid(c, &index, left->subscript_expr.index.expr);
 	RETURN_ON_EMPTY_BLOCK(be_value);
 	LLVMValueRef index_val = llvm_load_value_store(c, &index);
+	if (left->subscript_expr.index.start_from_end)
+	{
+		index_val = LLVMBuildNUWSub(c->builder, llvm_const_int(c, index.type, addr.type->array.len), index_val, "");
+	}
 	if (binary_op > BINARYOP_ASSIGN)
 	{
 		BinaryOp base_op = binaryop_assign_base_op(binary_op);
 		ASSERT(base_op != BINARYOP_ERROR);
 		BEValue lhs;
-		llvm_value_set(&lhs, LLVMBuildExtractElement(c->builder, vector_value, index_val, "elem"), expr->type);
+		llvm_value_set(&lhs, LLVMBuildExtractElement(c->builder, llvm_load_value_store(c, &addr), index_val, "elem"), expr->type);
 		llvm_emit_binary(c, be_value, expr, &lhs, base_op);
 		RETURN_ON_EMPTY_BLOCK(be_value);
 	}
@@ -4550,7 +4595,7 @@ static void llvm_emit_vector_assign_expr(GenContext *c, BEValue *be_value, Expr 
 		RETURN_ON_EMPTY_BLOCK(be_value);
 	}
 
-	LLVMValueRef new_value = LLVMBuildInsertElement(c->builder, vector_value, llvm_load_value_store(c, be_value),
+	LLVMValueRef new_value = LLVMBuildInsertElement(c->builder, llvm_load_value_store(c, &addr), llvm_load_value_store(c, be_value),
 	                                                index_val, "elemset");
 	llvm_store_raw(c, &addr, new_value);
 
@@ -4573,9 +4618,19 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		BinaryOp base_op = binaryop_assign_base_op(binary_op);
 		ASSERT(base_op != BINARYOP_ERROR);
 
+		Expr *left = exprptr(expr->binary_expr.left);
+		if (left->expr_kind == EXPR_IDENTIFIER && IS_OPTIONAL(exprptr(expr->binary_expr.right)))
+		{
+			Expr op_expr = *expr;
+			op_expr.binary_expr.operator = base_op;
+			llvm_value_set_decl(c, be_value, left->ident_expr);
+			*be_value = llvm_emit_assign_expr(c, be_value, NULL, &op_expr, decl_optional_ref(c, left->ident_expr), false);
+			return;
+		}
+
 		// Get the left hand side, which must be an address.
 		BEValue addr;
-		if (!llvm_emit_folded_in_block(c, &addr, exprptr(expr->binary_expr.left))) RETURN_EMPTY_BLOCK(be_value);
+		if (!llvm_emit_folded_in_block(c, &addr, left)) RETURN_EMPTY_BLOCK(be_value);
 
 		ASSERT(llvm_value_is_addr(&addr));
 

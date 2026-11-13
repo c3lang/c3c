@@ -1892,7 +1892,7 @@ SKIP_OVERLOAD:;
 	if (is_reverse)
 	{
 		// Create __idx$ > 0
-		Expr *rhs = expr_new_const_int(enumerator->loc, index_type, 0);
+		Expr *rhs = expr_new_const_int(enumerator->loc, actual_index_type, 0);
 		cond = expr_new_binary(idx_decl->loc, expr_variable(idx_decl), rhs, BINARYOP_GT);
 
 		// Create --__idx$
@@ -2475,12 +2475,12 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 
 	bool is_range = to_expr != NULL;
 	bool first_is_const = sema_cast_const(expr) && (expr_is_const_int(expr) || expr_is_const_enum(expr));
-	(*actual_cases_ref)++;
 	if (!is_range && !first_is_const)
 	{
 		*if_chained = true;
 		return true;
 	}
+	(*actual_cases_ref)++;
 	if (is_range)
 	{
 		bool second_is_const = sema_cast_const(to_expr) && (expr_is_const_int(to_expr) || expr_is_const_enum(to_expr));
@@ -2675,6 +2675,14 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 		POP_NEXT();
 	}
 
+	if (success && if_chain && default_case && cases[case_count - 1] != default_case)
+	{
+		int i = 0;
+		while (cases[i] != default_case) i++;
+		SEMA_ERROR(cases[i + 1], "A 'case' may not follow 'default' in this switch: its cases are evaluated in order, so this case would never be evaluated.");
+		SEMA_NOTE(default_case, "The 'default' is here.");
+		return false;
+	}
 	if (!exhaustive && is_enum_switch) exhaustive = actual_enum_cases == vec_size(enum_values);
 	bool all_jump_end = exhaustive;
 	for (int i = 0; i < case_count; i++)
@@ -2705,6 +2713,8 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 		max_ranged = false;
 		if (low.type != TYPE_POISONED)
 		{
+			high.type = TYPE_I128;
+			low.type = TYPE_I128;
 			Int range = int_sub(high, low);
 			Int max = { .i.low = compiler.build.switchjump_max_size, .type = range.type };
 			if (int_comp(range, max, BINARYOP_GE))
@@ -2775,7 +2785,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 				Expr *expr = exprptr(stmt->case_stmt.expr);
 				assert(expr);
 				Expr *to_expr = exprptrzero(stmt->case_stmt.to_expr);
-				if (to_expr && !type_is_integer(type))
+				if (to_expr && !type_is_integer(type_flatten(type)))
 				{
 					SEMA_ERROR(to_expr, "$case ranges are only allowed for integers.");
 					goto FAILED;
@@ -2939,19 +2949,18 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 			}
 			else
 			{
-				// Empty list
-				if (init_type == CONST_INIT_ZERO)
+				count = sema_len_from_const(collection);
+				if (count <= 0)
 				{
+					if (count < 0 && init_type != CONST_INIT_ZERO)
+					{
+						SEMA_ERROR(collection, "Only regular arrays are allowed here.");
+						goto FAILED;
+					}
 					sema_context_pop_ct_stack(context, ct_context);
 					statement->ast_kind = AST_NOP_STMT;
 					return true;
 				}
-				if (init_type != CONST_INIT_ARRAY_FULL)
-				{
-					SEMA_ERROR(collection, "Only regular arrays are allowed here.");
-					goto FAILED;
-				}
-				count = vec_size(initializer->init_array_full);
 			}
 			break;
 		case CONST_UNTYPED_LIST:

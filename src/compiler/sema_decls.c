@@ -4950,7 +4950,9 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 	// Sanity check "always const"
 	if (always_const)
 	{
-		if (typeget(sig->rtype) == type_void) RETURN_SEMA_ERROR(decl, "'@const' macros may not return 'void', they should always return a constant value.");
+		Type *rtype = typeget(sig->rtype);
+		if (rtype == type_void) RETURN_SEMA_ERROR(decl, "'@const' macros may not return 'void', they should always return a constant value.");
+		if (rtype && type_no_optional(rtype) == type_void) RETURN_SEMA_ERROR(decl, "'@const' macros may not return 'void?', they should always return a constant value.");
 		if (body_parameters) RETURN_SEMA_ERROR(decl, "'@const' macros cannot have body parameters.");
 		Ast *body = astptr(decl->func_decl.body);
 		ASSERT(body->ast_kind == AST_COMPOUND_STMT);

@@ -1,5 +1,31 @@
 # C3C Release Notes
 
+## 0.8.7 Change list
+
+### Changes / improvements
+- A `case` after `default` is now an error in switches that are evaluated as an if-chain, since it cannot be reached.
+- `@const` macros may no longer return `void?`.
+
+### Fixes
+- `nextcase x` in a `@jump` switch read `x` after the defers of the case had run.
+- Overwriting a full array, like `{ .c = { 1, 2, 3 }, .c[2] = 7 };` would be lowered incorrectly.
+- Evaluation order for array comparison was incorrectly right->left.
+- A lambda created in a macro could be reused for a compile time argument with the same value but a different type.
+- `foreach_r` over a type indexed by an enum, such as `EnumMap`, failed to compile.
+- `$case` ranges were rejected when switching over a typedef of an integer.
+- `$foreach` over a constant slice with designated elements, like `{ [2] = 7 }`, was rejected.
+- `$defined` analysed a compound literal, `$reflect` or `$vaarg` passed as a `#` macro argument in the macro's scope instead of the caller's.
+- A `void?` macro with only compile time parameters lost its optional, so `!`, `!!` and `@catch` on it were rejected.
+- `$defined` on an out of range `$vaarg` index was an error instead of `false`.
+- The alignment arguments of `$$memcpy`, `$$memmove`, `$$memset` are now correctly checked to be power-of-2.
+- An enum switch with a non-constant `case` was counted as exhaustive when the other cases covered all but one value.
+- `@jump` on an `ichar`, `char` or `short` switch could crash the compiler when the cases spanned more than half the type's range.
+- `@str_replace` didn't work properly with an empty pattern. 
+- `String.replace` and `String.treplace` would never return on an empty pattern. 
+
+### Stdlib changes
+- `String.tokenize` and `String.tokenize_all` with an empty split now return each character.
+
 ## 0.8.6 Change list
 
 ### Changes / improvements
@@ -122,6 +148,19 @@
 - Fix Win32 compiler support  for paths containing non-ASCII characters. #3606
 - A constant struct containing a union initialized by a smaller member was emitted too small.
 - Codegen for `%` on float vectors was incorrect. 
+- `/`, `%` and `>>` on unsigned integer vectors used signed operations.
+- Assigning to `v[^i]` on a vector with a non-constant `i` wrote the wrong element.
+- Assigning to a vector element or swizzle discarded would not evaluate right to left. 
+- `++` and `--` on a multi-component swizzle, e.g. `v.xy++`, did not change the vector.
+- Comparing constant bitstructs could crash the compiler.
+- Constant `!=` on faults and on addresses of globals returned the result of `==`.
+- `a += e` on an optional `a` did not assign the fault when `e` was a fault. It now works like `a = a + e`.
+- Constant folding of `int::min / -1` was incorrect.
+- `return`, `break`, `continue`, `nextcase` and rethrow in a macro's trailing body were allowed when the macro invoked the body from a `defer`.
+- `!` on a non-bool vector gave the wrong lanes when stored into a bool vector.
+- The `$$overflow_add`, `$$overflow_sub` and `$$overflow_mul` were lowered incorrectly for vectors.
+- `!` on an optional vector lost the optional and could cause the compiler to crash.
+- `math::overflow_add` and `math::overflow_sub` failed on vectors.
 - `json::unmarshal` failed to compile for an `inline String` constdef or typedef.
 - `json::marshal` did not escape the keys of an `Object` map.
 
