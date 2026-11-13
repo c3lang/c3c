@@ -22,6 +22,8 @@
 - `@jump` on an `ichar`, `char` or `short` switch could crash the compiler when the cases spanned more than half the type's range.
 - `@str_replace` didn't work properly with an empty pattern. 
 - `String.replace` and `String.treplace` would never return on an empty pattern. 
+- Taking the address of a member through a constant array index, like `&g.arr[1]` or `&g[1].x`, was rejected in global and static initializers.
+- `&p[1]` in a global initializer, where `p` is a non-constant global pointer, was accepted and then crashed the compiler.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.
