@@ -37,9 +37,36 @@ bool c_is_file_global(Decl *decl)
 	return false;
 }
 
-// The C lvalue of a global or of a member / constant index inside one (`X.m1.ptr[2]`), usable in an address
-// constant; NULL for anything else. `c` may be NULL to only ask whether there is one.
-static const char *c_const_lvalue_str(GenContext *c, Expr *expr)
+static bool c_emit_const_lvalue(GenContext *c, Expr *expr);
+
+// The element `parent[index]` of c_emit_const_lvalue.
+static bool c_emit_const_element(GenContext *c, Expr *parent, SubscriptIndex index)
+{
+	Expr *index_expr = exprptr(index.expr);
+	Type *parent_type = type_flatten(parent->type);
+	if (parent_type->type_kind == TYPE_POINTER)
+	{
+		if (index.start_from_end) return false;
+		if (!c) return c_can_emit_static_initializer(parent) && c_can_emit_static_initializer(index_expr);
+		PRINT("((");
+		c_emit_const_init_expr(c, parent, parent->type);
+		PRINT(")[");
+		c_emit_const_init_expr(c, index_expr, index_expr->type);
+		PRINT("])");
+		return true;
+	}
+	if (!c_type_is_vec_or_arr(parent_type) || !expr_is_const_int(index_expr)) return false;
+	if (!c_emit_const_lvalue(c, parent)) return false;
+	unsigned long long i = index_expr->const_expr.ixx.i.low;
+	if (index.start_from_end) i = parent_type->array.len - i;
+	if (c) PRINTF(".ptr[%llu]", i);
+	return true;
+}
+
+// Emits the C lvalue of a global, or of a member, element or pointee inside one (`X.m1.ptr[2]`), usable in an
+// address constant. With `c` NULL it only reports whether there is one: check before emitting, as a failure may
+// follow partial output.
+static bool c_emit_const_lvalue(GenContext *c, Expr *expr)
 {
 	switch (expr->expr_kind)
 	{
@@ -47,34 +74,36 @@ static const char *c_const_lvalue_str(GenContext *c, Expr *expr)
 		case EXPR_DECL:
 		{
 			Decl *d = expr->expr_kind == EXPR_DECL ? expr->decl_expr : c_decl_unwrap(expr->ident_expr);
-			if (d->decl_kind != DECL_VAR || !c_is_file_global(d)) return NULL;
-			if (c) c_emit_global_decl(c, d);
-			return c_get_decl_name(d);
+			if (d->decl_kind != DECL_VAR || !(c_is_file_global(d) || d->var.is_static)) return false;
+			if (c) PRINT(c_decl_lvalue_str(c, d));
+			return true;
 		}
 		case EXPR_ACCESS_RESOLVED:
 		{
 			Expr *parent = expr->access_resolved_expr.parent;
-			Decl *parent_decl = type_flatten(parent->type)->type_kind == TYPE_STRUCT || type_flatten(parent->type)->type_kind == TYPE_UNION
-			                        ? type_flatten(parent->type)->decl : NULL;
-			if (!parent_decl) return NULL;
-			const char *base = c_const_lvalue_str(c, parent);
-			if (!base) return NULL;
+			Type *parent_type = type_flatten(parent->type);
+			if (parent_type->type_kind != TYPE_STRUCT && parent_type->type_kind != TYPE_UNION) return false;
 			int indices[16];
 			int depth = 0;
-			if (!c_find_member_index_rec(parent_decl, expr->access_resolved_expr.ref, indices, &depth, 16)) return NULL;
-			for (int i = 0; i < depth; i++) base = str_printf("%s.m%d", base, indices[i]);
-			return base;
+			if (!c_find_member_index_rec(parent_type->decl, expr->access_resolved_expr.ref, indices, &depth, 16)) return false;
+			if (!c_emit_const_lvalue(c, parent)) return false;
+			if (c) for (int i = 0; i < depth; i++) PRINTF(".m%d", indices[i]);
+			return true;
 		}
 		case EXPR_SUBSCRIPT:
+			return c_emit_const_element(c, exprptr(expr->subscript_expr.expr), expr->subscript_expr.index);
+		case EXPR_UNARY:
 		{
-			Expr *parent = exprptr(expr->subscript_expr.expr);
-			Expr *index  = exprptr(expr->subscript_expr.index.expr);
-			if (type_flatten(parent->type)->type_kind != TYPE_ARRAY || !expr_is_const_int(index)) return NULL;
-			const char *base = c_const_lvalue_str(c, parent);
-			return base ? str_printf("%s.ptr[%llu]", base, (unsigned long long)index->const_expr.ixx.i.low) : NULL;
+			Expr *ptr = expr->unary_expr.expr;
+			if (expr->unary_expr.operator != UNARYOP_DEREF) return false;
+			if (!c) return c_can_emit_static_initializer(ptr);
+			PRINT("(*(");
+			c_emit_const_init_expr(c, ptr, ptr->type);
+			PRINT("))");
+			return true;
 		}
 		default:
-			return NULL;
+			return false;
 	}
 }
 
@@ -205,7 +234,7 @@ bool c_can_emit_static_initializer(Expr *expr)
 						return true;
 					}
 				}
-				if (c_const_lvalue_str(NULL, inner)) return true;
+				if (c_emit_const_lvalue(NULL, inner)) return true;
 				return c_can_emit_static_initializer(inner);
 			}
 			if (uop == UNARYOP_NEG || uop == UNARYOP_BITNEG || uop == UNARYOP_NOT)
@@ -218,8 +247,7 @@ bool c_can_emit_static_initializer(Expr *expr)
 			return c_can_emit_static_initializer(exprptr(expr->binary_expr.left)) &&
 			       c_can_emit_static_initializer(exprptr(expr->binary_expr.right));
 		case EXPR_SUBSCRIPT_ADDR:
-			return c_can_emit_static_initializer(exprptr(expr->subscript_expr.expr)) &&
-			       c_can_emit_static_initializer(exprptr(expr->subscript_expr.index.expr));
+			return c_emit_const_element(NULL, exprptr(expr->subscript_expr.expr), expr->subscript_expr.index);
 		case EXPR_IDENTIFIER:
 		{
 			Decl *d = c_decl_unwrap(expr->ident_expr);
@@ -665,14 +693,9 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 	if (expr->expr_kind == EXPR_SUBSCRIPT_ADDR)
 	{
 		Expr *parent = exprptr(expr->subscript_expr.expr);
-		Expr *index  = exprptr(expr->subscript_expr.index.expr);
-		Type *pt     = c_expr_type(parent);
-		const char *acc = (pt && (pt->type_kind == TYPE_ARRAY || pt->type_kind == TYPE_VECTOR)) ? ".ptr[" : "[";
-		PRINTF("(%s)&(", tname);
-		c_emit_const_init_expr(c, parent, pt);
-		PRINTF("%s", acc);
-		c_emit_const_init_expr(c, index, type_sz);
-		PRINT("])");
+		ASSERT(c_emit_const_element(NULL, parent, expr->subscript_expr.index));
+		PRINTF("(%s)&", tname);
+		c_emit_const_element(c, parent, expr->subscript_expr.index);
 		return;
 	}
 	if (expr->expr_kind == EXPR_UNARY)
@@ -690,10 +713,10 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 					return;
 				}
 			}
-			const char *lvalue = c_const_lvalue_str(c, inner);
-			if (lvalue)
+			if (c_emit_const_lvalue(NULL, inner))
 			{
-				PRINTF("(%s)&%s", tname, lvalue);
+				PRINTF("(%s)&", tname);
+				c_emit_const_lvalue(c, inner);
 				return;
 			}
 			Type *inner_t = (inner) ? c_safe_type_lower(inner->type) : type_void;
@@ -1081,6 +1104,8 @@ static bool c_global_is_c_const(Decl *var)
 }
 
 static void c_emit_global_decl_here(GenContext *c, Decl *var);
+static void c_emit_global_def_here(GenContext *c, Decl *var);
+static void c_emit_global_fault_def(GenContext *c, Decl *var, const char *linkage);
 
 void c_emit_global_decl(GenContext *c, Decl *var)
 {
@@ -1118,6 +1143,18 @@ static void c_emit_global_decl_here(GenContext *c, Decl *var)
 	{
 		return;
 	}
+	htable_set(&c->emitted_global_decls, (void *)vname, (void *)1);
+
+	bool is_internal = c_global_is_internal(var);
+	// A static declaration elsewhere would define a second copy.
+	ASSERT(!is_internal || !c->current_module || var->unit->module == c->current_module);
+	// C has no declaration of a static thread local that isn't its definition.
+	if (is_internal && var->var.is_threadlocal)
+	{
+		c_emit_global_def_here(c, var);
+		c_emit_global_fault_def(c, var, "static ");
+		return;
+	}
 
 	Type *var_type = c_decl_type(var);
 	if (!var_type || var_type->type_kind == TYPE_VOID)
@@ -1125,12 +1162,11 @@ static void c_emit_global_decl_here(GenContext *c, Decl *var)
 		var_type = type_voidptr;
 	}
 
-	htable_set(&c->emitted_global_decls, (void *)vname, (void *)1);
 	c_emit_type_forward_decl(c, var_type);
 	const char *tname     = c_type_name(c, var_type);
 	const char *align_str = c_get_align_attr_str(var, var_type);
 	PRINT(c_decl_export_attrs(var, false));
-	PRINT("extern ");
+	PRINT(is_internal ? "static " : "extern ");
 	if (c_global_is_c_const(var))
 	{
 		PRINT("const ");
@@ -1145,7 +1181,11 @@ static void c_emit_global_decl_here(GenContext *c, Decl *var)
 		PRINTF(" __asm__(\"%s\")", c_get_decl_asm_name(var));
 	}
 	PRINT(";\n");
-	if (IS_OPTIONAL(var))
+	if (is_internal)
+	{
+		c_emit_global_fault_def(c, var, "static ");
+	}
+	else if (IS_OPTIONAL(var))
 	{
 		PRINTF("extern __c3_thread_local c3fault_t %s__f;\n", vname);
 	}
@@ -1162,17 +1202,28 @@ void c_emit_global_def(GenContext *c, Decl *var)
 	{
 		return;
 	}
-	if (var->is_extern)
+	if (var->is_extern || (c_global_is_internal(var) && var->var.is_threadlocal))
 	{
 		c_emit_global_decl(c, var);
 		return;
 	}
+	c_emit_global_def_here(c, var);
+}
 
+static void c_emit_global_fault_def(GenContext *c, Decl *var, const char *linkage)
+{
+	if (!IS_OPTIONAL(var)) return;
+	PRINTF("%s__c3_thread_local c3fault_t %s__f = NULL;\n", linkage, c_get_decl_name(var));
+}
+
+static void c_emit_global_def_here(GenContext *c, Decl *var)
+{
 	const char *vname = c_get_decl_name(var);
 	if (htable_get(&c->emitted_global_defs, (void *)vname))
 	{
 		return;
 	}
+	htable_set(&c->emitted_global_defs, (void *)vname, (void *)1);
 
 	Type *var_type = c_decl_type(var);
 	if (!var_type || var_type->type_kind == TYPE_VOID)
@@ -1180,12 +1231,28 @@ void c_emit_global_def(GenContext *c, Decl *var)
 		var_type = type_voidptr;
 	}
 
-	htable_set(&c->emitted_global_defs, (void *)vname, (void *)1);
+	// The initializer may declare what it references, so it is rendered first.
+	ByteBuffer init_buf;
+	byte_buffer_init(&init_buf, 0);
+	ByteBuffer *prev = c->buffer;
+	c->buffer        = &init_buf;
+	if (var->var.init_expr && c_can_emit_static_initializer(var->var.init_expr))
+	{
+		c_emit_const_init_expr(c, var->var.init_expr, var_type);
+	}
+	else
+	{
+		PRINT("{0}");
+	}
+	c->buffer = prev;
+
 	c_emit_type_forward_decl(c, var_type);
 	const char *tname     = c_type_name(c, var_type);
 	const char *align_str = c_get_align_attr_str(var, var_type);
-	bool is_weak          = decl_should_weaken(var);
+	bool is_internal      = c_global_is_internal(var);
+	bool is_weak          = !is_internal && decl_should_weaken(var);
 	PRINT(c_decl_export_attrs(var, true));
+	if (is_internal) PRINT("static ");
 	if (is_weak) PRINT("__c3_linkonce ");
 	if (c_global_is_c_const(var))
 	{
@@ -1195,21 +1262,17 @@ void c_emit_global_def(GenContext *c, Decl *var)
 	{
 		PRINT("__c3_thread_local ");
 	}
-	PRINTF("%s%s %s", align_str, tname, vname);
-	if (var->var.init_expr && c_can_emit_static_initializer(var->var.init_expr))
+	PRINTF("%s%s %s = ", align_str, tname, vname);
+	c_write_bytes(c, init_buf.bytes.ptr, init_buf.write_idx);
+	PRINT(";\n");
+	byte_buffer_free(&init_buf);
+	if (is_internal)
 	{
-		PRINT(" = ");
-		c_emit_const_init_expr(c, var->var.init_expr, var_type);
-		PRINT(";\n");
+		// Defines the fault slot: C has no declaration of a static thread local.
+		c_emit_global_decl(c, var);
+		return;
 	}
-	else
-	{
-		PRINT(" = {0};\n");
-	}
-	if (IS_OPTIONAL(var))
-	{
-		PRINTF("%s__c3_thread_local c3fault_t %s__f = NULL;\n", is_weak ? "__c3_linkonce " : "", vname);
-	}
+	c_emit_global_fault_def(c, var, is_weak ? "__c3_linkonce " : "");
 }
 
 typedef struct
