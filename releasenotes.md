@@ -27,6 +27,8 @@
 - `f()~ ?? x` dropped the call to `f`, so its side effects never happened.
 - Constant folding of a pointer difference gave a wrong result when it was negative, e.g. `(int*)4 - (int*)16`.
 - `$eval` printed an "Unlocalized error" for a string with a type before `::`, like `"Col::GREEN"`, and could intern such a name as a plain identifier.
+- Assignment to a vector element, bitstruct field or swizzle (and a slice, in the C backend) evaluated the LHS before RHS.
+- An early exit, such as `foo()!` on a fault, in a subscript index or on either side of a vector element, bitstruct field, swizzle or slice assignment could crash the compiler.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.

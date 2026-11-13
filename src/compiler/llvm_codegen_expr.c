@@ -752,14 +752,12 @@ static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *re
 
 static inline void llvm_emit_vector_subscript(GenContext *c, BEValue *value, Expr *expr)
 {
-	llvm_emit_exprid(c, value, expr->subscript_expr.expr);
-	llvm_value_rvalue(c, value);
+	if (!llvm_emit_rvalue_in_block(c, value, exprptr(expr->subscript_expr.expr))) RETURN_EMPTY_BLOCK(value);
 	Type *vec = value->type;
 	ASSERT(type_kind_is_real_vector(vec->type_kind));
 	Type *element = vec->array.base;
 	LLVMValueRef vector = value->value;
-	llvm_emit_exprid(c, value, expr->subscript_expr.index.expr);
-	llvm_value_rvalue(c, value);
+	if (!llvm_emit_rvalue_in_block(c, value, exprptr(expr->subscript_expr.index.expr))) RETURN_EMPTY_BLOCK(value);
 	LLVMValueRef index = value->value;
 	if (expr->subscript_expr.index.start_from_end)
 	{
@@ -783,6 +781,7 @@ static inline void llvm_emit_subscript_addr(GenContext *c, BEValue *value, Expr 
 
 	// First, get thing being subscripted.
 	llvm_emit_expr(c, value, parent_expr);
+	RETURN_ON_EMPTY_BLOCK(value);
 	BEValue len = { .value = NULL };
 	TypeKind parent_type_kind = parent_type->type_kind;
 
@@ -821,9 +820,7 @@ static inline void llvm_emit_subscript_addr(GenContext *c, BEValue *value, Expr 
 	llvm_value_addr(c, value);
 	// Now calculate the index:
 	BEValue index;
-	llvm_emit_expr(c, &index, index_expr);
-	// It needs to be an rvalue.
-	llvm_value_rvalue(c, &index);
+	if (!llvm_emit_rvalue_in_block(c, &index, index_expr)) RETURN_EMPTY_BLOCK(value);
 
 	if (start_from_end)
 	{
@@ -853,6 +850,7 @@ static inline void llvm_emit_subscript(GenContext *c, BEValue *value, Expr *expr
 		return;
 	}
 	llvm_emit_subscript_addr(c, value, expr);
+	RETURN_ON_EMPTY_BLOCK(value);
 
 	if (!llvm_is_global_eval(c) && safe_mode_enabled() && value->alignment > 1 && !c->emitting_load_store_check && parent_type->type_kind != TYPE_ARRAY)
 	{
@@ -1213,10 +1211,17 @@ static inline void llvm_emit_bitassign_expr(GenContext *c, BEValue *be_value, Ex
 	Expr *lhs = exprptr(expr->binary_expr.left);
 	Expr *parent_expr = lhs->access_resolved_expr.parent;
 
+	if (expr->binary_expr.operator == BINARYOP_ASSIGN)
+	{
+		llvm_emit_expr(c, be_value, exprptr(expr->binary_expr.right));
+		RETURN_ON_EMPTY_BLOCK(be_value);
+	}
+
 	// Grab the parent
 	BEValue parent;
 	Decl *member = lhs->access_resolved_expr.ref;
 	llvm_emit_expr(c, &parent, parent_expr);
+	RETURN_ON_EMPTY_BLOCK(be_value);
 	Decl *parent_decl = llvm_emit_bitstruct_member(c, &parent, type_flatten(parent_expr->type)->decl, member);
 
 	// If we have assign + op, load the current value, perform the operation.
@@ -1227,11 +1232,7 @@ static inline void llvm_emit_bitassign_expr(GenContext *c, BEValue *be_value, Ex
 		llvm_extract_bitvalue(c, &value, parent_decl, member);
 		// Perform the operation and place it in be_value
 		llvm_emit_binary(c, be_value, expr, &value, binaryop_assign_base_op(expr->binary_expr.operator));
-	}
-	else
-	{
-		// Otherwise just resolve the rhs and place it in be_value
-		llvm_emit_expr(c, be_value, exprptr(expr->binary_expr.right));
+		RETURN_ON_EMPTY_BLOCK(be_value);
 	}
 
 	Type *parent_type = type_flatten(parent_expr->type);
@@ -3125,6 +3126,7 @@ static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
 	// First, find the value assigned.
 	Expr *assigned_value = exprptr(expr->slice_assign_expr.right);
 	llvm_emit_expr(c, be_value, assigned_value);
+	RETURN_ON_EMPTY_BLOCK(be_value);
 	ASSERT(!IS_OPTIONAL(assigned_value));
 	// If this is copying a big value, then first store it in a variable, this is to
 	// ensure value semantics even in special cases.
@@ -3146,6 +3148,7 @@ static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
 	// Use general function to get all the values we need (a lot!)
 	bool is_exclusive;
 	llvm_emit_slice_values(c, exprptr(expr->slice_assign_expr.left), &parent, &start, &end, &is_exclusive);
+	RETURN_ON_EMPTY_BLOCK(be_value);
 	llvm_value_rvalue(c, &start);
 	llvm_value_rvalue(c, &end);
 
@@ -4523,6 +4526,11 @@ static void llvm_emit_vector_assign_expr(GenContext *c, BEValue *be_value, Expr 
 
 	bool is_swizzle = left->expr_kind == EXPR_SWIZZLE;
 
+	if (binary_op == BINARYOP_ASSIGN)
+	{
+		llvm_emit_expr(c, be_value, exprptr(expr->binary_expr.right));
+		RETURN_ON_EMPTY_BLOCK(be_value);
+	}
 	if (left->expr_kind == EXPR_SWIZZLE)
 	{
 		// Emit the variable
@@ -4547,10 +4555,6 @@ static void llvm_emit_vector_assign_expr(GenContext *c, BEValue *be_value, Expr 
 			ASSERT(base_op != BINARYOP_ERROR);
 			llvm_value_rvalue(c, &lhs);
 			llvm_emit_binary(c, be_value, expr, &lhs, base_op);
-		}
-		else
-		{
-			llvm_emit_expr(c, be_value, exprptr(expr->binary_expr.right));
 		}
 		RETURN_ON_EMPTY_BLOCK(be_value);
 		llvm_value_rvalue(c, be_value);
@@ -4587,11 +4591,6 @@ static void llvm_emit_vector_assign_expr(GenContext *c, BEValue *be_value, Expr 
 		BEValue lhs;
 		llvm_value_set(&lhs, LLVMBuildExtractElement(c->builder, llvm_load_value_store(c, &addr), index_val, "elem"), expr->type);
 		llvm_emit_binary(c, be_value, expr, &lhs, base_op);
-		RETURN_ON_EMPTY_BLOCK(be_value);
-	}
-	else
-	{
-		llvm_emit_expr(c, be_value, exprptr(expr->binary_expr.right));
 		RETURN_ON_EMPTY_BLOCK(be_value);
 	}
 
