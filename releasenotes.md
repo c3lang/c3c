@@ -24,6 +24,8 @@
 - `String.replace` and `String.treplace` would never return on an empty pattern. 
 - Taking the address of a member through a constant array index, like `&g.arr[1]` or `&g[1].x`, was rejected in global and static initializers.
 - `&p[1]` in a global initializer, where `p` is a non-constant global pointer, was accepted and then crashed the compiler.
+- `f()~ ?? x` dropped the call to `f`, so its side effects never happened.
+- Constant folding of a pointer difference gave a wrong result when it was negative, e.g. `(int*)4 - (int*)16`.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.

@@ -8628,8 +8628,8 @@ INLINE bool sema_expr_analyse_ptr_sub(SemaContext *context, Expr *expr, Expr *le
 
 		if (expr_both_const_foldable(left, right, BINARYOP_SUB))
 		{
-			expr_rewrite_const_int(expr, type_sz, (left->const_expr.ptr - right->const_expr.ptr) /
-			                                       type_size(left_type->pointer));
+			int64_t diff = (int64_t)(left->const_expr.ptr - right->const_expr.ptr) / (int64_t)type_size(left_type->pointer);
+			expr_rewrite_const_integer(expr, type_sz, i128_from_signed(diff));
 			return true;
 		}
 		// 3b. Set the type
@@ -10604,7 +10604,16 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, 
 
 	if (left->expr_kind == EXPR_OPTIONAL)
 	{
-		expr_replace(expr, right);
+		Expr *fault = left->inner_expr;
+		if (expr_is_pure(fault))
+		{
+			expr_replace(expr, right);
+			return true;
+		}
+		expr->expr_kind = EXPR_TWO;
+		expr->two_expr.first = fault;
+		expr->two_expr.last = right;
+		expr->type = right->type;
 		return true;
 	}
 
