@@ -41,6 +41,7 @@ Known issues:
 */
 
 static HTable c_decl_name_cache;
+static HTable c_positional_name_owner;
 
 const char *c_intern(const char *str)
 {
@@ -180,6 +181,18 @@ bool c_decl_needs_asm_label(Decl *decl)
 	return asm_name && (c_decl_has_asm_name(decl) || c_is_builtin_symbol_collision(asm_name));
 }
 
+// Macro copies share a source position; suffix later ones with _2, _3, ...
+static const char *c_unique_positional_name(const char *name, Decl *decl)
+{
+	const char *candidate = name;
+	for (unsigned i = 2; htable_get(&c_positional_name_owner, (void *)candidate); i++)
+	{
+		candidate = c_intern(str_printf("%s_%u", name, i));
+	}
+	htable_set(&c_positional_name_owner, (void *)candidate, decl);
+	return candidate;
+}
+
 static const char *c_compute_decl_name(Decl *decl)
 {
 	if (decl->is_extern)
@@ -201,7 +214,13 @@ static const char *c_compute_decl_name(Decl *decl)
 
 	if (!decl->name || decl->name[0] == '$')
 	{
-		return c_intern(str_printf("__c3_anon_%u", (unsigned)declid(decl)));
+		scratch_buffer_push();
+		scratch_buffer_clear();
+		scratch_buffer_append("__c3_anon");
+		scratch_buffer_append_decl_pos(decl);
+		const char *anon = scratch_buffer_copy();
+		scratch_buffer_pop();
+		return c_unique_positional_name(c_sanitize_name(anon), decl);
 	}
 
 	if (decl->has_extname && decl->extname)
@@ -215,10 +234,11 @@ static const char *c_compute_decl_name(Decl *decl)
 	}
 
 	scratch_buffer_push();
-	scratch_buffer_set_extern_decl_name(decl, true);
+	bool positional = scratch_buffer_set_stable_extern_decl_name(decl, true);
 	char *str = scratch_buffer_copy();
 	scratch_buffer_pop();
-	return c_check_collision(c_sanitize_name(str));
+	const char *name = c_check_collision(c_sanitize_name(str));
+	return positional ? c_unique_positional_name(name, decl) : name;
 }
 
 const char *c_get_decl_name(Decl *decl)
@@ -388,7 +408,7 @@ void c_emit_panic(GenContext *c, const char *message, SourceLocId loc, Expr **ar
 		// The typeid comes from the type as written, not the lowered one, so that e.g. a String prints as text.
 		if (arg_val.kind != CV_ADDRESS) c_value_addr(c, &arg_val);
 		PRINTF("___var_%d[%d] = (__c3_any__){ .ptr = (void*)&___var_%d, .typeid = (c3typeid_t)&%s };\n",
-		       arr_var, i, arg_val.var, c_typeid_name(type_no_optional(args[i]->type)));
+		       arr_var, i, arg_val.var, c_typeid_ref(c, type_no_optional(args[i]->type)));
 	}
 	c_emit_panic_call(c, panic_fn_desc[PANIC_FN_ASSERT_VIOLATION].format, loc, message, str_printf("___var_%d", arr_var), num_args);
 }
@@ -435,12 +455,12 @@ void c_emit_panic_fn(GenContext *c, PanicFunction id, SourceLocId loc, const cha
 				PRINTF("%s __c3_panic_arg%d = ", c_type_name(c, type_get_slice(type_char)), count);
 				c_emit_string_slice(c, texts[j]);
 				PRINT(";\n");
-				typeids[count++] = c_typeid_name(type_string);
+				typeids[count++] = c_typeid_ref(c, type_string);
 			}
 		}
 		Type *type = c_panic_value_type(values[i].type);
 		PRINTF("%s __c3_panic_arg%d = (%s)(%s);\n", c_type_name(c, type), count, c_type_name(c, type), values[i].expr);
-		typeids[count++] = c_typeid_name(type);
+		typeids[count++] = c_typeid_ref(c, type);
 	}
 	if (value_count <= 1)
 	{
@@ -449,7 +469,7 @@ void c_emit_panic_fn(GenContext *c, PanicFunction id, SourceLocId loc, const cha
 			PRINTF("%s __c3_panic_arg%d = ", c_type_name(c, type_get_slice(type_char)), count);
 			c_emit_string_slice(c, texts[j]);
 			PRINT(";\n");
-			typeids[count++] = c_typeid_name(type_string);
+			typeids[count++] = c_typeid_ref(c, type_string);
 		}
 	}
 	PRINTF("__c3_any__ __c3_panic_args[%d] = {", count);
@@ -906,6 +926,9 @@ static GenContext *c_gen_module(Module *module, int num)
 	htable_init(&c->gen_decl, 4096);
 	htable_init(&c->gen_def, 4096);
 	htable_init(&c->decl_names, 4096);
+	htable_init(&c->declared_typeids, 1024);
+	htable_init(&c->declared_faults, 256);
+	htable_init(&c->declared_bitstructs, 64);
 	htable_init(&c->emitted_global_decls, 4096);
 	htable_init(&c->used_type_set, 4096);
 
@@ -1325,6 +1348,8 @@ void **c_gen(Module **modules, int module_count)
 		return NULL;
 	}
 	htable_init(&c_decl_name_cache, 16384);
+	htable_init(&c_positional_name_owner, 1024);
+	c_type_names_init();
 	htable_init(&c_needed_typeids, 1024);
 	c_needed_typeids_vec = NULL;
 	c_recording_typeids = true;
