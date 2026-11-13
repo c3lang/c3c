@@ -90,31 +90,30 @@ fn void qsort(ListType list, sz low, sz high, CmpFn cmp, Context context) @noinl
 <*
 @require low <= k : "kth smallest element is smaller than lower bounds"
 @require k <= high : "kth smallest element is larger than upper bounds"
+@require low >= 0 : "lower bound must be non-negative"
+@require high < list_len(list) : "upper bound must be within list length"
 *>
-fn ElementType? qselect(ListType list, sz low, sz high, sz k, CmpFn cmp, Context context) @noinline
+fn ElementType qselect(ListType list, sz low, sz high, sz k, CmpFn cmp, Context context) @noinline
 {
-	if (low >= 0 && high >= 0 && low < high)
-	{
-		sz l = low;
-		sz h = high;
-		sz pivot;
 
-		sz max_retries = 64;
-		while (l <= h && max_retries--)
+	sz l = low;
+	sz h = high;
+
+	// Each iteration either returns or strictly shrinks [l, h], so this terminates.
+	while (l <= h)
+	{
+		sz pivot = @partition(list, l, h, cmp, context);
+		if (k == pivot) return list_get(list, k);
+		if (k < pivot)
 		{
-			pivot = @partition(list, l, h, cmp, context);
-			if (k == pivot) return list_get(list, k);
-			if (k < pivot)
-			{
-				h = pivot - 1;
-			}
-			else
-			{
-				l = pivot + 1;
-			}
+			h = pivot - 1;
+		}
+		else
+		{
+			l = pivot + 1;
 		}
 	}
-	return NOT_FOUND~;
+	unreachable("qselect: k not found in range (low: %d, high: %d, k: %d, final l: %d, final h: %d)", low, high, k, l, h);
 }
 
 macro sz @partition(ListType list, sz l, sz h, CmpFn cmp, Context context)
