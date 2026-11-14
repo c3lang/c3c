@@ -34,6 +34,7 @@
 - Fix error for `x <<= v`, with `v` a vector and `x` a scalar.
 - A range `case` in a `typeid` switch crashed the compiler; it is now an error.
 - `$defined` on an invalid `+++` with a string or bytes on the left, like `"a" +++ 1.0`, was an error instead of `false`.
+- An interface inheriting from itself, directly or through other interfaces, crashed the compiler with a stack overflow; it is now an error.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.

@@ -148,6 +148,28 @@ static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, De
 }
 
 /**
+ * Check whether `target` is reachable by following the (resolved) parent interfaces of `interface`.
+ * Interfaces already visited are skipped, so unrelated cycles don't cause endless recursion.
+ */
+static bool sema_interface_inherits_from(Decl *interface, Decl *target, Decl ***visited)
+{
+	FOREACH(TypeInfo *, parent, interface->interfaces)
+	{
+		if (!parent->type) continue;
+		Type *parent_type = parent->type->canonical;
+		if (parent_type->type_kind != TYPE_INTERFACE) continue;
+		Decl *parent_decl = parent_type->decl;
+		if (parent_decl == target) return true;
+		bool seen = false;
+		FOREACH(Decl *, v, *visited) if (v == parent_decl) { seen = true; break; }
+		if (seen) continue;
+		vec_add(*visited, parent_decl);
+		if (sema_interface_inherits_from(parent_decl, target, visited)) return true;
+	}
+	return false;
+}
+
+/**
  * Look at all the interface declarations, optionally type check the interfaces completely if needed.
  *
  * @param context The context
@@ -190,6 +212,16 @@ static inline bool sema_resolve_implemented_interfaces(SemaContext *context, Dec
 				RETURN_SEMA_ERROR(inf_info, "The interface '%s' was included more than once, "
 											"this is not allowed, so please remove the duplicates.",
 								  inf_type->name);
+			}
+		}
+		// An interface may not inherit from itself, directly or through other interfaces.
+		if (decl->decl_kind == DECL_INTERFACE)
+		{
+			Decl **visited = NULL;
+			if (inf_type->decl == decl || sema_interface_inherits_from(inf_type->decl, decl, &visited))
+			{
+				RETURN_SEMA_ERROR(inf_info, "The interface '%s' cannot inherit from itself, directly or indirectly.",
+								  decl->name);
 			}
 		}
 		// If this is a resolve_interfaces check, then we also resolve the interface itself (this would mean resolving function types)
