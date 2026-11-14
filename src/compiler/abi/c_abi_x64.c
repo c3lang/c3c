@@ -491,7 +491,8 @@ static Type *x64_get_fp_type_at_offset(Type *type, int ir_offset)
 	while (type->type_kind == TYPE_UNION)
 	{
 		Decl *decl = type->decl;
-		type = decl->strukt.members[decl->strukt.union_rep]->type;
+		// Use the lowered type: a vector member must be treated as an array of its elements.
+		type = lowered_member_type(decl->strukt.members[decl->strukt.union_rep]);
 	}
 	if (!ir_offset && type_is_float(type)) return type;
 	if (type->type_kind == TYPE_STRUCT)
