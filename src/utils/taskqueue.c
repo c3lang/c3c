@@ -1,6 +1,20 @@
 #include "lib.h"
 #include "compiler_tests/benchmark.h"
 
+// Tasks are popped from the end: order by ascending cost so the costliest
+// start first. Stable, so tasks without a cost keep their order.
+static void taskqueue_order_by_cost(Task **task_list)
+{
+	int count = vec_size(task_list);
+	for (int i = 1; i < count; i++)
+	{
+		Task *task = task_list[i];
+		int j = i;
+		for (; j > 0 && task_list[j - 1]->cost > task->cost; j--) task_list[j] = task_list[j - 1];
+		task_list[j] = task;
+	}
+}
+
 // Our task queue is only made for scheduling compilation tasks so there is
 // a single thread that adds the tasks.
 
@@ -65,6 +79,7 @@ bool taskqueue_run(int threads, Task **task_list)
 		eprintf("Failed to allocate memory for the thread pool.\n");
 		return false;
 	}
+	taskqueue_order_by_cost(task_list);
 	TaskQueue queue = { .queue = task_list, .aborted = false };
 	pthread_attr_t attr;
 	if (pthread_mutex_init(&queue.lock, NULL)) error_exit("Failed to set up mutex");
@@ -151,6 +166,7 @@ bool taskqueue_run(int threads, Task **task_list)
 		eprintf("Failed to allocate memory for the thread pool.\n");
 		return false;
 	}
+	taskqueue_order_by_cost(task_list);
 	TaskQueue queue = { .queue = task_list, .aborted = false };
 	InitializeCriticalSection(&queue.lock);
 	for (int i = 0; i < worker_threads; i++)

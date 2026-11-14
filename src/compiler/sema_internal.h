@@ -58,6 +58,7 @@ void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags, Sou
 SemaContext *context_transform_for_eval(SemaContext *context, SemaContext *temp_context, CompilationUnit *eval_unit);
 
 TokenType sema_splitpathref(const char *string, ArrayIndex len, Path **path_ref, const char **ident_ref);
+TypeInfo *sema_type_info_from_string(SemaContext *context, Expr *expr, bool report_missing);
 void sema_print_inline(SemaContext *context, SourceLocId original);
 void sema_error_at(SemaContext *context, SourceLocId loc, const char *message, ...);
 bool sema_warn_at(SemaContext *context, SourceLocId loc, WarningLevel level, const char *message, ...);
@@ -180,11 +181,11 @@ INLINE bool sema_analyse_func_macro(SemaContext *context, Decl *decl, AttributeD
 	return true;
 }
 
-INLINE bool sema_check_left_right_const(SemaContext *context, Expr *left, Expr *right)
+INLINE bool sema_check_left_right_const(SemaContext *context, Expr *left, Expr *right, bool *failed_ref)
 {
-	if (!sema_cast_const(left)) RETURN_SEMA_ERROR(left, "Expected this to evaluate to a constant value.");
-	if (!sema_cast_const(right)) RETURN_SEMA_ERROR(right, "Expected this to evaluate to a constant value.");
-	return true;
+	if (sema_cast_const(left) && sema_cast_const(right)) return true;
+	CHECK_ON_DEFINED(failed_ref);
+	RETURN_SEMA_ERROR(sema_cast_const(left) ? right : left, "Expected this to evaluate to a constant value.");
 }
 
 INLINE bool sema_set_alignment(SemaContext *context, Type *type, AlignSize *result, bool is_alloca)

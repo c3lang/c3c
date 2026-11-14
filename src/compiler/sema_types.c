@@ -366,6 +366,44 @@ INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 	UNREACHABLE
 }
 
+TypeInfo *sema_type_info_from_string(SemaContext *context, Expr *expr, bool report_missing)
+{
+	const char *bytes = expr->const_expr.bytes.ptr;
+	ArrayIndex len = expr->const_expr.bytes.len;
+	Path *path;
+	const char *ident;
+	TokenType token = sema_splitpathref(bytes, len, &path, &ident);
+	switch (token)
+	{
+		case TYPE_TOKENS:
+			if (path) break;
+			return type_info_new_base(type_from_token(token), expr->loc);
+		case TOKEN_CT_TYPE_IDENT:
+		case TOKEN_TYPE_IDENT:
+		{
+			if (path && token == TOKEN_CT_TYPE_IDENT) break;
+			if (!ident)
+			{
+				if (!report_missing) return NULL;
+				SEMA_ERROR(expr, "'%.*s' could not be found, did you spell it right?", (int)len, bytes);
+				return poisoned_type_info;
+			}
+			TypeInfo *info = type_info_new(token == TOKEN_CT_TYPE_IDENT ? TYPE_INFO_CT_IDENTIFIER : TYPE_INFO_IDENTIFIER, expr->loc);
+			info->unresolved.name = ident;
+			info->unresolved.path = path;
+			return info;
+		}
+		case TOKEN_INVALID_TOKEN:
+			SEMA_ERROR(expr, "'%.*s' could not be resolved to a valid symbol.", (int)len, bytes);
+			return poisoned_type_info;
+		default:
+			SEMA_ERROR(expr, "Expected a type, not a regular identifier '%.*s'.", (int)len, bytes);
+			return poisoned_type_info;
+	}
+	SEMA_ERROR(expr, "Unexpected path in '%.*s'.", (int)len, bytes);
+	return poisoned_type_info;
+}
+
 INLINE bool sema_resolve_typefrom(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind)
 {
 	Expr *expr = type_info->unresolved_type_expr;
@@ -387,13 +425,8 @@ INLINE bool sema_resolve_typefrom(SemaContext *context, TypeInfo *type_info, Res
 
 	const char *bytes = expr->const_expr.bytes.ptr;
 	ArrayIndex len = expr->const_expr.bytes.len;
-	Expr *typefrom = sema_resolve_string_ident(context, expr, true);
-	if (!typefrom || !expr_ok(typefrom)) return false;
-	if (typefrom->expr_kind != EXPR_TYPEINFO)
-	{
-		RETURN_SEMA_ERROR(expr, "Expected a type, not a regular identifier '%.*s'.", (int)len, bytes);
-	}
-	TypeInfo *info = typefrom->type_expr;
+	TypeInfo *info = sema_type_info_from_string(context, expr, true);
+	if (!type_info_ok(info)) return false;
 	if (!sema_resolve_type(context, info, resolve_kind)) return false;
 	switch (sema_resolve_storage_type(context, info->type))
 	{

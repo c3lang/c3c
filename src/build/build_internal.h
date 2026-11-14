@@ -155,9 +155,8 @@ static const char *test_log_levels[6] = {
 	[TESTLOGLEVEL_CRITICAL] = "critical",
 };
 
-static const char *backends[3] = {
+static const char *backends[] = {
 		[BACKEND_LLVM] = "llvm",
-		[BACKEND_TB] = "tb",
 		[BACKEND_C] = "c",
 };
 

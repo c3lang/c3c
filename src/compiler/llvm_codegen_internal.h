@@ -649,7 +649,6 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *var);
 
 LLVMAtomicOrdering llvm_atomic_ordering(Atomicity atomicity);
 
-bool module_should_weaken(Module *module);
 
 // Implementations
 

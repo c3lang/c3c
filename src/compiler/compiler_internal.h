@@ -329,15 +329,7 @@ struct Type_
 	const char *name;
 	Type **type_cache;
 	Type *func_ptr;
-	union
-	{
-		void *backend_type;
-		struct
-		{
-			uint16_t tb_set;
-			uint16_t tb_type;
-		};
-	};
+	void *backend_type;
 	TypeSize size;
 	void *backend_typeid;
 	void *backend_debug_type;
@@ -501,7 +493,6 @@ typedef struct VarDecl_
 				// Variable
 				void *optional_ref;
 				int optional_id;
-				int tb_optional_reg;
 			};
 		};
 		struct
@@ -713,11 +704,7 @@ typedef struct
 {
 	AstId defer;
 	bool next_target : 1;
-	union
-	{
-		void *break_target;
-		int tb_break_target;
-	};
+	void *break_target;
 	void *continue_target;
 	AstId scope_defer;
 	AstId parent;
@@ -773,9 +760,7 @@ typedef struct Decl_
 	{
 		void *backend_ref;
 		int backend_id;
-		int tb_register;
 		void *backend_value;
-		void *tb_symbol;
 		Decl *replacement;
 		struct
 		{
@@ -1439,11 +1424,7 @@ typedef struct
 		};
 		struct
 		{
-			union
-			{
-				void *break_block;
-				int tb_break_block;
-			};
+			void *break_block;
 		} codegen;
 	};
 } AstIfStmt;
@@ -2557,7 +2538,6 @@ bool c_codegen(void *context, const char **out_name);
 bool llvm_codegen(void *context, const char **out_name);
 void *llvm_load_ir_file(const char *filename, const char *object_filename);
 bool llvm_codegen_ir_file(void *context, const char **out_name);
-const char *tilde_codegen(void *context);
 void **c_gen(Module** modules, int module_count);
 void **llvm_gen(Module** modules, int module_count);
 void llvm_collect_module_times(void);
@@ -2567,7 +2547,6 @@ StatsOrigin stats_module_origin(Module *module);
 int64_t stats_physical_lines(File *file);
 void stats_collect_after_sema(void);
 void stats_collect_object_size(const char **obj_files, int count);
-void **tilde_gen(Module** modules, int module_count);
 
 void header_gen(Module **modules, int module_count);
 const char *build_base_name(void);
@@ -2633,7 +2612,7 @@ bool decl_needs_prefix(Decl *decl);
 AlignSize decl_find_member_offset(Decl *decl, Decl *member);
 bool decl_is_externally_visible(Decl *decl);
 bool decl_is_local(Decl *decl);
-bool decl_is_global(Decl *decl);
+bool decl_is_global_ref(Decl *decl);
 void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear);
 
 // --- Expression functions
@@ -2692,6 +2671,7 @@ INLINE void expr_rewrite_const_null(Expr *expr, Type *type);
 INLINE void expr_rewrite_const_bool(Expr *expr, Type *type, bool b);
 INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d);
 INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v);
+INLINE void expr_rewrite_const_byte(Expr *expr, Type *type, uint8_t c);
 INLINE void expr_rewrite_const_typeid(Expr *expr, Type *type);
 INLINE void expr_rewrite_const_initializer(Expr *expr, Type *type, ConstInitializer *initializer);
 INLINE void expr_rewrite_const_untyped_list(Expr *expr, Expr **elements);
@@ -2786,7 +2766,7 @@ const char *contract_to_message(Expr *contract, bool is_ensure);
 bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type *left_type, Expr *right,
                                          bool is_unwrapped_var, bool is_declaration, bool *failed_ref);
 bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr, bool *no_match_ref);
-Expr **sema_expand_vasplat_exprs(SemaContext *context, Expr **exprs, Decl ***macro_va_decl_ref);
+bool sema_expand_vasplat_exprs(SemaContext *context, Expr ***exprs_ptr, Decl ***macro_va_decl_ref);
 
 bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool optional,
                                     bool *no_match_ref);
@@ -4711,6 +4691,11 @@ INLINE void expr_rewrite_const_integer(Expr *expr, Type *type, Int128 i)
 	ASSERT_SPAN(expr, type_kind_is_any_integer(expr->const_expr.ixx.type));
 	expr->const_expr.is_character = false;
 	expr->const_expr.const_kind = CONST_INTEGER;
+}
+
+INLINE void expr_rewrite_const_byte(Expr *expr, Type *type, uint8_t c)
+{
+	expr_rewrite_const_int(expr, type, type_is_signed(type_flatten(type)) ? (uint64_t)(int8_t)c : c);
 }
 
 INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v)

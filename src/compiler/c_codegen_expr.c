@@ -1648,10 +1648,10 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_SLICE_ASSIGN:
 		{
 			CValue dst_val = {0}, src_val = {0};
-			c_emit_expr(c, &dst_val, exprptr(expr->slice_assign_expr.left));
 			c_emit_expr(c, &src_val, exprptr(expr->slice_assign_expr.right));
 			c_value_rvalue(c, &src_val);
 			c_ensure_cvalue_var(c, &src_val, NULL);
+			c_emit_expr(c, &dst_val, exprptr(expr->slice_assign_expr.left));
 			if (dst_val.var != 0)
 			{
 				int loop_i = c_create_variable(c);
@@ -1803,11 +1803,17 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			}
 			const char *mname = c_type_name(c, member_type);
 
+			CValue result_val = {0};
+			if (op == BINARYOP_ASSIGN)
+			{
+				c_emit_expr(c, &result_val, right);
+				c_value_rvalue(c, &result_val);
+			}
+
 			int container_ptr_var = 0;
 			Decl *bitstruct_decl  = NULL;
 			const char *c_tname   = c_emit_bitstruct_container(c, left->access_resolved_expr.parent, member, &container_ptr_var, &bitstruct_decl);
 
-			CValue result_val = {0};
 			if (op != BINARYOP_ASSIGN)
 			{
 				CValue cur_val = {0};
@@ -1867,11 +1873,6 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 					PRINTF("%s ___var_%d = (%s)(___var_%d %s ___var_%d);\n",
 					       mname, res_temp, mname, cur_val.var, op_str, right_val.var);
 				}
-			}
-			else
-			{
-				c_emit_expr(c, &result_val, right);
-				c_value_rvalue(c, &result_val);
 			}
 
 			c_emit_bitstruct_write_container(c, left->access_resolved_expr.parent, bitstruct_decl, member, container_ptr_var, c_tname, &result_val);

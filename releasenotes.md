@@ -22,6 +22,23 @@
 - `@jump` on an `ichar`, `char` or `short` switch could crash the compiler when the cases spanned more than half the type's range.
 - `@str_replace` didn't work properly with an empty pattern. 
 - `String.replace` and `String.treplace` would never return on an empty pattern. 
+- Taking the address of a member through a constant array index, like `&g.arr[1]` or `&g[1].x`, was rejected in global and static initializers.
+- `&p[1]` in a global initializer, where `p` is a non-constant global pointer, was accepted and then crashed the compiler.
+- `f()~ ?? x` dropped the call to `f`, so its side effects never happened.
+- Constant folding of a pointer difference gave a wrong result when it was negative, e.g. `(int*)4 - (int*)16`.
+- `$eval` printed an "Unlocalized error" for a string with a type before `::`, like `"Col::GREEN"`, and could intern such a name as a plain identifier.
+- Assignment to a vector element, bitstruct field or swizzle (and a slice, in the C backend) evaluated the LHS before RHS.
+- An early exit, such as `foo()!` on a fault, in a subscript index or on either side of a vector element, bitstruct field, swizzle or slice assignment could crash the compiler.
+- The address of a thread-local variable was incorrectly considered a compile time constant.
+- Indexing a constant byte array always gave a `char`, so an `ichar[*]` element could be 255 and a typedef element type was lost.
+- Fix error for `x <<= v`, with `v` a vector and `x` a scalar.
+- A range `case` in a `typeid` switch crashed the compiler; it is now an error.
+- `$defined` on an invalid `+++` with a string or bytes on the left, like `"a" +++ 1.0`, was an error instead of `false`.
+- `...$vaarg[a..b]` crashed the compiler when a `^` start exceeded the number of arguments, hung when the end was before the start, and rejected a range ending at the last argument.
+- A `&` body parameter, like `@body(int& a)`, was accepted and acted as a value parameter; it is now an error.
+- Casting constant bytes to a wider integer or float array or vector used the target's signedness instead of the source's: `(int[<2>])(ichar[2])x"FF01"` gave `[<255, 1>]`.
+- `while (bool b = true)` and the same declaration in a `for` condition dropped the declaration, so the compiler crashed or generated wrong code.
+- Converting `int128::min` to `float` or `double` at runtime gave the wrong value.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.
@@ -62,6 +79,7 @@
 - `--panic-msg=no` only traps if `--show-backtrace=no` is also set, otherwise it gives the short message with file, function and line. `--show-backtrace=no` stops passing file, function and line.
 - `--panicfn` now names a function rather than a function pointer variable, and sets the initial value of `builtin::panic` through the new `$$PANIC_FN`, so stdlib panics and `abort` also reach it. #3443
 - Make panic on infinite loops opt-in with `--infinite-loop-detect=yes` – and is only added in safe mode. #3630
+- Removed the unused TB (Tilde) backend: `--backend=tb` and the `C3_USE_TB` CMake option.
 
 ### Fixes
 - Compressed `.c3l` libraries were not unpacked again when only files other than `manifest.json` had changed.

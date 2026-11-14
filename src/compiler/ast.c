@@ -474,12 +474,11 @@ bool decl_is_externally_visible(Decl *decl)
 	return decl->is_external_visible || decl->visibility == VISIBLE_PUBLIC || decl->is_export;
 }
 
-
 /*
- * Is this declaration a global of some sort?
- * In other words a static, thread local, global constant or a global
+ * Is this declaration a global ref of some sort?
+ * In other words a function, static, global constant or a global
  */
-bool decl_is_global(Decl *ident)
+bool decl_is_global_ref(Decl *ident)
 {
 	switch (ident->decl_kind)
 	{
@@ -487,6 +486,7 @@ bool decl_is_global(Decl *ident)
 		case DECL_VAR: break;
 		default: return false;
 	}
+	if (ident->var.is_threadlocal) return false;
 	switch (ident->var.kind)
 	{
 		case VARDECL_LOCAL:

@@ -8,7 +8,8 @@
 #include "compiler_internal.h"
 
 static inline bool expr_list_is_constant_eval(Expr **exprs);
-static inline bool expr_unary_addr_is_constant_eval(Expr *expr);
+static bool expr_addr_is_constant_eval(Expr *inner);
+static bool expr_subscript_addr_is_constant_eval(Expr *subscript);
 static inline ConstInitializer *initializer_for_index(ConstInitializer *initializer, ArrayIndex index, bool from_back);
 
 const char *expr_kind_to_string(ExprKind kind)
@@ -337,28 +338,7 @@ RETRY:
 			expr = exprptr(expr->subscript_expr.expr);
 			goto RETRY;
 		case EXPR_SUBSCRIPT_ADDR:
-			if (!exprid_is_runtime_const(expr->subscript_expr.index.expr)) return false;
-			expr = exprptr(expr->subscript_expr.expr);
-			if (type_flatten(expr->type)->type_kind == TYPE_SLICE) return false;
-			if (expr->expr_kind == EXPR_IDENTIFIER)
-			{
-				Decl *decl = expr->ident_expr;
-				if (decl->decl_kind == DECL_VAR)
-				{
-					switch (decl->var.kind)
-					{
-						case VARDECL_CONST:
-						case VARDECL_GLOBAL:
-							break;
-						case VARDECL_LOCAL:
-							if (decl->var.is_static) break;
-						default:
-							return false;
-					}
-					return true;
-				}
-			}
-			goto RETRY;
+			return expr_subscript_addr_is_constant_eval(expr);
 		case EXPR_TERNARY:
 			ASSERT(!exprid_is_runtime_const(expr->ternary_expr.cond) && !expr->ternary_expr.is_const);
 			return false;
@@ -372,7 +352,7 @@ RETRY:
 				case UNARYOP_ERROR:
 					return false;
 				case UNARYOP_ADDR:
-					return expr_unary_addr_is_constant_eval(expr);
+					return expr_addr_is_constant_eval(expr->unary_expr.expr);
 				case UNARYOP_TADDR:
 					expr = expr->unary_expr.expr;
 					goto RETRY;
@@ -414,10 +394,23 @@ static inline bool expr_list_is_constant_eval(Expr **exprs)
 	return true;
 }
 
-static inline bool expr_unary_addr_is_constant_eval(Expr *expr)
+static bool expr_subscript_addr_is_constant_eval(Expr *subscript)
 {
-	// An address is never a constant value.
-	Expr *inner = expr->unary_expr.expr;
+	if (!exprid_is_runtime_const(subscript->subscript_expr.index.expr)) return false;
+	Expr *parent = exprptr(subscript->subscript_expr.expr);
+	switch (type_flatten(parent->type)->type_kind)
+	{
+		case TYPE_POINTER:
+			return expr_is_runtime_const(parent);
+		case TYPE_SLICE:
+			return false;
+		default:
+			return expr_addr_is_constant_eval(parent);
+	}
+}
+
+static bool expr_addr_is_constant_eval(Expr *inner)
+{
 	if (IS_OPTIONAL(inner)) return false;
 RETRY:;
 	switch (inner->expr_kind)
@@ -427,6 +420,11 @@ RETRY:;
 		case EXPR_ACCESS_RESOLVED:
 			inner = inner->access_resolved_expr.parent;
 			goto RETRY;
+		case EXPR_SUBSCRIPT:
+			return expr_subscript_addr_is_constant_eval(inner);
+		case EXPR_UNARY:
+			if (inner->unary_expr.operator != UNARYOP_DEREF) return false;
+			return expr_is_runtime_const(inner->unary_expr.expr);
 		case EXPR_CONST:
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
@@ -436,31 +434,7 @@ RETRY:;
 		{
 			// The address of an identifier is side effect free.
 			Decl *decl = inner->ident_expr;
-			if (decl->decl_kind == DECL_FUNC) return true;
-			if (decl->decl_kind != DECL_VAR) return false;
-			switch (decl->var.kind)
-			{
-				case VARDECL_CONST:
-				case VARDECL_GLOBAL:
-					// Fine for both local and global init.
-					return true;
-				case VARDECL_LOCAL:
-					// Getting the address of a local can never be constant init unless it is static.
-					return decl->var.is_static;
-				case VARDECL_PARAM:
-				case VARDECL_MEMBER:
-				case VARDECL_BITMEMBER:
-				case VARDECL_PARAM_CT:
-				case VARDECL_PARAM_CT_TYPE:
-				case VARDECL_PARAM_EXPR:
-				case VARDECL_LOCAL_CT:
-				case VARDECL_LOCAL_CT_TYPE:
-				case VARDECL_UNWRAPPED:
-				case VARDECL_ERASE:
-				case VARDECL_REWRAPPED:
-					// None of these are constant.
-					return false;
-			}
+			return decl_is_global_ref(decl);
 		}
 		default:
 			return false;

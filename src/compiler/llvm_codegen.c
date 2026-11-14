@@ -52,12 +52,6 @@ static void diagnostics_handler(LLVMDiagnosticInfoRef ref, void *context)
 	LLVMDisposeMessage(message);
 }
 
-bool module_should_weaken(Module *module)
-{
-	Module *top = module->top_module;
-	return top && (top->name->module == kw_std || top->name->module == kw_libc);
-}
-
 static void gencontext_init(GenContext *context, Module *module, LLVMContextRef shared_context)
 {
 #ifndef __EMSCRIPTEN__
@@ -515,7 +509,7 @@ void llvm_set_decl_linkage(GenContext *c, Decl *decl, bool store_nostrip)
 {
 	bool is_var = decl->decl_kind == DECL_VAR;
 	bool is_weak = decl->is_weak_link;
-	bool should_weaken = is_weak || (!decl->is_extern && (decl->is_templated || module_should_weaken(decl->unit->module)));
+	bool should_weaken = decl_should_weaken(decl);
 	LLVMValueRef ref = decl->backend_ref;
 	LLVMValueRef opt_ref = is_var ? decl->var.optional_ref : NULL;
 	bool is_static = is_var && decl->var.is_static;

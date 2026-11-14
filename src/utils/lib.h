@@ -65,6 +65,8 @@ typedef struct Task_
 {
 	bool (*task)(void *arg);
 	void *arg;
+	// Estimated work; costlier tasks start first to shorten the tail.
+	size_t cost;
 } Task;
 
 uint16_t *win_utf8to16(const char *name);
