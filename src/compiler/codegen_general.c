@@ -330,3 +330,83 @@ void codegen_setup_object_names(Module *module, const char **base_name, const ch
 		if (compiler.build.asm_file_dir) *asm_filename = file_append_path(compiler.build.asm_file_dir, *asm_filename);
 	}
 }
+
+bool module_should_weaken(Module *module)
+{
+	Module *top = module->top_module;
+	return top && (top->name->module == kw_std || top->name->module == kw_libc);
+}
+
+bool decl_should_weaken(Decl *decl)
+{
+	return decl->is_weak_link || (!decl->is_extern && (decl->is_templated || module_should_weaken(decl->unit->module)));
+}
+
+// Builtins whose code may call into libm, so the program links it (the set the LLVM backend has always used).
+// CEIL is missing although, like FLOOR, it can become a libm call when not inlined.
+bool builtin_needs_libm(BuiltinFunction func)
+{
+	switch (func)
+	{
+		case BUILTIN_ABS:
+		case BUILTIN_ACOS:
+		case BUILTIN_ASIN:
+		case BUILTIN_ATAN:
+		case BUILTIN_COPYSIGN:
+		case BUILTIN_COS:
+		case BUILTIN_COSH:
+		case BUILTIN_EXACT_ADD:
+		case BUILTIN_EXACT_DIV:
+		case BUILTIN_EXACT_MOD:
+		case BUILTIN_EXACT_MUL:
+		case BUILTIN_EXACT_NEG:
+		case BUILTIN_EXACT_SUB:
+		case BUILTIN_EXP:
+		case BUILTIN_EXP10:
+		case BUILTIN_EXP2:
+		case BUILTIN_FLOOR:
+		case BUILTIN_FMA:
+		case BUILTIN_FMULADD:
+		case BUILTIN_GET_ROUNDING_MODE:
+		case BUILTIN_LLRINT:
+		case BUILTIN_LLROUND:
+		case BUILTIN_LOG:
+		case BUILTIN_LOG10:
+		case BUILTIN_LOG2:
+		case BUILTIN_LRINT:
+		case BUILTIN_LROUND:
+		case BUILTIN_MATRIX_TRANSPOSE:
+		case BUILTIN_NEARBYINT:
+		case BUILTIN_OVERFLOW_ADD:
+		case BUILTIN_OVERFLOW_MUL:
+		case BUILTIN_OVERFLOW_SUB:
+		case BUILTIN_POW:
+		case BUILTIN_POW_INT:
+		case BUILTIN_REDUCE_ADD:
+		case BUILTIN_REDUCE_AND:
+		case BUILTIN_REDUCE_FADD:
+		case BUILTIN_REDUCE_FMUL:
+		case BUILTIN_REDUCE_MAX:
+		case BUILTIN_REDUCE_MIN:
+		case BUILTIN_REDUCE_MUL:
+		case BUILTIN_REDUCE_OR:
+		case BUILTIN_REDUCE_XOR:
+		case BUILTIN_RINT:
+		case BUILTIN_ROUND:
+		case BUILTIN_ROUNDEVEN:
+		case BUILTIN_SAT_ADD:
+		case BUILTIN_SAT_MUL:
+		case BUILTIN_SAT_SHL:
+		case BUILTIN_SAT_SUB:
+		case BUILTIN_SET_ROUNDING_MODE:
+		case BUILTIN_SIN:
+		case BUILTIN_SINH:
+		case BUILTIN_SQRT:
+		case BUILTIN_TAN:
+		case BUILTIN_TANH:
+		case BUILTIN_TRUNC:
+			return true;
+		default:
+			return false;
+	}
+}
