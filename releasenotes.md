@@ -45,6 +45,7 @@
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.
+- `quickselect` deprecated in favour of `sort::select_nth` which does not return an optional result.
 
 ## 0.8.6 Change list
 

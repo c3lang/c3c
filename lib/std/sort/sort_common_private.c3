@@ -9,3 +9,5 @@ macro ElementType* list_get_ref(ListType l, i) @if(!IS_SLICE) => &(*l)[i];
 macro ElementType* list_get_ref(ListType l, i) @if(IS_SLICE) => &l[i];
 macro void list_set(ListType l, i, v) @if(!IS_SLICE) => (*l)[i] = v;
 macro void list_set(ListType l, i, v) @if(IS_SLICE) => l[i] = v;
+macro sz list_len(ListType l) @if(!IS_SLICE) => (sz)lengthof(*l);
+macro sz list_len(ListType l) @if(IS_SLICE) => (sz)l.len;
