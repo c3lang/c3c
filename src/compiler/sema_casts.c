@@ -1970,7 +1970,7 @@ static void vector_const_initializer_convert_to_type(ConstInitializer *initializ
 					initializer->init_value->const_expr = (ExprConst)
 					{
 						.const_kind = CONST_INTEGER,
-						.ixx = (Int) { .i = is_true ? (Int128) { UINT64_MAX, UINT64_MAX } : (Int128) { 0, 0 }, .type = to_flat->type_kind },
+						.ixx = int_conv((Int) { .i = is_true ? (Int128) { UINT64_MAX, UINT64_MAX } : (Int128) { 0, 0 }, .type = TYPE_I128 }, to_flat->type_kind),
 					};
 				}
 				initializer->init_value->type = to_type;
