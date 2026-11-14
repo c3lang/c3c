@@ -9103,7 +9103,7 @@ static bool sema_expr_check_shift_rhs(SemaContext *context, Expr *expr, Expr *le
 		{
 			if (failed_ref) return *failed_ref = true, false;
 			RETURN_SEMA_ERROR(right, "The shift cannot be a vector of type %s when shifting a variable of type %s.",
-				left->type, right->type);
+				type_quoted_error_string(right->type), type_quoted_error_string(left->type));
 		}
 		Type *left_vec = type_get_vector_from_vector(left->type, right_type_flat);
 		if (!cast_explicit_checkable(context, left, left_vec, failed_ref)) return false;
