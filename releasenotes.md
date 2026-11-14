@@ -39,6 +39,8 @@
 - Casting constant bytes to a wider integer or float array or vector used the target's signedness instead of the source's: `(int[<2>])(ichar[2])x"FF01"` gave `[<255, 1>]`.
 - `while (bool b = true)` and the same declaration in a `for` condition dropped the declaration, so the compiler crashed or generated wrong code.
 - Converting `int128::min` to `float` or `double` at runtime gave the wrong value.
+- Passing a struct by value on x64 crashed the compiler when its second eightbyte was only padding, e.g. a struct with `@align(16)` holding a single `float`.
+- Passing a union with a `float[<3>]` member by value on x64 hit an assert in codegen.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.
