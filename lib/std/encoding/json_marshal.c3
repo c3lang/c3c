@@ -49,115 +49,8 @@ attrmacro @JsonOmitEmpty = @tag("json_omit_empty", true);
  @param $Type : "The type to check"
  @return "True if the type is serializable, false otherwise"
 *>
-macro bool may_serialize($Type) @const
-{
-	$if is_string_map($Type):
-		return may_serialize(map_value_type($Type));
-	$endif
-	$if $Type == Object*:
-		return true;
-	$endif
+macro bool may_serialize($Type) @const => @serializable($Type, (typeid[]){});
 
-	$switch $Type::kind:
-		$case STRUCT:
-			$foreach $member : $Type::members:
-				$if $member.name == "" ||| !may_serialize($member.type):
-					return false;
-				$endif
-			$endforeach
-			return true;
-		$case SIGNED_INT:
-		$case UNSIGNED_INT:
-			return $Type::size <= 8; // Max 64 bit support
-		$case FLOAT:
-		$case BOOL:
-		$case ENUM:
-			return true;
-		$case TYPEDEF:
-		$case CONSTDEF:
-		$case ARRAY:
-		$case VECTOR:
-		$case SLICE:
-			return may_serialize($Type::inner);
-		$case POINTER:
-			return true;
-		$default:
-			return false;
-	$endswitch
-}
-
-<*
- Whether unmarshaling `null` into `$Type` is valid: strings, slices and pointers become empty or
- null, including `Nullable`, but not `NonNull`.
-*>
-macro bool accepts_null($Type) @const @private
-{
-	$switch:
-		$case $Type::is_generic(NonNull):
-			return false;
-		$case $Type::kind == SLICE || $Type::kind == POINTER || is_string_map($Type):
-			return true;
-		$case $Type::kind == TYPEDEF || $Type::kind == CONSTDEF:
-			return accepts_null($Type::inner);
-		$default:
-			return false;
-	$endswitch
-}
-
-<*
- Whether `$Type` is a map with String keys, which is written as a JSON object.
-*>
-macro bool is_string_map($Type) @const @private
-{
-	$if $Type::is_generic(HashMap) ||| $Type::is_generic(OrderedMap):
-		return $Typeof((($Type){}).keys(tmem))::inner == String;
-	$else
-		return false;
-	$endif
-}
-
-macro map_value_type($Type) @const @private => $Typeof((($Type){}).get("")!!);
-
-macro String json_key($member) @const @private
-{
-	$if $member.has_tag("json"):
-		return $member.get_tag("json");
-	$else
-		return $member.name;
-	$endif
-}
-
-fn bool is_empty_value(EmptyType value) <EmptyType> @private
-{
-	$switch EmptyType::kind:
-		$case SLICE:
-			return value.len == 0;
-		$case POINTER:
-			return value == null;
-		$case STRUCT:
-			$if is_string_map(EmptyType):
-				return value.len() == 0;
-			$else
-				$foreach $member : EmptyType::members:
-					if (!is_empty_value{$member.type}(value.$member)) return false;
-				$endforeach
-				return true;
-			$endif
-		$case ARRAY:
-		$case VECTOR:
-			foreach (element : value)
-			{
-				if (!is_empty_value{EmptyType::inner}(element)) return false;
-			}
-			return true;
-		$case TYPEDEF:
-		$case CONSTDEF:
-			var $Inner = EmptyType::inner;
-			return is_empty_value{$Inner}(($Inner)value);
-		$default:
-			return value == (EmptyType){};
-	$endswitch
-}
 
 <*
  Marshal a struct, array, or dynamic `Object*` DOM tree to a JSON `String`.
@@ -769,4 +662,125 @@ fn sz? scan_container(JsonDeserializer* des) @private
 		des.cursor++;
 	}
 	return len;
+}
+
+macro bool @serializable($Type, $visited) @const @private
+{
+	$switch:
+		$case @contains_type($visited, $Type):
+			return true;
+		$case is_string_map($Type):
+			return @serializable(map_value_type($Type), $visited +++ $Type::typeid);
+		$case $Type == Object*:
+			return true;
+		$default:
+			$switch $Type::kind:
+				$case STRUCT:
+					$visited +++= $Type::typeid;
+					var $ok = true;
+					$foreach $member : $Type::members:
+						$ok = $ok &&& $member.name != "" &&& @serializable($member.type, $visited);
+					$endforeach
+					return $ok;
+				$case SIGNED_INT:
+				$case UNSIGNED_INT:
+					return $Type::size <= 8; // Max 64 bit support
+				$case FLOAT:
+				$case BOOL:
+				$case ENUM:
+					return true;
+				$case TYPEDEF:
+				$case CONSTDEF:
+				$case ARRAY:
+				$case VECTOR:
+				$case SLICE:
+				$case POINTER:
+					return @serializable($Type::inner, $visited +++ $Type::typeid);
+				$default:
+					return false;
+			$endswitch
+	$endswitch
+}
+
+macro bool @contains_type($types, typeid $type) @const @private
+{
+	$foreach $t : $types:
+		$if $t == $type:
+			return true;
+		$endif
+	$endforeach
+	return false;
+}
+
+<*
+ Whether unmarshaling `null` into `$Type` is valid: strings, slices and pointers become empty or
+ null, including `Nullable`, but not `NonNull`.
+*>
+macro bool accepts_null($Type) @const @private
+{
+	$switch:
+		$case $Type::is_generic(NonNull):
+			return false;
+		$case $Type::kind == SLICE || $Type::kind == POINTER || is_string_map($Type):
+			return true;
+		$case $Type::kind == TYPEDEF || $Type::kind == CONSTDEF:
+			return accepts_null($Type::inner);
+		$default:
+			return false;
+	$endswitch
+}
+
+<*
+ Whether `$Type` is a map with String keys, which is written as a JSON object.
+*>
+macro bool is_string_map($Type) @const @private
+{
+	$if $Type::is_generic(HashMap) ||| $Type::is_generic(OrderedMap):
+		return $Typeof((($Type){}).keys(tmem))::inner == String;
+	$else
+		return false;
+	$endif
+}
+
+macro map_value_type($Type) @const @private => $Typeof((($Type){}).get("")!!);
+
+macro String json_key($member) @const @private
+{
+	$if $member.has_tag("json"):
+		return $member.get_tag("json");
+	$else
+		return $member.name;
+	$endif
+}
+
+fn bool is_empty_value(EmptyType value) <EmptyType> @private
+{
+	$switch EmptyType::kind:
+		$case SLICE:
+			return value.len == 0;
+		$case POINTER:
+			return value == null;
+		$case STRUCT:
+			$if is_string_map(EmptyType):
+				return value.len() == 0;
+			$else
+				$foreach $member : EmptyType::members:
+					if (!is_empty_value{$member.type}(value.$member)) return false;
+				$endforeach
+				return true;
+			$endif
+		$case ARRAY:
+		$case VECTOR:
+			foreach (element : value)
+			{
+				if (!is_empty_value{EmptyType::inner}(element)) return false;
+			}
+			return true;
+		$case TYPEDEF:
+		$case CONSTDEF:
+			var $Inner = EmptyType::inner;
+			return is_empty_value{$Inner}(($Inner)value);
+		$default:
+			return value == (EmptyType){};
+	$endswitch
 }

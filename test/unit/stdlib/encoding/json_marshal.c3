@@ -1033,6 +1033,31 @@ fn void test_map_frees_on_error() @test
 	assert(@catch(value) == json::INVALID_NUMBER);
 }
 
+struct JsonWidePointer
+{
+	int128* wide;
+}
+
+struct JsonCycleA
+{
+	JsonCycleB* b;
+}
+
+struct JsonCycleB
+{
+	JsonCycleA* a;
+	int128 wide;
+}
+
+fn void test_may_serialize_checks_pointee() @test
+{
+	$assert !json::may_serialize(int128*);
+	$assert !json::may_serialize(JsonWidePointer);
+	$assert !json::may_serialize(JsonCycleA);
+	$assert json::may_serialize(int*);
+	$assert json::may_serialize(JsonNode);
+	$assert json::may_serialize(Object*);
+}
 
 struct JsonQuotedKey
 {
