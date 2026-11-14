@@ -710,6 +710,10 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 				if (failed_ref) goto FAILED_REF;
 				RETURN_SEMA_ERROR(top_expr, "You cannot assign to an element of a constant.");
 			}
+			{
+				Expr *parent = exprptr(expr->expr_kind == EXPR_SLICE ? expr->slice_expr.expr : expr->subscript_expr.expr);
+				if (parent->type && type_is_arraylike(type_flatten(parent->type)) && !sema_binary_is_expr_lvalue(context, top_expr, parent, failed_ref)) return false;
+			}
 			goto CHECK_OPTIONAL;
 		case EXPR_SUBSCRIPT_ASSIGN:
 			goto CHECK_OPTIONAL;
@@ -4472,7 +4476,7 @@ DEFAULT:
 			break;
 	}
 
-	if (!sema_expr_check_assign(context, expr, NULL)) return false;
+	if (!sema_expr_check_assign(context, expr, failed_ref)) return false;
 	if (!sema_may_subscript_or_access(context, subscripted, "cannot be subscripted", failed_ref)) return false;
 
 	Expr *index = exprptr(expr->subscript_expr.index.expr);
@@ -9930,6 +9934,31 @@ static const char *sema_addr_check_may_take(Expr *inner)
 	return "To take the address of a temporary value, use '&&' instead of '&'.";
 }
 
+static bool sema_expr_is_temporary(Expr *expr)
+{
+	switch (expr->expr_kind)
+	{
+		case EXPR_IDENTIFIER:
+		case EXPR_CT_SUBSCRIPT:
+			return false;
+		case EXPR_UNARY:
+			return expr->unary_expr.operator != UNARYOP_DEREF;
+		case EXPR_ACCESS_RESOLVED:
+		{
+			Expr *parent = expr->access_resolved_expr.parent;
+			return !type_is_pointer(type_flatten(parent->type)) && sema_expr_is_temporary(parent);
+		}
+		case EXPR_SUBSCRIPT:
+		case EXPR_SUBSCRIPT_ADDR:
+		{
+			Expr *parent = exprptr(expr->subscript_expr.expr);
+			return type_is_arraylike(type_flatten(parent->type)) && sema_expr_is_temporary(parent);
+		}
+		default:
+			return true;
+	}
+}
+
 /**
  * Analyse &a
  * @return true if analysis succeeds.
@@ -9963,6 +9992,11 @@ RETRY:;
 				if (!sema_expr_analyse_subscript(context, inner, failed_ref)) return false;
 			}
 			if (!sema_analyse_expr(context, inner)) return false;
+			if (inner->expr_kind == EXPR_SUBSCRIPT_ADDR && sema_expr_is_temporary(inner))
+			{
+				if (failed_ref) return *failed_ref = true, false;
+				RETURN_SEMA_ERROR(exprptr(inner->subscript_expr.expr), "To take the address of a temporary value, use '&&' instead of '&'.");
+			}
 			expr_replace(expr, inner);
 			return true;
 		case EXPR_ACCESS_UNRESOLVED:
