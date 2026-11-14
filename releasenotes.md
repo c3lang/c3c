@@ -34,6 +34,7 @@
 - Fix error for `x <<= v`, with `v` a vector and `x` a scalar.
 - A range `case` in a `typeid` switch crashed the compiler; it is now an error.
 - `$defined` on an invalid `+++` with a string or bytes on the left, like `"a" +++ 1.0`, was an error instead of `false`.
+- Passing a struct by value on x64 crashed the compiler when its second eightbyte was only padding, e.g. a struct with `@align(16)` holding a single `float`.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.

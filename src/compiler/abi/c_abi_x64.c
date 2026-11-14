@@ -471,6 +471,8 @@ bool x64_contains_float_at_offset(LoweredType *type, int offset)
 	if (type->type_kind == TYPE_STRUCT)
 	{
 		Decl *member = x64_get_member_at_offset(type->decl, offset);
+		// Offset is past the end of the struct, i.e. in trailing padding.
+		if (!member) return false;
 		offset -= member->offset;
 		return x64_contains_float_at_offset(lowered_member_type(member), offset);
 	}
@@ -495,6 +497,8 @@ static Type *x64_get_fp_type_at_offset(Type *type, int ir_offset)
 	if (type->type_kind == TYPE_STRUCT)
 	{
 		Decl *element = x64_get_member_at_offset(type->decl, ir_offset);
+		// Offset is past the end of the struct, i.e. in trailing padding, so there is no float here.
+		if (!element) return NULL;
 		return x64_get_fp_type_at_offset(lowered_member_type(element), ir_offset - element->offset);
 	}
 	if (type->type_kind == TYPE_ARRAY)
