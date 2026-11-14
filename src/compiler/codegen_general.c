@@ -342,8 +342,7 @@ bool decl_should_weaken(Decl *decl)
 	return decl->is_weak_link || (!decl->is_extern && (decl->is_templated || module_should_weaken(decl->unit->module)));
 }
 
-// Builtins whose code may call into libm, so the program links it (the set the LLVM backend has always used).
-// CEIL is missing although, like FLOOR, it can become a libm call when not inlined.
+// Builtins that may lower to a libm call; conservatively links -lm when any are used.
 bool builtin_needs_libm(BuiltinFunction func)
 {
 	switch (func)
@@ -352,6 +351,7 @@ bool builtin_needs_libm(BuiltinFunction func)
 		case BUILTIN_ACOS:
 		case BUILTIN_ASIN:
 		case BUILTIN_ATAN:
+		case BUILTIN_CEIL:
 		case BUILTIN_COPYSIGN:
 		case BUILTIN_COS:
 		case BUILTIN_COSH:
