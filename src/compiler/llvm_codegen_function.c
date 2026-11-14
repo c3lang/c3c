@@ -154,20 +154,29 @@ static inline void llvm_process_parameter_value_inner(GenContext *c, Decl *decl,
 			// Realign to best alignment.
 			if (pref_align > decl_alignment) decl_alignment = decl->alignment = pref_align;
 			AlignSize hi_offset = aligned_offset(llvm_store_size(c, lo), hi_alignment);
-			ASSERT(hi_offset + llvm_store_size(c, hi) <= type_size(decl->type));
 
 			// Emit decl
 			llvm_emit_and_set_decl_alloca(c, decl);
-			LLVMValueRef addr = decl->backend_ref;
+
+			bool overflow = hi_offset + llvm_store_size(c, hi) > type_size(decl->type);
+			LLVMValueRef coerce_addr = overflow
+					? llvm_emit_alloca(c, llvm_get_coerce_type(c, info), decl_alignment, "coerce")
+					: NULL;
+			LLVMValueRef addr = coerce_addr ? coerce_addr : decl->backend_ref;
 
 			// Store it in the lo position.
 			llvm_store_to_ptr_raw_aligned(c, addr, llvm_get_next_param(c, index), decl_alignment);
 
-			// Calculate the address
+			// Calculate the address.
 			addr = llvm_emit_pointer_inbounds_gep_raw(c, addr, LLVMConstInt(c->size_type, hi_offset / hi_aligned_size, false), llvm_abi_size(c, hi));
 
-			// Store it in the hi location
+			// Store it in the hi position.
 			llvm_store_to_ptr_raw_aligned(c, addr, llvm_get_next_param(c, index), type_min_alignment(decl_alignment, hi_offset));
+
+			if (coerce_addr)
+			{
+				llvm_emit_memcpy(c, decl->backend_ref, decl_alignment, coerce_addr, decl_alignment, type_size(decl->type));
+			}
 			return;
 		}
 		case ABI_ARG_DIRECT:

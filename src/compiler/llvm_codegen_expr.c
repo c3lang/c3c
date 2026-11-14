@@ -5364,8 +5364,11 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, int *arg_count_ref, 
 			LLVMTypeRef lo = llvm_abi_type(c, info->direct_pair.lo);
 			LLVMTypeRef hi = llvm_abi_type(c, info->direct_pair.hi);
 
-			AlignSize struct_align;
-			LLVMValueRef cast = llvm_emit_coerce_alignment(c, be_value, llvm_abi_alignment(c, struct_type), &struct_align);
+			AlignSize struct_align = llvm_abi_alignment(c, struct_type);
+			ByteSize size = type_size(be_value->type);
+			bool overflow = aligned_offset(llvm_store_size(c, lo), llvm_abi_alignment(c, hi)) + llvm_store_size(c, hi) > size;
+			LLVMValueRef cast = overflow ? llvm_emit_alloca(c, struct_type, struct_align, "coerce") : llvm_emit_coerce_alignment(c, be_value, struct_align, &struct_align);
+			if (overflow) llvm_emit_memcpy(c, cast, struct_align, be_value->value, be_value->alignment, size);
 			// Get the lo value.
 
 			LLVMValueRef lo_ptr = llvm_emit_struct_gep_raw(c, cast, struct_type, 0, struct_align, &alignment);
