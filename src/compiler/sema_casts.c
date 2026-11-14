@@ -2603,18 +2603,14 @@ static void expr_rewrite_bytes_to_const_initializer(Expr *expr, Type *target_typ
 {
 	Type *flat_vec = type_flatten(target_type);
 	Type *base = type_flatten(flat_vec->array.base);
+	Type *elem = type_get_indexed_type(expr->type);
+	bool is_signed = elem && type_is_signed(type_flatten(elem));
 	ConstInitializer **inits = VECNEW(ConstInitializer*, expr->const_expr.bytes.len);
 	for (int i = 0; i < expr->const_expr.bytes.len; i++)
 	{
-		Expr *conv_expr;
-		if (type_is_float(base))
-		{
-			conv_expr = expr_new_const_float(expr->loc, base, (Real)(unsigned char)expr->const_expr.bytes.ptr[i]);
-		}
-		else
-		{
-			conv_expr = expr_new_const_int(expr->loc, base, (unsigned char)expr->const_expr.bytes.ptr[i]);
-		}
+		char c = expr->const_expr.bytes.ptr[i];
+		Expr *conv_expr = expr_new_const_int(expr->loc, is_signed ? type_ichar : type_char, is_signed ? (uint64_t)(int8_t)c : (uint8_t)c);
+		cast_no_check(conv_expr, base, false);
 
 		ConstInitializer *init = const_init_new_value(conv_expr);
 		vec_add(inits, init);

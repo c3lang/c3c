@@ -639,10 +639,9 @@ INLINE BinaryOp operator_from_builtin(BuiltinFunction fn)
 bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 {
 	expr->call_expr.is_builtin = true;
-	expr->call_expr.arguments = sema_expand_vasplat_exprs(context, expr->call_expr.arguments, NULL);
-
-	BuiltinFunction func = exprptr(expr->call_expr.function)->builtin_expr.builtin;
+	if (!sema_expand_vasplat_exprs(context, &expr->call_expr.arguments, NULL)) return false;
 	Expr **args = expr->call_expr.arguments;
+	BuiltinFunction func = exprptr(expr->call_expr.function)->builtin_expr.builtin;
 	int arg_count = vec_size(args);
 	int expected_args = builtin_expected_args(func);
 	bool expect_vararg = false;

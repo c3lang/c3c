@@ -1421,7 +1421,7 @@ static inline bool sema_analyse_for_cond(SemaContext *context, ExprId *cond_ref,
 	// If this is const true, then set this to infinite and remove the expression.
 	if (result == COND_TRUE)
 	{
-		if (cond->expr_kind != EXPR_COND || vec_size(cond->cond_expr) == 1)
+		if (cond->expr_kind != EXPR_COND || (vec_size(cond->cond_expr) == 1 && cond->cond_expr[0]->expr_kind != EXPR_DECL))
 		{
 			cond = NULL;
 		}

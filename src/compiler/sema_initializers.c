@@ -586,13 +586,10 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 	}
 	ASSERT(expr->expr_kind == EXPR_INITIALIZER_LIST);
 
-	// 2. Grab the expressions inside.
+	// 2. Expand, then grab the expressions inside.
+	if (!sema_expand_vasplat_exprs(context, &expr->initializer_list, NULL)) return false;
 	Expr **init_expressions = expr->initializer_list;
 
-	if (init_expressions)
-	{
-		expr->initializer_list = init_expressions = sema_expand_vasplat_exprs(context, init_expressions, NULL);
-	}
 	int init_expression_count = vec_size(init_expressions);
 
 	// 3. Zero size init will initialize to empty.
