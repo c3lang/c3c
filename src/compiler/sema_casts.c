@@ -2207,8 +2207,8 @@ static void cast_vec_to_vec(Expr *expr, Type *to_type)
 	{
 		// Extract indexed types.
 		Type *from_type = type_flatten(expr->type);
-		Type *from_element = from_type->array.base;
-		Type *to_element = type_flatten(to_type)->array.base;
+		Type *from_element = type_flatten(from_type->array.base);
+		Type *to_element = type_flatten(type_flatten(to_type)->array.base);
 
 		// float vec -> float/int/bool vec
 		if (type_is_float(from_element))
@@ -2280,7 +2280,7 @@ static void cast_vec_to_vec(Expr *expr, Type *to_type)
 				}
 				case TYPE_ENUM:
 				case ALL_INTS:
-					expr_rewrite_ext_trunc(expr, to_type, type_is_signed_any(type_flatten_to_int(expr->type)));
+					expr_rewrite_ext_trunc(expr, to_type, type_is_signed(from_element));
 					return;
 				case TYPE_POINTER:
 				case TYPE_FUNC_PTR:
@@ -2625,7 +2625,7 @@ static void cast_slice_to_vec(Expr *expr, Type *to_type)
 {
 	Type *flat = type_flatten(to_type);
 	Type *base = type_get_indexed_type(expr->type);
-	if (type_flatten(base) != type_flatten(flat->array.base))
+	if (base->canonical != flat->array.base->canonical)
 	{
 		cast_slice_to_vec(expr, type_get_vector(base, flat->type_kind, flat->array.len));
 		cast_no_check(expr, to_type, false);
@@ -2689,8 +2689,8 @@ static void cast_ptr_to_infer(Expr *expr, Type *to_type)
  */
 static void cast_arr_to_vec(Expr *expr, Type *to_type)
 {
-	Type *index_vec = type_flatten(type_get_indexed_type(to_type));
-	Type *index_arr = type_flatten(type_get_indexed_type(expr->type));
+	Type *index_vec = type_get_indexed_type(to_type)->canonical;
+	Type *index_arr = type_get_indexed_type(expr->type)->canonical;
 	Type *to_temp = index_vec == index_arr ? to_type : type_get_vector(index_arr, type_flatten(to_type)->type_kind, type_flatten(expr->type)->array.len);
 	if (sema_cast_const(expr))
 	{

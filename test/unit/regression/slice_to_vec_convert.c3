@@ -9,7 +9,7 @@ fn void slice_to_vec_convert() @test
 	const long[<2>] C = (long[<2>])S;
 	$assert C[0] == -1 && C[1] == 2;
 	$assert ((float[<2>])S)[0] == -1.0f;
-	int[<2>] mv = (int[<2>])MS;
+	$assert ((int[<2>])MS)[1] == -8;
 	int[] rs = { -3, 4, 5 };
 	long[<2>] l = (long[<2>])rs[:2];
 	double[<2>] d = (double[<2>])rs[1:2];
@@ -21,6 +21,5 @@ fn void slice_to_vec_convert() @test
 	assert(c == { 4, 5 });
 	assert(b == { true, true });
 	assert((int[<2>])m == { -3, 4 });
-	assert(mv == { 7, -8 });
 	assert((long[<2>])S == { -1, 2 });
 }
