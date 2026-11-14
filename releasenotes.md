@@ -30,6 +30,7 @@
 - Assignment to a vector element, bitstruct field or swizzle (and a slice, in the C backend) evaluated the LHS before RHS.
 - An early exit, such as `foo()!` on a fault, in a subscript index or on either side of a vector element, bitstruct field, swizzle or slice assignment could crash the compiler.
 - The address of a thread-local variable was incorrectly considered a compile time constant.
+- Indexing a constant byte array always gave a `char`, so an `ichar[*]` element could be 255 and a typedef element type was lost.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.

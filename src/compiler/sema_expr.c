@@ -4746,9 +4746,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 				{
 					// Handle bytes / String
 					if (start_from_end) idx = len - idx;
-					unsigned char c = current_expr->const_expr.bytes.ptr[idx];
-					expr_rewrite_const_int(expr, type_char, c);
-					expr->type = type_char;
+					expr_rewrite_const_byte(expr, lookup.subscript_value_type, (uint8_t)current_expr->const_expr.bytes.ptr[idx]);
 					return true;
 				}
 
@@ -9788,7 +9786,7 @@ static inline bool sema_expr_analyse_deref(SemaContext *context, Expr *expr, boo
 				{
 					RETURN_SEMA_ERROR(inner, "You cannot dereference an empty constant array or slice.");
 				}
-				expr_rewrite_const_int(expr, inner_type, inner->const_expr.bytes.ptr[0]);
+				expr_rewrite_const_byte(expr, inner_type, (uint8_t)inner->const_expr.bytes.ptr[0]);
 				return true;
 
 			}

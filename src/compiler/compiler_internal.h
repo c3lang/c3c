@@ -2671,6 +2671,7 @@ INLINE void expr_rewrite_const_null(Expr *expr, Type *type);
 INLINE void expr_rewrite_const_bool(Expr *expr, Type *type, bool b);
 INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d);
 INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v);
+INLINE void expr_rewrite_const_byte(Expr *expr, Type *type, uint8_t c);
 INLINE void expr_rewrite_const_typeid(Expr *expr, Type *type);
 INLINE void expr_rewrite_const_initializer(Expr *expr, Type *type, ConstInitializer *initializer);
 INLINE void expr_rewrite_const_untyped_list(Expr *expr, Expr **elements);
@@ -4690,6 +4691,11 @@ INLINE void expr_rewrite_const_integer(Expr *expr, Type *type, Int128 i)
 	ASSERT_SPAN(expr, type_kind_is_any_integer(expr->const_expr.ixx.type));
 	expr->const_expr.is_character = false;
 	expr->const_expr.const_kind = CONST_INTEGER;
+}
+
+INLINE void expr_rewrite_const_byte(Expr *expr, Type *type, uint8_t c)
+{
+	expr_rewrite_const_int(expr, type, type_is_signed(type_flatten(type)) ? (uint64_t)(int8_t)c : c);
 }
 
 INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v)
