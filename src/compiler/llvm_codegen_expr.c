@@ -4260,6 +4260,13 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 				break;
 			}
 			llvm_emit_trap_zero(c, rhs_type, rhs_value, PANIC_FN_DIV_ZERO, expr->loc);
+			if (!is_unsigned && !vector_type && type_size(lhs_type) < 4)
+			{
+				LLVMTypeRef int_type = llvm_get_type(c, type_int);
+				val = LLVMBuildSDiv(c->builder, llvm_sext_trunc(c, lhs_value, int_type), llvm_sext_trunc(c, rhs_value, int_type), "sdiv");
+				val = llvm_zext_trunc(c, val, LLVMTypeOf(lhs_value));
+				break;
+			}
 			val = is_unsigned
 				  ? LLVMBuildUDiv(c->builder, lhs_value, rhs_value, "udiv")
 				  : LLVMBuildSDiv(c->builder, lhs_value, rhs_value, "sdiv");
@@ -4271,6 +4278,13 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 				break;
 			}
 			llvm_emit_trap_zero(c, rhs_type, rhs_value, PANIC_FN_REM_ZERO, expr->loc);
+			if (!is_unsigned && !vector_type && type_size(lhs_type) < 4)
+			{
+				LLVMTypeRef int_type = llvm_get_type(c, type_int);
+				val = LLVMBuildSRem(c->builder, llvm_sext_trunc(c, lhs_value, int_type), llvm_sext_trunc(c, rhs_value, int_type), "smod");
+				val = llvm_zext_trunc(c, val, LLVMTypeOf(lhs_value));
+				break;
+			}
 			val = is_unsigned
 				  ? LLVMBuildURem(c->builder, lhs_value, rhs_value, "umod")
 				  : LLVMBuildSRem(c->builder, lhs_value, rhs_value, "smod");

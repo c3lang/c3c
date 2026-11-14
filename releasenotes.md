@@ -54,6 +54,7 @@
 - Splatting a runtime struct or array into `#` parameters or raw varargs of a macro, like `@m(...p)`, crashed the compiler or produced wrong values.
 - Using `void` as an enum associated-value type crashed the compiler instead of reporting an error. #3660
 - `@ensure` checked a returned variable after the function's defers had changed it, instead of the value actually returned.
+- `/=` and `%=` on `ichar` and `short` were not done with integer promotion, so `MIN /= -1` could give different results depending on optimization level.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.
