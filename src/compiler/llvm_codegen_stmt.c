@@ -277,7 +277,6 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 	{
 		llvm_emit_expr(c, &return_value, expr);
 		llvm_value_fold_optional(c, &return_value);
-		c->retval = return_value;
 	}
 
 	POP_CATCH();
@@ -296,6 +295,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 			{
 				llvm_value_rvalue(c, &return_value);
 			}
+			c->retval = return_value;
 		}
 		llvm_emit_statement_chain(c, ast->return_stmt.cleanup);
 	}
