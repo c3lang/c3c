@@ -2,82 +2,46 @@
 
 /*
 
-The C backend has some known issues / potential problems:
+Design:
 
-1. A 64-bit bitstruct write to the top field wipes the other fields. bitstruct W : ulong { uint lo : 0..31; uint hi : 32..63; } then w.lo = 1; w.hi = 2 leaves lo == 0. The mask test is bit_size + start_bit >= 64 where it should be bit_size >= 64. It appears at c_codegen_expr.c:1343 and again at c_codegen_lvalue.c:417.
-(Fixed)
+- Faults jump to c->catch as soon as they appear, as in LLVM. An optional function returns its fault and writes the
+  value through a leading pointer parameter (the LLVM ABI, c_abi_func_create).
+- Sema makes every conversion an expression, so stores (c_emit_store) only copy and assert equal C types. Conversions
+  live in their expressions: EXPR_RVALUE (pointer casts), EXPR_ADDR_CONVERSION, and per cast kind
+  c_emit_scalar_convert / c_emit_reinterpret / c_emit_vec_recast.
+- Under --test the generated C is checked with the C compiler's -fsyntax-only, as LLVM verifies its IR.
 
-2. Signed sat_mul saturates the wrong way. long::min.sat_mul(1000) gives MAX, because c_codegen_builtins.c:251 only looks at b's sign.
-(Fixed needs testing)
+Known issues:
 
-3. float16, bfloat and float128 lower to float/double (c_codegen_type.c:544-548). struct { float16 a, b; } is 4 bytes to c3c but 8 in C, so mem::new_array(Pair, 4) overflows the heap (ASan-confirmed). Half-precision rounding is also lost.
+1. float16, bfloat and float128 lower to float/double. struct { float16 a, b; } is 4 bytes to c3c but 8 in C, so
+   mem::new_array(Pair, 4) overflows the heap (ASan-confirmed). Half-precision rounding is also lost.
 
-4. popcount and clz sign-extend narrow negative ints: popcount((int)-1) gives 64 and clz gives -32.
-sat_shl never saturates: int::max.sat_shl(1) gives -2.
-(Fixed)
+2. @section and @noinline are dropped (verified in the emitted C). @inline, @naked and @noreturn look unhandled.
 
-5. roundeven is mapped to round (c_codegen_builtins.c:29).
-(Fixed)
+3. A zero sized optional value (`Empty? f()`) gets no out pointer in C, while LLVM still passes one, so such a function
+   is not ABI compatible between the backends.
 
-6. $$sysclock is hard-wired to 0, so benchmarks report 0.00 CPU clocks.
-(Fixed)
+4. The "No method" panic of a dynamic call reports the interface method, not the call site: the dispatcher is a shared
+   function without access to the caller's location.
 
-7. $$breakpoint aborts.
-(Fixed)
+5. Code after an operand that always fails is still emitted; LLVM drops the dead block. Only the sema shape of a
+   rethrow of a wildcard optional is handled (EXPR_RETHROW).
 
-8. Stack use-after-scope (ASan-confirmed). Temporaries are declared inside conditional C blocks. int* p = c ? &&5 : &&7; *p dangles, and so do (int[]){…} slices in ternary branches.
-(Fixed)
+6. Remaining type fallbacks: c_ensure_cvalue_var (fallback_type, then int), c_emit_binary_expr (void expression
+   type), c_emit_bitstruct_container (uint container).
 
-9. @finalizer order is reversed (c_codegen_function.c:653-660). LLVM runs priority 1, 2, default. The C build runs default, 2, 1, because it feeds the priority straight into destructor(N).
-(Tested: LLVM also executes default, 2, 1 via atexit LIFO; behavior matches LLVM)
+7. The --test syntax check passes every generated file on one command line; untested against Windows length limits.
 
-10. Null handling differs from LLVM. &((Foo*)null).b yields 0 instead of the field offset (c_codegen_lvalue.c:575). Loads through a null address silently return 0 (:1024).
-(Fixed)
+8. cl.exe: no weak functions (__c3_weak_fn is empty), so std symbols of a static library clash with those of the
+   program. Runtime global initializers rely on __attribute__((constructor)); without it only the entry point's module
+   is initialized. Inline assembly is emitted as GNU extended asm, which cl.exe rejects (#error).
 
-11. Compound-assignment evaluation order differs. arr[idx()] += val() evaluates val() first in C but idx() first in LLVM (c_codegen_expr.c:852).
-(Fixed)
-
-12. goto to an undeclared label. is_opt emits goto __C3_LABEL_n (c_codegen_expr.c:994,1002), but the label is only emitted on the fall-through path (:1236). Shifts, vector ops, float %, slice compares and similar early-return paths skip it. int? r = get(3) << 2; fails. It also hits real stdlib code: std::gfx scale_to_monitor (monitor.scale * (Vec2)size) breaks --strip-unused=no.
-(Fixed cd0f39819)
-
-13. trap-on-wrap is broken. It emits __builtin_add_overflow(a, b, &___var_N) into a variable that is never declared (c_codegen_expr.c:1046). Ordinary stdlib code fails with use of undeclared identifier. The same block is duplicated at :1042-1056, and every check is type_is_signed, so unsigned overflow never traps (LLVM traps it).
-(Fixed)
-
-14. A module containing only an enum with associated values fails to link. c_module_has_live_code (c_codegen.c:373) ignores unit->enums, so no .c is written. The result is undefined: colors__Color__assoc_label.
-(Fixed)
-
-15. Symbol collisions. Modules net_utils and net::utils both mangle to net_utils__init and hit a duplicate-symbol link error (c_codegen.c:14-33, :126-128).
-(Fixed)
-
-16. An absolute -o breaks single-module builds. static-lib, -Oz and --single-module=yes build <objdir>//abs/path.c and fail (c_codegen.c:823). LLVM is fine here.
-(Fixed)
-
-17. Hello world doesn't compile on this clang. It emits typedef void (*f)(...) (c_codegen_type.c:820-827), which needs C23.
-(Fixed by 71485732d)
-
-18. Only four safe_mode_enabled() sites exist, versus 14+ in LLVM. Nothing checks slice ranges, array or slice indexing, null dereference, / or % by zero, or enum ordinal range. Division by zero silently returns 0 on arm64, and on x86 it crashes with SIGFPE and no panic. Panic messages are dropped too, so assert(x, "msg") becomes a bare trap. Contracts and shifts are checked. The unit tests pass because they don't exercise any of this.
-
-19. Unhandled builtins fall into a default: that yields 0 (llrint, llround, atomic inc/dec_wrap, rounding-mode, reverse).
-
-20. @section and @noinline are dropped; I confirmed this by diffing the emitted C against LLVM IR. @inline, @naked and @noreturn also look unhandled.
-
-21. --emit-llvm and --emit-asm print "written" but create empty directories.
-(Fixed)
-
-22. Every temp is declared at function top and again inline. A small function's frame is 944 bytes, about 1.7× LLVM's. nbodies at -O0 takes 5.3s versus 1.4s, with parity at -O2.
-(Fixed)
-
-23 The TCC-only runtime code has bugs, by inspection: unsigned narrow __c3_tcc_sub_overflow never writes *res, and "+r"((uint8_t)desired) isn't an lvalue.
-
-24. Inline assembly (asm { ... }) is emitted as GNU extended inline assembly (__asm__ __volatile__). MSVC (cl.exe) on x64/ARM64 does not support inline assembly, so compiling code with inline asm under cl.exe triggers a compile-time #error. Use clang-cl, gcc, or LLVM when inline assembly is needed.
-
+9. TCC and cl.exe lower int128 to 64 bits. The TCC-only runtime code has bugs, by inspection: unsigned narrow
+   __c3_tcc_sub_overflow never writes *res, and "+r"((uint8_t)desired) isn't an lvalue.
 */
 
 static HTable c_decl_name_cache;
-static HTable c_shared_gen_decl;
-static HTable c_shared_gen_def;
-static HTable c_shared_decl_names;
-static HTable c_shared_emitted_global_decls;
+static HTable c_positional_name_owner;
 
 const char *c_intern(const char *str)
 {
@@ -175,10 +139,58 @@ const char *c_get_decl_asm_name(Decl *decl)
 	return NULL;
 }
 
+// Export / import attributes LLVM sets on the symbol: wasm-import-name / wasm-import-module on extern functions and
+// wasm-export-name on exported functions defined here (llvm_emit_function_decl), DLL export of exported symbols on
+// Windows without a .def file (llvm_set_decl_linkage). Empty when none apply.
+const char *c_decl_export_attrs(Decl *decl, bool is_definition)
+{
+	const char *attrs = "";
+	bool is_wasm_fn   = arch_is_wasm(compiler.platform.arch) && decl->decl_kind == DECL_FUNC;
+	if (is_wasm_fn && (decl->is_extern || (decl->is_export && is_definition)))
+	{
+		scratch_buffer_push();
+		scratch_buffer_set_extern_decl_name(decl, true);
+		const char *name = scratch_buffer_copy();
+		scratch_buffer_pop();
+		const char *module = decl->attrs_resolved ? decl->attrs_resolved->wasm_module : NULL;
+		if (!decl->is_extern)
+		{
+			attrs = str_printf("__attribute__((export_name(\"%s\"))) ", name);
+		}
+		else if (module)
+		{
+			attrs = str_printf("__attribute__((import_name(\"%s\"), import_module(\"%s\"))) ", name, module);
+		}
+		else
+		{
+			attrs = str_printf("__attribute__((import_name(\"%s\"))) ", name);
+		}
+	}
+	if (compiler.platform.os == OS_TYPE_WIN32 && decl->is_export && !decl->is_extern && !compiler.build.win.def
+	    && decl->name != kw_main && decl->name != kw_mainstub
+	    && !(decl->decl_kind == DECL_VAR && decl->var.is_static))
+	{
+		attrs = str_printf("%s__declspec(dllexport) ", attrs);
+	}
+	return attrs;
+}
+
 bool c_decl_needs_asm_label(Decl *decl)
 {
 	const char *asm_name = c_get_decl_asm_name(decl);
 	return asm_name && (c_decl_has_asm_name(decl) || c_is_builtin_symbol_collision(asm_name));
+}
+
+// Macro copies share a source position; suffix later ones with _2, _3, ...
+static const char *c_unique_positional_name(const char *name, Decl *decl)
+{
+	const char *candidate = name;
+	for (unsigned i = 2; htable_get(&c_positional_name_owner, (void *)candidate); i++)
+	{
+		candidate = c_intern(str_printf("%s_%u", name, i));
+	}
+	htable_set(&c_positional_name_owner, (void *)candidate, decl);
+	return candidate;
 }
 
 static const char *c_compute_decl_name(Decl *decl)
@@ -202,7 +214,13 @@ static const char *c_compute_decl_name(Decl *decl)
 
 	if (!decl->name || decl->name[0] == '$')
 	{
-		return c_intern(str_printf("__c3_anon_%u", (unsigned)declid(decl)));
+		scratch_buffer_push();
+		scratch_buffer_clear();
+		scratch_buffer_append("__c3_anon");
+		scratch_buffer_append_decl_pos(decl);
+		const char *anon = scratch_buffer_copy();
+		scratch_buffer_pop();
+		return c_unique_positional_name(c_sanitize_name(anon), decl);
 	}
 
 	if (decl->has_extname && decl->extname)
@@ -216,10 +234,11 @@ static const char *c_compute_decl_name(Decl *decl)
 	}
 
 	scratch_buffer_push();
-	scratch_buffer_set_extern_decl_name(decl, true);
+	bool positional = scratch_buffer_set_stable_extern_decl_name(decl, true);
 	char *str = scratch_buffer_copy();
 	scratch_buffer_pop();
-	return c_check_collision(c_sanitize_name(str));
+	const char *name = c_check_collision(c_sanitize_name(str));
+	return positional ? c_unique_positional_name(name, decl) : name;
 }
 
 const char *c_get_decl_name(Decl *decl)
@@ -332,53 +351,146 @@ void c_emit_string_literal(GenContext *c, const char *bytes, ArrayIndex len)
 	PRINT("\"");
 }
 
+static void c_emit_string_slice(GenContext *c, const char *str)
+{
+	PRINTF("(%s){(uint8_t*)", c_type_name(c, type_get_slice(type_char)));
+	c_emit_string_literal(c, str, (ArrayIndex)strlen(str));
+	PRINTF(", %zu}", strlen(str));
+}
+
+// Call the panic function then abort. `args` is a C expression for an `any*` holding `arg_count` format arguments.
+static void c_emit_panic_call(GenContext *c, const char *summary, SourceLocId loc, const char *format, const char *args, int arg_count)
+{
+	SourceLoc *location  = sourcelocptrzero(loc);
+	bool use_location    = panic_use_location();
+	File *file           = source_file_by_id(location ? location->file_id : 0);
+	const char *funcname = c->cur_func_name ? c->cur_func_name : (c->cur_func_decl ? c->cur_func_decl->name : "");
+	const char *panic_name = c_get_decl_name(compiler.context.panic_var);
+	c_emit_global_decl(c, compiler.context.panic_var);
+	const char *str_slice  = c_type_name(c, type_get_slice(type_char));
+	const char *any_slice  = c_type_name(c, type_get_slice(type_any));
+	PRINTF("if (%s) { ((void (*)(%s, %s, %s, int32_t, %s, %s))%s)(", panic_name, str_slice, str_slice, str_slice, str_slice, any_slice, panic_name);
+	c_emit_string_slice(c, summary);
+	PRINT(", ");
+	c_emit_string_slice(c, use_location && file ? file->name : "");
+	PRINT(", ");
+	c_emit_string_slice(c, use_location ? funcname : "");
+	PRINTF(", %u, ", use_location && location ? location->row : 0);
+	if (format)
+	{
+		c_emit_string_slice(c, format);
+		PRINTF(", (%s){ .ptr = %s, .len = %d }); } __c3_abort();\n", any_slice, args, arg_count);
+		return;
+	}
+	PRINTF("(%s){0}, (%s){0}); } __c3_abort();\n", str_slice, any_slice);
+}
+
+// Panic with a user message, optionally formatted with `args`.
 void c_emit_panic(GenContext *c, const char *message, SourceLocId loc, Expr **args)
 {
-	Decl *panic_var = compiler.context.panic_var;
-	if (no_panic() || !panic_var)
+	if (no_panic() || !compiler.context.panic_var)
 	{
 		PRINT("__c3_abort();\n");
 		return;
 	}
-
-	SourceLoc *location = sourcelocptrzero(loc);
-	File *file = source_file_by_id(location ? location->file_id : 0);
-	const char *filename = file ? file->name : "";
-	const char *funcname = c->cur_func_name ? c->cur_func_name : (c->cur_func_decl ? c->cur_func_decl->name : "");
-	uint32_t line = location ? location->row : 0;
-
 	int num_args = vec_size(args);
-	const char *summary = num_args ? panic_fn_desc[PANIC_FN_ASSERT_VIOLATION].format : (message ? message : "");
-	VariableId arr_var = 0;
-	if (num_args)
+	if (!num_args)
 	{
-		arr_var = c_emit_alloca_array(c, type_any, num_args);
-		for (int i = 0; i < num_args; i++)
-		{
-			CValue arg_val = {0};
-			c_emit_expr(c, &arg_val, args[i]);
-			c_value_rvalue(c, &arg_val);
-			char slot[64];
-			snprintf(slot, sizeof(slot), "___var_%d[%d]", arr_var, i);
-			c_emit_assign_to_any(c, slot, &arg_val);
-		}
-	}
-	const char *panic_name = c_get_decl_name(panic_var);
-	PRINTF("if (%s) { ((void (*)(__c3_slice_uint8_t, __c3_slice_uint8_t, __c3_slice_uint8_t, int32_t, __c3_slice_uint8_t, __c3_slice___c3_any__))%s)((__c3_slice_uint8_t){(uint8_t*)", panic_name, panic_name);
-	c_emit_string_literal(c, summary, (ArrayIndex)strlen(summary));
-	PRINTF(", %zu}, (__c3_slice_uint8_t){(uint8_t*)", strlen(summary));
-	c_emit_string_literal(c, filename, (ArrayIndex)strlen(filename));
-	PRINTF(", %zu}, (__c3_slice_uint8_t){(uint8_t*)", strlen(filename));
-	c_emit_string_literal(c, funcname, (ArrayIndex)strlen(funcname));
-	PRINTF(", %zu}, %u, ", strlen(funcname), line);
-	if (num_args)
-	{
-		PRINT("(__c3_slice_uint8_t){(uint8_t*)");
-		c_emit_string_literal(c, message, (ArrayIndex)strlen(message));
-		PRINTF(", %zu}, (__c3_slice___c3_any__){ .ptr = ___var_%d, .len = %d }); } __c3_abort();\n", strlen(message), arr_var, num_args);
+		c_emit_panic_call(c, message ? message : "", loc, NULL, NULL, 0);
 		return;
 	}
-	PRINT("(__c3_slice_uint8_t){0}, (__c3_slice___c3_any__){0}); } __c3_abort();\n");
+	VariableId arr_var = c_emit_alloca_array(c, type_any, num_args);
+	for (int i = 0; i < num_args; i++)
+	{
+		CValue arg_val = {0};
+		c_emit_expr(c, &arg_val, args[i]);
+		c_value_rvalue(c, &arg_val);
+		// The typeid comes from the type as written, not the lowered one, so that e.g. a String prints as text.
+		if (arg_val.kind != CV_ADDRESS) c_value_addr(c, &arg_val);
+		PRINTF("___var_%d[%d] = (__c3_any__){ .ptr = (void*)&___var_%d, .typeid = (c3typeid_t)&%s };\n",
+		       arr_var, i, arg_val.var, c_typeid_ref(c, type_no_optional(args[i]->type)));
+	}
+	c_emit_panic_call(c, panic_fn_desc[PANIC_FN_ASSERT_VIOLATION].format, loc, message, str_printf("___var_%d", arr_var), num_args);
+}
+
+// Integers are widened to 64 bits when passed to a panic, as the LLVM backend does.
+static Type *c_panic_value_type(Type *type)
+{
+	type = c_safe_type_lower(type);
+	if (!type_is_integer(type) || type_bit_size(type) > 64) return type;
+	return type_is_unsigned(type) ? type_ulong : type_long;
+}
+
+// Emit a compiler generated panic. `texts` and `values` hold the counts given by `panic_fn_desc[id]`.
+void c_emit_panic_fn(GenContext *c, PanicFunction id, SourceLocId loc, const char **texts, CPanicValue *values)
+{
+	if (no_panic() || !compiler.context.panic_var)
+	{
+		PRINT("__c3_abort();\n");
+		return;
+	}
+	const PanicFunctionDescriptor *info = &panic_fn_desc[id];
+	int text_count  = panic_fn_text_count(id);
+	int value_count = panic_fn_value_count(id);
+	if (id == PANIC_FN_MESSAGE)
+	{
+		c_emit_panic_call(c, texts[0], loc, NULL, NULL, 0);
+		return;
+	}
+	if (text_count + value_count == 0)
+	{
+		c_emit_panic_call(c, info->summary ? info->summary : info->format, loc, NULL, NULL, 0);
+		return;
+	}
+	// The format takes the first value, then the texts, then the remaining values.
+	PRINT("{\n");
+	const char *typeids[PANIC_FN_MAX_TEXTS + PANIC_FN_MAX_VALUES];
+	int count = 0;
+	for (int i = 0; i < value_count; i++)
+	{
+		if (i == 1)
+		{
+			for (int j = 0; j < text_count; j++)
+			{
+				PRINTF("%s __c3_panic_arg%d = ", c_type_name(c, type_get_slice(type_char)), count);
+				c_emit_string_slice(c, texts[j]);
+				PRINT(";\n");
+				typeids[count++] = c_typeid_ref(c, type_string);
+			}
+		}
+		Type *type = c_panic_value_type(values[i].type);
+		PRINTF("%s __c3_panic_arg%d = (%s)(%s);\n", c_type_name(c, type), count, c_type_name(c, type), values[i].expr);
+		typeids[count++] = c_typeid_ref(c, type);
+	}
+	if (value_count <= 1)
+	{
+		for (int j = 0; j < text_count; j++)
+		{
+			PRINTF("%s __c3_panic_arg%d = ", c_type_name(c, type_get_slice(type_char)), count);
+			c_emit_string_slice(c, texts[j]);
+			PRINT(";\n");
+			typeids[count++] = c_typeid_ref(c, type_string);
+		}
+	}
+	PRINTF("__c3_any__ __c3_panic_args[%d] = {", count);
+	for (int i = 0; i < count; i++)
+	{
+		PRINTF("%s{ .ptr = (void*)&__c3_panic_arg%d, .typeid = (c3typeid_t)&%s }", i ? ", " : " ", i, typeids[i]);
+	}
+	PRINT(" };\n");
+	c_emit_panic_call(c, info->summary, loc, info->format, "__c3_panic_args", count);
+	PRINT("}\n");
+}
+
+// Emit a panic taken when the C expression `cond` is true.
+void c_emit_panic_if(GenContext *c, const char *cond, PanicFunction id, SourceLocId loc, const char *text, CPanicValue *value_1, CPanicValue *value_2)
+{
+	CPanicValue values[2];
+	if (value_1) values[0] = *value_1;
+	if (value_2) values[1] = *value_2;
+	PRINTF("if (__builtin_expect(!!(%s), 0)) {\n", cond);
+	c_emit_panic_fn(c, id, loc, &text, values);
+	PRINT("}\n");
 }
 
 static void c_traverse_decl(GenContext *c, Decl *d, CDeclVisitor visitor, void *userdata)
@@ -420,7 +532,12 @@ static void c_traverse_decl(GenContext *c, Decl *d, CDeclVisitor visitor, void *
 	{
 		return;
 	}
-	if (d->is_template || !c_decl_is_live(d))
+	if (d->is_template)
+	{
+		return;
+	}
+	// A method of an interface that is itself unused can still be called through an interface inheriting from it.
+	if (!c_decl_is_live(d) && !(c->traverse_unused_interfaces && d->decl_kind == DECL_INTERFACE))
 	{
 		return;
 	}
@@ -574,102 +691,12 @@ static bool c_module_has_live_code(Module *module)
 	return false;
 }
 
-static void c_emit_decl_types(GenContext *c, Decl *d, bool forward_decl)
+// Libraries named by @link on used declarations.
+static void visit_links(GenContext *c, Decl *d, void *ud)
 {
-	bool (*emit_fn)(GenContext *, Type *) = forward_decl ? c_emit_type_forward_decl : c_emit_type_decl;
-	Type *dt = c_decl_type(d);
-	if (is_valid_type_ptr(dt) && dt->type_kind != TYPE_POISONED)
-	{
-		emit_fn(c, dt);
-	}
-	if (d->decl_kind != DECL_FUNC)
-	{
-		return;
-	}
-	Type *rtype = typeget(d->func_decl.signature.rtype);
-	if (is_valid_type_ptr(rtype) && rtype->type_kind != TYPE_POISONED)
-	{
-		emit_fn(c, rtype);
-	}
-	FOREACH(Decl *, p, d->func_decl.signature.params)
-	{
-		Type *ptype = c_decl_type(p);
-		if (is_valid_type_ptr(ptype) && ptype->type_kind != TYPE_POISONED)
-		{
-			emit_fn(c, ptype);
-		}
-	}
-}
-
-static void visit_forward_decl(GenContext *c, Decl *d, void *ud)
-{
-	(void)ud;
-	c_emit_decl_types(c, d, true);
-}
-
-static void visit_type_decl(GenContext *c, Decl *d, void *ud)
-{
-	(void)ud;
-	c_emit_decl_types(c, d, false);
-}
-
-static void visit_fn_prototype(GenContext *c, Decl *d, void *ud)
-{
-	(void)ud;
-	if (d->decl_kind != DECL_FUNC)
-	{
-		return;
-	}
-	decl_append_links_to_global_during_codegen(d);
-	bool is_current = (!c->current_module || (d->unit && d->unit->module == c->current_module));
-	c_emit_function_decl(c, d, is_current);
-}
-
-static void visit_dynamic_dispatcher(GenContext *c, Decl *d, void *ud)
-{
-	(void)ud;
-	if (d->decl_kind == DECL_INTERFACE && d->interface_methods)
-	{
-		FOREACH(Decl *, im, d->interface_methods)
-		{
-			c_emit_dynamic_dispatcher(c, im);
-		}
-	}
-}
-
-static void visit_global_forward_decl(GenContext *c, Decl *d, void *ud)
-{
+	(void)c;
 	(void)ud;
 	decl_append_links_to_global_during_codegen(d);
-	if (d->decl_kind == DECL_VAR && c_is_file_global(d))
-	{
-		c_emit_global_decl(c, d);
-		return;
-	}
-	if (d->decl_kind == DECL_ENUM && d->enums.parameters && d->enums.values)
-	{
-		int num_values = vec_size(d->enums.values);
-		if (num_values == 0)
-		{
-			return;
-		}
-		FOREACH(Decl *, p, d->enums.parameters)
-		{
-			if (!p || !p->name)
-			{
-				continue;
-			}
-			const char *arr_name = c_get_enum_assoc_name(d, p);
-			if (htable_get(c->emitted_global_decls, (void *)arr_name))
-			{
-				continue;
-			}
-			htable_set(c->emitted_global_decls, (void *)arr_name, (void *)1);
-			Type *ptype = p->type ? c_safe_type_lower(p->type) : type_int;
-			c_emit_type_forward_decl(c, ptype);
-			PRINTF("extern const %s %s[%d];\n", c_type_name(c, ptype), arr_name, num_values);
-		}
-	}
 }
 
 static void visit_global_def(GenContext *c, Decl *d, void *ud)
@@ -722,83 +749,24 @@ static void visit_global_def(GenContext *c, Decl *d, void *ud)
 	}
 }
 
-static void c_emit_shared_header(const char *dir)
+static bool c_function_def_is_emitted(Decl *decl, bool only_used)
 {
-	const char *h_filename = file_append_path(dir, "__c3_shared.h");
-	FILE *f                = fopen(h_filename, "wb");
-	if (!f)
-	{
-		error_exit("Failed to open output shared header '%s'.", h_filename);
-	}
+	if (!decl || !decl->func_decl.body || decl->is_extern || decl->replacement) return false;
+	if (decl_skip_benchtest_function(decl)) return false;
+	return !only_used || decl->is_live;
+}
 
-	GenContext *c = cmalloc(sizeof(GenContext));
-	*c = (GenContext){
-	    .file                 = f,
-	    .current_module       = NULL,
-	    .gen_decl             = &c_shared_gen_decl,
-	    .gen_def              = &c_shared_gen_def,
-	    .decl_names           = &c_shared_decl_names,
-	    .emitted_global_decls = &c_shared_emitted_global_decls,
-	};
-
-	fputs("/* Generated by C3 Compiler (Shared Header) */\n", f);
-	fputs("#ifndef __C3_SHARED_H__\n", f);
-	fputs("#define __C3_SHARED_H__\n\n", f);
-	fputs("#include \"__c3_runtime.h\"\n\n", f);
-
-	fputs("/* TYPE FORWARD DECLARATIONS */\n", f);
-	int type_count = vec_size(compiler.context.type);
-	for (int i = 0; i < type_count; i++)
-	{
-		Type *t = compiler.context.type[i];
-		if (c_type_needs_emission(t))
-		{
-			c_emit_type_forward_decl(c, t);
-		}
-	}
-	c_traverse_all_modules(c, visit_forward_decl, NULL);
-	fputs("\n", f);
-
-	fputs("/* TYPE DEFINITIONS */\n", f);
-	for (int i = 0; i < type_count; i++)
-	{
-		Type *t = compiler.context.type[i];
-		if (c_type_needs_emission(t))
-		{
-			c_emit_type_decl(c, t);
-		}
-	}
-	c_traverse_all_modules(c, visit_type_decl, NULL);
-	fputs("\n", f);
-
-	fputs("/* FUNCTION PROTOTYPES */\n", f);
-	c_traverse_all_modules(c, visit_fn_prototype, NULL);
-	fputs("\n", f);
-
-	fputs("/* DYNAMIC DISPATCHERS */\n", f);
-	c_traverse_all_modules(c, visit_dynamic_dispatcher, NULL);
-	fputs("\n", f);
-
-	fputs("/* GLOBAL FORWARD DECLARATIONS */\n", f);
-	c_traverse_all_modules(c, visit_global_forward_decl, NULL);
-	fputs("\n", f);
-
-	fputs("#endif /* __C3_SHARED_H__ */\n", f);
-	fclose(f);
-	free(c);
+// C allows one prototype per symbol. The file's definitions are declared first, so a symbol defined here gets its
+// definition's signature; a call through an extern declaration of it with another signature casts to that one (as
+// LLVM calls each declaration's own function type).
+static void c_try_declare_function_def(GenContext *c, Decl *decl, bool only_used)
+{
+	if (c_function_def_is_emitted(decl, only_used)) c_emit_function_decl(c, decl, true);
 }
 
 static void c_try_emit_function_def(GenContext *c, Decl *decl, bool only_used)
 {
-	if (!decl || !decl->func_decl.body || decl->is_extern || decl->replacement)
-	{
-		return;
-	}
-	if (decl_skip_benchtest_function(decl)) return;
-	if (only_used && !decl->is_live)
-	{
-		return;
-	}
+	if (!c_function_def_is_emitted(decl, only_used)) return;
 	const char *fname = c_get_decl_name(decl);
 	if (htable_get(&c->emitted_func_defs, (void *)fname))
 	{
@@ -878,6 +846,27 @@ static Decl **c_collect_and_sort_init_functions(void)
 	return init_funcs;
 }
 
+// The functions a file defines, in the order they are emitted.
+static void c_visit_function_defs(GenContext *c, Module **modules, int mod_count, bool only_used,
+                                  void (*visit)(GenContext *, Decl *, bool))
+{
+	for (int m = 0; m < mod_count; m++)
+	{
+		Module *mod = modules[m];
+		if (!mod || !vec_size(mod->units) || (compiler.build.emit_stdlib == EMIT_STDLIB_OFF && module_is_stdlib(mod)))
+		{
+			continue;
+		}
+		FOREACH(CompilationUnit *, unit, mod->units)
+		{
+			FOREACH(Decl *, decl, unit->functions) visit(c, decl, only_used);
+			FOREACH(Decl *, func, unit->lambdas) visit(c, func, only_used);
+			if (unit->main_function && unit->main_function->is_synthetic) visit(c, unit->main_function, only_used);
+			FOREACH(Decl *, decl, unit->methods) visit(c, decl, only_used);
+		}
+	}
+}
+
 static GenContext *c_gen_module(Module *module, int num)
 {
 	(void)num;
@@ -927,21 +916,39 @@ static GenContext *c_gen_module(Module *module, int num)
 	    .object_filename      = object_filename,
 	    .current_module       = module,
 	    .current_block_live   = true,
-	    .gen_decl             = &c_shared_gen_decl,
-	    .gen_def              = &c_shared_gen_def,
-	    .decl_names           = &c_shared_decl_names,
-	    .emitted_global_decls = &c_shared_emitted_global_decls,
+	    .record_types         = true,
 	};
 	htable_init(&c->local_vars, 4096);
 	htable_init(&c->local_fault_vars, 4096);
 	htable_init(&c->declared_vars, 4096);
 	htable_init(&c->emitted_func_defs, 8192);
 	htable_init(&c->emitted_global_defs, 8192);
+	htable_init(&c->gen_decl, 4096);
+	htable_init(&c->gen_def, 4096);
+	htable_init(&c->decl_names, 4096);
+	htable_init(&c->declared_typeids, 1024);
+	htable_init(&c->declared_faults, 256);
+	htable_init(&c->declared_bitstructs, 64);
+	htable_init(&c->emitted_global_decls, 4096);
+	htable_init(&c->used_type_set, 4096);
 
-	fputs("/* Generated by C3 Compiler */\n", f);
-	fputs("#include \"__c3_shared.h\"\n\n", f);
+	ByteBuffer type_decls, type_defs, decls, dispatchers, code;
+	byte_buffer_init(&type_decls, 0);
+	byte_buffer_init(&decls, 0);
+	byte_buffer_init(&type_defs, 0);
+	byte_buffer_init(&dispatchers, 0);
+	byte_buffer_init(&code, 0);
+	c->type_decl_buffer = &type_decls;
+	c->decl_buffer      = &decls;
+	c->dispatch_buffer  = &dispatchers;
+	c->buffer           = &code;
 
-	fputs("/* GLOBALS */\n", f);
+	bool only_used   = strip_unused();
+	Module **modules = module ? &module : compiler.context.module_list;
+	int mod_count    = module ? 1 : vec_size(compiler.context.module_list);
+	c_visit_function_defs(c, modules, mod_count, only_used, c_try_declare_function_def);
+
+	PRINT("/* GLOBALS */\n");
 	if (module)
 	{
 		FOREACH(CompilationUnit *, unit, module->units)
@@ -953,13 +960,7 @@ static GenContext *c_gen_module(Module *module, int num)
 	{
 		c_traverse_all_modules(c, visit_global_def, NULL);
 	}
-	fputs("\n", f);
-
-	fputs("/* FUNCTION BODIES */\n", f);
-	bool only_used = strip_unused();
-
-	Module **modules = module ? &module : compiler.context.module_list;
-	int mod_count    = module ? 1 : vec_size(compiler.context.module_list);
+	PRINT("\n/* FUNCTION BODIES */\n");
 
 	Decl **runtime_inits = NULL;
 	for (int m = 0; m < mod_count; m++)
@@ -1003,11 +1004,9 @@ static GenContext *c_gen_module(Module *module, int num)
 		ByteBuffer *prev_buf = c->buffer;
 		c->buffer            = &body_buf;
 
-		c->current_return_type      = type_void;
-		c->current_macro_ret_var    = 0;
-		c->current_macro_ret_type   = NULL;
-		c->current_macro_fault_var  = 0;
-		c->current_macro_exit_label = 0;
+		c->cur_ret                  = (CRet){0};
+		c->catch                    = NO_CATCH;
+		c->defer_error_var          = NULL;
 		c->current_break_label      = 0;
 		c->current_continue_label   = 0;
 		c->current_block_live       = true;
@@ -1019,27 +1018,20 @@ static GenContext *c_gen_module(Module *module, int num)
 		FOREACH(Decl *, var, runtime_inits)
 		{
 			PRINT("{\n");
+			COptionalAssign assign;
+			c_optional_assign_begin(c, &assign, c_decl_fault_ref(c, var), var->var.init_expr);
 			CValue val = {0};
 			c_emit_expr(c, &val, var->var.init_expr);
 			c_value_rvalue(c, &val);
-			const char *gname = c_get_decl_name(var);
-			Type *gt          = c_decl_type(var);
-			if (c_type_is_aggregate(gt))
-			{
-				const char *src_ref = (val.kind == CV_ADDRESS) ? "(void*)" : "&";
-				PRINTF("__c3_memcpy(&%s, %s___var_%d, sizeof(%s));\n", gname, src_ref, val.var, gname);
-			}
-			else
-			{
-				PRINTF("%s = (%s)___var_%d;\n", gname, c_type_name(c, gt), val.var);
-			}
+			c_emit_store(c, c_get_decl_name(var), c_decl_type(var), &val);
+			c_optional_assign_end(c, &assign);
 			PRINT("}\n");
 		}
 
 		c->buffer = prev_buf;
 
 		PRINT("#if defined(__GNUC__) || defined(__clang__)\n__attribute__((constructor(101)))\n#endif\n");
-		PRINTF("void %s(void) {\n", init_globals_name);
+		PRINTF("static void %s(void) {\n", init_globals_name);
 		PRINT("\tstatic bool initialized = false;\n");
 		PRINT("\tif (initialized) return;\n");
 		PRINT("\tinitialized = true;\n");
@@ -1055,12 +1047,13 @@ static GenContext *c_gen_module(Module *module, int num)
 	}
 	else
 	{
-		PRINTF("void %s(void) {}\n\n", init_globals_name);
+		PRINTF("static void %s(void) {}\n\n", init_globals_name);
 	}
 
 	if (c_has_main_function(modules, mod_count) || compiler.build.single_module == SINGLE_MODULE_ON)
 	{
-		PRINT("void __c3_init_runtime(void) {\n");
+		// Only called by the entry point of this file. Each link unit has its own.
+		PRINT("static void __c3_init_runtime(void) {\n");
 		PRINT("\tstatic bool initialized = false;\n");
 		PRINT("\tif (initialized) return;\n");
 		PRINT("\tinitialized = true;\n");
@@ -1076,35 +1069,28 @@ static GenContext *c_gen_module(Module *module, int num)
 		PRINT("}\n\n");
 	}
 
-	for (int m = 0; m < mod_count; m++)
+	c_visit_function_defs(c, modules, mod_count, only_used, c_try_emit_function_def);
+
+	// The file: type declarations, the types its code names in full, other declarations, dispatchers, code.
+	c->record_types = false;
+	c->buffer       = &type_defs;
+	FOREACH(Type *, t, c->used_types)
 	{
-		Module *mod = modules[m];
-		if (!mod || !vec_size(mod->units) || (compiler.build.emit_stdlib == EMIT_STDLIB_OFF && module_is_stdlib(mod)))
-		{
-			continue;
-		}
-
-		FOREACH(CompilationUnit *, unit, mod->units)
-		{
-			FOREACH(Decl *, decl, unit->functions)
-			{
-				c_try_emit_function_def(c, decl, only_used);
-			}
-			FOREACH(Decl *, func, unit->lambdas)
-			{
-				c_try_emit_function_def(c, func, only_used);
-			}
-			if (unit->main_function && unit->main_function->is_synthetic)
-			{
-				c_try_emit_function_def(c, unit->main_function, only_used);
-			}
-			FOREACH(Decl *, decl, unit->methods)
-			{
-				c_try_emit_function_def(c, decl, only_used);
-			}
-		}
+		c_emit_type_forward_decl(c, t);
+		c_emit_type_decl(c, t);
 	}
-
+	c->buffer           = NULL;
+	c->type_decl_buffer = NULL;
+	c->decl_buffer      = NULL;
+	c->dispatch_buffer  = NULL;
+	fputs("/* Generated by C3 Compiler */\n#include \"__c3_runtime.h\"\n\n", f);
+	ByteBuffer *parts[5] = { &type_decls, &type_defs, &decls, &dispatchers, &code };
+	for (int i = 0; i < 5; i++)
+	{
+		fwrite(parts[i]->bytes.ptr, 1, parts[i]->write_idx, f);
+		byte_buffer_free(parts[i]);
+	}
+	c->c_file_size = (size_t)ftell(f);
 	fclose(f);
 	return c;
 }
@@ -1301,6 +1287,43 @@ static const char *c_backend_build_cflags(const char *cc)
 	return scratch_buffer_copy();
 }
 
+// The C compiler for the target. Only clang takes the target on the command line, any other compiler would silently
+// compile for the host.
+static const char *c_find_target_c_compiler(void)
+{
+	const char *cc = find_c_compiler();
+	if (compiler.build.arch_os_target != default_target && !strstr(cc, "clang") && !strstr(cc, "zig") &&
+	    compiler.platform.os != OS_TYPE_EMSCRIPTEN)
+	{
+		error_exit("Cross compiling with the C backend requires clang, but the C compiler is '%s'. Use '--cc clang' or set C3C_CC.", cc);
+	}
+	return cc;
+}
+
+// --test: the C counterpart of LLVM's IR verification. The generated C is checked by the C compiler that a build
+// would use, with the same flags, without producing objects.
+static void c_syntax_check(GenContext **gen_contexts)
+{
+	const char *cc = c_find_target_c_compiler();
+	bool is_cl     = str_ends_with(cc, "cl.exe");
+	const char *flags = c_backend_build_cflags(cc);
+	const char *cmd   = str_printf("\"%s\" %s %s", cc, is_cl ? "/Zs" : "-fsyntax-only", flags);
+	FOREACH(GenContext *, c, gen_contexts)
+	{
+		cmd = str_printf("%s \"%s\"", cmd, c->c_filename);
+	}
+	if (compiler.build.print_linking) puts(cmd);
+	if (system(cmd) != 0)
+	{
+		error_exit("The generated C failed the syntax check: %s", cmd);
+	}
+}
+
+size_t c_codegen_cost(void *context)
+{
+	return context ? ((GenContext *)context)->c_file_size : 0;
+}
+
 bool c_codegen(void *context, const char **out_name)
 {
 	*out_name = NULL;
@@ -1325,10 +1348,8 @@ void **c_gen(Module **modules, int module_count)
 		return NULL;
 	}
 	htable_init(&c_decl_name_cache, 16384);
-	htable_init(&c_shared_gen_decl, 16384);
-	htable_init(&c_shared_gen_def, 16384);
-	htable_init(&c_shared_decl_names, 8192);
-	htable_init(&c_shared_emitted_global_decls, 8192);
+	htable_init(&c_positional_name_owner, 1024);
+	c_type_names_init();
 	htable_init(&c_needed_typeids, 1024);
 	c_needed_typeids_vec = NULL;
 	c_recording_typeids = true;
@@ -1337,7 +1358,7 @@ void **c_gen(Module **modules, int module_count)
 	scratch_buffer_clear();
 	scratch_buffer_append(dir);
 	dir_make_recursive(scratch_buffer_to_string());
-	c_emit_shared_header(dir);
+	c_traverse_all_modules(&(GenContext){0}, visit_links, NULL);
 
 	bool will_compile = compiler.build.emit_object_files
 		|| compiler.build.type == TARGET_TYPE_EXECUTABLE
@@ -1347,7 +1368,7 @@ void **c_gen(Module **modules, int module_count)
 		|| compiler.build.type == TARGET_TYPE_BENCHMARK;
 	if (will_compile)
 	{
-		c_backend_cc     = find_c_compiler();
+		c_backend_cc     = c_find_target_c_compiler();
 		c_backend_cflags = c_backend_build_cflags(c_backend_cc);
 	}
 	else
@@ -1385,6 +1406,7 @@ void **c_gen(Module **modules, int module_count)
 	{
 		vec_add(gen_contexts, rt);
 	}
+	if (compiler.build.test_output) c_syntax_check(gen_contexts);
 
 	return (void **)gen_contexts;
 }

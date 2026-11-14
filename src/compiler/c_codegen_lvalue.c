@@ -2,12 +2,8 @@
 
 static inline Type *c_flatten_deref(Type *type)
 {
-	if (!type || !is_valid_type_ptr(type))
-	{
-		return NULL;
-	}
 	Type *flat = type_flatten(type);
-	if (flat && flat->type_kind == TYPE_POINTER && flat->pointer && is_valid_type_ptr(flat->pointer))
+	if (flat && flat->type_kind == TYPE_POINTER)
 	{
 		flat = type_flatten(flat->pointer);
 	}
@@ -93,7 +89,7 @@ bool c_is_bitstruct_array(Type *type, Decl **out_decl)
 	{
 		*out_decl = d;
 	}
-	if (d->strukt.container_type && is_valid_type_ptr(d->strukt.container_type->type))
+	if (d->strukt.container_type)
 	{
 		Type *cflat = type_flatten(d->strukt.container_type->type);
 		if (cflat && cflat->type_kind == TYPE_ARRAY)
@@ -192,13 +188,21 @@ void c_get_bitstruct_member_bits(Decl *m, int *out_start_bit, int *out_end_bit)
 	*out_end_bit   = e;
 }
 
-void c_emit_bitstruct_accessors_to_file(FILE *f, Decl *decl)
+// A C expression for the low `bits` bits set, in the width the field is computed in (uint64_t up to 64 bits).
+static const char *c_bit_mask_str(int bits)
+{
+	if (bits > 64) return str_printf("((((__c3_uint128)1) << %d) - 1)", bits);
+	if (bits == 64) return "0xFFFFFFFFFFFFFFFFULL";
+	return str_printf("0x%" PRIx64 "ULL", ((uint64_t)1 << bits) - 1);
+}
+
+static void c_emit_bitstruct_accessors(GenContext *c, Decl *decl)
 {
 	if (!decl || decl->decl_kind != DECL_BITSTRUCT || !decl->strukt.members)
 	{
 		return;
 	}
-	if (!decl->strukt.container_type || !is_valid_type_ptr(decl->strukt.container_type->type))
+	if (!decl->strukt.container_type)
 	{
 		return;
 	}
@@ -233,10 +237,10 @@ void c_emit_bitstruct_accessors_to_file(FILE *f, Decl *decl)
 		bool is_signed         = type_is_signed(m_type);
 		const char *shift_type = (bit_size > 64) ? "__c3_uint128" : "uint64_t";
 
-		fprintf(f, "static inline %s %s_get_%s(const void *p) {\n", ret_tname, bs_name, m_name);
+		PRINTF("static inline %s %s_get_%s(const void *p) {\n", ret_tname, bs_name, m_name);
 		if (is_array)
 		{
-			fputs("\tconst uint8_t *b = (const uint8_t *)p;\n", f);
+			PRINT("\tconst uint8_t *b = (const uint8_t *)p;\n");
 			char expr_buf[2048];
 			expr_buf[0]    = '\0';
 			int term_count = 0;
@@ -286,70 +290,69 @@ void c_emit_bitstruct_accessors_to_file(FILE *f, Decl *decl)
 			{
 				strcpy(expr_buf, "0");
 			}
-			if (is_signed && bit_size < 64)
+			if (is_signed && bit_size < 128)
 			{
-				fprintf(f, "\tuint64_t res = %s;\n", expr_buf);
-				fprintf(f, "\tif (res & (1ULL << %d)) res |= ~((1ULL << %d) - 1);\n", bit_size - 1, bit_size);
-				fprintf(f, "\treturn (%s)res;\n", ret_tname);
+				PRINTF("\t%s res = %s;\n", shift_type, expr_buf);
+				PRINTF("\tif (res & ((%s)1 << %d)) res |= ~(((%s)1 << %d) - 1);\n", shift_type, bit_size - 1, shift_type, bit_size);
+				PRINTF("\treturn (%s)res;\n", ret_tname);
 			}
 			else
 			{
-				fprintf(f, "\treturn (%s)(%s);\n", ret_tname, expr_buf);
+				PRINTF("\treturn (%s)(%s);\n", ret_tname, expr_buf);
 			}
 		}
 		else if (type_size(container_type) > 8)
 		{
-			fputs("\t__c3_uint128 v = *(const __c3_uint128 *)p;\n", f);
+			PRINT("\t__c3_uint128 v = *(const __c3_uint128 *)p;\n");
 			if (c_is_bitstruct_requires_byteswap(decl))
 			{
-				fputs("\tv = (((__c3_uint128)__builtin_bswap64((uint64_t)v)) << 64) | ((__c3_uint128)__builtin_bswap64((uint64_t)(v >> 64)));\n", f);
+				PRINT("\tv = (((__c3_uint128)__builtin_bswap64((uint64_t)v)) << 64) | ((__c3_uint128)__builtin_bswap64((uint64_t)(v >> 64)));\n");
 			}
 			if (bit_size >= 128)
 			{
-				fprintf(f, "\treturn (%s)v;\n", ret_tname);
+				PRINTF("\treturn (%s)v;\n", ret_tname);
 			}
 			else
 			{
-				uint64_t mask = (bit_size >= 64) ? ~0ULL : (((uint64_t)1 << bit_size) - 1);
-				fprintf(f, "\tuint64_t res = (uint64_t)((v >> %d) & 0x%" PRIx64 "ULL);\n", start_bit, mask);
-				if (is_signed && bit_size < 64)
+				PRINTF("\t%s res = (%s)((v >> %d) & %s);\n", shift_type, shift_type, start_bit, c_bit_mask_str(bit_size));
+				if (is_signed)
 				{
-					fprintf(f, "\tif (res & (1ULL << %d)) res |= ~0x%" PRIx64 "ULL;\n", bit_size - 1, mask);
+					PRINTF("\tif (res & ((%s)1 << %d)) res |= ~(%s)%s;\n", shift_type, bit_size - 1, shift_type, c_bit_mask_str(bit_size));
 				}
-				fprintf(f, "\treturn (%s)res;\n", ret_tname);
+				PRINTF("\treturn (%s)res;\n", ret_tname);
 			}
 		}
 		else
 		{
 			const char *c_tname = c_type_name(NULL, container_type);
 			uint64_t mask       = (bit_size >= 64) ? ~0ULL : (((uint64_t)1 << bit_size) - 1);
-			fprintf(f, "\tuint64_t v = (uint64_t)*(const %s *)p;\n", c_tname);
+			PRINTF("\tuint64_t v = (uint64_t)*(const %s *)p;\n", c_tname);
 			if (c_is_bitstruct_requires_byteswap(decl))
 			{
-				fprintf(f, "\tif (sizeof(%s) == 2) v = __builtin_bswap16((uint16_t)v);\n", c_tname);
-				fprintf(f, "\telse if (sizeof(%s) == 4) v = __builtin_bswap32((uint32_t)v);\n", c_tname);
-				fprintf(f, "\telse if (sizeof(%s) == 8) v = __builtin_bswap64((uint64_t)v);\n", c_tname);
+				PRINTF("\tif (sizeof(%s) == 2) v = __builtin_bswap16((uint16_t)v);\n", c_tname);
+				PRINTF("\telse if (sizeof(%s) == 4) v = __builtin_bswap32((uint32_t)v);\n", c_tname);
+				PRINTF("\telse if (sizeof(%s) == 8) v = __builtin_bswap64((uint64_t)v);\n", c_tname);
 			}
 			if (start_bit == 0)
 			{
-				fprintf(f, "\tuint64_t res = v & 0x%" PRIx64 "ULL;\n", mask);
+				PRINTF("\tuint64_t res = v & 0x%" PRIx64 "ULL;\n", mask);
 			}
 			else
 			{
-				fprintf(f, "\tuint64_t res = (v >> %d) & 0x%" PRIx64 "ULL;\n", start_bit, mask);
+				PRINTF("\tuint64_t res = (v >> %d) & 0x%" PRIx64 "ULL;\n", start_bit, mask);
 			}
 			if (is_signed && bit_size < 64)
 			{
-				fprintf(f, "\tif (res & (1ULL << %d)) res |= ~0x%" PRIx64 "ULL;\n", bit_size - 1, mask);
+				PRINTF("\tif (res & (1ULL << %d)) res |= ~0x%" PRIx64 "ULL;\n", bit_size - 1, mask);
 			}
-			fprintf(f, "\treturn (%s)res;\n", ret_tname);
+			PRINTF("\treturn (%s)res;\n", ret_tname);
 		}
-		fputs("}\n", f);
+		PRINT("}\n");
 
-		fprintf(f, "static inline void %s_set_%s(void *p, %s val) {\n", bs_name, m_name, ret_tname);
+		PRINTF("static inline void %s_set_%s(void *p, %s val) {\n", bs_name, m_name, ret_tname);
 		if (is_array)
 		{
-			fputs("\tuint8_t *b = (uint8_t *)p;\n", f);
+			PRINT("\tuint8_t *b = (uint8_t *)p;\n");
 			for (int bits_done = 0; bits_done < bit_size; )
 			{
 				CBitfieldStep s = c_bitfield_step(start_bit, bit_size, bits_done, reverse);
@@ -357,23 +360,23 @@ void c_emit_bitstruct_accessors_to_file(FILE *f, Decl *decl)
 				{
 					if (s.shift > 0)
 					{
-						fprintf(f, "\tb[%d] = (uint8_t)((%s)val >> %d);\n", s.byte_idx, shift_type, s.shift);
+						PRINTF("\tb[%d] = (uint8_t)((%s)val >> %d);\n", s.byte_idx, shift_type, s.shift);
 					}
 					else
 					{
-						fprintf(f, "\tb[%d] = (uint8_t)val;\n", s.byte_idx);
+						PRINTF("\tb[%d] = (uint8_t)val;\n", s.byte_idx);
 					}
 				}
 				else
 				{
 					if (s.shift > 0)
 					{
-						fprintf(f, "\tb[%d] = (b[%d] & ~0x%02X) | (((uint8_t)((%s)val >> %d) & 0x%02X) << %d);\n",
+						PRINTF("\tb[%d] = (b[%d] & ~0x%02X) | (((uint8_t)((%s)val >> %d) & 0x%02X) << %d);\n",
 						        s.byte_idx, s.byte_idx, s.byte_mask, shift_type, s.shift, s.step_mask, s.bit_in_byte);
 					}
 					else
 					{
-						fprintf(f, "\tb[%d] = (b[%d] & ~0x%02X) | (((uint8_t)val & 0x%02X) << %d);\n",
+						PRINTF("\tb[%d] = (b[%d] & ~0x%02X) | (((uint8_t)val & 0x%02X) << %d);\n",
 						        s.byte_idx, s.byte_idx, s.byte_mask, s.step_mask, s.bit_in_byte);
 					}
 				}
@@ -382,33 +385,31 @@ void c_emit_bitstruct_accessors_to_file(FILE *f, Decl *decl)
 		}
 		else if (type_size(container_type) > 8)
 		{
-			fputs("\t__c3_uint128 *v = (__c3_uint128 *)p;\n", f);
+			PRINT("\t__c3_uint128 *v = (__c3_uint128 *)p;\n");
 			if (c_is_bitstruct_requires_byteswap(decl))
 			{
-				fputs("\t__c3_uint128 _cur = (((__c3_uint128)__builtin_bswap64((uint64_t)*v)) << 64) | ((__c3_uint128)__builtin_bswap64((uint64_t)(*v >> 64)));\n", f);
+				PRINT("\t__c3_uint128 _cur = (((__c3_uint128)__builtin_bswap64((uint64_t)*v)) << 64) | ((__c3_uint128)__builtin_bswap64((uint64_t)(*v >> 64)));\n");
 				if (bit_size >= 128)
 				{
-					fprintf(f, "\t_cur = (__c3_uint128)val;\n");
+					PRINTF("\t_cur = (__c3_uint128)val;\n");
 				}
 				else
 				{
-					uint64_t mask = (bit_size >= 64) ? ~0ULL : (((uint64_t)1 << bit_size) - 1);
-					fprintf(f, "\t__c3_uint128 mask = ((__c3_uint128)0x%" PRIx64 "ULL) << %d;\n", mask, start_bit);
-					fprintf(f, "\t_cur = (_cur & ~mask) | ((((__c3_uint128)val) & 0x%" PRIx64 "ULL) << %d);\n", mask, start_bit);
+					PRINTF("\t__c3_uint128 mask = ((__c3_uint128)%s) << %d;\n", c_bit_mask_str(bit_size), start_bit);
+					PRINTF("\t_cur = (_cur & ~mask) | ((((__c3_uint128)val) & %s) << %d);\n", c_bit_mask_str(bit_size), start_bit);
 				}
-				fputs("\t*v = (((__c3_uint128)__builtin_bswap64((uint64_t)_cur)) << 64) | ((__c3_uint128)__builtin_bswap64((uint64_t)(_cur >> 64)));\n", f);
+				PRINT("\t*v = (((__c3_uint128)__builtin_bswap64((uint64_t)_cur)) << 64) | ((__c3_uint128)__builtin_bswap64((uint64_t)(_cur >> 64)));\n");
 			}
 			else
 			{
 				if (bit_size >= 128)
 				{
-					fprintf(f, "\t*v = (__c3_uint128)val;\n");
+					PRINTF("\t*v = (__c3_uint128)val;\n");
 				}
 				else
 				{
-					uint64_t mask = (bit_size >= 64) ? ~0ULL : (((uint64_t)1 << bit_size) - 1);
-					fprintf(f, "\t__c3_uint128 mask = ((__c3_uint128)0x%" PRIx64 "ULL) << %d;\n", mask, start_bit);
-					fprintf(f, "\t*v = (*v & ~mask) | ((((__c3_uint128)val) & 0x%" PRIx64 "ULL) << %d);\n", mask, start_bit);
+					PRINTF("\t__c3_uint128 mask = ((__c3_uint128)%s) << %d;\n", c_bit_mask_str(bit_size), start_bit);
+					PRINTF("\t*v = (*v & ~mask) | ((((__c3_uint128)val) & %s) << %d);\n", c_bit_mask_str(bit_size), start_bit);
 				}
 			}
 		}
@@ -417,40 +418,50 @@ void c_emit_bitstruct_accessors_to_file(FILE *f, Decl *decl)
 			const char *c_tname   = c_type_name(NULL, container_type);
 			uint64_t mask         = (bit_size >= 64) ? ~0ULL : (((uint64_t)1 << bit_size) - 1);
 			uint64_t shifted_mask = (bit_size >= 64) ? ~0ULL : (mask << start_bit);
-			fprintf(f, "\t%s *v = (%s *)p;\n", c_tname, c_tname);
+			PRINTF("\t%s *v = (%s *)p;\n", c_tname, c_tname);
 			if (c_is_bitstruct_requires_byteswap(decl))
 			{
-				fprintf(f, "\tuint64_t _cur = (uint64_t)*v;\n");
-				fprintf(f, "\tif (sizeof(%s) == 2) _cur = __builtin_bswap16((uint16_t)_cur);\n", c_tname);
-				fprintf(f, "\telse if (sizeof(%s) == 4) _cur = __builtin_bswap32((uint32_t)_cur);\n", c_tname);
-				fprintf(f, "\telse if (sizeof(%s) == 8) _cur = __builtin_bswap64((uint64_t)_cur);\n", c_tname);
+				PRINTF("\tuint64_t _cur = (uint64_t)*v;\n");
+				PRINTF("\tif (sizeof(%s) == 2) _cur = __builtin_bswap16((uint16_t)_cur);\n", c_tname);
+				PRINTF("\telse if (sizeof(%s) == 4) _cur = __builtin_bswap32((uint32_t)_cur);\n", c_tname);
+				PRINTF("\telse if (sizeof(%s) == 8) _cur = __builtin_bswap64((uint64_t)_cur);\n", c_tname);
 				if (start_bit == 0)
 				{
-					fprintf(f, "\t_cur = (_cur & ~0x%" PRIx64 "ULL) | ((uint64_t)(%s)val & 0x%" PRIx64 "ULL);\n", shifted_mask, c_tname, mask);
+					PRINTF("\t_cur = (_cur & ~0x%" PRIx64 "ULL) | ((uint64_t)(%s)val & 0x%" PRIx64 "ULL);\n", shifted_mask, c_tname, mask);
 				}
 				else
 				{
-					fprintf(f, "\t_cur = (_cur & ~0x%" PRIx64 "ULL) | (((uint64_t)(%s)val & 0x%" PRIx64 "ULL) << %d);\n", shifted_mask, c_tname, mask, start_bit);
+					PRINTF("\t_cur = (_cur & ~0x%" PRIx64 "ULL) | (((uint64_t)(%s)val & 0x%" PRIx64 "ULL) << %d);\n", shifted_mask, c_tname, mask, start_bit);
 				}
-				fprintf(f, "\tif (sizeof(%s) == 2) _cur = __builtin_bswap16((uint16_t)_cur);\n", c_tname);
-				fprintf(f, "\telse if (sizeof(%s) == 4) _cur = __builtin_bswap32((uint32_t)_cur);\n", c_tname);
-				fprintf(f, "\telse if (sizeof(%s) == 8) _cur = __builtin_bswap64((uint64_t)_cur);\n", c_tname);
-				fprintf(f, "\t*v = (%s)_cur;\n", c_tname);
+				PRINTF("\tif (sizeof(%s) == 2) _cur = __builtin_bswap16((uint16_t)_cur);\n", c_tname);
+				PRINTF("\telse if (sizeof(%s) == 4) _cur = __builtin_bswap32((uint32_t)_cur);\n", c_tname);
+				PRINTF("\telse if (sizeof(%s) == 8) _cur = __builtin_bswap64((uint64_t)_cur);\n", c_tname);
+				PRINTF("\t*v = (%s)_cur;\n", c_tname);
 			}
 			else
 			{
 				if (start_bit == 0)
 				{
-					fprintf(f, "\t*v = (%s)((*v & ~0x%" PRIx64 "ULL) | ((uint64_t)(%s)val & 0x%" PRIx64 "ULL));\n", c_tname, shifted_mask, c_tname, mask);
+					PRINTF("\t*v = (%s)((*v & ~0x%" PRIx64 "ULL) | ((uint64_t)(%s)val & 0x%" PRIx64 "ULL));\n", c_tname, shifted_mask, c_tname, mask);
 				}
 				else
 				{
-					fprintf(f, "\t*v = (%s)((*v & ~0x%" PRIx64 "ULL) | (((uint64_t)(%s)val & 0x%" PRIx64 "ULL) << %d));\n", c_tname, shifted_mask, c_tname, mask, start_bit);
+					PRINTF("\t*v = (%s)((*v & ~0x%" PRIx64 "ULL) | (((uint64_t)(%s)val & 0x%" PRIx64 "ULL) << %d));\n", c_tname, shifted_mask, c_tname, mask, start_bit);
 				}
 			}
 		}
-		fputs("}\n\n", f);
+		PRINT("}\n\n");
 	}
+}
+
+void c_declare_bitstruct_accessors(GenContext *c, Decl *decl)
+{
+	if (htable_get(&c->declared_bitstructs, decl)) return;
+	ASSERT(c->decl_buffer);
+	htable_set(&c->declared_bitstructs, decl, decl);
+	ByteBuffer *prev = c_decl_stream_enter(c, c->decl_buffer);
+	c_emit_bitstruct_accessors(c, decl);
+	c->buffer = prev;
 }
 
 const char *c_emit_bitstruct_container(GenContext *c, Expr *parent_expr, Decl *member, int *out_container_var, Decl **out_bitstruct_decl)
@@ -489,14 +500,14 @@ const char *c_emit_bitstruct_container(GenContext *c, Expr *parent_expr, Decl *m
 		Type *c_type = type_uint;
 		if (container_decl)
 		{
-			if (container_decl->decl_kind == DECL_BITSTRUCT && container_decl->strukt.container_type && is_valid_type_ptr(container_decl->strukt.container_type->type))
+			if (container_decl->decl_kind == DECL_BITSTRUCT && container_decl->strukt.container_type)
 			{
 				c_type = c_safe_type_lower(container_decl->strukt.container_type->type);
 			}
-			else if (container_decl->type && is_valid_type_ptr(container_decl->type))
+			else
 			{
 				Type *ft = type_flatten(container_decl->type);
-				if (ft->type_kind == TYPE_BITSTRUCT && ft->decl && ft->decl->strukt.container_type && is_valid_type_ptr(ft->decl->strukt.container_type->type))
+				if (ft->type_kind == TYPE_BITSTRUCT && ft->decl && ft->decl->strukt.container_type)
 				{
 					c_type = c_safe_type_lower(ft->decl->strukt.container_type->type);
 				}
@@ -528,14 +539,14 @@ const char *c_emit_bitstruct_container(GenContext *c, Expr *parent_expr, Decl *m
 	Type *c_type = type_uint;
 	if (container_decl)
 	{
-		if (container_decl->decl_kind == DECL_BITSTRUCT && container_decl->strukt.container_type && is_valid_type_ptr(container_decl->strukt.container_type->type))
+		if (container_decl->decl_kind == DECL_BITSTRUCT && container_decl->strukt.container_type)
 		{
 			c_type = c_safe_type_lower(container_decl->strukt.container_type->type);
 		}
-		else if (container_decl->type && is_valid_type_ptr(container_decl->type))
+		else
 		{
 			Type *ft = type_flatten(container_decl->type);
-			if (ft->type_kind == TYPE_BITSTRUCT && ft->decl && ft->decl->strukt.container_type && is_valid_type_ptr(ft->decl->strukt.container_type->type))
+			if (ft->type_kind == TYPE_BITSTRUCT && ft->decl && ft->decl->strukt.container_type)
 			{
 				c_type = c_safe_type_lower(ft->decl->strukt.container_type->type);
 			}
@@ -568,7 +579,7 @@ static void c_emit_struct_member_addr(GenContext *c, const char *tname, int temp
 	{
 		if (member && member->decl_kind == DECL_FUNC)
 		{
-			PRINTF("%s ___var_%d = (%s)&%s;\n", tname, temp, tname, c_get_decl_name(member));
+			PRINTF("%s ___var_%d = (%s)&%s;\n", tname, temp, tname, c_decl_ref(c, member));
 			return;
 		}
 		PRINTF("%s ___var_%d = (%s)___var_%d;\n", tname, temp, tname, ptr_var);
@@ -585,6 +596,7 @@ static void c_emit_struct_member_addr(GenContext *c, const char *tname, int temp
 
 static void c_emit_enum_assoc_access(GenContext *c, Decl *enum_decl, Decl *member, Expr *parent_expr, bool parent_is_ptr, int temp, const char *tname, Type *target_type, bool is_addr)
 {
+	c_emit_enum_assoc_decl(c, enum_decl, member);
 	const char *arr_name = c_get_enum_assoc_name(enum_decl, member);
 	CValue parent_val    = {0};
 	c_emit_expr(c, &parent_val, parent_expr);
@@ -607,9 +619,45 @@ static void c_emit_enum_assoc_access(GenContext *c, Decl *enum_decl, Decl *membe
 	PRINTF("%s ___var_%d = (%s)%s[%s];\n", tname, temp, tname, arr_name, idx_str);
 }
 
+// Panic unless 0 <= index < len, where `len` is a C expression.
+static void c_emit_index_check(GenContext *c, CValue *index, const char *len, SourceLocId loc)
+{
+	Type *index_type      = c_safe_type_lower(index->type);
+	const char *index_str = str_printf("___var_%d", index->var);
+	CPanicValue index_value = { index_str, index_type };
+	CPanicValue len_value   = { len, index_type };
+	if (type_is_signed(index_type))
+	{
+		c_emit_panic_if(c, str_printf("%s < 0", index_str), PANIC_FN_INDEX_NEGATIVE, loc, NULL, &index_value, NULL);
+	}
+	c_emit_panic_if(c, str_printf("(uint64_t)%s >= (uint64_t)(%s)", index_str, len), PANIC_FN_INDEX_BOUNDS, loc, NULL, &len_value, &index_value);
+}
+
+// Panic when dereferencing a null or misaligned pointer.
+static void c_emit_deref_check(GenContext *c, Expr *deref, VariableId ptr_var)
+{
+	Expr *inner = deref->unary_expr.expr;
+	if (!safe_mode_enabled() || expr_is_const(inner)) return;
+	// The address of a variable or an element is known to be valid.
+	if (inner->expr_kind == EXPR_SUBSCRIPT_ADDR) return;
+	if (inner->expr_kind == EXPR_UNARY && (inner->unary_expr.operator == UNARYOP_ADDR || inner->unary_expr.operator == UNARYOP_TADDR)) return;
+	scratch_buffer_clear();
+	loc_to_scratch(inner->loc);
+	const char *text = scratch_buffer_copy();
+	c_emit_panic_if(c, str_printf("___var_%d == NULL", ptr_var), PANIC_FN_NULL_POINTER, inner->loc, text, NULL, NULL);
+	AlignSize alignment = type_abi_alignment(deref->type);
+	if (alignment > 1)
+	{
+		const char *rem = str_printf("((uintptr_t)___var_%d & %uU)", ptr_var, (unsigned)(alignment - 1));
+		CPanicValue align_value = { str_printf("%u", (unsigned)alignment), type_sz };
+		CPanicValue rem_value   = { rem, type_sz };
+		c_emit_panic_if(c, str_printf("%s != 0", rem), PANIC_FN_UNALIGNED, inner->loc, NULL, &align_value, &rem_value);
+	}
+}
+
 void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target_type)
 {
-	target_type = (target_type && is_valid_type_ptr(target_type)) ? c_safe_type_lower(target_type) : type_void;
+	target_type = c_safe_type_lower(target_type);
 	if (target_type->type_kind == TYPE_VOID && expr)
 	{
 		target_type = c_expr_type(expr);
@@ -622,6 +670,7 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 	{
 		target_type = type_voidptr;
 	}
+	ASSERT(c_type_is_c_pointer(target_type));
 	int temp          = c_emit_temp_var(c, out_val, target_type);
 	const char *tname = c_type_name(c, target_type);
 
@@ -647,6 +696,7 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 		c_value_rvalue(c, &ptr_val);
 		if (ptr_val.var != 0)
 		{
+			c_emit_deref_check(c, expr, ptr_val.var);
 			PRINTF("%s ___var_%d = (%s)___var_%d;\n", tname, temp, tname, ptr_val.var);
 		}
 		else
@@ -667,19 +717,10 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 			}
 			if (d->decl_kind == DECL_FUNC)
 			{
-				PRINTF("%s ___var_%d = (%s)&%s;\n", tname, temp, tname, c_get_decl_name(d));
+				PRINTF("%s ___var_%d = (%s)&%s;\n", tname, temp, tname, c_decl_ref(c, d));
 				return;
 			}
-			if (c_is_file_global(d))
-			{
-				c_emit_global_decl(c, d);
-				PRINTF("%s ___var_%d = (%s)&%s;\n", tname, temp, tname, c_get_decl_name(d));
-			}
-			else
-			{
-				VariableId vid = c_get_or_create_decl_var(c, d);
-				PRINTF("%s ___var_%d = (%s)&___var_%d;\n", tname, temp, tname, vid);
-			}
+			PRINTF("%s ___var_%d = (%s)&%s;\n", tname, temp, tname, c_decl_lvalue_str(c, d));
 			return;
 		}
 	}
@@ -712,7 +753,7 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 			c_value_rvalue(c, &parent_val);
 			c_ensure_cvalue_var(c, &parent_val, parent_type);
 
-			Type *base_struct_type = (parent_type->pointer && is_valid_type_ptr(parent_type->pointer)) ? c_safe_type_lower(parent_type->pointer) : type_void;
+			Type *base_struct_type = c_safe_type_lower(parent_type->pointer);
 			if (base_struct_type->type_kind == TYPE_VOID)
 			{
 				base_struct_type = parent_type;
@@ -721,6 +762,7 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 			{
 				if (member && member->decl_kind == DECL_FUNC)
 				{
+					c_emit_dynamic_dispatcher(c, member);
 					const char *disp_resolver = c_intern(str_printf("__c3_dyn_resolve_%s", c_get_decl_name(member)));
 					PRINTF("%s ___var_%d = (%s)%s((c3typeid_t)(((__c3_any__*)___var_%d)->typeid));\n", tname, temp, tname, disp_resolver, parent_val.var);
 					return;
@@ -741,7 +783,7 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 
 			if (member && member->decl_kind == DECL_FUNC)
 			{
-				PRINTF("%s ___var_%d = (%s)&%s;\n", tname, temp, tname, c_get_decl_name(member));
+				PRINTF("%s ___var_%d = (%s)&%s;\n", tname, temp, tname, c_decl_ref(c, member));
 				return;
 			}
 			const char *fname = (member && member->name && strcmp(member->name, "len") == 0) ? "len" : "ptr";
@@ -757,6 +799,7 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 
 			if (member && member->decl_kind == DECL_FUNC)
 			{
+				c_emit_dynamic_dispatcher(c, member);
 				const char *disp_resolver = c_intern(str_printf("__c3_dyn_resolve_%s", c_get_decl_name(member)));
 				PRINTF("%s ___var_%d = (%s)%s((c3typeid_t)___var_%d.typeid);\n", tname, temp, tname, disp_resolver, parent_val.var);
 				return;
@@ -766,7 +809,17 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 			return;
 		}
 		CValue parent_addr = {0};
-		c_emit_lvalue_addr(c, expr->access_resolved_expr.parent, &parent_addr, type_get_ptr(parent_type));
+		Expr *parent       = expr->access_resolved_expr.parent;
+		if (expr_is_deref(parent))
+		{
+			// `p.member` only offsets the pointer, nothing is loaded through `p` here, so there is no deref check.
+			c_emit_expr(c, &parent_addr, parent->unary_expr.expr);
+			c_value_rvalue(c, &parent_addr);
+		}
+		else
+		{
+			c_emit_lvalue_addr(c, parent, &parent_addr, type_get_ptr(parent_type));
+		}
 		c_ensure_cvalue_var(c, &parent_addr, type_get_ptr(parent_type));
 		c_emit_struct_member_addr(c, tname, temp, parent_type, parent_addr.var, member);
 		return;
@@ -774,55 +827,59 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 	if (expr->expr_kind == EXPR_SUBSCRIPT || expr->expr_kind == EXPR_SUBSCRIPT_ADDR)
 	{
 		Expr *parent_expr = exprptr(expr->subscript_expr.expr);
+		Expr *index_expr  = exprptr(expr->subscript_expr.index.expr);
 		Type *parent_type = c_expr_type(parent_expr);
-		CValue index_val  = {0};
-		c_emit_expr(c, &index_val, exprptr(expr->subscript_expr.index.expr));
-		c_value_rvalue(c, &index_val);
-		c_ensure_cvalue_var(c, &index_val, type_sz);
+		bool is_safe      = !expr->subscript_expr.no_check && safe_mode_enabled();
 
+		// Evaluation order is left to right: the parent, then the index.
+		// `base` is the C expression of the first element, `len` the element count where known.
+		const char *base;
+		const char *len = NULL;
 		if (parent_type->type_kind == TYPE_POINTER)
 		{
 			CValue parent_val = {0};
 			c_emit_expr(c, &parent_val, parent_expr);
 			c_value_rvalue(c, &parent_val);
-			Type *pt = (parent_type->pointer && is_valid_type_ptr(parent_type->pointer)) ? c_safe_type_lower(parent_type->pointer) : NULL;
-			if (pt && pt->type_kind != TYPE_VOID)
-			{
-				PRINTF("%s ___var_%d = (%s)(((%s*)___var_%d) + ___var_%d);\n", tname, temp, tname, c_type_name(c, pt), parent_val.var, index_val.var);
-			}
-			else
-			{
-				PRINTF("%s ___var_%d = (%s)(((char*)___var_%d) + (___var_%d * sizeof(*(%s)0)));\n", tname, temp, tname, parent_val.var, index_val.var, tname);
-			}
-			return;
+			Type *pointee = c_safe_type_lower(parent_type->pointer);
+			base = pointee->type_kind == TYPE_VOID ? str_printf("((char*)___var_%d)", parent_val.var)
+			                                       : str_printf("((%s*)___var_%d)", c_type_name(c, pointee), parent_val.var);
 		}
-		if (parent_type->type_kind == TYPE_SLICE)
+		else if (parent_type->type_kind == TYPE_SLICE)
 		{
 			CValue parent_val = {0};
 			c_emit_expr(c, &parent_val, parent_expr);
 			c_value_rvalue(c, &parent_val);
-			if (expr->subscript_expr.index.start_from_end)
-			{
-				PRINTF("%s ___var_%d = (%s)&(___var_%d.ptr[___var_%d.len - ___var_%d]);\n", tname, temp, tname, parent_val.var, parent_val.var, index_val.var);
-			}
-			else
-			{
-				PRINTF("%s ___var_%d = (%s)&(___var_%d.ptr[___var_%d]);\n", tname, temp, tname, parent_val.var, index_val.var);
-			}
-			return;
-		}
-		CValue parent_addr = {0};
-		c_emit_lvalue_addr(c, parent_expr, &parent_addr, type_get_ptr(parent_type));
-		if (expr->subscript_expr.index.start_from_end)
-		{
-			PRINTF("%s ___var_%d = (%s)&(((%s*)___var_%d)->ptr[%llu - ___var_%d]);\n",
-			       tname, temp, tname, c_type_name(c, parent_type), parent_addr.var, (unsigned long long)parent_type->array.len, index_val.var);
+			base = str_printf("___var_%d.ptr", parent_val.var);
+			len  = str_printf("___var_%d.len", parent_val.var);
 		}
 		else
 		{
-			PRINTF("%s ___var_%d = (%s)&(((%s*)___var_%d)->ptr[___var_%d]);\n",
-			       tname, temp, tname, c_type_name(c, parent_type), parent_addr.var, index_val.var);
+			CValue parent_addr = {0};
+			c_emit_lvalue_addr(c, parent_expr, &parent_addr, type_get_ptr(parent_type));
+			base = str_printf("((%s*)___var_%d)->ptr", c_type_name(c, parent_type), parent_addr.var);
+			// A flexible array member has no known length.
+			if (parent_type->type_kind != TYPE_FLEXIBLE_ARRAY) len = str_printf("%lluULL", (unsigned long long)parent_type->array.len);
+			// A constant index into a fixed size array was checked by sema.
+			if (expr_is_const(index_expr)) is_safe = false;
 		}
+
+		CValue index_val = {0};
+		c_emit_expr(c, &index_val, index_expr);
+		c_value_rvalue(c, &index_val);
+		c_ensure_cvalue_var(c, &index_val, type_sz);
+		if (expr->subscript_expr.index.start_from_end)
+		{
+			Type *index_type = c_safe_type_lower(index_val.type);
+			const char *iname = c_type_name(c, index_type);
+			int from_end      = c_emit_temp_var(c, NULL, index_type);
+			PRINTF("%s ___var_%d = (%s)(%s) - ___var_%d;\n", iname, from_end, iname, len, index_val.var);
+			index_val.var = from_end;
+		}
+		if (is_safe && len)
+		{
+			c_emit_index_check(c, &index_val, len, index_expr->loc);
+		}
+		PRINTF("%s ___var_%d = (%s)&(%s[___var_%d]);\n", tname, temp, tname, base, index_val.var);
 		return;
 	}
 
@@ -846,28 +903,33 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 	}
 }
 
-void c_emit_null_deref_check(GenContext *c, Expr *expr, VariableId addr_var)
+const char *c_decl_ref(GenContext *c, Decl *decl)
 {
-	if (!safe_mode_enabled() || addr_var == 0) return;
-	while (expr && (expr->expr_kind == EXPR_RECAST || expr->expr_kind == EXPR_ADDR_CONVERSION || expr->expr_kind == EXPR_RVALUE))
+	if (decl->decl_kind == DECL_FUNC)
 	{
-		expr = expr->inner_expr;
+		c_emit_function_decl(c, decl, false);
 	}
-	if (!expr || expr->expr_kind != EXPR_UNARY || expr->unary_expr.operator != UNARYOP_DEREF) return;
-	if (expr_is_const(expr->unary_expr.expr)) return;
+	else
+	{
+		c_emit_global_decl(c, decl);
+	}
+	return c_get_decl_name(decl);
+}
 
-	PRINTF("if (___var_%d == NULL) { ", addr_var);
-	scratch_buffer_clear();
-	scratch_buffer_append("Dereference of null pointer, '");
-	loc_to_scratch(expr->unary_expr.expr->loc);
-	scratch_buffer_append("' was null.");
-	c_emit_panic(c, scratch_buffer_to_string(), expr->loc, NULL);
-	PRINT("}\n");
+// The C lvalue that holds a variable: the global's name (declared on first use) or the local's ___var_N.
+const char *c_decl_lvalue_str(GenContext *c, Decl *decl)
+{
+	if (c_is_file_global(decl))
+	{
+		c_emit_global_decl(c, decl);
+		return c_get_decl_name(decl);
+	}
+	return str_printf("___var_%d", c_get_or_create_decl_var(c, decl));
 }
 
 void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target_type)
 {
-	target_type = (target_type && is_valid_type_ptr(target_type)) ? c_safe_type_lower(target_type) : type_void;
+	target_type = c_safe_type_lower(target_type);
 	if (target_type->type_kind == TYPE_VOID && expr)
 	{
 		target_type = c_expr_type(expr);
@@ -883,96 +945,24 @@ void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target
 		c_emit_var_zero_init(c, temp, target_type);
 		return;
 	}
-	if (expr->expr_kind == EXPR_RECAST || expr->expr_kind == EXPR_ADDR_CONVERSION || expr->expr_kind == EXPR_RVALUE)
+	switch (expr->expr_kind)
 	{
-		c_emit_expr(c, out_val, expr->inner_expr);
-		c_value_rvalue(c, out_val);
-		if (!c_type_is_aggregate(target_type) && out_val->type &&
-		    (target_type == out_val->type || strcmp(c_type_name(c, target_type), c_type_name(c, out_val->type)) == 0))
-		{
+		case EXPR_RECAST:
+		case EXPR_ADDR_CONVERSION:
+		case EXPR_RVALUE:
+			// The conversion expressions produce their own type.
+		case EXPR_IDENTIFIER:
+		case EXPR_DECL:
+			// Variables are read by the expression emitter (c_emit_identifier_expr, c_emit_local_decl).
+			c_emit_expr(c, out_val, expr);
+			c_value_rvalue(c, out_val);
 			return;
-		}
-		int temp = c_emit_temp_var(c, NULL, target_type);
-		PRINTF("%s ___var_%d;\n", c_type_name(c, target_type), temp);
-		CValue inner_val = *out_val;
-		c_emit_assign_var(c, temp, target_type, &inner_val);
-		*out_val = (CValue){.var = temp, .type = target_type, .kind = CV_VALUE};
-		return;
+		default:
+			break;
 	}
 
 	int temp          = c_emit_temp_var(c, out_val, target_type);
 	const char *tname = c_type_name(c, target_type);
-	if (expr->expr_kind == EXPR_IDENTIFIER || expr->expr_kind == EXPR_DECL)
-	{
-		Decl *decl = (expr->expr_kind == EXPR_DECL) ? expr->decl_expr : c_decl_unwrap(expr->ident_expr);
-		if (decl)
-		{
-			if (decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_PARAM_EXPR && decl->var.init_expr)
-			{
-				c_emit_lvalue_read(c, decl->var.init_expr, out_val, target_type);
-				return;
-			}
-			if (decl->decl_kind == DECL_FUNC)
-			{
-				PRINTF("%s ___var_%d = (void*)&%s;\n", tname, temp, c_get_decl_name(decl));
-				return;
-			}
-			if (decl->decl_kind == DECL_ENUM_CONSTANT)
-			{
-				PRINTF("%s ___var_%d = %d;\n", tname, temp, decl->enum_constant.inner_ordinal);
-				return;
-			}
-			if (decl->decl_kind == DECL_FAULT)
-			{
-				const char *fsym = c_fault_symbol_name(decl);
-				PRINTF("%s ___var_%d = (c3fault_t)%s;\n", tname, temp, fsym);
-				return;
-			}
-			Decl *raw_ident = (expr->expr_kind == EXPR_DECL) ? expr->decl_expr : (expr->ident_expr ? decl_raw(expr->ident_expr) : NULL);
-			if (c_is_file_global(decl))
-			{
-				c_emit_global_decl(c, decl);
-				const char *gname = c_get_decl_name(decl);
-				if (IS_OPTIONAL(decl) && (!raw_ident || raw_ident->var.kind != VARDECL_UNWRAPPED))
-				{
-					out_val->optional = c_emit_capture_current_fault(c);
-				}
-				if (c_type_is_aggregate(target_type))
-				{
-					PRINTF("%s ___var_%d;\n", tname, temp);
-					PRINTF("__c3_memcpy(&___var_%d, &%s, sizeof(%s));\n", temp, gname, gname);
-				}
-				else
-				{
-					PRINTF("%s ___var_%d = %s;\n", tname, temp, gname);
-				}
-			}
-			else
-			{
-				VariableId vid  = c_get_or_create_decl_var(c, decl);
-				VariableId fvid = 0;
-				if (raw_ident && raw_ident->decl_kind == DECL_VAR && raw_ident->var.kind != VARDECL_UNWRAPPED)
-				{
-					fvid = c_get_decl_fault_var(c, decl);
-				}
-				if (fvid != 0)
-				{
-					out_val->optional = fvid;
-					PRINTF("if (___var_%d != NULL && __c3_current_fault == NULL) { __c3_current_fault = ___var_%d; }\n", fvid, fvid);
-				}
-				if (c_type_is_aggregate(target_type))
-				{
-					PRINTF("%s ___var_%d;\n", tname, temp);
-					PRINTF("__c3_memcpy(&___var_%d, &___var_%d, sizeof(___var_%d));\n", temp, vid, vid);
-				}
-				else
-				{
-					PRINTF("%s ___var_%d = ___var_%d;\n", tname, temp, vid);
-				}
-			}
-			return;
-		}
-	}
 
 	if (expr->expr_kind == EXPR_ACCESS_RESOLVED && expr->access_resolved_expr.parent)
 	{
@@ -1007,6 +997,7 @@ void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target
 				CValue parent_val = {0};
 				c_emit_expr(c, &parent_val, expr->access_resolved_expr.parent);
 				c_value_rvalue(c, &parent_val);
+				c_emit_dynamic_dispatcher(c, member);
 				const char *disp_resolver = c_intern(str_printf("__c3_dyn_resolve_%s", c_get_decl_name(member)));
 				if (parent_val.var != 0)
 				{
@@ -1021,7 +1012,7 @@ void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target
 				}
 				return;
 			}
-			PRINTF("%s ___var_%d = (%s)&%s;\n", tname, temp, tname, c_get_decl_name(member));
+			PRINTF("%s ___var_%d = (%s)&%s;\n", tname, temp, tname, c_decl_ref(c, member));
 			return;
 		}
 	}
@@ -1030,22 +1021,6 @@ void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target
 	c_emit_lvalue_addr(c, expr, &addr_val, type_get_ptr(target_type));
 
 	PRINTF("%s ___var_%d;\n", tname, temp);
-	bool is_opt = (expr && expr->type && is_valid_type_ptr(expr->type) && type_is_optional(expr->type));
-	if (is_opt)
-	{
-		PRINTF("if (__c3_current_fault != NULL) {\n");
-		if (c_type_is_aggregate(target_type))
-		{
-			PRINTF("\t__c3_memset(&___var_%d, 0, sizeof(%s));\n", temp, tname);
-		}
-		else
-		{
-			PRINTF("\t___var_%d = 0;\n", temp);
-		}
-		PRINT("} else {\n");
-	}
-
-	c_emit_null_deref_check(c, expr, addr_val.var);
 	if (c_type_is_aggregate(target_type))
 	{
 		if (addr_val.var != 0)
@@ -1077,40 +1052,24 @@ void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target
 			PRINTF("___var_%d = 0;\n", temp);
 		}
 	}
-
-	if (is_opt)
-	{
-		PRINT("}\n");
-	}
 }
 
-void c_emit_vec_compound_assign(GenContext *c, const char *lhs_fmt, int len, const char *assign_op, CValue *right_val)
+// The value of an assignment expression: the stored value.
+static void c_assign_result(GenContext *c, Type *type, CValue *right_val, CValue *out_val)
 {
-	bool r_is_agg = (right_val->type && c_type_is_aggregate(right_val->type));
-	for (int k = 0; k < len; k++)
+	if (!out_val) return;
+	if (right_val && right_val->var)
 	{
-		PRINTF(lhs_fmt, k);
-		PRINTF(" %s ", assign_op);
-		if (r_is_agg)
-		{
-			PRINTF("___var_%d.ptr[%d];\n", right_val->var, k);
-		}
-		else
-		{
-			PRINTF("___var_%d;\n", right_val->var);
-		}
+		*out_val = *right_val;
+		return;
 	}
+	c_emit_var_zero_init(c, c_emit_temp_var(c, out_val, type), type);
 }
 
-void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *addr, CValue *right_val, const char *assign_op, CValue *out_val)
+void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *addr, CValue *right_val, CValue *out_val)
 {
 	if (!left)
 	{
-		return;
-	}
-	if (left->expr_kind == EXPR_RECAST || left->expr_kind == EXPR_ADDR_CONVERSION || left->expr_kind == EXPR_RVALUE)
-	{
-		c_emit_lvalue_assign(c, left->inner_expr, addr, right_val, assign_op, out_val);
 		return;
 	}
 	if (left->expr_kind == EXPR_SWIZZLE)
@@ -1131,20 +1090,20 @@ void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *addr, CValue *right
 			{
 				if (right_val->kind == CV_ADDRESS)
 				{
-					PRINTF("((%s*)___var_%d)->ptr[%d] %s ((%s*)___var_%d)->ptr[%d];\n", ptname, parent_addr.var, p_idx, assign_op, c_type_name(c, right_val->type), right_val->var, i);
+					PRINTF("((%s*)___var_%d)->ptr[%d] = ((%s*)___var_%d)->ptr[%d];\n", ptname, parent_addr.var, p_idx, c_type_name(c, right_val->type), right_val->var, i);
 				}
 				else
 				{
-					PRINTF("((%s*)___var_%d)->ptr[%d] %s ___var_%d.ptr[%d];\n", ptname, parent_addr.var, p_idx, assign_op, right_val->var, i);
+					PRINTF("((%s*)___var_%d)->ptr[%d] = ___var_%d.ptr[%d];\n", ptname, parent_addr.var, p_idx, right_val->var, i);
 				}
 			}
 			else if (right_val && right_val->var != 0)
 			{
-				PRINTF("((%s*)___var_%d)->ptr[%d] %s ___var_%d;\n", ptname, parent_addr.var, p_idx, assign_op, right_val->var);
+				PRINTF("((%s*)___var_%d)->ptr[%d] = ___var_%d;\n", ptname, parent_addr.var, p_idx, right_val->var);
 			}
 			else
 			{
-				PRINTF("((%s*)___var_%d)->ptr[%d] %s 0;\n", ptname, parent_addr.var, p_idx, assign_op);
+				PRINTF("((%s*)___var_%d)->ptr[%d] = 0;\n", ptname, parent_addr.var, p_idx);
 			}
 		}
 		if (out_val)
@@ -1164,326 +1123,33 @@ void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *addr, CValue *right
 		Decl *left_decl = (left->expr_kind == EXPR_DECL) ? left->decl_expr : c_decl_unwrap(left->ident_expr);
 		if (left_decl && left_decl->decl_kind == DECL_VAR && left_decl->var.kind == VARDECL_PARAM_EXPR && left_decl->var.init_expr)
 		{
-			c_emit_lvalue_assign(c, left_decl->var.init_expr, addr, right_val, assign_op, out_val);
+			c_emit_lvalue_assign(c, left_decl->var.init_expr, addr, right_val, out_val);
 			return;
 		}
-		if (c_is_file_global(left_decl))
-		{
-			c_emit_global_decl(c, left_decl);
-			const char *gname = c_get_decl_name(left_decl);
-			if (IS_OPTIONAL(left_decl) && strcmp(assign_op, "=") == 0)
-			{
-				if (right_val && right_val->optional != 0)
-				{
-					PRINTF("%s__f = (c3fault_t)(uintptr_t)___var_%d;\n", gname, right_val->optional);
-				}
-				else if (right_val && right_val->type && (right_val->type->type_kind == TYPE_ANYFAULT || right_val->type == type_fault))
-				{
-					PRINTF("%s__f = (c3fault_t)(uintptr_t)___var_%d;\n", gname, right_val->var);
-				}
-				else
-				{
-					PRINTF("%s__f = __c3_current_fault;\n", gname);
-				}
-				PRINT("__c3_current_fault = NULL;\n");
-			}
-			Type *gt = c_decl_type(left_decl);
-			if (!right_val || right_val->var == 0)
-			{
-				if (c_type_is_aggregate(gt))
-				{
-					PRINTF("__c3_memset(&%s, 0, sizeof(%s));\n", gname, gname);
-				}
-				else if (type_is_pointer(gt))
-				{
-					PRINTF("%s %s NULL;\n", gname, assign_op);
-				}
-				else
-				{
-					PRINTF("%s %s 0;\n", gname, assign_op);
-				}
-				if (out_val)
-				{
-					int temp = c_emit_temp_var(c, out_val, gt);
-					c_emit_var_zero_init(c, temp, gt);
-				}
-				return;
-			}
-			if (strcmp(assign_op, "=") != 0 && c_type_is_aggregate(gt) && c_type_is_vec_or_arr(gt))
-			{
-				int len = (int)gt->array.len;
-				if (len <= 0)
-				{
-					len = 1;
-				}
-				c_emit_vec_compound_assign(c, str_printf("%s.ptr[%%d]", gname), len, assign_op, right_val);
-				if (out_val)
-				{
-					int temp = c_emit_temp_var(c, out_val, gt);
-					PRINTF("%s ___var_%d;\n", c_type_name(c, gt), temp);
-					PRINTF("__c3_memcpy(&___var_%d, &%s, sizeof(%s));\n", temp, gname, gname);
-				}
-				return;
-			}
-			if (gt->type_kind == TYPE_POINTER && (right_val->type && c_type_is_any(right_val->type)))
-			{
-				PRINTF("%s %s (void*)___var_%d.ptr;\n", gname, assign_op, right_val->var);
-			}
-			else if (gt->type_kind == TYPE_POINTER && (right_val->type && right_val->type->type_kind == TYPE_SLICE))
-			{
-				PRINTF("%s %s (%s)___var_%d.ptr;\n", gname, assign_op, c_type_name(c, gt), right_val->var);
-			}
-			else if (gt->type_kind == TYPE_POINTER && (right_val->type && c_type_is_vec_or_arr(right_val->type)))
-			{
-				PRINTF("%s %s (%s)(___var_%d%sptr);\n", gname, assign_op, c_type_name(c, gt), right_val->var, c_arrow(right_val));
-			}
-			else if (gt->type_kind == TYPE_SLICE && (right_val->type && c_type_is_vec_or_arr(right_val->type)))
-			{
-				PRINTF("%s %s (%s){ .ptr = (void*)(___var_%d%sptr), .len = %llu };\n",
-				       gname, assign_op, c_type_name(c, gt), right_val->var, c_arrow(right_val), (unsigned long long)right_val->type->array.len);
-			}
-			else if (c_type_is_any(gt))
-			{
-				c_emit_assign_to_any(c, gname, right_val);
-			}
-			else if (c_type_is_aggregate(gt))
-			{
-				const char *src_ref = (right_val->kind == CV_ADDRESS) ? "(void*)" : "&";
-				PRINTF("__c3_memcpy(&%s, %s___var_%d, sizeof(%s));\n", gname, src_ref, right_val->var, gname);
-			}
-			else if (type_is_integer(gt) && c_type_is_c_pointer(right_val->type))
-			{
-				PRINTF("%s %s (%s)(uintptr_t)___var_%d;\n", gname, assign_op, c_type_name(c, gt), right_val->var);
-			}
-			else if (c_type_is_c_pointer(gt) && type_is_integer(right_val->type))
-			{
-				PRINTF("%s %s (%s)(uintptr_t)___var_%d;\n", gname, assign_op, c_type_name(c, gt), right_val->var);
-			}
-			else if (type_is_float(gt) && c_type_is_c_pointer(right_val->type))
-			{
-				PRINTF("%s %s 0.0;\n", gname, assign_op);
-			}
-			else if (c_type_is_c_pointer(gt) && type_is_float(right_val->type))
-			{
-				PRINTF("%s %s NULL;\n", gname, assign_op);
-			}
-			else if (gt != right_val->type)
-			{
-				PRINTF("%s %s (%s)___var_%d;\n", gname, assign_op, c_type_name(c, gt), right_val->var);
-			}
-			else if (type_is_pointer(gt) && gt->pointer && gt->pointer->type_kind == TYPE_VOID && (strcmp(assign_op, "+=") == 0 || strcmp(assign_op, "-=") == 0))
-			{
-				const char *arith_op = (strcmp(assign_op, "+=") == 0) ? "+" : "-";
-				PRINTF("%s = (void*)((char*)%s %s ___var_%d);\n", gname, gname, arith_op, right_val->var);
-			}
-			else
-			{
-				PRINTF("%s %s ___var_%d;\n", gname, assign_op, right_val->var);
-			}
-			if (out_val)
-			{
-				if (strcmp(assign_op, "=") == 0 && right_val)
-				{
-					*out_val = *right_val;
-				}
-				else
-				{
-					int temp = c_emit_temp_var(c, out_val, gt);
-					if (c_type_is_aggregate(gt))
-					{
-						PRINTF("%s ___var_%d;\n", c_type_name(c, gt), temp);
-						PRINTF("__c3_memcpy(&___var_%d, &%s, sizeof(%s));\n", temp, gname, gname);
-					}
-					else
-					{
-						PRINTF("%s ___var_%d = %s;\n", c_type_name(c, gt), temp, gname);
-					}
-				}
-			}
-			return;
-		}
-		else
-		{
-			VariableId vid = c_get_or_create_decl_var(c, left_decl);
-			Type *lt       = c_decl_type(left_decl);
-			if (strcmp(assign_op, "=") == 0)
-			{
-				c_emit_assign_var(c, vid, lt, right_val);
-				if (IS_OPTIONAL(left_decl))
-				{
-					c_emit_assign_decl_fault(c, left_decl, right_val, NULL);
-				}
-			}
-			else if (c_type_is_aggregate(lt) && c_type_is_vec_or_arr(lt))
-			{
-				int len = (int)lt->array.len;
-				if (len <= 0)
-				{
-					len = 1;
-				}
-				c_emit_vec_compound_assign(c, str_printf("___var_%d.ptr[%%d]", vid), len, assign_op, right_val);
-			}
-			else
-			{
-				if (type_is_pointer(lt) && lt->pointer && lt->pointer->type_kind == TYPE_VOID && (strcmp(assign_op, "+=") == 0 || strcmp(assign_op, "-=") == 0))
-				{
-					const char *arith_op = (strcmp(assign_op, "+=") == 0) ? "+" : "-";
-					PRINTF("___var_%d = (void*)((char*)___var_%d %s ___var_%d);\n", vid, vid, arith_op, right_val ? right_val->var : 0);
-				}
-				else if (!right_val || right_val->var == 0)
-				{
-					PRINTF("___var_%d %s 0;\n", vid, assign_op);
-				}
-				else
-				{
-					PRINTF("___var_%d %s ___var_%d;\n", vid, assign_op, right_val->var);
-				}
-			}
-			if (out_val)
-			{
-				if (strcmp(assign_op, "=") == 0 && right_val)
-				{
-					*out_val = *right_val;
-				}
-				else
-				{
-					*out_val = (CValue){.var = vid, .type = lt, .kind = CV_VALUE};
-				}
-			}
-			return;
-		}
+		Type *lt = c_decl_type(left_decl);
+		c_emit_store(c, c_decl_lvalue_str(c, left_decl), lt, right_val);
+		c_assign_result(c, lt, right_val, out_val);
+		return;
 	}
 
+	// Any other lvalue, including a recast one, is stored through its address, as LLVM.
 	Type *target_type = c_expr_type(left);
-	if (target_type->type_kind == TYPE_VOID && right_val && right_val->type && is_valid_type_ptr(right_val->type))
-	{
-		target_type = c_safe_type_lower(right_val->type);
-	}
-	if (target_type->type_kind == TYPE_VOID)
-	{
-		target_type = type_int;
-	}
-	CValue addr_val = (addr && addr->var) ? *addr : (CValue){0};
+	CValue addr_val   = (addr && addr->var) ? *addr : (CValue){0};
 	if (!addr_val.var)
 	{
 		c_emit_lvalue_addr(c, left, &addr_val, type_get_ptr(target_type));
-		c_emit_null_deref_check(c, left, addr_val.var);
 	}
 	const char *tname = c_type_name(c, target_type);
-	if (!right_val || right_val->var == 0)
+	if (right_val && right_val->var && (target_type->type_kind == TYPE_I128 || target_type->type_kind == TYPE_U128))
 	{
-		if (c_type_is_aggregate(target_type))
-		{
-			PRINTF("__c3_memset((void*)___var_%d, 0, sizeof(%s));\n", addr_val.var, tname);
-		}
-		else if (c_type_is_c_pointer(target_type))
-		{
-			PRINTF("*(%s*)___var_%d %s NULL;\n", tname, addr_val.var, assign_op);
-		}
-		else
-		{
-			PRINTF("*(%s*)___var_%d %s 0;\n", tname, addr_val.var, assign_op);
-		}
-		if (out_val)
-		{
-			int temp = c_emit_temp_var(c, out_val, target_type);
-			c_emit_var_zero_init(c, temp, target_type);
-		}
-		return;
-	}
-	if (strcmp(assign_op, "=") == 0)
-	{
-		if (c_type_is_aggregate(target_type))
-		{
-			const char *src_ref = (right_val->kind == CV_ADDRESS) ? "(void*)" : "&";
-			PRINTF("__c3_memcpy((void*)___var_%d, %s___var_%d, sizeof(%s));\n", addr_val.var, src_ref, right_val->var, tname);
-		}
-		else if (target_type->type_kind == TYPE_POINTER && (right_val->type && c_type_is_any(right_val->type)))
-		{
-			PRINTF("*(%s*)___var_%d = (%s)___var_%d.ptr;\n", tname, addr_val.var, tname, right_val->var);
-		}
-		else if (target_type->type_kind == TYPE_POINTER && (right_val->type && right_val->type->type_kind == TYPE_SLICE))
-		{
-			PRINTF("*(%s*)___var_%d = (%s)___var_%d.ptr;\n", tname, addr_val.var, tname, right_val->var);
-		}
-		else if (target_type->type_kind == TYPE_POINTER && (right_val->type && c_type_is_vec_or_arr(right_val->type)))
-		{
-			PRINTF("*(%s*)___var_%d = (%s)(___var_%d%sptr);\n", tname, addr_val.var, tname, right_val->var, c_arrow(right_val));
-		}
-		else if (target_type->type_kind == TYPE_SLICE && (right_val->type && c_type_is_vec_or_arr(right_val->type)))
-		{
-			PRINTF("*(%s*)___var_%d = (%s){ .ptr = (void*)(___var_%d%sptr), .len = %llu };\n",
-			       tname, addr_val.var, tname, right_val->var, c_arrow(right_val), (unsigned long long)right_val->type->array.len);
-		}
-		else if (c_type_is_any(target_type))
-		{
-			char target_deref[64];
-			snprintf(target_deref, sizeof(target_deref), "*(__c3_any__*)___var_%d", addr_val.var);
-			c_emit_assign_to_any(c, target_deref, right_val);
-		}
-		else if (type_is_float(target_type) && c_type_is_c_pointer(right_val->type))
-		{
-			PRINTF("*(%s*)___var_%d = 0.0;\n", tname, addr_val.var);
-		}
-		else if (c_type_is_c_pointer(target_type) && type_is_float(right_val->type))
-		{
-			PRINTF("*(%s*)___var_%d = NULL;\n", tname, addr_val.var);
-		}
-		else if (target_type != right_val->type)
-		{
-			PRINTF("*(%s*)___var_%d = (%s)___var_%d;\n", tname, addr_val.var, tname, right_val->var);
-		}
-		else
-		{
-			if (type_size(target_type) == 16 && (target_type->type_kind == TYPE_I128 || target_type->type_kind == TYPE_U128))
-			{
-				PRINTF("__c3_memcpy((void*)___var_%d, &___var_%d, sizeof(%s));\n", addr_val.var, right_val->var, tname);
-			}
-			else
-			{
-				PRINTF("*(%s*)___var_%d = ___var_%d;\n", tname, addr_val.var, right_val->var);
-			}
-		}
-	}
-	else if (c_type_is_aggregate(target_type) && c_type_is_vec_or_arr(target_type))
-	{
-		int len = (int)target_type->array.len;
-		if (len <= 0)
-		{
-			len = 1;
-		}
-		c_emit_vec_compound_assign(c, str_printf("((%s*)___var_%d)->ptr[%%d]", tname, addr_val.var), len, assign_op, right_val);
+		// The address may not be 16 byte aligned.
+		ASSERT(strcmp(tname, c_type_name(c, c_safe_type_lower(right_val->type))) == 0);
+		c_value_rvalue(c, right_val);
+		PRINTF("__c3_memcpy((void*)___var_%d, &___var_%d, sizeof(%s));\n", addr_val.var, right_val->var, tname);
 	}
 	else
 	{
-		if (type_is_pointer(target_type) && target_type->pointer && target_type->pointer->type_kind == TYPE_VOID && (strcmp(assign_op, "+=") == 0 || strcmp(assign_op, "-=") == 0))
-		{
-			const char *arith_op = (strcmp(assign_op, "+=") == 0) ? "+" : "-";
-			PRINTF("*(%s*)___var_%d = (void*)((char*)(*(%s*)___var_%d) %s ___var_%d);\n", tname, addr_val.var, tname, addr_val.var, arith_op, right_val ? right_val->var : 0);
-		}
-		else
-		{
-			PRINTF("*(%s*)___var_%d %s ___var_%d;\n", tname, addr_val.var, assign_op, right_val->var);
-		}
+		c_emit_store(c, str_printf("(*(%s*)___var_%d)", tname, addr_val.var), target_type, right_val);
 	}
-	if (out_val)
-	{
-		if (strcmp(assign_op, "=") == 0 && right_val)
-		{
-			*out_val = *right_val;
-		}
-		else
-		{
-			int res_temp = c_emit_temp_var(c, out_val, target_type);
-			if (c_type_is_aggregate(target_type))
-			{
-				PRINTF("%s ___var_%d;\n", tname, res_temp);
-				PRINTF("__c3_memcpy(&___var_%d, (void*)___var_%d, sizeof(%s));\n", res_temp, addr_val.var, tname);
-			}
-			else
-			{
-				PRINTF("%s ___var_%d = *(%s*)___var_%d;\n", tname, res_temp, tname, addr_val.var);
-			}
-		}
-	}
+	c_assign_result(c, target_type, right_val, out_val);
 }

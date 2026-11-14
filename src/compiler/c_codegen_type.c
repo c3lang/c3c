@@ -30,365 +30,52 @@ Decl *c_decl_unwrap(Decl *decl)
 	return decl;
 }
 
-bool is_valid_type_ptr(Type *type)
-{
-	if (!type)
-	{
-		return false;
-	}
-	uintptr_t p = (uintptr_t)type;
-	if (p < (uintptr_t)0x10000 || (p & 0x7) != 0)
-	{
-		return false;
-	}
-	if (type == poisoned_type)
-	{
-		return false;
-	}
-	if (type->type_kind < 0 || type->type_kind > TYPE_LAST)
-	{
-		return false;
-	}
-	return true;
-}
-
 Type *c_unwrap_alias(Type *type)
 {
-	int depth = 16;
-	while (type && is_valid_type_ptr(type) && type->type_kind == TYPE_ALIAS &&
-	       is_valid_type_ptr(type->canonical) && type->canonical != type && --depth > 0)
+	while (type->type_kind == TYPE_ALIAS)
 	{
+		ASSERT(type->canonical != type);
 		type = type->canonical;
 	}
 	return type;
 }
 
+// The C representation of a type: type_lowering (codegen_internal.h), except that anyfault and typeid keep their pointer
+// types c3fault_t / c3typeid_t where LLVM lowers them to uptr. C static initializers need them as address constants:
+// `(uintptr_t)&sym` is not a constant expression in ISO C.
 Type *c_safe_type_lower(Type *type)
 {
-	if (!is_valid_type_ptr(type))
+	switch (type->canonical->type_kind)
 	{
-		return type_void;
+		case TYPE_ALIAS:
+		case TYPE_POISONED:
+		case TYPE_TYPEINFO:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_INFERRED_VECTOR:
+		case TYPE_MEMBER:
+		case TYPE_REFLECTION:
+		case TYPE_UNTYPEDLIST:
+			UNREACHABLE
+		default:
+			return type_lowering_ex(type, true);
 	}
-	int limit = 64;
-	while (type && is_valid_type_ptr(type) && limit-- > 0)
-	{
-		if (type->type_kind == TYPE_POISONED || type->type_kind == TYPE_WILDCARD || type->type_kind == TYPE_UNTYPEDLIST ||
-		    type->type_kind == TYPE_TYPEINFO || type->type_kind == TYPE_MEMBER || type->type_kind == TYPE_REFLECTION)
-		{
-			return type_void;
-		}
-		if (type->type_kind == TYPE_ANYFAULT || type->type_kind == TYPE_TYPEID)
-		{
-			return type;
-		}
-		if (type->type_kind == TYPE_ALIAS)
-		{
-			if (is_valid_type_ptr(type->canonical) && type->canonical != type)
-			{
-				type = type->canonical;
-				continue;
-			}
-			if (type->decl && type->decl->decl_kind == DECL_TYPE_ALIAS && type->decl->type_alias_decl.type_expr && is_valid_type_ptr(type->decl->type_alias_decl.type_expr->type))
-			{
-				type = type->decl->type_alias_decl.type_expr->type;
-				continue;
-			}
-			return type_void;
-		}
-		if (type->type_kind == TYPE_OPTIONAL)
-		{
-			if (!is_valid_type_ptr(type->optional) || type->optional == type || type->optional->type_kind == TYPE_VOID)
-			{
-				return type_fault;
-			}
-			type = type->optional;
-			continue;
-		}
-		if (type->type_kind == TYPE_TYPEDEF)
-		{
-			if (type->decl && type->decl->decl_kind == DECL_TYPEDEF && type->decl->distinct)
-			{
-				Type *dt = is_valid_type_ptr(type->decl->distinct->type) ? type->decl->distinct->type : NULL;
-				if (dt && dt != type)
-				{
-					type = dt;
-					continue;
-				}
-			}
-			if (is_valid_type_ptr(type->canonical) && type->canonical != type)
-			{
-				type = type->canonical;
-				continue;
-			}
-			break;
-		}
-		if (type->type_kind == TYPE_CONSTSET || type->type_kind == TYPE_ENUM)
-		{
-			if (!type->decl || (type->decl->decl_kind != DECL_ENUM && type->decl->decl_kind != DECL_CONSTSET) || !type->decl->enums.type_info)
-			{
-				return type_int;
-			}
-			Type *inner = enum_inner_type(type);
-			if (!is_valid_type_ptr(inner) || inner == type)
-			{
-				return type_int;
-			}
-			type = inner;
-			continue;
-		}
-		if (type->type_kind == TYPE_BITSTRUCT)
-		{
-			if (!type->decl || type->decl->decl_kind != DECL_BITSTRUCT || !type->decl->strukt.container_type || !is_valid_type_ptr(type->decl->strukt.container_type->type) || type->decl->strukt.container_type->type == type)
-			{
-				return type_uint;
-			}
-			type = type->decl->strukt.container_type->type;
-			continue;
-		}
-		if (type->type_kind == TYPE_INTERFACE)
-		{
-			return type_any;
-		}
-		if (type->type_kind == TYPE_POINTER)
-		{
-			if (!is_valid_type_ptr(type->pointer) || type->pointer == type)
-			{
-				return type_voidptr;
-			}
-			Type *lowered_pointee = c_safe_type_lower(type->pointer);
-			if (lowered_pointee == type->pointer)
-			{
-				return type;
-			}
-			return type_get_ptr(lowered_pointee);
-		}
-		if (type->type_kind == TYPE_SLICE)
-		{
-			if (!is_valid_type_ptr(type->array.base) || type->array.base == type)
-			{
-				return type_chars;
-			}
-			Type *lowered_base = c_safe_type_lower(type->array.base);
-			if (lowered_base == type->array.base)
-			{
-				return type;
-			}
-			if (!type_is_valid_for_array(lowered_base))
-			{
-				return type_chars;
-			}
-			return type_get_slice(lowered_base);
-		}
-		if (c_type_is_vec_or_arr(type) || type->type_kind == TYPE_FLEXIBLE_ARRAY)
-		{
-			if (!is_valid_type_ptr(type->array.base) || type->array.base == type)
-			{
-				return type;
-			}
-			Type *lowered_base = c_safe_type_lower(type->array.base);
-			if (lowered_base == type->array.base)
-			{
-				return type;
-			}
-			if (!type_is_valid_for_array(lowered_base))
-			{
-				return type;
-			}
-			if (type->type_kind == TYPE_ARRAY)
-			{
-				return type_get_array(lowered_base, type->array.len);
-			}
-			if (type->type_kind == TYPE_FLEXIBLE_ARRAY)
-			{
-				return type_get_flexible_array(lowered_base);
-			}
-			return type_get_vector_from_vector(lowered_base, type);
-		}
-		if (type->type_kind == TYPE_FUNC_PTR)
-		{
-			return type;
-		}
-		if (is_valid_type_ptr(type->canonical) && type->canonical != type)
-		{
-			type = type->canonical;
-			continue;
-		}
-		break;
-	}
-	if (!is_valid_type_ptr(type) || limit <= 0)
-	{
-		return type_void;
-	}
-	return type;
 }
 
 Type *c_decl_type(Decl *decl)
 {
-	if (!decl)
-	{
-		return type_void;
-	}
 	decl = c_decl_unwrap(decl);
-	if (decl->type && is_valid_type_ptr(decl->type) && decl->type->type_kind != TYPE_POISONED)
-	{
-		return c_safe_type_lower(decl->type);
-	}
-	if (decl->decl_kind == DECL_VAR)
-	{
-		if (decl->var.type_info)
-		{
-			TypeInfo *ti = type_infoptrzero(decl->var.type_info);
-			if (ti)
-			{
-				if (ti->type && is_valid_type_ptr(ti->type))
-				{
-					return c_safe_type_lower(ti->type);
-				}
-				if (ti->kind == TYPE_INFO_IDENTIFIER && ti->unresolved.name)
-				{
-					Decl *td = NULL;
-					if (decl->unit && decl->unit->module)
-					{
-						td = htable_get(&decl->unit->module->symbols, (void *)ti->unresolved.name);
-					}
-					if (!td && compiler.context.symbols.entries)
-					{
-						DeclId id = decltable_get(&compiler.context.symbols, ti->unresolved.name);
-						if (id)
-						{
-							td = declptr(id);
-						}
-					}
-					if (td)
-					{
-						td = c_decl_unwrap(td);
-						if (td->type && is_valid_type_ptr(td->type))
-						{
-							return c_safe_type_lower(td->type);
-						}
-					}
-				}
-			}
-		}
-		if (decl->var.init_expr)
-		{
-			Type *t = c_expr_type(decl->var.init_expr);
-			if (t && is_valid_type_ptr(t) && t->type_kind != TYPE_VOID)
-			{
-				return t;
-			}
-		}
-	}
-	if (decl->decl_kind == DECL_FUNC && decl->func_decl.signature.rtype)
-	{
-		Type *t = typeget(decl->func_decl.signature.rtype);
-		if (t && is_valid_type_ptr(t))
-		{
-			return c_safe_type_lower(t);
-		}
-	}
-	return type_void;
+	ASSERT(decl->type);
+	return c_safe_type_lower(decl->type);
 }
 
 Type *c_expr_type(Expr *expr)
 {
-	if (!expr)
-	{
-		return type_void;
-	}
-	if (expr->type && is_valid_type_ptr(expr->type) && expr->type->type_kind != TYPE_POISONED)
-	{
-		return c_safe_type_lower(expr->type);
-	}
-	if (expr->expr_kind == EXPR_IDENTIFIER && expr->ident_expr)
-	{
-		return c_decl_type(expr->ident_expr);
-	}
-	if (expr->expr_kind == EXPR_ACCESS_RESOLVED && expr->access_resolved_expr.ref)
-	{
-		return c_decl_type(expr->access_resolved_expr.ref);
-	}
-	if (expr->expr_kind == EXPR_DECL && expr->decl_expr)
-	{
-		return c_decl_type(expr->decl_expr);
-	}
-	if (expr->expr_kind == EXPR_UNARY)
-	{
-		if (expr->unary_expr.operator == UNARYOP_ADDR || expr->unary_expr.operator == UNARYOP_TADDR)
-		{
-			Type *inner_t = c_expr_type(expr->unary_expr.expr);
-			if (inner_t->type_kind != TYPE_VOID)
-			{
-				return type_get_ptr(inner_t);
-			}
-		}
-		else if (expr->unary_expr.operator == UNARYOP_DEREF)
-		{
-			Type *inner_t = c_expr_type(expr->unary_expr.expr);
-			if (inner_t->type_kind == TYPE_POINTER && inner_t->pointer)
-			{
-				return c_safe_type_lower(inner_t->pointer);
-			}
-		}
-		else if (expr->unary_expr.operator == UNARYOP_NOT)
-		{
-			return type_bool;
-		}
-		else
-		{
-			return c_expr_type(expr->unary_expr.expr);
-		}
-	}
-	if (expr->expr_kind == EXPR_SUBSCRIPT || expr->expr_kind == EXPR_SUBSCRIPT_ADDR)
-	{
-		Type *parent_t = c_expr_type(exprptrzero(expr->subscript_expr.expr));
-		if (parent_t->type_kind == TYPE_POINTER && parent_t->pointer)
-		{
-			return c_safe_type_lower(parent_t->pointer);
-		}
-		if ((parent_t->type_kind == TYPE_SLICE || c_type_is_vec_or_arr(parent_t)) && parent_t->array.base)
-		{
-			return c_safe_type_lower(parent_t->array.base);
-		}
-	}
-	if (expr->expr_kind == EXPR_SLICE)
-	{
-		Type *parent_t = c_expr_type(exprptrzero(expr->slice_expr.expr));
-		if (parent_t->type_kind == TYPE_SLICE)
-		{
-			return parent_t;
-		}
-		if (parent_t->type_kind == TYPE_ARRAY && parent_t->array.base)
-		{
-			return type_get_slice(parent_t->array.base);
-		}
-		if (parent_t->type_kind == TYPE_POINTER && parent_t->pointer)
-		{
-			return type_get_slice(parent_t->pointer);
-		}
-		return type_chars;
-	}
-	if (expr->expr_kind == EXPR_BINARY)
-	{
-		if (expr->binary_expr.operator >= BINARYOP_GT && expr->binary_expr.operator <= BINARYOP_EQ)
-		{
-			return type_bool;
-		}
-		if (expr->binary_expr.operator == BINARYOP_AND || expr->binary_expr.operator == BINARYOP_OR)
-		{
-			return type_bool;
-		}
-		return c_expr_type(exprptrzero(expr->binary_expr.left));
-	}
-	return type_void;
+	ASSERT(expr->type);
+	return c_safe_type_lower(expr->type);
 }
 
 bool c_type_is_aggregate(Type *t)
 {
-	if (!t || !is_valid_type_ptr(t))
-	{
-		return false;
-	}
 	t = c_safe_type_lower(t);
 	return t->type_kind == TYPE_STRUCT || t->type_kind == TYPE_UNION ||
 	       c_type_is_vec_or_arr(t) || t->type_kind == TYPE_SLICE ||
@@ -396,15 +83,18 @@ bool c_type_is_aggregate(Type *t)
 	       t->type_kind == TYPE_ANY || t->type_kind == TYPE_INTERFACE;
 }
 
+// Whether the type is a finished runtime type. compiler.context.type also holds aliases and typedefs that sema never
+// resolved (unused, generic templates, or erased by @if), which have no C form.
 bool c_type_is_resolved(Type *type)
 {
-	type = c_unwrap_alias(type);
-	if (!type || !is_valid_type_ptr(type))
-	{
-		return false;
-	}
 	switch (type->type_kind)
 	{
+		case TYPE_ALIAS:
+		{
+			Decl *d = type->decl;
+			if (d->decl_kind != DECL_TYPE_ALIAS || d->is_template || d->resolve_status != RESOLVE_DONE) return false;
+			return c_type_is_resolved(type->canonical);
+		}
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
@@ -412,11 +102,7 @@ bool c_type_is_resolved(Type *type)
 		case TYPE_CONSTSET:
 		case TYPE_TYPEDEF:
 		case TYPE_INTERFACE:
-			if (!type->decl || type->decl->is_template || type->decl->resolve_status != RESOLVE_DONE)
-			{
-				return false;
-			}
-			return true;
+			return type->decl->decl_kind != DECL_ERASED && !type->decl->is_template && type->decl->resolve_status == RESOLVE_DONE;
 		case TYPE_POINTER:
 			return c_type_is_resolved(type->pointer);
 		case TYPE_SLICE:
@@ -449,10 +135,6 @@ bool c_type_is_resolved(Type *type)
 int c_get_type_introspection_kind(Type *type)
 {
 	type = c_unwrap_alias(type);
-	if (!type || !is_valid_type_ptr(type))
-	{
-		return INTROSPECT_TYPE_VOID;
-	}
 	switch (type->type_kind)
 	{
 		case TYPE_VOID: return INTROSPECT_TYPE_VOID;
@@ -497,7 +179,7 @@ int c_get_type_introspection_kind(Type *type)
 size_t c_get_type_size(Type *type)
 {
 	type = c_unwrap_alias(type);
-	if (!type || !is_valid_type_ptr(type) || !c_type_is_resolved(type))
+	if (!c_type_is_resolved(type))
 	{
 		return 0;
 	}
@@ -520,13 +202,70 @@ size_t c_get_type_size(Type *type)
 	}
 }
 
+// Types whose C form is defined by the file; the scalar ones come from the runtime header.
+static void c_record_used_type(GenContext *c, Type *type)
+{
+	switch (type->type_kind)
+	{
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_SLICE:
+		case TYPE_ARRAY:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_VECTOR:
+		case TYPE_SIMD_VECTOR:
+		case TYPE_FUNC_PTR:
+			if (htable_get(&c->used_type_set, type)) return;
+			htable_set(&c->used_type_set, type, type);
+			vec_add(c->used_types, type);
+			return;
+		default:
+			return;
+	}
+}
+
+static Signature *c_fnptr_signature(Type *fnptr)
+{
+	Type *raw = fnptr->pointer;
+	if (!raw || raw->type_kind != TYPE_FUNC_RAW) return NULL;
+	if (raw->function.prototype) raw = raw->function.prototype->raw_type;
+	return raw->function.signature;
+}
+
+static HTable c_fnptr_name_by_sig;
+static HTable c_fnptr_text_by_name;
+
+void c_type_names_init(void)
+{
+	htable_init(&c_fnptr_name_by_sig, 1024);
+	htable_init(&c_fnptr_text_by_name, 1024);
+}
+
+// Hash of the C signature: deterministic, and equal signatures share a typedef.
+static const char *c_fnptr_name(Signature *sig)
+{
+	const char *name = htable_get(&c_fnptr_name_by_sig, sig);
+	if (name) return name;
+	const char *text = c_signature_str(NULL, sig, "(*)", (CSigOpts){0});
+	name = c_intern(str_printf("__c3_fnptr_%016" PRIx64, a5hash(text, (uint32_t)strlen(text), 0)));
+	const char *known = htable_get(&c_fnptr_text_by_name, (void *)name);
+	if (!known)
+	{
+		htable_set(&c_fnptr_text_by_name, (void *)name, (void *)text);
+	}
+	else if (strcmp(known, text) != 0)
+	{
+		error_exit("C backend: '%s' and '%s' hash to the same typedef name %s.", known, text, name);
+	}
+	htable_set(&c_fnptr_name_by_sig, sig, (void *)name);
+	return name;
+}
+
 const char *c_type_name(GenContext *c, Type *type)
 {
-	if (!type || !is_valid_type_ptr(type))
-	{
-		return "void";
-	}
 	type = c_safe_type_lower(type);
+	// Without a file (runtime header accessors) nothing is recorded.
+	if (c && c->record_types) c_record_used_type(c, type);
 	switch (type->type_kind)
 	{
 		case TYPE_VOID: return "void";
@@ -551,7 +290,7 @@ const char *c_type_name(GenContext *c, Type *type)
 		case TYPE_ANY:
 		case TYPE_INTERFACE: return "__c3_any__";
 		case TYPE_TYPEDEF:
-			if (type->decl && type->decl->distinct && is_valid_type_ptr(type->decl->distinct->type))
+			if (type->decl && type->decl->distinct)
 			{
 				return c_type_name(c, type->decl->distinct->type);
 			}
@@ -559,10 +298,8 @@ const char *c_type_name(GenContext *c, Type *type)
 		case TYPE_POINTER: return c_intern(str_printf("%s*", c_type_name(c, type->pointer)));
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		{
-			Decl *d = type->decl;
-			return d ? c_get_decl_name(d) : c_intern(str_printf("__c3_struct_%" PRIxPTR, (uintptr_t)type));
-		}
+			ASSERT(type->decl);
+			return c_get_decl_name(type->decl);
 		case TYPE_BITSTRUCT:
 			return c_type_name(c, type->decl->strukt.container_type->type);
 		case TYPE_SLICE:
@@ -583,17 +320,18 @@ const char *c_type_name(GenContext *c, Type *type)
 			}
 			return c_intern(str_printf("__c3_array_%s_%llu", c_sanitize_name(base), len));
 		}
-		case TYPE_FUNC_PTR: return c_intern(str_printf("__c3_fnptr_%" PRIxPTR, (uintptr_t)type));
+		case TYPE_FUNC_PTR:
+		{
+			Signature *sig = c_fnptr_signature(type);
+			if (!sig) return "__c3_fnptr_void";
+			return c_fnptr_name(sig);
+		}
 		default: return "void*";
 	}
 }
 
 const char *c_type_zero_literal(Type *t)
 {
-	if (!t || !is_valid_type_ptr(t))
-	{
-		return "0";
-	}
 	t = c_safe_type_lower(t);
 	if (c_type_is_aggregate(t))
 	{
@@ -614,18 +352,18 @@ const char *c_type_zero_literal(Type *t)
 static bool c_emit_struct_or_union_forward_decl(GenContext *c, Type *type, const char *keyword)
 {
 	const char *name = c_type_name(c, type);
-	if (htable_get(c->gen_decl, (void *)name))
+	if (htable_get(&c->gen_decl, (void *)name))
 	{
 		return false;
 	}
-	htable_set(c->gen_decl, (void *)name, (void *)1);
+	htable_set(&c->gen_decl, (void *)name, (void *)1);
 	Decl *d = type->decl;
 	PRINTF("typedef %s %s__ %s;\n", keyword, name, name);
 	if (d && d->strukt.members)
 	{
 		FOREACH(Decl *, m, d->strukt.members)
 		{
-			if (m && is_valid_type_ptr(m->type))
+			if (m)
 			{
 				c_emit_type_forward_decl(c, m->type);
 			}
@@ -637,11 +375,11 @@ static bool c_emit_struct_or_union_forward_decl(GenContext *c, Type *type, const
 static bool c_emit_struct_or_union_decl(GenContext *c, Type *type, const char *keyword)
 {
 	const char *name = c_type_name(c, type);
-	if (htable_get(c->gen_def, (void *)name))
+	if (htable_get(&c->gen_def, (void *)name))
 	{
 		return false;
 	}
-	htable_set(c->gen_def, (void *)name, (void *)1);
+	htable_set(&c->gen_def, (void *)name, (void *)1);
 
 	Decl *d         = type->decl;
 	int field_count = 0;
@@ -649,7 +387,7 @@ static bool c_emit_struct_or_union_decl(GenContext *c, Type *type, const char *k
 	{
 		FOREACH(Decl *, m, d->strukt.members)
 		{
-			if (!m || !is_valid_type_ptr(m->type))
+			if (!m)
 			{
 				continue;
 			}
@@ -688,7 +426,7 @@ static bool c_emit_struct_or_union_decl(GenContext *c, Type *type, const char *k
 	{
 		FOREACH_IDX(i, Decl *, m, d->strukt.members)
 		{
-			if (!m || !is_valid_type_ptr(m->type))
+			if (!m)
 			{
 				continue;
 			}
@@ -715,21 +453,23 @@ static bool c_emit_struct_or_union_decl(GenContext *c, Type *type, const char *k
 	return true;
 }
 
+static bool c_emit_type_forward_decl_here(GenContext *c, Type *type);
+
 bool c_emit_type_forward_decl(GenContext *c, Type *type)
 {
-	if (!type || !is_valid_type_ptr(type))
-	{
-		return false;
-	}
+	ByteBuffer *prev = c_decl_stream_enter(c, c->type_decl_buffer);
+	bool emitted     = c_emit_type_forward_decl_here(c, type);
+	c->buffer        = prev;
+	return emitted;
+}
+
+static bool c_emit_type_forward_decl_here(GenContext *c, Type *type)
+{
 	type = c_safe_type_lower(type);
-	if (!type || !is_valid_type_ptr(type))
-	{
-		return false;
-	}
 
 	if (type == type_u128 || type == type_i128)
 	{
-		htable_set(c->gen_decl, (void *)c_type_name(c, type), (void *)1);
+		htable_set(&c->gen_decl, (void *)c_type_name(c, type), (void *)1);
 		return true;
 	}
 	switch (type->type_kind)
@@ -743,11 +483,11 @@ bool c_emit_type_forward_decl(GenContext *c, Type *type)
 		case TYPE_SLICE:
 		{
 			const char *slice_name = c_type_name(c, type);
-			if (htable_get(c->gen_decl, (void *)slice_name))
+			if (htable_get(&c->gen_decl, (void *)slice_name))
 			{
 				return false;
 			}
-			htable_set(c->gen_decl, (void *)slice_name, (void *)1);
+			htable_set(&c->gen_decl, (void *)slice_name, (void *)1);
 			c_emit_type_forward_decl(c, type->array.base);
 			const char *base_tname = c_type_name(c, type->array.base);
 			PRINTF("#ifndef %s_defined__\n#define %s_defined__\n", slice_name, slice_name);
@@ -761,11 +501,11 @@ bool c_emit_type_forward_decl(GenContext *c, Type *type)
 		case TYPE_VECTOR:
 		{
 			const char *arr_name = c_type_name(c, type);
-			if (htable_get(c->gen_decl, (void *)arr_name))
+			if (htable_get(&c->gen_decl, (void *)arr_name))
 			{
 				return false;
 			}
-			htable_set(c->gen_decl, (void *)arr_name, (void *)1);
+			htable_set(&c->gen_decl, (void *)arr_name, (void *)1);
 			c_emit_type_forward_decl(c, type->array.base);
 			PRINTF("#ifndef %s_defined__\n#define %s_defined__\n", arr_name, arr_name);
 			PRINTF("typedef struct %s__ %s;\n", arr_name, arr_name);
@@ -775,61 +515,17 @@ bool c_emit_type_forward_decl(GenContext *c, Type *type)
 		case TYPE_FUNC_PTR:
 		{
 			const char *fnptr_name = c_type_name(c, type);
-			if (htable_get(c->gen_decl, (void *)fnptr_name))
+			if (htable_get(&c->gen_decl, (void *)fnptr_name))
 			{
 				return false;
 			}
-			htable_set(c->gen_decl, (void *)fnptr_name, (void *)1);
+			htable_set(&c->gen_decl, (void *)fnptr_name, (void *)1);
 
-			Type *raw_func = type->pointer;
-			Signature *sig = (raw_func && is_valid_type_ptr(raw_func) && raw_func->type_kind == TYPE_FUNC_RAW) ? raw_func->function.signature : NULL;
-			Type *rtype    = (sig && sig->rtype) ? typeget(sig->rtype) : type_void;
-			if (is_valid_type_ptr(rtype))
-			{
-				c_emit_type_forward_decl(c, rtype);
-			}
-			if (sig && sig->params)
-			{
-				FOREACH(Decl *, p, sig->params)
-				{
-					if (p && is_valid_type_ptr(p->type))
-					{
-						c_emit_type_forward_decl(c, p->type);
-					}
-				}
-			}
-
+			Signature *sig = c_fnptr_signature(type);
+			const char *declarator = str_printf("(*%s)", fnptr_name);
+			const char *signature  = sig ? c_signature_str(c, sig, declarator, (CSigOpts){0}) : str_printf("void %s(void)", declarator);
 			PRINTF("#ifndef %s_defined__\n#define %s_defined__\n", fnptr_name, fnptr_name);
-			PRINTF("typedef %s (*%s)(", c_type_name(c, rtype), fnptr_name);
-			int param_count = sig ? vec_size(sig->params) : 0;
-			if (param_count == 0 && (!sig || sig->variadic == VARIADIC_NONE))
-			{
-				PRINT("void");
-			}
-			else if (param_count == 0 && sig->variadic == VARIADIC_RAW)
-			{
-				// In C99/C11, () means unspecified parameters; bare (...) is invalid syntax
-			}
-			else
-			{
-				FOREACH_IDX(i, Decl *, p, sig->params)
-				{
-					if (i > 0)
-					{
-						PRINT(", ");
-					}
-					PRINT(c_type_name(c, (p && is_valid_type_ptr(p->type)) ? p->type : type_void));
-				}
-				if (sig && sig->variadic == VARIADIC_RAW)
-				{
-					if (param_count > 0)
-					{
-						PRINT(", ");
-					}
-					PRINT("...");
-				}
-			}
-			PRINT(");\n#endif\n");
+			PRINTF("typedef %s;\n#endif\n", signature);
 			return true;
 		}
 		default:
@@ -839,15 +535,7 @@ bool c_emit_type_forward_decl(GenContext *c, Type *type)
 
 bool c_emit_type_decl(GenContext *c, Type *type)
 {
-	if (!type || !is_valid_type_ptr(type))
-	{
-		return false;
-	}
 	type = c_safe_type_lower(type);
-	if (!type || !is_valid_type_ptr(type))
-	{
-		return false;
-	}
 
 	switch (type->type_kind)
 	{
@@ -861,11 +549,11 @@ bool c_emit_type_decl(GenContext *c, Type *type)
 		case TYPE_VECTOR:
 		{
 			const char *arr_name = c_type_name(c, type);
-			if (htable_get(c->gen_def, (void *)arr_name))
+			if (htable_get(&c->gen_def, (void *)arr_name))
 			{
 				return false;
 			}
-			htable_set(c->gen_def, (void *)arr_name, (void *)1);
+			htable_set(&c->gen_def, (void *)arr_name, (void *)1);
 
 			c_emit_type_decl(c, type->array.base);
 			const char *base_tname = c_type_name(c, type->array.base);
@@ -894,82 +582,15 @@ bool c_emit_type_decl(GenContext *c, Type *type)
 				return false;
 			}
 			const char *bs_name = c_get_decl_name(d);
-			if (htable_get(c->gen_def, (void *)bs_name))
+			if (htable_get(&c->gen_def, (void *)bs_name))
 			{
 				return false;
 			}
-			htable_set(c->gen_def, (void *)bs_name, (void *)1);
+			htable_set(&c->gen_def, (void *)bs_name, (void *)1);
 			return true;
 		}
 		default:
 			return false;
-	}
-}
-
-static const char *c_typeid_mangled(Type *type)
-{
-	type = c_unwrap_alias(type);
-	if (!type || !is_valid_type_ptr(type))
-	{
-		return "void";
-	}
-	switch (type->type_kind)
-	{
-		case TYPE_VOID: return "void";
-		case TYPE_BOOL: return "bool";
-		case TYPE_I8: return "int8";
-		case TYPE_I16: return "int16";
-		case TYPE_I32: return "int32";
-		case TYPE_I64: return "int64";
-		case TYPE_I128: return "int128";
-		case TYPE_U8: return "uint8";
-		case TYPE_U16: return "uint16";
-		case TYPE_U32: return "uint32";
-		case TYPE_U64: return "uint64";
-		case TYPE_U128: return "uint128";
-		case TYPE_F16: return "float16";
-		case TYPE_BF16: return "bfloat16";
-		case TYPE_F32: return "float";
-		case TYPE_F64: return "double";
-		case TYPE_F128: return "float128";
-		case TYPE_ANYFAULT: return "fault";
-		case TYPE_TYPEID: return "typeid";
-		case TYPE_ANY: return "any";
-		case TYPE_INTERFACE:
-		case TYPE_STRUCT:
-		case TYPE_UNION:
-		case TYPE_BITSTRUCT:
-		case TYPE_ENUM:
-		case TYPE_CONSTSET:
-		case TYPE_TYPEDEF:
-			if (type->decl)
-			{
-				return c_get_decl_name(type->decl);
-			}
-			return str_printf("anon_%" PRIxPTR, (uintptr_t)type);
-		case TYPE_POINTER:
-			return str_printf("p_%s", c_typeid_mangled(type->pointer));
-		case TYPE_SLICE:
-			return str_printf("slice_%s", c_typeid_mangled(type->array.base));
-		case TYPE_FLEXIBLE_ARRAY:
-			return str_printf("flex_%s", c_typeid_mangled(type->array.base));
-		case TYPE_ARRAY:
-			return str_printf("arr_%llu_%s", (unsigned long long)type->array.len, c_typeid_mangled(type->array.base));
-		case TYPE_VECTOR:
-			return str_printf("vec_%llu_%s", (unsigned long long)type->array.len, c_typeid_mangled(type->array.base));
-		case TYPE_SIMD_VECTOR:
-			return str_printf("svec_%llu_%s", (unsigned long long)type->array.len, c_typeid_mangled(type->array.base));
-		case TYPE_OPTIONAL:
-			if (!type->optional || type->optional->type_kind == TYPE_VOID || type->optional->type_kind == TYPE_WILDCARD)
-			{
-				return "opt_void";
-			}
-			return str_printf("opt_%s", c_typeid_mangled(type->optional));
-		case TYPE_FUNC_PTR:
-		case TYPE_FUNC_RAW:
-			return str_printf("fn_%" PRIxPTR, (uintptr_t)type);
-		default:
-			return "void";
 	}
 }
 
@@ -986,16 +607,57 @@ void c_record_needed_typeid(Type *type, const char *sym)
 	vec_add(c_needed_typeids_vec, type);
 }
 
+static void c_append_decl_name(Decl *decl)
+{
+	scratch_buffer_append(c_get_decl_name(decl));
+}
+
+// The typeid symbol: LLVM's introspection name made a C identifier, with declarations named by
+// c_get_decl_name. `$` is not portable C, so it is escaped injectively: `_` -> `__`, `$` -> `_d`,
+// any other non-alphanumeric byte -> `_x` and two hex digits.
 const char *c_typeid_name(Type *type)
 {
-	type = c_unwrap_alias(type);
-	if (!type || !is_valid_type_ptr(type))
+	scratch_buffer_push();
+	scratch_buffer_clear();
+	type_mangle_introspect_name_with(type->canonical, c_append_decl_name);
+	const char *mangled = scratch_buffer_copy();
+	scratch_buffer_clear();
+	scratch_buffer_append("__c3_typeid_");
+	for (const char *p = mangled; *p; p++)
 	{
-		return "__c3_typeid_void";
+		unsigned char ch = (unsigned char)*p;
+		if (ch == '_')
+		{
+			scratch_buffer_append("__");
+		}
+		else if (ch == '$')
+		{
+			scratch_buffer_append("_d");
+		}
+		else if (char_is_alphanum_(ch))
+		{
+			scratch_buffer_append_char(ch);
+		}
+		else
+		{
+			scratch_buffer_printf("_x%02x", ch);
+		}
 	}
-	const char *mangled = c_typeid_mangled(type);
-	const char *sym = c_intern(str_printf("__c3_typeid_%s", c_sanitize_name(mangled)));
-	c_record_needed_typeid(type, sym);
+	const char *sym = scratch_buffer_interned();
+	scratch_buffer_pop();
+	c_record_needed_typeid(type->canonical, sym);
+	return sym;
+}
+
+const char *c_typeid_ref(GenContext *c, Type *type)
+{
+	const char *sym = c_typeid_name(type);
+	if (strcmp(sym, "__c3_typeid_void") == 0 || htable_get(&c->declared_typeids, (void *)sym)) return sym;
+	ASSERT(c->decl_buffer);
+	htable_set(&c->declared_typeids, (void *)sym, (void *)1);
+	ByteBuffer *prev = c_decl_stream_enter(c, c->decl_buffer);
+	PRINTF("extern const c3type_info_t %s;\n", sym);
+	c->buffer = prev;
 	return sym;
 }
 
@@ -1007,6 +669,18 @@ const char *c_fault_symbol_name(Decl *decl)
 	}
 	const char *name = c_get_decl_name(decl);
 	return c_intern(str_printf("__c3_fault_%s", name));
+}
+
+const char *c_fault_ref(GenContext *c, Decl *decl)
+{
+	const char *sym = c_fault_symbol_name(decl);
+	if (htable_get(&c->declared_faults, (void *)sym)) return sym;
+	ASSERT(c->decl_buffer);
+	htable_set(&c->declared_faults, (void *)sym, (void *)1);
+	ByteBuffer *prev = c_decl_stream_enter(c, c->decl_buffer);
+	PRINTF("extern const char %s[];\n", sym);
+	c->buffer = prev;
+	return sym;
 }
 
 static Type *c_unwrap_target_type(Type *t)
@@ -1028,7 +702,7 @@ Type *c_get_method_target_type(Decl *m)
 	if (m->func_decl.type_parent)
 	{
 		TypeInfo *ti = type_infoptr(m->func_decl.type_parent);
-		if (ti && is_valid_type_ptr(ti->type))
+		if (ti)
 		{
 			return c_unwrap_target_type(ti->type);
 		}
@@ -1039,11 +713,7 @@ Type *c_get_method_target_type(Decl *m)
 		Decl *self_p = sig->params[0];
 		if (self_p && (self_p->var.is_self || (self_p->name && strcmp(self_p->name, "self") == 0)))
 		{
-			Type *pt = self_p->type ? self_p->type : c_decl_type(self_p);
-			if (pt && is_valid_type_ptr(pt))
-			{
-				return c_unwrap_target_type(pt);
-			}
+			return c_unwrap_target_type(self_p->type ? self_p->type : c_decl_type(self_p));
 		}
 	}
 	return NULL;

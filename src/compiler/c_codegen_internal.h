@@ -54,6 +54,10 @@ static inline uint64_t c_bswap64(uint64_t x)
 
 typedef int VariableId;
 
+// Variable and label ids stored in pointer fields. Ids start at 1, so NULL means none.
+static inline void *c_id_to_ptr(VariableId id) { return (void *)(uintptr_t)id; } // NOLINT(performance-no-int-to-ptr)
+static inline VariableId c_ptr_to_id(void *ptr) { return (VariableId)(uintptr_t)ptr; }
+
 typedef enum
 {
 	CV_VALUE,
@@ -65,17 +69,18 @@ typedef struct
 	VariableId var;
 	Type *type;
 	CValueKind kind;
-	int optional;
+	// The fault slot of an optional variable whose value this is (EXPR_DECL), or NULL. Reading the value checks it and
+	// jumps to the catch target first, as LLVM's BE_ADDRESS_OPTIONAL folds on rvalue.
+	const char *fault;
 } CValue;
 
 static inline void c_value_set_void(CValue *val)
 {
 	if (val)
 	{
-		val->var      = 0;
-		val->type     = type_void;
-		val->kind     = CV_VALUE;
-		val->optional = 0;
+		val->var  = 0;
+		val->type = type_void;
+		val->kind = CV_VALUE;
 	}
 }
 
@@ -85,9 +90,39 @@ typedef struct
 	Type *type;
 	bool is_static;
 	bool is_alloca;
-	int alloca_count;
+	ArrayIndex alloca_count;
 	Decl *decl;
 } CLocalVar;
+
+// Where an optional expression goes when it evaluates to a fault, as in the LLVM backend.
+// `label` is the jump target (0 when no fault can be handled here),
+// `fault` the C lvalue that receives the fault, or NULL when the fault itself is not needed.
+typedef struct
+{
+	int label;
+	const char *fault;
+} CCatch;
+
+#define NO_CATCH ((CCatch){ 0, NULL })
+
+// The C backend's view of a macro block, stored through the BlockExit pointer shared with block exit statements.
+// `return_out` receives the value (0 if none), `return_exit` is the label after the block,
+// `catch` the catch target that was active around the block.
+typedef struct
+{
+	int return_out;
+	Type *return_type;
+	int return_exit;
+	CCatch catch;
+} CBlockExit;
+
+// How a signature returns. value == NULL: nothing comes back (void / zero sized).
+// An optional returns its fault, the value goes through a leading `T *___ret_out` parameter.
+typedef struct
+{
+	bool optional;
+	Type *value;
+} CRet;
 
 typedef struct GenContext
 {
@@ -95,16 +130,19 @@ typedef struct GenContext
 	ByteBuffer *buffer;
 	const char *base_name;
 	const char *c_filename;
+	size_t c_file_size;
 	const char *object_filename;
 	Module *current_module;
 	int id_gen;
 	bool current_block_live;
 
-	Type *current_return_type;
-	int current_macro_ret_var;
-	int current_macro_fault_var;
-	Type *current_macro_ret_type;
-	int current_macro_exit_label;
+	CRet cur_ret;
+	// Make c_traverse_all_modules visit interfaces that are not live (see c_emit_dynamic_dispatcher).
+	bool traverse_unused_interfaces;
+	// The catch target of the expression being emitted.
+	CCatch catch;
+	// The fault being propagated while emitting `defer catch` / `defer (catch err)` statements.
+	const char *defer_error_var;
 	int current_break_label;
 	int current_continue_label;
 	CValue retval;
@@ -113,19 +151,40 @@ typedef struct GenContext
 	const char *cur_func_name;
 	Decl *cur_func_decl;
 
-	HTable *gen_decl;
-	HTable *gen_def;
+	// A file declares only what its code uses. Type declarations, other declarations and dispatchers are written to
+	// their own buffers, which go in front of the code; types named while recording get full definitions, between
+	// the type declarations and the rest (c_type_name).
+	ByteBuffer *type_decl_buffer;
+	ByteBuffer *decl_buffer;
+	ByteBuffer *dispatch_buffer;
+	bool record_types;
+	HTable used_type_set;
+	Type **used_types;
+
+	HTable gen_decl;
+	HTable gen_def;
 	HTable local_vars;
 	HTable local_fault_vars;
 	HTable declared_vars;
-	HTable *decl_names;
+	HTable decl_names;
+	HTable declared_typeids;
+	HTable declared_faults;
+	HTable declared_bitstructs;
 	HTable emitted_func_defs;
-	HTable *emitted_global_decls;
+	HTable emitted_global_decls;
 	HTable emitted_global_defs;
 } GenContext;
 
+// Direct output to a declaration buffer, if the file has one; returns the buffer to restore.
+static inline ByteBuffer *c_decl_stream_enter(GenContext *c, ByteBuffer *stream)
+{
+	ByteBuffer *prev = c->buffer;
+	if (stream) c->buffer = stream;
+	return prev;
+}
+
 VariableId c_emit_alloca(GenContext *c, Type *type);
-VariableId c_emit_alloca_array(GenContext *c, Type *base_type, int count);
+VariableId c_emit_alloca_array(GenContext *c, Type *base_type, ArrayIndex count);
 
 typedef void (*CDeclVisitor)(GenContext *c, Decl *d, void *userdata);
 
@@ -141,26 +200,76 @@ const char *c_sanitize_name(const char *name);
 const char *c_get_decl_name(Decl *decl);
 const char *c_get_decl_asm_name(Decl *decl);
 bool c_decl_needs_asm_label(Decl *decl);
+bool c_fn_is_main(Decl *fn);
+const char *c_decl_lvalue_str(GenContext *c, Decl *decl);
+// The name of a function or global the code refers to, declared in the file on first use.
+const char *c_decl_ref(GenContext *c, Decl *decl);
+const char *c_decl_export_attrs(Decl *decl, bool is_definition);
 const char *c_get_enum_assoc_name(Decl *enum_decl, Decl *param);
 void c_emit_string_literal(GenContext *c, const char *bytes, ArrayIndex len);
 void c_traverse_all_modules(GenContext *c, CDeclVisitor visitor, void *userdata);
 void c_emit_panic(GenContext *c, const char *message, SourceLocId loc, Expr **args);
+// A value passed to a compiler generated panic: a C expression and its type.
+typedef struct
+{
+	const char *expr;
+	Type *type;
+} CPanicValue;
+void c_emit_panic_fn(GenContext *c, PanicFunction id, SourceLocId loc, const char **texts, CPanicValue *values);
+void c_emit_panic_if(GenContext *c, const char *cond, PanicFunction id, SourceLocId loc, const char *text, CPanicValue *value_1, CPanicValue *value_2);
 
 /* Function & Variable Management */
+// A function only referenced inside its own module gets internal linkage, as in the LLVM backend.
+// The module is a single C file, so `static` is enough.
+// Generated glue in other files calls @init functions and dynamic methods, so those stay external.
+static inline bool c_fn_is_internal(Decl *fn)
+{
+	if (!decl_is_local(fn) || fn->is_extern || fn->is_weak || !fn->func_decl.body) return false;
+	return !fn->func_decl.attr_init && !fn->func_decl.attr_finalizer && !fn->func_decl.attr_dynamic;
+}
+// A global only referenced inside its own module, as in the LLVM backend.
+static inline bool c_global_is_internal(Decl *var)
+{
+	return decl_is_local(var) && !var->is_extern && !var->is_weak_link;
+}
 int c_create_label(GenContext *c);
 int c_create_variable(GenContext *c);
 void c_register_function_local(GenContext *c, VariableId id, Type *type, bool is_static, Decl *decl);
 VariableId c_emit_temp_var(GenContext *c, CValue *value, Type *type);
 VariableId c_get_or_create_decl_var(GenContext *c, Decl *decl);
 VariableId c_get_decl_fault_var(GenContext *c, Decl *decl);
-void c_emit_assign_decl_fault(GenContext *c, Decl *decl, CValue *src_val, Expr *src_expr);
+const char *c_decl_fault_ref(GenContext *c, Decl *decl);
+typedef struct
+{
+	const char **names; // one per sig->params entry, NULL = types only
+	Type *self_type;    // replaces the type of params[0] (dispatcher: any), NULL = none
+	bool is_main;       // params 1 and 2 print as char**
+} CSigOpts;
+// `ret declarator(params)` for a signature. declarator: "name", "(*)", "(*name)".
+const char *c_signature_str(GenContext *c, Signature *sig, const char *declarator, CSigOpts opts);
+CRet c_type_ret(Type *rtype);
+CRet c_signature_ret(Signature *sig);
+const char *c_ident_read_fault_ref(GenContext *c, Decl *ident);
+void c_emit_jump_to_optional_exit(GenContext *c, const char *fault);
+void c_emit_fault_to_optional_exit(GenContext *c, const char *fault);
+// State for storing an expression into an optional variable, see c_optional_assign_begin.
+typedef struct
+{
+	CCatch saved;
+	const char *fault_ref;
+	int after;
+	int rejump;
+} COptionalAssign;
+void c_optional_assign_begin(GenContext *c, COptionalAssign *assign, const char *fault_ref, Expr *rhs);
+void c_optional_assign_end(GenContext *c, COptionalAssign *assign);
 VariableId c_ensure_cvalue_var(GenContext *c, CValue *val, Type *fallback_type);
 void c_value_rvalue(GenContext *c, CValue *val);
 void c_value_addr(GenContext *c, CValue *val);
 const char *c_arrow(const CValue *val);
+void c_emit_lanewise(GenContext *c, int result_var, Type *result_type, const char *tmpl, CValue *args, int arg_count);
 void c_emit_label(GenContext *c, int label_id);
 void c_emit_var_zero_init(GenContext *c, VariableId var_id, Type *type);
-void c_emit_assign_to_any(GenContext *c, const char *dst_expr, CValue *src);
+void c_emit_store(GenContext *c, const char *dst, Type *type, CValue *src);
 void c_emit_assign_var(GenContext *c, VariableId dst_var, Type *dst_type, CValue *src_val);
 bool c_emit_function_decl(GenContext *c, Decl *fn, bool is_current_module);
 void c_emit_function(GenContext *c, Decl *fn);
@@ -174,13 +283,11 @@ bool c_is_bitstruct_array(Type *type, Decl **out_decl);
 bool c_is_bitstruct_big_endian(Decl *d);
 bool c_is_bitstruct_requires_byteswap(Decl *d);
 void c_get_bitstruct_member_bits(Decl *m, int *out_start_bit, int *out_end_bit);
-void c_emit_bitstruct_accessors_to_file(FILE *f, Decl *decl);
+void c_declare_bitstruct_accessors(GenContext *c, Decl *decl);
 const char *c_emit_bitstruct_container(GenContext *c, Expr *parent_expr, Decl *member, int *out_container_var, Decl **out_bitstruct_decl);
 void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target_type);
 void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target_type);
-void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *addr, CValue *right_val, const char *assign_op, CValue *out_val);
-void c_emit_null_deref_check(GenContext *c, Expr *expr, VariableId addr_var);
-void c_emit_vec_compound_assign(GenContext *c, const char *lhs_fmt, int len, const char *assign_op, CValue *right_val);
+void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *addr, CValue *right_val, CValue *out_val);
 
 /* Global & Runtime */
 bool c_is_file_global(Decl *decl);
@@ -188,6 +295,7 @@ bool c_can_emit_static_initializer(Expr *expr);
 void c_emit_const_initializer_rec(GenContext *c, ConstInitializer *init);
 void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type);
 void c_emit_global_decl(GenContext *c, Decl *var);
+void c_emit_enum_assoc_decl(GenContext *c, Decl *enum_decl, Decl *param);
 void c_emit_global_def(GenContext *c, Decl *var);
 void c_emit_dynamic_dispatcher(GenContext *c, Decl *dyn_fn);
 void c_emit_runtime_header(const char *dir);
@@ -309,35 +417,16 @@ static inline const char *c_binary_op_str(BinaryOp op)
 	}
 }
 
-static inline const char *c_assign_op_str(BinaryOp op)
-{
-	switch (op)
-	{
-		case BINARYOP_ASSIGN: return "=";
-		case BINARYOP_ADD_ASSIGN: return "+=";
-		case BINARYOP_SUB_ASSIGN: return "-=";
-		case BINARYOP_MULT_ASSIGN: return "*=";
-		case BINARYOP_DIV_ASSIGN: return "/=";
-		case BINARYOP_MOD_ASSIGN: return "%=";
-		case BINARYOP_BIT_AND_ASSIGN: return "&=";
-		case BINARYOP_BIT_OR_ASSIGN: return "|=";
-		case BINARYOP_BIT_XOR_ASSIGN: return "^=";
-		case BINARYOP_SHL_ASSIGN: return "<<=";
-		case BINARYOP_SHR_ASSIGN: return ">>=";
-		default: return "=";
-	}
-}
-
 /* Statements */
 void c_emit_local_decl(GenContext *c, Decl *decl, CValue *value);
-void c_emit_check_fault_and_return(GenContext *c, Expr *expr);
+void c_emit_fault_return(GenContext *c, const char *fault);
 void c_emit_stmt(GenContext *c, Ast *stmt);
 void c_emit_stmt_chain(GenContext *c, AstId current);
 void c_emit_asm_block_stmt(GenContext *c, Ast *stmt);
 
 /* Types */
 Decl *c_decl_unwrap(Decl *decl);
-bool is_valid_type_ptr(Type *type);
+
 Type *c_unwrap_alias(Type *type);
 Type *c_safe_type_lower(Type *type);
 Type *c_decl_type(Decl *decl);
@@ -346,20 +435,19 @@ bool c_type_is_aggregate(Type *t);
 bool c_type_is_resolved(Type *type);
 int c_get_type_introspection_kind(Type *type);
 size_t c_get_type_size(Type *type);
+void c_type_names_init(void);
 const char *c_type_name(GenContext *c, Type *type);
 const char *c_type_zero_literal(Type *t);
 bool c_emit_type_forward_decl(GenContext *c, Type *type);
 bool c_emit_type_decl(GenContext *c, Type *type);
 const char *c_typeid_name(Type *type);
+const char *c_typeid_ref(GenContext *c, Type *type);
+const char *c_fault_ref(GenContext *c, Decl *decl);
 const char *c_fault_symbol_name(Decl *decl);
 Type *c_get_method_target_type(Decl *m);
 
 static inline Decl *c_type_get_decl(Type *t)
 {
-	if (!t || !is_valid_type_ptr(t))
-	{
-		return NULL;
-	}
 	switch (t->type_kind)
 	{
 		case TYPE_STRUCT:
@@ -387,10 +475,10 @@ static inline bool c_decl_is_live(Decl *d)
 	return true;
 }
 
-static inline bool c_type_needs_emission(Type *t)
+// Whether a typeid can exist for the type at all.
+static inline bool c_type_has_typeid(Type *t)
 {
-	if (!is_valid_type_ptr(t) || t == poisoned_type ||
-	    t->type_kind == TYPE_POISONED || t->type_kind == TYPE_WILDCARD ||
+	if (t->type_kind == TYPE_POISONED || t->type_kind == TYPE_WILDCARD ||
 	    t->type_kind == TYPE_UNTYPEDLIST || t->type_kind == TYPE_TYPEINFO ||
 	    t->type_kind == TYPE_MEMBER || t->type_kind == TYPE_REFLECTION ||
 	    t->type_kind == TYPE_FUNC_RAW || t->type_kind == TYPE_INFERRED_ARRAY ||
@@ -399,27 +487,13 @@ static inline bool c_type_needs_emission(Type *t)
 		return false;
 	}
 	Decl *d = c_type_get_decl(t);
-	if (d && (!d->unit || !d->unit->module))
-	{
-		return false;
-	}
-	if (strip_unused() && !t->is_live)
-	{
-		return false;
-	}
+	ASSERT(!d || (d->unit && d->unit->module));
 	return true;
 }
 
-static inline Type *c_expr_type_or(Expr *expr, Type *fallback)
+static inline bool c_type_needs_emission(Type *t)
 {
-	return (expr && expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : fallback;
-}
-
-static inline int c_emit_capture_current_fault(GenContext *c)
-{
-	int fault_temp = c_emit_temp_var(c, NULL, type_fault);
-	PRINTF("c3fault_t ___var_%d = __c3_current_fault;\n", fault_temp);
-	return fault_temp;
+	return c_type_is_resolved(t) && c_type_has_typeid(t) && (!strip_unused() || t->is_live);
 }
 
 static inline int c_emit_temp_zero(GenContext *c, CValue *value, Type *type)

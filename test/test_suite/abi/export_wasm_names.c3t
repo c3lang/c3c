@@ -1,0 +1,31 @@
+// #target: wasm32
+module wtest;
+
+extern fn int host_get(int x) @wasm("hostmod", "get");
+extern fn int host_named(int x) @wasm("named");
+extern fn int host_plain(int x);
+fn int call_host(int x) @export("call_host") => host_get(x) + host_plain(x) + host_named(x);
+fn int sq(int x) @export => x * x;
+
+/* #expect: wtest.ll
+
+declare i32 @get(i32) #0
+declare i32 @named(i32) #1
+declare i32 @host_plain(i32) #2
+define i32 @call_host(i32 %0) #3 {
+define i32 @wtest__sq(i32 %0) #4 {
+"wasm-import-module"="hostmod" "wasm-import-name"="get" }
+"wasm-import-name"="named" }
+"wasm-import-name"="host_plain" }
+"wasm-export-name"="call_host" }
+"wasm-export-name"="wtest__sq" }
+
+/* #expect: wtest.c
+
+extern int32_t call_host(int32_t);
+extern int32_t wtest__sq(int32_t);
+__attribute__((import_name("get"), import_module("hostmod"))) extern int32_t get(int32_t);
+__attribute__((import_name("host_plain"))) extern int32_t host_plain(int32_t);
+__attribute__((import_name("named"))) extern int32_t named(int32_t);
+__attribute__((export_name("call_host"))) int32_t call_host(int32_t
+__attribute__((export_name("wtest__sq"))) int32_t wtest__sq(int32_t

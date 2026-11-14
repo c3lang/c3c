@@ -702,7 +702,17 @@ bool type_is_comparable(Type *type)
 	UNREACHABLE
 }
 
+static void append_extern_decl_name_no_clear(Decl *decl)
+{
+	scratch_buffer_set_extern_decl_name(decl, false);
+}
+
 void type_mangle_introspect_name_to_buffer(Type *type)
+{
+	type_mangle_introspect_name_with(type, append_extern_decl_name_no_clear);
+}
+
+void type_mangle_introspect_name_with(Type *type, void (*append_decl_name)(Decl *))
 {
 	switch (type->type_kind)
 	{
@@ -724,19 +734,19 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 			return;
 		case TYPE_POINTER:
 			scratch_buffer_append("p$");
-			type_mangle_introspect_name_to_buffer(type->pointer);
+			type_mangle_introspect_name_with(type->pointer, append_decl_name);
 			return;
 		case TYPE_SLICE:
 			scratch_buffer_append("sa$");
-			type_mangle_introspect_name_to_buffer(type->array.base);
+			type_mangle_introspect_name_with(type->array.base, append_decl_name);
 			return;
 		case TYPE_FLEXIBLE_ARRAY:
 			scratch_buffer_append("a0$");
-			type_mangle_introspect_name_to_buffer(type->array.base);
+			type_mangle_introspect_name_with(type->array.base, append_decl_name);
 			return;
 		case TYPE_OPTIONAL:
 			scratch_buffer_append("f$");
-			type_mangle_introspect_name_to_buffer(type->optional);
+			type_mangle_introspect_name_with(type->optional, append_decl_name);
 			return;
 		case TYPE_SIMD_VECTOR:
 			scratch_buffer_append("si");
@@ -745,13 +755,13 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 			scratch_buffer_append_char('v');
 			scratch_buffer_append_unsigned_int(type->array.len);
 			scratch_buffer_append_char('$');
-			type_mangle_introspect_name_to_buffer(type->array.base);
+			type_mangle_introspect_name_with(type->array.base, append_decl_name);
 			return;
 		case TYPE_ARRAY:
 			scratch_buffer_append_char('a');
 			scratch_buffer_append_unsigned_int(type->array.len);
 			scratch_buffer_append_char('$');
-			type_mangle_introspect_name_to_buffer(type->array.base);
+			type_mangle_introspect_name_with(type->array.base, append_decl_name);
 			return;
 		case TYPE_FUNC_PTR:
 			type = type->pointer;
@@ -794,10 +804,10 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 		case TYPE_BITSTRUCT:
 		case TYPE_TYPEDEF:
 		case TYPE_INTERFACE:
-			scratch_buffer_set_extern_decl_name(type->decl, false);
+			append_decl_name(type->decl);
 			return;
 		case TYPE_ALIAS:
-			type_mangle_introspect_name_to_buffer(type->canonical);
+			type_mangle_introspect_name_with(type->canonical, append_decl_name);
 			return;
 	}
 	UNREACHABLE_VOID

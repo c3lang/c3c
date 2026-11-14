@@ -88,13 +88,8 @@ static void c_emit_atomic_float_cas(GenContext *c, int temp, const char *tn, Typ
 	PRINT("}\n");
 }
 
-static void c_emit_builtin_gather_load(GenContext *c, CValue *value, Type *return_type, CValue *c_args, int num_args, bool is_gather)
+static void c_emit_builtin_gather_load(GenContext *c, CValue *value, Type *return_type, CValue *c_args, bool is_gather)
 {
-	if (num_args < 3)
-	{
-		c_emit_temp_zero(c, value, return_type);
-		return;
-	}
 	int temp            = c_emit_temp_var(c, value, return_type);
 	const char *tn      = c_type_name(c, return_type);
 	c_value_rvalue(c, &c_args[0]);
@@ -122,30 +117,27 @@ static void c_emit_builtin_gather_load(GenContext *c, CValue *value, Type *retur
 	}
 }
 
-static void c_emit_builtin_scatter_store(GenContext *c, CValue *value, Expr **args, CValue *c_args, int num_args, bool is_scatter)
+static void c_emit_builtin_scatter_store(GenContext *c, CValue *value, Expr **args, CValue *c_args, bool is_scatter)
 {
-	if (num_args >= 3)
+	c_value_rvalue(c, &c_args[0]);
+	c_value_rvalue(c, &c_args[1]);
+	c_value_rvalue(c, &c_args[2]);
+	Type *flat_val      = type_flatten(args[1]->type);
+	int len             = c_type_is_vec_or_arr(flat_val) ? (int)flat_val->array.len : 0;
+	Type *elem_type     = flat_val ? flat_val->array.base : type_void;
+	const char *elem_tn = c_type_name(c, elem_type);
+	for (int i = 0; i < len; i++)
 	{
-		c_value_rvalue(c, &c_args[0]);
-		c_value_rvalue(c, &c_args[1]);
-		c_value_rvalue(c, &c_args[2]);
-		Type *flat_val      = type_flatten(args[1]->type);
-		int len             = c_type_is_vec_or_arr(flat_val) ? (int)flat_val->array.len : 0;
-		Type *elem_type     = flat_val ? flat_val->array.base : type_void;
-		const char *elem_tn = c_type_name(c, elem_type);
-		for (int i = 0; i < len; i++)
+		PRINTF("if (___var_%d.ptr[%d]) {\n", c_args[2].var, i);
+		if (is_scatter)
 		{
-			PRINTF("if (___var_%d.ptr[%d]) {\n", c_args[2].var, i);
-			if (is_scatter)
-			{
-				PRINTF("\t*(%s*)___var_%d.ptr[%d] = ___var_%d.ptr[%d];\n", elem_tn, c_args[0].var, i, c_args[1].var, i);
-			}
-			else
-			{
-				PRINTF("\t((%s*)___var_%d)[%d] = ___var_%d.ptr[%d];\n", elem_tn, c_args[0].var, i, c_args[1].var, i);
-			}
-			PRINTF("}\n");
+			PRINTF("\t*(%s*)___var_%d.ptr[%d] = ___var_%d.ptr[%d];\n", elem_tn, c_args[0].var, i, c_args[1].var, i);
 		}
+		else
+		{
+			PRINTF("\t((%s*)___var_%d)[%d] = ___var_%d.ptr[%d];\n", elem_tn, c_args[0].var, i, c_args[1].var, i);
+		}
+		PRINTF("}\n");
 	}
 	c_value_set_void(value);
 }
@@ -159,30 +151,15 @@ static bool c_try_emit_table_builtin(GenContext *c, CValue *value, Type *return_
 			continue;
 		}
 		const char *builtin_fn     = simple_builtins_table[i].c_fn;
-		compiler.linking.link_math = true;
 		if (has_return)
 		{
 			c_emit_type_forward_decl(c, return_type);
 			Type *flat_ret = return_type ? type_flatten(return_type) : NULL;
 			if (c_type_is_vec_or_arr(flat_ret))
 			{
-				int len        = c_type_aggregate_len(flat_ret);
-				int temp       = c_emit_temp_var(c, value, return_type);
-				const char *tn = c_type_name(c, return_type);
-				PRINTF("%s ___var_%d;\n", tn, temp);
-				for (int k = 0; k < len; k++)
-				{
-					PRINTF("___var_%d.ptr[%d] = %s(", temp, k, builtin_fn);
-					for (int j = 0; j < arg_idx; j++)
-					{
-						if (j != 0)
-						{
-							PRINT(", ");
-						}
-						PRINT(c_vec_elem_operand(c, &c_args[j], k));
-					}
-					PRINT(");\n");
-				}
+				const char *lane = str_printf("%s(", builtin_fn);
+				for (int j = 0; j < arg_idx; j++) lane = str_printf("%s%s$%d", lane, j ? ", " : "", j);
+				c_emit_lanewise(c, c_emit_temp_var(c, value, return_type), return_type, str_printf("%s)", lane), c_args, arg_idx);
 				return true;
 			}
 			PRINTF("%s ___var_%d = %s(", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type), builtin_fn);
@@ -235,60 +212,36 @@ static void c_emit_builtin_fshr(GenContext *c, CValue *value, Type *rtype, CValu
 	       temp, a->var, b->var, b->var);
 }
 
-static void c_emit_builtin_sat(GenContext *c, CValue *value, Type *rtype, BuiltinFunction op, CValue *a, CValue *b)
+// Saturating add/sub/mul of the integer lvalue strings `a` and `b` of type `t` into `dst`.
+static void c_emit_sat_lane(GenContext *c, const char *dst, Type *t, BuiltinFunction op, const char *a, const char *b)
 {
-	c_value_rvalue(c, a);
-	c_value_rvalue(c, b);
-	int temp          = c_emit_temp_var(c, value, rtype);
-	const char *tn    = c_type_name(c, rtype);
+	const char *tn    = c_type_name(c, t);
 	const char *bname = (op == BUILTIN_SAT_SUB) ? "__builtin_sub_overflow" : (op == BUILTIN_SAT_MUL) ? "__builtin_mul_overflow"
 	                                                                                                 : "__builtin_add_overflow";
-	PRINTF("%s ___var_%d = 0;\n", tn, temp);
-	PRINTF("if (%s(___var_%d, ___var_%d, &___var_%d)) {\n", bname, a->var, b->var, temp);
-	int bytes = (int)type_size(rtype);
-	if (type_is_signed(rtype))
+	PRINTF("if (%s(%s, %s, &%s)) {\n", bname, a, b, dst);
+	int bytes = (int)type_size(t);
+	if (type_is_signed(t))
 	{
-		char is_max_cond[128];
-		if (op == BUILTIN_SAT_SUB)
-		{
-			snprintf(is_max_cond, sizeof(is_max_cond), "___var_%d < 0", b->var);
-		}
-		else if (op == BUILTIN_SAT_MUL)
-		{
-			snprintf(is_max_cond, sizeof(is_max_cond), "(___var_%d < 0) == (___var_%d < 0)", a->var, b->var);
-		}
-		else
-		{
-			snprintf(is_max_cond, sizeof(is_max_cond), "___var_%d >= 0", b->var);
-		}
+		const char *is_max_cond = op == BUILTIN_SAT_SUB ? str_printf("%s < 0", b)
+		                        : op == BUILTIN_SAT_MUL ? str_printf("(%s < 0) == (%s < 0)", a, b)
+		                                                : str_printf("%s >= 0", b);
 		if (bytes == 16)
 		{
-			PRINTF("\t___var_%d = (%s) ? (__c3_int128)(~((__c3_uint128)1 << 127)) : (__c3_int128)((__c3_uint128)1 << 127);\n",
-			       temp, is_max_cond);
+			PRINTF("\t%s = (%s) ? (__c3_int128)(~((__c3_uint128)1 << 127)) : (__c3_int128)((__c3_uint128)1 << 127);\n", dst, is_max_cond);
 		}
 		else
 		{
-			PRINTF("\t___var_%d = (%s) ? (%s)(((uint64_t)1 << (sizeof(%s)*8-1)) - 1) : (%s)(~(((uint64_t)1 << (sizeof(%s)*8-1)) - 1));\n",
-			       temp, is_max_cond, tn, tn, tn, tn);
+			PRINTF("\t%s = (%s) ? (%s)(((uint64_t)1 << (sizeof(%s)*8-1)) - 1) : (%s)(~(((uint64_t)1 << (sizeof(%s)*8-1)) - 1));\n",
+			       dst, is_max_cond, tn, tn, tn, tn);
 		}
+	}
+	else if (op == BUILTIN_SAT_SUB)
+	{
+		PRINTF("\t%s = 0;\n", dst);
 	}
 	else
 	{
-		if (op == BUILTIN_SAT_SUB)
-		{
-			PRINTF("\t___var_%d = 0;\n", temp);
-		}
-		else
-		{
-			if (bytes == 16)
-			{
-				PRINTF("\t___var_%d = (__c3_uint128)~(__c3_uint128)0;\n", temp);
-			}
-			else
-			{
-				PRINTF("\t___var_%d = (%s)(~0ULL);\n", temp, tn);
-			}
-		}
+		PRINTF("\t%s = %s;\n", dst, bytes == 16 ? "(__c3_uint128)~(__c3_uint128)0" : str_printf("(%s)(~0ULL)", tn));
 	}
 	PRINT("}\n");
 }
@@ -306,91 +259,129 @@ static const char *c_unsigned_type_for_size(int bytes)
 	}
 }
 
-static void c_emit_builtin_sat_shl(GenContext *c, CValue *value, Type *rtype, CValue *a, CValue *b)
+// $$bitreverse of the integer expression `x` of type `t` into the lvalue `dst`.
+static void c_emit_bitreverse_lane(GenContext *c, const char *dst, Type *t, const char *x)
 {
-	c_value_rvalue(c, a);
-	c_value_rvalue(c, b);
-	int temp        = c_emit_temp_var(c, value, rtype);
-	const char *tn  = c_type_name(c, rtype);
-	int bytes       = (int)type_size(rtype);
+	int bits        = (int)type_size(t) * 8;
+	const char *utn = c_unsigned_type_for_size(bits / 8);
+	PRINTF("%s = 0;\n", dst);
+	PRINTF("for (int ___i = 0; ___i < %d; ___i++) { if ((((%s)%s) >> ___i) & 1) %s |= (%s)((%s)1 << (%d - ___i)); }\n",
+	       bits, utn, x, dst, c_type_name(c, t), utn, bits - 1);
+}
+
+// One lane of $$clz, $$ctz, $$popcount or $$bswap on the integer expression `x` of type `t`.
+static const char *c_bit_builtin_lane(GenContext *c, BuiltinFunction builtin, Type *t, const char *x)
+{
+	const char *tn  = c_type_name(c, t);
+	int bytes       = (int)type_size(t);
 	int bits        = bytes * 8;
 	const char *utn = c_unsigned_type_for_size(bytes);
-	bool is_signed  = type_is_signed(rtype);
+	const char *lo  = str_printf("((uint64_t)%s)", x);
+	const char *hi  = str_printf("((uint64_t)((__c3_uint128)%s >> 64))", x);
+	switch (builtin)
+	{
+		case BUILTIN_CTLZ:
+			if (bytes == 16) return str_printf("(%s ? (%s)__builtin_clzll(%s) : (%s ? (%s)(64 + __builtin_clzll(%s)) : (%s)128))", hi, tn, hi, lo, tn, lo, tn);
+			return str_printf("((%s)%s == 0 ? (%s)%d : (%s)(__builtin_clzll((uint64_t)(%s)%s) - %d))", utn, x, tn, bits, tn, utn, x, 64 - bits);
+		case BUILTIN_CTTZ:
+			if (bytes == 16) return str_printf("(%s ? (%s)__builtin_ctzll(%s) : (%s ? (%s)(64 + __builtin_ctzll(%s)) : (%s)128))", lo, tn, lo, hi, tn, hi, tn);
+			return str_printf("((%s)%s == 0 ? (%s)%d : (%s)__builtin_ctzll((uint64_t)(%s)%s))", utn, x, tn, bits, tn, utn, x);
+		case BUILTIN_POPCOUNT:
+			if (bytes == 16) return str_printf("(%s)(__builtin_popcountll(%s) + __builtin_popcountll(%s))", tn, lo, hi);
+			return str_printf("(%s)__builtin_popcountll((uint64_t)(%s)%s)", tn, utn, x);
+		case BUILTIN_BSWAP:
+			// Sema folds the single byte case.
+			switch (bytes)
+			{
+				case 2: return str_printf("(%s)__builtin_bswap16((uint16_t)%s)", tn, x);
+				case 4: return str_printf("(%s)__builtin_bswap32((uint32_t)%s)", tn, x);
+				case 8: return str_printf("(%s)__builtin_bswap64((uint64_t)%s)", tn, x);
+				case 16: return str_printf("(%s)(((__c3_uint128)__builtin_bswap64(%s) << 64) | (__c3_uint128)__builtin_bswap64(%s))", tn, lo, hi);
+				default: UNREACHABLE
+			}
+		default: UNREACHABLE
+	}
+}
 
-	PRINTF("%s ___var_%d = 0;\n", tn, temp);
-	PRINTF("{\n\tsize_t _shift = (size_t)___var_%d;\n", b->var);
+// Saturating left shift of the integer lvalue string `a` of type `t` by `b` into `dst`.
+static void c_emit_sat_shl_lane(GenContext *c, const char *dst, Type *t, const char *a, const char *b)
+{
+	const char *tn  = c_type_name(c, t);
+	int bytes       = (int)type_size(t);
+	int bits        = bytes * 8;
+	const char *utn = c_unsigned_type_for_size(bytes);
+	bool is_signed  = type_is_signed(t);
+	const char *max_val, *min_val = NULL;
 	if (is_signed)
 	{
-		const char *max_val = (bytes == 16)
-			? "(__c3_int128)(~((__c3_uint128)1 << 127))"
-			: str_printf("(%s)(((uint64_t)1 << (%d - 1)) - 1)", tn, bits);
-		const char *min_val = (bytes == 16)
-			? "(__c3_int128)((__c3_uint128)1 << 127)"
-			: str_printf("(%s)(~(((uint64_t)1 << (%d - 1)) - 1))", tn, bits);
-
-		PRINTF("\tif (_shift >= %d) {\n", bits);
-		PRINTF("\t\t___var_%d = (___var_%d > 0) ? %s : ((___var_%d < 0) ? %s : 0);\n",
-		       temp, a->var, max_val, a->var, min_val);
-		PRINTF("\t} else {\n");
-		PRINTF("\t\t%s _res = (%s)((%s)___var_%d << _shift);\n", tn, tn, utn, a->var);
-		PRINTF("\t\tif (((%s)(_res >> _shift)) != ___var_%d) {\n", tn, a->var);
-		PRINTF("\t\t\t___var_%d = (___var_%d > 0) ? %s : %s;\n", temp, a->var, max_val, min_val);
-		PRINTF("\t\t} else {\n");
-		PRINTF("\t\t\t___var_%d = _res;\n", temp);
-		PRINTF("\t\t}\n");
-		PRINTF("\t}\n");
+		max_val = bytes == 16 ? "(__c3_int128)(~((__c3_uint128)1 << 127))" : str_printf("(%s)(((uint64_t)1 << (%d - 1)) - 1)", tn, bits);
+		min_val = bytes == 16 ? "(__c3_int128)((__c3_uint128)1 << 127)" : str_printf("(%s)(~(((uint64_t)1 << (%d - 1)) - 1))", tn, bits);
 	}
 	else
 	{
-		const char *max_val = (bytes == 16)
-			? "(__c3_uint128)~(__c3_uint128)0"
-			: str_printf("(%s)(~0ULL)", tn);
-
-		PRINTF("\tif (_shift >= %d) {\n", bits);
-		PRINTF("\t\t___var_%d = (___var_%d != 0) ? %s : 0;\n", temp, a->var, max_val);
-		PRINTF("\t} else {\n");
-		PRINTF("\t\t%s _res = (%s)((%s)___var_%d << _shift);\n", tn, tn, utn, a->var);
-		PRINTF("\t\tif (((%s)(_res >> _shift)) != ___var_%d) {\n", tn, a->var);
-		PRINTF("\t\t\t___var_%d = %s;\n", temp, max_val);
-		PRINTF("\t\t} else {\n");
-		PRINTF("\t\t\t___var_%d = _res;\n", temp);
-		PRINTF("\t\t}\n");
-		PRINTF("\t}\n");
+		max_val = bytes == 16 ? "(__c3_uint128)~(__c3_uint128)0" : str_printf("(%s)(~0ULL)", tn);
 	}
-	PRINT("}\n");
+	PRINTF("{\n\tsize_t _shift = (size_t)%s;\n", b);
+	PRINTF("\tif (_shift >= %d) {\n", bits);
+	if (is_signed)
+	{
+		PRINTF("\t\t%s = (%s > 0) ? %s : ((%s < 0) ? %s : 0);\n", dst, a, max_val, a, min_val);
+	}
+	else
+	{
+		PRINTF("\t\t%s = (%s != 0) ? %s : 0;\n", dst, a, max_val);
+	}
+	PRINTF("\t} else {\n");
+	PRINTF("\t\t%s _res = (%s)((%s)%s << _shift);\n", tn, tn, utn, a);
+	PRINTF("\t\tif (((%s)(_res >> _shift)) != %s) {\n", tn, a);
+	PRINTF("\t\t\t%s = %s;\n", dst, is_signed ? str_printf("(%s > 0) ? %s : %s", a, max_val, min_val) : max_val);
+	PRINTF("\t\t} else {\n");
+	PRINTF("\t\t\t%s = _res;\n", dst);
+	PRINT("\t\t}\n\t}\n}\n");
 }
 
-static void c_emit_builtin_reduce(GenContext *c, CValue *value, Type *rtype, BuiltinFunction op, CValue *c_args, int num_args)
+// Saturating builtins, as LLVM's intrinsics: lane by lane for vectors.
+static void c_emit_builtin_sat(GenContext *c, CValue *value, Type *rtype, BuiltinFunction op, CValue *a, CValue *b)
+{
+	c_value_rvalue(c, a);
+	c_value_rvalue(c, b);
+	int temp = c_emit_temp_var(c, value, rtype);
+	PRINTF("%s ___var_%d = {0};\n", c_type_name(c, rtype), temp);
+	bool is_vec = c_type_is_vec_or_arr(rtype);
+	int lanes   = is_vec ? (int)rtype->array.len : 1;
+	Type *lane  = is_vec ? c_safe_type_lower(rtype->array.base) : rtype;
+	for (int k = 0; k < lanes; k++)
+	{
+		const char *idx = is_vec ? str_printf(".ptr[%d]", k) : "";
+		const char *dst = str_printf("___var_%d%s", temp, idx);
+		const char *la  = str_printf("___var_%d%s", a->var, idx);
+		const char *lb  = str_printf("___var_%d%s", b->var, idx);
+		if (op == BUILTIN_SAT_SHL)
+		{
+			c_emit_sat_shl_lane(c, dst, lane, la, lb);
+		}
+		else
+		{
+			c_emit_sat_lane(c, dst, lane, op, la, lb);
+		}
+	}
+}
+
+static void c_emit_builtin_reduce(GenContext *c, CValue *value, Type *rtype, BuiltinFunction op, CValue *c_args)
 {
 	int temp       = c_emit_temp_var(c, value, rtype);
 	const char *tn = c_type_name(c, rtype);
 
 	CValue *vec_arg = &c_args[0];
 	CValue *acc_arg = NULL;
-	if (num_args >= 2)
+	// Sema puts the accumulator of fadd and fmul first.
+	if (op == BUILTIN_REDUCE_FADD || op == BUILTIN_REDUCE_FMUL)
 	{
-		Type *t0       = c_args[0].type ? type_flatten(c_args[0].type) : NULL;
-		Type *t1       = c_args[1].type ? type_flatten(c_args[1].type) : NULL;
-		bool t0_is_vec = c_type_is_vec_or_arr(t0);
-		bool t1_is_vec = c_type_is_vec_or_arr(t1);
-		if (t1_is_vec)
-		{
-			acc_arg = &c_args[0];
-			vec_arg = &c_args[1];
-		}
-		else if (t0_is_vec)
-		{
-			vec_arg = &c_args[0];
-			acc_arg = &c_args[1];
-		}
-		else
-		{
-			acc_arg = &c_args[0];
-			vec_arg = &c_args[1];
-		}
+		acc_arg = &c_args[0];
+		vec_arg = &c_args[1];
 	}
 
-	Type *vt    = (vec_arg->type && is_valid_type_ptr(vec_arg->type)) ? type_flatten(vec_arg->type) : rtype;
+	Type *vt    = type_flatten(vec_arg->type);
 	bool is_ptr = false;
 	if (vt && vt->type_kind == TYPE_POINTER && vt->pointer)
 	{
@@ -477,6 +468,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 {
 	Expr *bfn               = expr->call_expr.function ? exprptrzero(expr->call_expr.function) : NULL;
 	BuiltinFunction builtin = bfn && bfn->expr_kind == EXPR_BUILTIN ? bfn->builtin_expr.builtin : BUILTIN_TRAP;
+	if (builtin_needs_libm(builtin)) compiler.linking.link_math = true;
 
 	Expr **args    = expr->call_expr.arguments;
 	int num_args   = vec_size(args);
@@ -491,7 +483,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 		}
 	}
 
-	Type *return_type = (expr->type && is_valid_type_ptr(expr->type)) ? c_safe_type_lower(expr->type) : type_void;
+	Type *return_type = c_safe_type_lower(expr->type);
 	bool has_return   = (return_type->type_kind != TYPE_VOID && !expr->call_expr.no_return);
 
 	if (c_try_emit_table_builtin(c, value, return_type, builtin, c_args, num_args, has_return))
@@ -504,29 +496,20 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 	{
 		case BUILTIN_MEMCOPY:
 		case BUILTIN_MEMCOPY_INLINE:
-			if (num_args >= 3)
-			{
-				c_value_rvalue(c, &c_args[2]);
-				PRINTF("__c3_memcpy((void*)___var_%d, (void*)___var_%d, (size_t)___var_%d);\n", c_args[0].var, c_args[1].var, c_args[2].var);
-			}
+			c_value_rvalue(c, &c_args[2]);
+			PRINTF("__c3_memcpy((void*)___var_%d, (void*)___var_%d, (size_t)___var_%d);\n", c_args[0].var, c_args[1].var, c_args[2].var);
 			c_value_set_void(value);
 			break;
 		case BUILTIN_MEMMOVE:
-			if (num_args >= 3)
-			{
-				c_value_rvalue(c, &c_args[2]);
-				PRINTF("__c3_memmove((void*)___var_%d, (void*)___var_%d, (size_t)___var_%d);\n", c_args[0].var, c_args[1].var, c_args[2].var);
-			}
+			c_value_rvalue(c, &c_args[2]);
+			PRINTF("__c3_memmove((void*)___var_%d, (void*)___var_%d, (size_t)___var_%d);\n", c_args[0].var, c_args[1].var, c_args[2].var);
 			c_value_set_void(value);
 			break;
 		case BUILTIN_MEMSET:
 		case BUILTIN_MEMSET_INLINE:
-			if (num_args >= 3)
-			{
-				c_value_rvalue(c, &c_args[1]);
-				c_value_rvalue(c, &c_args[2]);
-				PRINTF("__c3_memset((void*)___var_%d, (int)___var_%d, (size_t)___var_%d);\n", c_args[0].var, c_args[1].var, c_args[2].var);
-			}
+			c_value_rvalue(c, &c_args[1]);
+			c_value_rvalue(c, &c_args[2]);
+			PRINTF("__c3_memset((void*)___var_%d, (int)___var_%d, (size_t)___var_%d);\n", c_args[0].var, c_args[1].var, c_args[2].var);
 			c_value_set_void(value);
 			break;
 		case BUILTIN_SYSCALL:
@@ -549,27 +532,18 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			break;
 		}
 		case BUILTIN_ANY_MAKE:
-			if (num_args >= 2)
-			{
-				c_value_rvalue(c, &c_args[1]);
-				int temp = c_emit_temp_var(c, value, type_any);
-				PRINTF("__c3_any__ ___var_%d = (__c3_any__){ .ptr = (void*)___var_%d, .typeid = (c3typeid_t)___var_%d };\n",
-				       temp, c_args[0].var, c_args[1].var);
-			}
-			else
-			{
-				PRINTF("__c3_any__ ___var_%d = {0};\n", c_emit_temp_var(c, value, type_any));
-			}
+		{
+			c_value_rvalue(c, &c_args[1]);
+			int temp = c_emit_temp_var(c, value, type_any);
+			PRINTF("__c3_any__ ___var_%d = (__c3_any__){ .ptr = (void*)___var_%d, .typeid = (c3typeid_t)___var_%d };\n",
+			       temp, c_args[0].var, c_args[1].var);
 			break;
+		}
 		case BUILTIN_MATRIX_MUL:
 		{
-			int M = 4, K = 4, N = 4;
-			if (num_args >= 5)
-			{
-				M = c_get_const_int_arg(args[2], 4);
-				K = c_get_const_int_arg(args[3], 4);
-				N = c_get_const_int_arg(args[4], 4);
-			}
+			int M = c_get_const_int_arg(args[2], 4);
+			int K = c_get_const_int_arg(args[3], 4);
+			int N = c_get_const_int_arg(args[4], 4);
 			int temp       = c_emit_temp_var(c, value, return_type);
 			const char *tn = c_type_name(c, return_type);
 			PRINTF("%s ___var_%d = {0};\n", tn, temp);
@@ -599,12 +573,8 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 		}
 		case BUILTIN_MATRIX_TRANSPOSE:
 		{
-			int M = 4, N = 4;
-			if (num_args >= 3)
-			{
-				M = c_get_const_int_arg(args[1], 4);
-				N = c_get_const_int_arg(args[2], 4);
-			}
+			int M = c_get_const_int_arg(args[1], 4);
+			int N = c_get_const_int_arg(args[2], 4);
 			int temp       = c_emit_temp_var(c, value, return_type);
 			const char *tn = c_type_name(c, return_type);
 			PRINTF("%s ___var_%d = {0};\n", tn, temp);
@@ -635,45 +605,33 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			int temp       = c_emit_temp_var(c, value, return_type);
 			const char *tn = c_type_name(c, return_type);
 			const char *op = (builtin == BUILTIN_MIN) ? "<" : ">";
-			if (num_args >= 2)
+			Type *flat_ret = return_type ? type_flatten(return_type) : NULL;
+			if (c_type_is_vec_or_arr(flat_ret))
 			{
-				Type *flat_ret = return_type ? type_flatten(return_type) : NULL;
-				if (c_type_is_vec_or_arr(flat_ret))
+				int len = c_type_aggregate_len(flat_ret);
+				PRINTF("%s ___var_%d;\n", tn, temp);
+				for (int k = 0; k < len; k++)
 				{
-					int len = c_type_aggregate_len(flat_ret);
-					PRINTF("%s ___var_%d;\n", tn, temp);
-					for (int k = 0; k < len; k++)
-					{
-						const char *a0 = c_vec_elem_operand(c, &c_args[0], k);
-						PRINTF("___var_%d.ptr[%d] = %s;\n", temp, k, a0);
-						for (int a = 1; a < num_args; a++)
-						{
-							const char *next = c_vec_elem_operand(c, &c_args[a], k);
-							PRINTF("if (%s %s ___var_%d.ptr[%d]) ___var_%d.ptr[%d] = %s;\n",
-							       next, op, temp, k, temp, k, next);
-						}
-					}
-				}
-				else
-				{
-					c_value_rvalue(c, &c_args[0]);
-					PRINTF("%s ___var_%d = ___var_%d;\n", tn, temp, c_args[0].var);
+					const char *a0 = c_vec_elem_operand(c, &c_args[0], k);
+					PRINTF("___var_%d.ptr[%d] = %s;\n", temp, k, a0);
 					for (int a = 1; a < num_args; a++)
 					{
-						c_value_rvalue(c, &c_args[a]);
-						PRINTF("if (___var_%d %s ___var_%d) ___var_%d = ___var_%d;\n",
-						       c_args[a].var, op, temp, temp, c_args[a].var);
+						const char *next = c_vec_elem_operand(c, &c_args[a], k);
+						PRINTF("if (%s %s ___var_%d.ptr[%d]) ___var_%d.ptr[%d] = %s;\n",
+						       next, op, temp, k, temp, k, next);
 					}
 				}
-			}
-			else if (num_args == 1)
-			{
-				c_value_rvalue(c, &c_args[0]);
-				PRINTF("%s ___var_%d = ___var_%d;\n", tn, temp, c_args[0].var);
 			}
 			else
 			{
-				c_emit_temp_zero(c, value, return_type);
+				c_value_rvalue(c, &c_args[0]);
+				PRINTF("%s ___var_%d = ___var_%d;\n", tn, temp, c_args[0].var);
+				for (int a = 1; a < num_args; a++)
+				{
+					c_value_rvalue(c, &c_args[a]);
+					PRINTF("if (___var_%d %s ___var_%d) ___var_%d = ___var_%d;\n",
+					       c_args[a].var, op, temp, temp, c_args[a].var);
+				}
 			}
 			break;
 		}
@@ -681,95 +639,57 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 		{
 			int temp       = c_emit_temp_var(c, value, return_type);
 			const char *tn = c_type_name(c, return_type);
-			if (num_args >= 3)
+			c_value_rvalue(c, &c_args[0]);
+			c_value_rvalue(c, &c_args[1]);
+			c_value_rvalue(c, &c_args[2]);
+			if (c_type_is_aggregate(return_type))
 			{
-				c_value_rvalue(c, &c_args[0]);
-				c_value_rvalue(c, &c_args[1]);
-				c_value_rvalue(c, &c_args[2]);
-				if (c_type_is_aggregate(return_type))
-				{
-					int len          = c_type_aggregate_len(return_type);
-					bool cond_is_agg = (c_args[0].type && c_type_is_aggregate(c_args[0].type));
-					bool arg1_is_agg = (c_args[1].type && c_type_is_aggregate(c_args[1].type));
-					bool arg2_is_agg = (c_args[2].type && c_type_is_aggregate(c_args[2].type));
-					PRINTF("%s ___var_%d;\n", tn, temp);
-					for (int i = 0; i < len; i++)
-					{
-						const char *c_str = cond_is_agg ? str_printf("___var_%d.ptr[%d]", c_args[0].var, i) : str_printf("___var_%d", c_args[0].var);
-						const char *t_str = arg1_is_agg ? str_printf("___var_%d.ptr[%d]", c_args[1].var, i) : str_printf("___var_%d", c_args[1].var);
-						const char *e_str = arg2_is_agg ? str_printf("___var_%d.ptr[%d]", c_args[2].var, i) : str_printf("___var_%d", c_args[2].var);
-						PRINTF("___var_%d.ptr[%d] = %s ? %s : %s;\n", temp, i, c_str, t_str, e_str);
-					}
-				}
-				else
-				{
-					PRINTF("%s ___var_%d = ___var_%d ? ___var_%d : ___var_%d;\n", tn, temp, c_args[0].var, c_args[1].var, c_args[2].var);
-				}
+				c_emit_lanewise(c, temp, return_type, "$0 ? $1 : $2", c_args, 3);
 			}
 			else
 			{
-				c_emit_temp_zero(c, value, return_type);
+				PRINTF("%s ___var_%d = ___var_%d ? ___var_%d : ___var_%d;\n", tn, temp, c_args[0].var, c_args[1].var, c_args[2].var);
 			}
 			break;
 		}
 		case BUILTIN_GATHER:
-			c_emit_builtin_gather_load(c, value, return_type, c_args, num_args, true);
+			c_emit_builtin_gather_load(c, value, return_type, c_args, true);
 			break;
 		case BUILTIN_MASKED_LOAD:
-			c_emit_builtin_gather_load(c, value, return_type, c_args, num_args, false);
+			c_emit_builtin_gather_load(c, value, return_type, c_args, false);
 			break;
 		case BUILTIN_SCATTER:
-			c_emit_builtin_scatter_store(c, value, args, c_args, num_args, true);
+			c_emit_builtin_scatter_store(c, value, args, c_args, true);
 			break;
 		case BUILTIN_MASKED_STORE:
-			c_emit_builtin_scatter_store(c, value, args, c_args, num_args, false);
+			c_emit_builtin_scatter_store(c, value, args, c_args, false);
 			break;
 		case BUILTIN_MASK_TO_INT:
 		{
 			int temp       = c_emit_temp_var(c, value, return_type);
 			const char *tn = c_type_name(c, return_type);
-			if (num_args >= 1)
+			c_value_rvalue(c, &c_args[0]);
+			Type *vec          = type_flatten(args[0]->type);
+			int len            = c_type_is_vec_or_arr(vec) ? (int)vec->array.len : 0;
+			const char *one_tn = (type_bit_size(return_type) > 64) ? "__c3_uint128" : "uint64_t";
+			PRINTF("%s ___var_%d = 0;\n", tn, temp);
+			for (int i = 0; i < len; i++)
 			{
-				c_value_rvalue(c, &c_args[0]);
-				Type *vec          = type_flatten(args[0]->type);
-				int len            = c_type_is_vec_or_arr(vec) ? (int)vec->array.len : 0;
-				const char *one_tn = (type_bit_size(return_type) > 64) ? "__c3_uint128" : "uint64_t";
-				PRINTF("%s ___var_%d = 0;\n", tn, temp);
-				for (int i = 0; i < len; i++)
-				{
-					PRINTF("if (___var_%d.ptr[%d]) ___var_%d |= (%s)((%s)1 << %d);\n",
-					       c_args[0].var, i, temp, tn, one_tn, i);
-				}
-			}
-			else
-			{
-				PRINTF("%s ___var_%d = 0;\n", tn, temp);
+				PRINTF("if (___var_%d.ptr[%d]) ___var_%d |= (%s)((%s)1 << %d);\n",
+				       c_args[0].var, i, temp, tn, one_tn, i);
 			}
 			break;
 		}
 		case BUILTIN_INT_TO_MASK:
 		{
-			if (num_args < 1)
-			{
-				c_emit_temp_zero(c, value, return_type);
-				break;
-			}
 			int temp       = c_emit_temp_var(c, value, return_type);
 			const char *tn = c_type_name(c, return_type);
 			c_value_rvalue(c, &c_args[0]);
-			Type *flat_ret     = type_flatten(return_type);
-			int len            = c_type_is_vec_or_arr(flat_ret) ? (int)flat_ret->array.len : 0;
 			Type *arg0_type    = type_flatten(args[0]->type);
 			BitSize bits       = type_bit_size(arg0_type);
-			Type *u_type       = type_int_unsigned_by_bitsize(bits);
-			const char *u_tn   = c_type_name(c, u_type);
+			const char *u_tn   = c_type_name(c, type_int_unsigned_by_bitsize(bits));
 			const char *one_tn = (bits > 64) ? "__c3_uint128" : "uint64_t";
-			PRINTF("%s ___var_%d;\n", tn, temp);
-			for (int i = 0; i < len; i++)
-			{
-				PRINTF("___var_%d.ptr[%d] = (((%s)___var_%d & ((%s)1 << %d)) != 0);\n",
-				       temp, i, u_tn, c_args[0].var, one_tn, i);
-			}
+			c_emit_lanewise(c, temp, return_type, str_printf("(((%s)$0 & ((%s)1 << $k)) != 0)", u_tn, one_tn), c_args, 1);
 			break;
 		}
 		case BUILTIN_SWIZZLE:
@@ -777,11 +697,6 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 		{
 			bool is_swizzle2 = (builtin == BUILTIN_SWIZZLE2);
 			int first_mask   = is_swizzle2 ? 2 : 1;
-			if (num_args < first_mask)
-			{
-				c_emit_temp_zero(c, value, return_type);
-				break;
-			}
 			int temp         = c_emit_temp_var(c, value, return_type);
 			const char *tn   = c_type_name(c, return_type);
 			c_value_rvalue(c, &c_args[0]);
@@ -814,11 +729,6 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 		case BUILTIN_EXACT_DIV:
 		case BUILTIN_EXACT_MOD:
 		{
-			if (num_args < 2)
-			{
-				c_emit_temp_zero(c, value, return_type);
-				break;
-			}
 			int temp       = c_emit_temp_var(c, value, return_type);
 			const char *tn = c_type_name(c, return_type);
 			const char *op = (builtin == BUILTIN_EXACT_ADD) ? "+" : (builtin == BUILTIN_EXACT_SUB) ? "-"
@@ -832,11 +742,6 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 		}
 		case BUILTIN_EXACT_NEG:
 		{
-			if (num_args < 1)
-			{
-				c_emit_temp_zero(c, value, return_type);
-				break;
-			}
 			int temp       = c_emit_temp_var(c, value, return_type);
 			const char *tn = c_type_name(c, return_type);
 			c_value_rvalue(c, &c_args[0]);
@@ -846,277 +751,104 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 		case BUILTIN_OVERFLOW_ADD:
 		case BUILTIN_OVERFLOW_SUB:
 		case BUILTIN_OVERFLOW_MUL:
-			if (num_args >= 3)
+		{
+			c_value_rvalue(c, &c_args[0]);
+			c_value_rvalue(c, &c_args[1]);
+			Type *flag_type   = c_type_is_vec_or_arr(return_type) ? return_type : type_bool;
+			int temp          = c_emit_temp_var(c, value, flag_type);
+			const char *bname = (builtin == BUILTIN_OVERFLOW_SUB) ? "__builtin_sub_overflow" : (builtin == BUILTIN_OVERFLOW_MUL) ? "__builtin_mul_overflow"
+			                                                                                                                     : "__builtin_add_overflow";
+			Type *op_type     = c_safe_type_lower(c_args[0].type);
+			if (c_type_is_vec_or_arr(op_type))
 			{
-				c_value_rvalue(c, &c_args[0]);
-				c_value_rvalue(c, &c_args[1]);
-				int temp          = c_emit_temp_var(c, value, type_bool);
-				const char *bname = (builtin == BUILTIN_OVERFLOW_SUB) ? "__builtin_sub_overflow" : (builtin == BUILTIN_OVERFLOW_MUL) ? "__builtin_mul_overflow"
-				                                                                                                                     : "__builtin_add_overflow";
-				Type *op_type     = (c_args[0].type && is_valid_type_ptr(c_args[0].type)) ? c_safe_type_lower(c_args[0].type) : type_int;
-				PRINTF("bool ___var_%d = %s(___var_%d, ___var_%d, (%s*)___var_%d);\n",
-				       temp, bname, c_args[0].var, c_args[1].var, c_type_name(c, op_type), c_args[2].var);
+				// As LLVM's vector overflow intrinsics: one flag per lane, the result is a bool vector.
+				c_emit_lanewise(c, temp, return_type, str_printf("%s($0, $1, &((%s*)$2)->ptr[$k])", bname, c_type_name(c, op_type)), c_args, 3);
+				break;
 			}
-			else
-			{
-				PRINTF("bool ___var_%d = false;\n", c_emit_temp_var(c, value, type_bool));
-			}
+			PRINTF("bool ___var_%d = %s(___var_%d, ___var_%d, (%s*)___var_%d);\n",
+			       temp, bname, c_args[0].var, c_args[1].var, c_type_name(c, op_type), c_args[2].var);
 			break;
+		}
 		case BUILTIN_SAT_ADD:
 		case BUILTIN_SAT_SUB:
 		case BUILTIN_SAT_MUL:
-			if (num_args >= 2)
-			{
-				c_emit_builtin_sat(c, value, return_type, builtin, &c_args[0], &c_args[1]);
-			}
-			else
-			{
-				c_emit_temp_zero(c, value, return_type);
-			}
-			break;
 		case BUILTIN_SAT_SHL:
-			if (num_args >= 2)
-			{
-				c_emit_builtin_sat_shl(c, value, return_type, &c_args[0], &c_args[1]);
-			}
-			else
-			{
-				c_emit_temp_zero(c, value, return_type);
-			}
+			c_emit_builtin_sat(c, value, return_type, builtin, &c_args[0], &c_args[1]);
 			break;
 		case BUILTIN_CTLZ:
-			if (num_args >= 1)
-			{
-				c_value_rvalue(c, &c_args[0]);
-				int temp        = c_emit_temp_var(c, value, return_type);
-				const char *tn  = c_type_name(c, return_type);
-				Type *st        = (c_args[0].type && is_valid_type_ptr(c_args[0].type)) ? c_safe_type_lower(c_args[0].type) : return_type;
-				int bytes       = (int)type_size(st);
-				const char *stn = c_type_name(c, st);
-				if (bytes == 16)
-				{
-					PRINTF("%s ___var_%d = ((uint64_t)((__c3_uint128)___var_%d >> 64)) ? (%s)__builtin_clzll((uint64_t)((__c3_uint128)___var_%d >> 64)) : (((uint64_t)___var_%d) ? (%s)(64 + __builtin_clzll((uint64_t)___var_%d)) : (%s)128);\n",
-					       tn, temp, c_args[0].var, tn, c_args[0].var, c_args[0].var, tn, c_args[0].var, tn);
-				}
-				else
-				{
-					const char *utn = c_unsigned_type_for_size(bytes);
-					PRINTF("%s ___var_%d = (((%s)___var_%d) == 0) ? (%s)(sizeof(%s)*8) : (%s)(__builtin_clzll((uint64_t)(%s)___var_%d) - (64 - (int)sizeof(%s)*8));\n",
-					       tn, temp, utn, c_args[0].var, tn, stn, tn, utn, c_args[0].var, stn);
-				}
-			}
-			else
-			{
-				c_emit_temp_zero(c, value, return_type);
-			}
-			break;
 		case BUILTIN_CTTZ:
-			if (num_args >= 1)
-			{
-				c_value_rvalue(c, &c_args[0]);
-				int temp        = c_emit_temp_var(c, value, return_type);
-				const char *tn  = c_type_name(c, return_type);
-				Type *st        = (c_args[0].type && is_valid_type_ptr(c_args[0].type)) ? c_safe_type_lower(c_args[0].type) : return_type;
-				int bytes       = (int)type_size(st);
-				const char *stn = c_type_name(c, st);
-				if (bytes == 16)
-				{
-					PRINTF("%s ___var_%d = ((uint64_t)___var_%d) ? (%s)__builtin_ctzll((uint64_t)___var_%d) : (((uint64_t)((__c3_uint128)___var_%d >> 64)) ? (%s)(64 + __builtin_ctzll((uint64_t)((__c3_uint128)___var_%d >> 64))) : (%s)128);\n",
-					       tn, temp, c_args[0].var, tn, c_args[0].var, c_args[0].var, tn, c_args[0].var, tn);
-				}
-				else
-				{
-					const char *utn = c_unsigned_type_for_size(bytes);
-					PRINTF("%s ___var_%d = (((%s)___var_%d) == 0) ? (%s)(sizeof(%s)*8) : (%s)__builtin_ctzll((uint64_t)(%s)___var_%d);\n",
-					       tn, temp, utn, c_args[0].var, tn, stn, tn, utn, c_args[0].var);
-				}
-			}
-			else
-			{
-				c_emit_temp_zero(c, value, return_type);
-			}
-			break;
 		case BUILTIN_POPCOUNT:
-			if (num_args >= 1)
-			{
-				c_value_rvalue(c, &c_args[0]);
-				int temp       = c_emit_temp_var(c, value, return_type);
-				const char *tn = c_type_name(c, return_type);
-				Type *st       = (c_args[0].type && is_valid_type_ptr(c_args[0].type)) ? c_safe_type_lower(c_args[0].type) : return_type;
-				int bytes      = (int)type_size(st);
-				if (bytes == 16)
-				{
-					PRINTF("%s ___var_%d = (%s)(__builtin_popcountll((uint64_t)___var_%d) + __builtin_popcountll((uint64_t)((__c3_uint128)___var_%d >> 64)));\n",
-					       tn, temp, tn, c_args[0].var, c_args[0].var);
-				}
-				else
-				{
-					const char *utn = c_unsigned_type_for_size(bytes);
-					PRINTF("%s ___var_%d = (%s)__builtin_popcountll((uint64_t)(%s)___var_%d);\n", tn, temp, tn, utn, c_args[0].var);
-				}
-			}
-			else
-			{
-				c_emit_temp_zero(c, value, return_type);
-			}
-			break;
 		case BUILTIN_BSWAP:
-			if (num_args >= 1)
+		{
+			c_value_rvalue(c, &c_args[0]);
+			int temp = c_emit_temp_var(c, value, return_type);
+			if (c_type_is_vec_or_arr(return_type))
 			{
-				c_value_rvalue(c, &c_args[0]);
-				int temp       = c_emit_temp_var(c, value, return_type);
-				const char *tn = c_type_name(c, return_type);
-				Type *st       = (c_args[0].type && is_valid_type_ptr(c_args[0].type)) ? c_safe_type_lower(c_args[0].type) : return_type;
-				int bytes      = (int)type_size(st);
-				if (bytes == 2)
-				{
-					PRINTF("%s ___var_%d = (%s)__builtin_bswap16((uint16_t)___var_%d);\n", tn, temp, tn, c_args[0].var);
-				}
-				else if (bytes == 4)
-				{
-					PRINTF("%s ___var_%d = (%s)__builtin_bswap32((uint32_t)___var_%d);\n", tn, temp, tn, c_args[0].var);
-				}
-				else if (bytes == 8)
-				{
-					PRINTF("%s ___var_%d = (%s)__builtin_bswap64((uint64_t)___var_%d);\n", tn, temp, tn, c_args[0].var);
-				}
-				else if (bytes == 1)
-				{
-					PRINTF("%s ___var_%d = ___var_%d;\n", tn, temp, c_args[0].var);
-				}
-				else if (bytes == 16)
-				{
-					PRINTF("%s ___var_%d = (%s)((((__c3_uint128)__builtin_bswap64((uint64_t)___var_%d)) << 64) | ((__c3_uint128)__builtin_bswap64((uint64_t)((__c3_uint128)___var_%d >> 64))));\n",
-					       tn, temp, tn, c_args[0].var, c_args[0].var);
-				}
-				else
-				{
-					PRINTF("%s ___var_%d = (%s)__builtin_bswap64((uint64_t)___var_%d);\n", tn, temp, tn, c_args[0].var);
-				}
+				Type *elem_t = c_safe_type_lower(type_flatten(return_type->array.base));
+				c_emit_lanewise(c, temp, return_type, c_bit_builtin_lane(c, builtin, elem_t, "$0"), c_args, 1);
+				break;
 			}
-			else
-			{
-				c_emit_temp_zero(c, value, return_type);
-			}
+			PRINTF("%s ___var_%d = %s;\n", c_type_name(c, return_type), temp,
+			       c_bit_builtin_lane(c, builtin, return_type, str_printf("___var_%d", c_args[0].var)));
 			break;
+		}
 		case BUILTIN_BITREVERSE:
-			if (num_args >= 1)
+		{
+			c_value_rvalue(c, &c_args[0]);
+			int temp = c_emit_temp_var(c, value, return_type);
+			PRINTF("%s ___var_%d;\n", c_type_name(c, return_type), temp);
+			if (c_type_is_vec_or_arr(return_type))
 			{
-				c_value_rvalue(c, &c_args[0]);
-				int temp        = c_emit_temp_var(c, value, return_type);
-				const char *tn  = c_type_name(c, return_type);
-				Type *st        = (c_args[0].type && is_valid_type_ptr(c_args[0].type)) ? c_safe_type_lower(c_args[0].type) : return_type;
-				const char *stn = c_type_name(c, st);
-				int bytes       = (int)type_size(st);
-				if (bytes == 16)
+				Type *elem_t = c_safe_type_lower(type_flatten(return_type->array.base));
+				for (ArrayIndex k = 0; k < return_type->array.len; k++)
 				{
-					PRINTF("%s ___var_%d = 0;\n", tn, temp);
-					PRINTF("for (size_t ___i = 0; ___i < 128; ___i++) { if ((((__c3_uint128)___var_%d) >> ___i) & 1) ___var_%d |= ((__c3_uint128)1 << (127 - ___i)); }\n",
-					       c_args[0].var, temp);
+					c_emit_bitreverse_lane(c, str_printf("___var_%d.ptr[%lld]", temp, (long long)k), elem_t,
+					                       str_printf("___var_%d.ptr[%lld]", c_args[0].var, (long long)k));
 				}
-				else
-				{
-					PRINTF("%s ___var_%d = 0;\n", tn, temp);
-					PRINTF("for (size_t ___i = 0; ___i < sizeof(%s)*8; ___i++) { if (((uint64_t)___var_%d >> ___i) & 1) ___var_%d |= ((%s)1 << (sizeof(%s)*8 - 1 - ___i)); }\n",
-					       stn, c_args[0].var, temp, tn, stn);
-				}
+				break;
 			}
-			else
-			{
-				c_emit_temp_zero(c, value, return_type);
-			}
+			c_emit_bitreverse_lane(c, str_printf("___var_%d", temp), return_type, str_printf("___var_%d", c_args[0].var));
 			break;
+		}
 		case BUILTIN_FSHL:
-			if (num_args >= 3)
-			{
-				c_emit_builtin_fshl(c, value, return_type, &c_args[0], &c_args[1], &c_args[2]);
-			}
-			else
-			{
-				c_emit_temp_zero(c, value, return_type);
-			}
+			c_emit_builtin_fshl(c, value, return_type, &c_args[0], &c_args[1], &c_args[2]);
 			break;
 		case BUILTIN_FSHR:
-			if (num_args >= 3)
+			c_emit_builtin_fshr(c, value, return_type, &c_args[0], &c_args[1], &c_args[2]);
+			break;
+		case BUILTIN_ABS:
+		{
+			int temp       = c_emit_temp_var(c, value, return_type);
+			const char *tn = c_type_name(c, return_type);
+			Type *flat_ret = return_type ? type_flatten(return_type) : NULL;
+			if (c_type_is_vec_or_arr(flat_ret))
 			{
-				c_emit_builtin_fshr(c, value, return_type, &c_args[0], &c_args[1], &c_args[2]);
+				bool is_float = type_is_float(type_flatten(flat_ret->array.base));
+				c_emit_lanewise(c, temp, return_type, is_float ? "__builtin_fabs($0)" : "($0 < 0 ? -$0 : $0)", c_args, 1);
 			}
 			else
 			{
-				c_emit_temp_zero(c, value, return_type);
-			}
-			break;
-		case BUILTIN_ABS:
-			if (num_args >= 1)
-			{
-				int temp       = c_emit_temp_var(c, value, return_type);
-				const char *tn = c_type_name(c, return_type);
-				Type *flat_ret = return_type ? type_flatten(return_type) : NULL;
-				if (c_type_is_vec_or_arr(flat_ret))
+				c_value_rvalue(c, &c_args[0]);
+				if (type_is_float(return_type))
 				{
-					int len       = c_type_aggregate_len(flat_ret);
-					Type *elem_t  = flat_ret->array.base ? type_flatten(flat_ret->array.base) : return_type;
-					bool is_float = type_is_float(elem_t);
-
-					const char *arrow = c_arrow(&c_args[0]);
-					PRINTF("%s ___var_%d;\n", tn, temp);
-					for (int k = 0; k < len; k++)
-					{
-						if (is_float)
-						{
-							PRINTF("___var_%d.ptr[%d] = __builtin_fabs(___var_%d%sptr[%d]);\n",
-							       temp, k, c_args[0].var, arrow, k);
-						}
-						else
-						{
-							PRINTF("___var_%d.ptr[%d] = (___var_%d%sptr[%d] < 0 ? -___var_%d%sptr[%d] : ___var_%d%sptr[%d]);\n",
-							       temp, k, c_args[0].var, arrow, k, c_args[0].var, arrow, k, c_args[0].var, arrow, k);
-						}
-					}
+					PRINTF("%s ___var_%d = (__builtin_fabs(___var_%d));\n", tn, temp, c_args[0].var);
 				}
 				else
 				{
-					c_value_rvalue(c, &c_args[0]);
-					if (type_is_float(return_type))
-					{
-						PRINTF("%s ___var_%d = (__builtin_fabs(___var_%d));\n", tn, temp, c_args[0].var);
-					}
-					else
-					{
-						PRINTF("%s ___var_%d = (___var_%d < 0 ? -___var_%d : ___var_%d);\n", tn, temp, c_args[0].var, c_args[0].var, c_args[0].var);
-					}
+					PRINTF("%s ___var_%d = (___var_%d < 0 ? -___var_%d : ___var_%d);\n", tn, temp, c_args[0].var, c_args[0].var, c_args[0].var);
 				}
 			}
-			else
-			{
-				c_emit_temp_zero(c, value, return_type);
-			}
 			break;
+		}
 		case BUILTIN_EXPECT:
 		case BUILTIN_EXPECT_WITH_PROBABILITY:
-			if (num_args >= 2)
-			{
-				c_value_rvalue(c, &c_args[0]);
-				c_value_rvalue(c, &c_args[1]);
-				int temp = c_emit_temp_var(c, value, return_type);
-				PRINTF("%s ___var_%d = __builtin_expect(___var_%d, ___var_%d);\n", c_type_name(c, return_type), temp, c_args[0].var, c_args[1].var);
-			}
-			else if (num_args >= 1)
-			{
-				c_value_rvalue(c, &c_args[0]);
-				int temp = c_emit_temp_var(c, value, return_type);
-				PRINTF("%s ___var_%d = ___var_%d;\n", c_type_name(c, return_type), temp, c_args[0].var);
-			}
-			else
-			{
-				c_emit_temp_zero(c, value, return_type);
-			}
+			// The probability is a hint only.
+			c_value_rvalue(c, &c_args[0]);
+			c_value_rvalue(c, &c_args[1]);
+			PRINTF("%s ___var_%d = __builtin_expect(___var_%d, ___var_%d);\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type), c_args[0].var, c_args[1].var);
 			break;
 		case BUILTIN_PREFETCH:
-			if (num_args >= 1)
-			{
-				PRINTF("__builtin_prefetch((void*)___var_%d);\n", c_args[0].var);
-			}
+			PRINTF("__builtin_prefetch((void*)___var_%d);\n", c_args[0].var);
 			c_value_set_void(value);
 			break;
 		case BUILTIN_FRAMEADDRESS:
@@ -1126,99 +858,83 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			PRINTF("%s ___var_%d = __builtin_return_address(0);\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type));
 			break;
 		case BUILTIN_VOLATILE_LOAD:
-			if (num_args >= 1)
-			{
-				int temp       = c_emit_temp_var(c, value, return_type);
-				const char *tn = c_type_name(c, return_type);
-				PRINTF("%s ___var_%d = *(volatile %s*)___var_%d;\n", tn, temp, tn, c_args[0].var);
-			}
-			else
-			{
-				c_emit_temp_zero(c, value, return_type);
-			}
+		{
+			int temp       = c_emit_temp_var(c, value, return_type);
+			const char *tn = c_type_name(c, return_type);
+			PRINTF("%s ___var_%d = *(volatile %s*)___var_%d;\n", tn, temp, tn, c_args[0].var);
 			break;
+		}
 		case BUILTIN_VOLATILE_STORE:
-			if (num_args >= 2)
-			{
-				c_value_rvalue(c, &c_args[1]);
-				Type *vt = c_expr_type_or(args[1], type_void);
-				PRINTF("*(volatile %s*)___var_%d = ___var_%d;\n", c_type_name(c, vt), c_args[0].var, c_args[1].var);
-			}
+		{
+			c_value_rvalue(c, &c_args[1]);
+			Type *vt = c_expr_type(args[1]);
+			PRINTF("*(volatile %s*)___var_%d = ___var_%d;\n", c_type_name(c, vt), c_args[0].var, c_args[1].var);
 			c_value_set_void(value);
 			break;
+		}
 		case BUILTIN_UNALIGNED_LOAD:
 		{
 			int temp       = c_emit_temp_var(c, value, return_type);
 			const char *tn = c_type_name(c, return_type);
 			PRINTF("%s ___var_%d;\n", tn, temp);
-			if (num_args >= 1)
-			{
-				PRINTF("__c3_memcpy(&___var_%d, (void*)___var_%d, sizeof(%s));\n", temp, c_args[0].var, tn);
-			}
+			PRINTF("__c3_memcpy(&___var_%d, (void*)___var_%d, sizeof(%s));\n", temp, c_args[0].var, tn);
 			break;
 		}
 		case BUILTIN_UNALIGNED_STORE:
-			if (num_args >= 2)
-			{
-				Type *vt            = c_expr_type_or(args[1], type_void);
-				const char *src_ref = (c_args[1].kind == CV_ADDRESS) ? "(void*)" : "&";
-				PRINTF("__c3_memcpy((void*)___var_%d, %s___var_%d, sizeof(%s));\n", c_args[0].var, src_ref, c_args[1].var, c_type_name(c, vt));
-			}
+		{
+			Type *vt            = c_expr_type(args[1]);
+			const char *src_ref = (c_args[1].kind == CV_ADDRESS) ? "(void*)" : "&";
+			PRINTF("__c3_memcpy((void*)___var_%d, %s___var_%d, sizeof(%s));\n", c_args[0].var, src_ref, c_args[1].var, c_type_name(c, vt));
 			c_value_set_void(value);
 			break;
+		}
 		case BUILTIN_ATOMIC_LOAD:
-			if (num_args >= 1)
+		{
+			int temp       = c_emit_temp_var(c, value, return_type);
+			const char *tn = c_type_name(c, return_type);
+			if (type_is_float(return_type))
 			{
-				int temp       = c_emit_temp_var(c, value, return_type);
-				const char *tn = c_type_name(c, return_type);
-				if (type_is_float(return_type))
-				{
-					const char *u_int = (type_size(return_type) == 8) ? "uint64_t" : "uint32_t";
-					PRINTF("%s ___var_%d;\n", tn, temp);
-					PRINT("{\n");
-					PRINTF("\t%s _raw = __atomic_load_n((%s*)___var_%d, __ATOMIC_SEQ_CST);\n", u_int, u_int, c_args[0].var);
-					PRINTF("\t__c3_memcpy(&___var_%d, &_raw, sizeof(%s));\n", temp, tn);
-					PRINT("}\n");
-				}
-				else if (return_type->type_kind == TYPE_BOOL)
-				{
-					PRINTF("bool ___var_%d = (bool)__atomic_load_n((uint8_t*)___var_%d, __ATOMIC_SEQ_CST);\n", temp, c_args[0].var);
-				}
-				else
-				{
-					PRINTF("%s ___var_%d = __atomic_load_n((%s*)___var_%d, __ATOMIC_SEQ_CST);\n", tn, temp, tn, c_args[0].var);
-				}
+				const char *u_int = (type_size(return_type) == 8) ? "uint64_t" : "uint32_t";
+				PRINTF("%s ___var_%d;\n", tn, temp);
+				PRINT("{\n");
+				PRINTF("\t%s _raw = __atomic_load_n((%s*)___var_%d, __ATOMIC_SEQ_CST);\n", u_int, u_int, c_args[0].var);
+				PRINTF("\t__c3_memcpy(&___var_%d, &_raw, sizeof(%s));\n", temp, tn);
+				PRINT("}\n");
+			}
+			else if (return_type->type_kind == TYPE_BOOL)
+			{
+				PRINTF("bool ___var_%d = (bool)__atomic_load_n((uint8_t*)___var_%d, __ATOMIC_SEQ_CST);\n", temp, c_args[0].var);
 			}
 			else
 			{
-				c_emit_temp_zero(c, value, return_type);
+				PRINTF("%s ___var_%d = __atomic_load_n((%s*)___var_%d, __ATOMIC_SEQ_CST);\n", tn, temp, tn, c_args[0].var);
 			}
 			break;
+		}
 		case BUILTIN_ATOMIC_STORE:
-			if (num_args >= 2)
+		{
+			c_value_rvalue(c, &c_args[1]);
+			Type *vt = c_expr_type(args[1]);
+			if (type_is_float(vt))
 			{
-				c_value_rvalue(c, &c_args[1]);
-				Type *vt = c_expr_type_or(args[1], type_void);
-				if (type_is_float(vt))
-				{
-					const char *u_int = (type_size(vt) == 8) ? "uint64_t" : "uint32_t";
-					PRINT("{\n");
-					PRINTF("\t%s _raw;\n", u_int);
-					PRINTF("\t__c3_memcpy(&_raw, &___var_%d, sizeof(%s));\n", c_args[1].var, u_int);
-					PRINTF("\t__atomic_store_n((%s*)___var_%d, _raw, __ATOMIC_SEQ_CST);\n", u_int, c_args[0].var);
-					PRINT("}\n");
-				}
-				else if (vt->type_kind == TYPE_BOOL)
-				{
-					PRINTF("__atomic_store_n((uint8_t*)___var_%d, (uint8_t)___var_%d, __ATOMIC_SEQ_CST);\n", c_args[0].var, c_args[1].var);
-				}
-				else
-				{
-					PRINTF("__atomic_store_n((%s*)___var_%d, ___var_%d, __ATOMIC_SEQ_CST);\n", c_type_name(c, vt), c_args[0].var, c_args[1].var);
-				}
+				const char *u_int = (type_size(vt) == 8) ? "uint64_t" : "uint32_t";
+				PRINT("{\n");
+				PRINTF("\t%s _raw;\n", u_int);
+				PRINTF("\t__c3_memcpy(&_raw, &___var_%d, sizeof(%s));\n", c_args[1].var, u_int);
+				PRINTF("\t__atomic_store_n((%s*)___var_%d, _raw, __ATOMIC_SEQ_CST);\n", u_int, c_args[0].var);
+				PRINT("}\n");
+			}
+			else if (vt->type_kind == TYPE_BOOL)
+			{
+				PRINTF("__atomic_store_n((uint8_t*)___var_%d, (uint8_t)___var_%d, __ATOMIC_SEQ_CST);\n", c_args[0].var, c_args[1].var);
+			}
+			else
+			{
+				PRINTF("__atomic_store_n((%s*)___var_%d, ___var_%d, __ATOMIC_SEQ_CST);\n", c_type_name(c, vt), c_args[0].var, c_args[1].var);
 			}
 			c_value_set_void(value);
 			break;
+		}
 		case BUILTIN_ATOMIC_FETCH_ADD:
 		case BUILTIN_ATOMIC_FETCH_SUB:
 		case BUILTIN_ATOMIC_FETCH_AND:
@@ -1227,11 +943,6 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 		case BUILTIN_ATOMIC_FETCH_NAND:
 		case BUILTIN_ATOMIC_FETCH_EXCHANGE:
 		{
-			if (num_args < 2)
-			{
-				c_emit_temp_zero(c, value, return_type);
-				break;
-			}
 			int temp          = c_emit_temp_var(c, value, return_type);
 			const char *tn    = c_type_name(c, return_type);
 			const char *aname = (builtin == BUILTIN_ATOMIC_FETCH_SUB) ? "__atomic_fetch_sub" : (builtin == BUILTIN_ATOMIC_FETCH_AND)    ? "__atomic_fetch_and"
@@ -1260,11 +971,6 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 		case BUILTIN_ATOMIC_FETCH_MAX:
 		case BUILTIN_ATOMIC_FETCH_MIN:
 		{
-			if (num_args < 2)
-			{
-				c_emit_temp_zero(c, value, return_type);
-				break;
-			}
 			int temp       = c_emit_temp_var(c, value, return_type);
 			const char *tn = c_type_name(c, return_type);
 			const char *op = (builtin == BUILTIN_ATOMIC_FETCH_MIN) ? "<" : ">";
@@ -1291,44 +997,39 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			break;
 		}
 		case BUILTIN_COMPARE_EXCHANGE:
-			if (num_args >= 3)
+		{
+			c_value_rvalue(c, &c_args[1]);
+			c_value_rvalue(c, &c_args[2]);
+			int temp       = c_emit_temp_var(c, value, return_type);
+			const char *tn = c_type_name(c, return_type);
+			if (type_is_float(return_type))
 			{
-				c_value_rvalue(c, &c_args[1]);
-				c_value_rvalue(c, &c_args[2]);
-				int temp       = c_emit_temp_var(c, value, return_type);
-				const char *tn = c_type_name(c, return_type);
-				if (type_is_float(return_type))
-				{
-					const char *u_int = (type_size(return_type) == 8) ? "uint64_t" : "uint32_t";
-					PRINTF("%s ___var_%d;\n", tn, temp);
-					PRINT("{\n");
-					PRINTF("\t%s _exp, _des;\n", u_int);
-					PRINTF("\t__c3_memcpy(&_exp, &___var_%d, sizeof(%s));\n", c_args[1].var, u_int);
-					PRINTF("\t__c3_memcpy(&_des, &___var_%d, sizeof(%s));\n", c_args[2].var, u_int);
-					PRINTF("\t__atomic_compare_exchange_n((%s*)___var_%d, &_exp, _des, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);\n", u_int, c_args[0].var);
-					PRINTF("\t__c3_memcpy(&___var_%d, &_exp, sizeof(%s));\n", temp, tn);
-					PRINT("}\n");
-				}
-				else if (return_type->type_kind == TYPE_BOOL)
-				{
-					PRINTF("uint8_t ___var_%d_expected = (uint8_t)___var_%d;\n", temp, c_args[1].var);
-					PRINTF("__atomic_compare_exchange_n((uint8_t*)___var_%d, &___var_%d_expected, (uint8_t)___var_%d, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);\n",
-					       c_args[0].var, temp, c_args[2].var);
-					PRINTF("bool ___var_%d = (bool)___var_%d_expected;\n", temp, temp);
-				}
-				else
-				{
-					PRINTF("%s ___var_%d_expected = ___var_%d;\n", tn, temp, c_args[1].var);
-					PRINTF("__atomic_compare_exchange_n((%s*)___var_%d, &___var_%d_expected, ___var_%d, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);\n",
-					       tn, c_args[0].var, temp, c_args[2].var);
-					PRINTF("%s ___var_%d = ___var_%d_expected;\n", tn, temp, temp);
-				}
+				const char *u_int = (type_size(return_type) == 8) ? "uint64_t" : "uint32_t";
+				PRINTF("%s ___var_%d;\n", tn, temp);
+				PRINT("{\n");
+				PRINTF("\t%s _exp, _des;\n", u_int);
+				PRINTF("\t__c3_memcpy(&_exp, &___var_%d, sizeof(%s));\n", c_args[1].var, u_int);
+				PRINTF("\t__c3_memcpy(&_des, &___var_%d, sizeof(%s));\n", c_args[2].var, u_int);
+				PRINTF("\t__atomic_compare_exchange_n((%s*)___var_%d, &_exp, _des, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);\n", u_int, c_args[0].var);
+				PRINTF("\t__c3_memcpy(&___var_%d, &_exp, sizeof(%s));\n", temp, tn);
+				PRINT("}\n");
+			}
+			else if (return_type->type_kind == TYPE_BOOL)
+			{
+				PRINTF("uint8_t ___var_%d_expected = (uint8_t)___var_%d;\n", temp, c_args[1].var);
+				PRINTF("__atomic_compare_exchange_n((uint8_t*)___var_%d, &___var_%d_expected, (uint8_t)___var_%d, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);\n",
+				       c_args[0].var, temp, c_args[2].var);
+				PRINTF("bool ___var_%d = (bool)___var_%d_expected;\n", temp, temp);
 			}
 			else
 			{
-				c_emit_temp_zero(c, value, return_type);
+				PRINTF("%s ___var_%d_expected = ___var_%d;\n", tn, temp, c_args[1].var);
+				PRINTF("__atomic_compare_exchange_n((%s*)___var_%d, &___var_%d_expected, ___var_%d, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);\n",
+				       tn, c_args[0].var, temp, c_args[2].var);
+				PRINTF("%s ___var_%d = ___var_%d_expected;\n", tn, temp, temp);
 			}
 			break;
+		}
 		case BUILTIN_FENCE:
 			PRINT("__atomic_thread_fence(__ATOMIC_SEQ_CST);\n");
 			c_value_set_void(value);
@@ -1345,25 +1046,90 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 		case BUILTIN_REDUCE_XOR:
 		case BUILTIN_REDUCE_MIN:
 		case BUILTIN_REDUCE_MAX:
-			if (num_args >= 1)
+			c_emit_builtin_reduce(c, value, return_type, builtin, c_args);
+			break;
+		case BUILTIN_REVERSE:
+		{
+			c_value_rvalue(c, &c_args[0]);
+			int temp = c_emit_temp_var(c, value, return_type);
+			int len  = (int)type_flatten(args[0]->type)->array.len;
+			PRINTF("%s ___var_%d;\n", c_type_name(c, return_type), temp);
+			for (int i = 0; i < len; i++)
 			{
-				c_emit_builtin_reduce(c, value, return_type, builtin, c_args, num_args);
+				PRINTF("___var_%d.ptr[%d] = ___var_%d.ptr[%d];\n", temp, i, c_args[0].var, len - i - 1);
+			}
+			break;
+		}
+		case BUILTIN_GET_ROUNDING_MODE:
+			PRINTF("%s ___var_%d = __c3_get_rounding_mode();\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type));
+			break;
+		case BUILTIN_SET_ROUNDING_MODE:
+			c_value_rvalue(c, &c_args[0]);
+			PRINTF("__c3_set_rounding_mode((int)___var_%d);\n", c_args[0].var);
+			c_value_set_void(value);
+			break;
+		case BUILTIN_ATOMIC_FETCH_INC_WRAP:
+		case BUILTIN_ATOMIC_FETCH_DEC_WRAP:
+		{
+			// LLVM atomicrmw uinc_wrap: old >= v ? 0 : old + 1; udec_wrap: old == 0 || old > v ? v : old - 1.
+			int temp       = c_emit_temp_var(c, value, return_type);
+			const char *tn = c_type_name(c, return_type);
+			c_value_rvalue(c, &c_args[1]);
+			int v = c_args[1].var;
+			PRINTF("%s ___var_%d;\n", tn, temp);
+			PRINT("{\n");
+			PRINTF("\t%s _old = *(volatile %s*)___var_%d;\n", tn, tn, c_args[0].var);
+			PRINTF("\t%s _new;\n", tn);
+			PRINT("\tdo {\n");
+			if (builtin == BUILTIN_ATOMIC_FETCH_INC_WRAP)
+			{
+				PRINTF("\t\t_new = _old >= ___var_%d ? (%s)0 : (%s)(_old + 1);\n", v, tn, tn);
 			}
 			else
 			{
-				c_emit_temp_zero(c, value, return_type);
+				PRINTF("\t\t_new = (_old == 0 || _old > ___var_%d) ? ___var_%d : (%s)(_old - 1);\n", v, v, tn);
 			}
+			PRINTF("\t} while (!__atomic_compare_exchange_n((%s*)___var_%d, &_old, _new, 1, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));\n", tn, c_args[0].var);
+			PRINTF("\t___var_%d = _old;\n", temp);
+			PRINT("}\n");
 			break;
+		}
+		case BUILTIN_WASM_MEMORY_SIZE:
+		case BUILTIN_WASM_MEMORY_GROW:
+		{
+			const char *tn = c_type_name(c, return_type);
+			int temp       = c_emit_temp_var(c, value, return_type);
+			if (!arch_is_wasm(compiler.platform.arch))
+			{
+				// Like LLVM: no memory (0) and failed grow (-1) on non-wasm.
+				PRINTF("%s ___var_%d = %s;\n", tn, temp, builtin == BUILTIN_WASM_MEMORY_GROW ? "-1" : "0");
+				break;
+			}
+			// The memory index must be a constant for the C compiler, as for LLVM's immarg.
+			Expr *index = args[0];
+			char index_str[32];
+			if (expr_is_const(index))
+			{
+				snprintf(index_str, sizeof(index_str), "%llu", (unsigned long long)index->const_expr.ixx.i.low);
+			}
+			else
+			{
+				c_value_rvalue(c, &c_args[0]);
+				snprintf(index_str, sizeof(index_str), "___var_%d", c_args[0].var);
+			}
+			if (builtin == BUILTIN_WASM_MEMORY_SIZE)
+			{
+				PRINTF("%s ___var_%d = (%s)__builtin_wasm_memory_size(%s);\n", tn, temp, tn, index_str);
+				break;
+			}
+			c_value_rvalue(c, &c_args[1]);
+			PRINTF("%s ___var_%d = (%s)__builtin_wasm_memory_grow(%s, ___var_%d);\n", tn, temp, tn, index_str, c_args[1].var);
+			break;
+		}
 		default:
-			if (has_return)
-			{
-				c_emit_temp_zero(c, value, return_type);
-			}
-			else
-			{
-				c_value_set_void(value);
-			}
-			break;
+			// Builtins folded or rewritten by sema (str_*, sprintf, rnd, widestring, veccomp*) and llrint/llround
+			// (no builtin name) never reach codegen.
+			UNREACHABLE_VOID
 	}
 	free(c_args);
 }

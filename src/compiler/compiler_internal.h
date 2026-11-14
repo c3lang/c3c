@@ -2508,6 +2508,7 @@ void print_asm_list(PlatformTarget *target);
 AsmRegister *asm_reg_by_name(PlatformTarget *target, const char *name);
 AsmInstruction *asm_instr_by_name(const char *name);
 INLINE const char *asm_clobber_by_index(int index);
+bool asm_clobber_is_register(int index);
 INLINE AsmRegister *asm_reg_by_index(int index);
 
 AsmRegister *asm_reg_by_index(int index);
@@ -2535,6 +2536,7 @@ void cast_no_check(Expr *expr, Type *to_type, bool add_optional);
 bool cast_to_index_len(SemaContext *context, Expr *index, bool is_len);
 
 bool c_codegen(void *context, const char **out_name);
+size_t c_codegen_cost(void *context);
 bool llvm_codegen(void *context, const char **out_name);
 void *llvm_load_ir_file(const char *filename, const char *object_filename);
 bool llvm_codegen_ir_file(void *context, const char **out_name);
@@ -2614,6 +2616,8 @@ bool decl_is_externally_visible(Decl *decl);
 bool decl_is_local(Decl *decl);
 bool decl_is_global_ref(Decl *decl);
 void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear);
+bool scratch_buffer_set_stable_extern_decl_name(Decl *decl, bool clear);
+void scratch_buffer_append_decl_pos(Decl *decl);
 
 // --- Expression functions
 
@@ -2882,6 +2886,7 @@ bool type_is_comparable(Type *type);
 bool type_is_ordered(Type *type);
 int type_get_introspection_kind(TypeKind kind);
 void type_mangle_introspect_name_to_buffer(Type *type);
+void type_mangle_introspect_name_with(Type *type, void (*append_decl_name)(Decl *));
 AlignSize type_alloca_alignment(Type *type);
 AlignSize type_abi_alignment(Type *type);
 bool type_func_match(Type *fn_type, Type *rtype, int arg_count, ...);

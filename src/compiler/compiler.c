@@ -796,7 +796,9 @@ void compiler_compile(void)
 	for (int i = 0; i < output_file_count; i++)
 	{
 		compile_data[data_idx] = (CompileData){ .context = gen_contexts[i] };
-		vec_add(tasks, compile_data_task(&compile_data[data_idx], task));
+		Task *t = compile_data_task(&compile_data[data_idx], task);
+		if (compiler.build.backend == BACKEND_C) t->cost = c_codegen_cost(gen_contexts[i]);
+		vec_add(tasks, t);
 		data_idx++;
 	}
 
