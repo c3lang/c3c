@@ -11464,6 +11464,7 @@ static inline bool sema_expr_analyse_embed(SemaContext *context, Expr *expr, boo
 		expr->inner_expr = filename;
 		filename->expr_kind = EXPR_CONST;
 		filename->const_expr.const_kind = CONST_FAULT;
+		filename->type = type_fault;
 		expr->type = type_wildcard_optional;
 		filename->const_expr.fault = compiler.context.io_error_file_not_found;
 		filename->resolve_status = RESOLVE_DONE;
