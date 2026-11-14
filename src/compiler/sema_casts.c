@@ -1954,7 +1954,7 @@ static void vector_const_initializer_convert_to_type(ConstInitializer *initializ
 		case CONST_INIT_VALUE:
 		{
 			Type *to_flat = type_flatten(to_type);
-			bool is_neg_conversion = to_flat && initializer->type == type_bool;
+			bool is_neg_conversion = to_flat != type_bool && type_flatten(initializer->type) == type_bool;
 			if (is_neg_conversion)
 			{
 				bool is_true = initializer->init_value->const_expr.b;
