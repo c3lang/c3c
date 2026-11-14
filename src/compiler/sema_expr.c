@@ -4451,13 +4451,19 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 			goto DEFAULT;
 		case EXPR_SUBSCRIPT:
 		{
+			// Becomes `*(&subscript)`. The new nodes are copies, so if the subscript is already
+			// resolved, they are too and are never analysed: set their types here.
+			bool resolved = subscripted->resolve_status == RESOLVE_DONE;
+			Type *type = subscripted->type;
 			Expr *inner = expr_copy(subscripted);
 			subscripted->expr_kind = EXPR_UNARY;
 			subscripted->unary_expr = (ExprUnary) { .operator = UNARYOP_ADDR, .expr = inner };
+			if (resolved) subscripted->type = type_add_optional(type_get_ptr(type_no_optional(type)), type_is_optional(type));
 
 			inner = expr_copy(subscripted);
 			subscripted->expr_kind = EXPR_UNARY;
 			subscripted->unary_expr = (ExprUnary) { .operator = UNARYOP_DEREF, .expr = inner, .no_read = true };
+			if (resolved) subscripted->type = type;
 			FALLTHROUGH;
 		}
 		default:
