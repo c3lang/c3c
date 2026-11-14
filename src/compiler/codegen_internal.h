@@ -34,7 +34,7 @@ static inline LoweredType *type_lowering(Type *type)
 			case TYPE_TYPEDEF:
 				type = type->decl->distinct->type;
 				continue;
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 			case TYPE_ENUM:
 				type = enum_inner_type(type);
 				continue;
@@ -109,7 +109,7 @@ static inline LoweredType *type_lowering_abi(Type *type)
 			case TYPE_TYPEDEF:
 				type = type->decl->distinct->type;
 				continue;
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 			case TYPE_ENUM:
 				type = enum_inner_type(type);
 				continue;
@@ -253,3 +253,8 @@ INLINE Type *lowered_array_element_type(Type *array_type)
 {
 	return type_lowering_abi(array_type->array.base);
 }
+
+// Definitions from std and libc, and templated ones, may be emitted by several link units and must merge.
+bool module_should_weaken(Module *module);
+bool decl_should_weaken(Decl *decl);
+bool builtin_needs_libm(BuiltinFunction func);

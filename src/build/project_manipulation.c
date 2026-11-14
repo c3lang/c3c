@@ -38,24 +38,6 @@ static void print_vec(const char *header, const char **vec, bool opt, const char
 	PRINTFN("");
 }
 
-const char** get_project_dependencies(void)
-{
-	const char *filename;
-	const char** dependencies = NULL;
-
-	JSONObject *project_json = project_json_load(&filename);
-	JSONObject *dependencies_json = json_map_get(project_json, "dependencies");
-
-	if (dependencies_json)
-	{
-		FOREACH(JSONObject *, element, dependencies_json->elements)
-		{
-			vec_add(dependencies, element->str);
-		}
-	}
-	return dependencies;
-}
-
 static void print_opt_str(const char *header, const char *str)
 {
 	if (!str) return;
@@ -97,7 +79,7 @@ static const char *generate_expected(const char **options, size_t n)
 }
 
 
-const char *optimization_levels[] = {
+static const char *optimization_levels[] = {
 	[OPT_SETTING_O0] = "O0",
 	[OPT_SETTING_O1] = "O1",
 	[OPT_SETTING_O2] = "O2",
@@ -108,7 +90,7 @@ const char *optimization_levels[] = {
 	[OPT_SETTING_OTINY] = "Oz"
 };
 
-const char *debug_levels[] = {
+static const char *debug_levels[] = {
 	[DEBUG_INFO_NONE] = "none",
 	[DEBUG_INFO_LINE_TABLES] = "line-tables",
 	[DEBUG_INFO_FULL] = "full"
@@ -229,6 +211,9 @@ static void view_target(BuildParseContext context, JSONObject *target, bool verb
 	TARGET_VIEW_STRING("CPU flags", "cpu-flags");
 	TARGET_VIEW_STRING("CPU flags (override)", "cpu-flags-override");
 	TARGET_VIEW_SETTING("Debug level", "debug-info", debug_levels);
+	TARGET_VIEW_STRING_ARRAY("Targets built first", "depends-on", ", ");
+	TARGET_VIEW_STRING_ARRAY("Additional environment variables for scripts", "env", ", ");
+	TARGET_VIEW_STRING_ARRAY("Environment variables for scripts (override)", "env-override", ", ");
 	TARGET_VIEW_STRING_ARRAY("Additional scripts to run", "exec", ", ");
 	TARGET_VIEW_STRING_ARRAY("Scripts to run (override)", "exec", ", ");
 	TARGET_VIEW_STRING_ARRAY("Enabled features", "features", ", ");
@@ -274,13 +259,183 @@ static void view_target(BuildParseContext context, JSONObject *target, bool verb
 	TARGET_VIEW_BOOL("SLP auto-vectorization", "slp-vectorize");
 	TARGET_VIEW_BOOL("Loop auto-vectorization", "loop-vectorize");
 	TARGET_VIEW_BOOL("Merge functions", "merge-functions");
+	TARGET_VIEW_BOOL("Infinite loop detection", "infinite-loop-detect");
 	TARGET_VIEW_BOOL("Function sections", "function-sections");
 	TARGET_VIEW_BOOL("Data sections", "data-sections");
 }
 
+// A list of the project, or of the target if there is one: as when building, the target's own
+// entries go first and "<key>-override" replaces the project's.
+static const char **get_list(const char *file, JSONObject *project, const char *target, const char *key, const char *override_key)
+{
+	const char **list = NULL;
+	BuildParseContext context = { file, NULL, false };
+	get_list_append_strings(context, project, &list, key, override_key);
+	if (!target) return list;
+	context.target = target;
+	get_list_append_strings(context, json_map_get(json_map_get(project, "targets"), target), &list, key, override_key);
+	return list;
+}
+
+// The remote named by "fetch-url" in the project file, or NULL.
+const char *project_fetch_url(void)
+{
+	if (!file_exists(PROJECT_JSON5) && !file_exists(PROJECT_JSON)) return NULL;
+	const char *filename;
+	JSONObject *url = json_map_get(project_json_load(&filename), "fetch-url");
+	if (!url) return NULL;
+	if (url->type != J_STRING) error_exit("'fetch-url' in '%s' must be a string.", filename);
+	return url->str;
+}
+
+// The search path where <name>.c3l is installed, or NULL.
+static const char *find_library_dir(const char **dirs, const char *name)
+{
+	const char *lib_file = str_printf("%s.c3l", name);
+	FOREACH(const char *, dir, dirs)
+	{
+		if (file_exists(file_append_path(dir, lib_file))) return dir;
+	}
+	return NULL;
+}
+
+// The strings in the "dependencies" of a manifest or one of its targets, skipping anything malformed.
+static void add_manifest_dependencies(const char ***deps, JSONObject *json)
+{
+	JSONObject *list = json_map_get(json, "dependencies");
+	if (!list || list->type != J_ARRAY) return;
+	FOREACH(JSONObject *, dep, list->elements)
+	{
+		if (dep->type == J_STRING && !parse_library_path(dep->str).error) vec_add(*deps, dep->str);
+	}
+}
+
+// The dependencies in the manifests of the installed libraries that `direct` depends on, directly or not.
+static const char **derived_dependencies(const char **dirs, const char **direct)
+{
+	const char **derived = NULL;
+	const char **pending = NULL;
+	const char **visited = NULL;
+	FOREACH(const char *, dep, direct) vec_add(pending, dep);
+	for (int i = 0; i < vec_size(pending); i++)
+	{
+		// Let's get the actual name.
+		const char *name = parse_library_path(pending[i]).name;
+		if (str_findlist(name, vec_size(visited), visited) != -1) continue;
+		vec_add(visited, name);
+		const char *dir = find_library_dir(dirs, name);
+		if (!dir) continue;
+		const char *manifest_path;
+		JSONObject *manifest;
+		// Mangled or missing manifest, ignore it, so that the library can be fetched again.
+		const char *error;
+		manifest = load_library_manifest(file_append_path(dir, str_printf("%s.c3l", name)), &error, &manifest_path);
+		if (!manifest || manifest->type != J_OBJECT) continue;
+		// Pick the main dependencies
+		const char **deps = NULL;
+		add_manifest_dependencies(&deps, manifest);
+		JSONObject *targets = json_map_get(manifest, "targets");
+		if (targets && targets->type == J_OBJECT)
+		{
+			// Add the target dependencies
+			FOREACH(JSONObject *, target, targets->members)
+			{
+				if (target->type == J_OBJECT) add_manifest_dependencies(&deps, target);
+			}
+		}
+		// Add everything to pending and derived sets.
+		FOREACH(const char *, dep, deps)
+		{
+			vec_add(derived, dep);
+			vec_add(pending, dep);
+		}
+	}
+	return derived;
+}
+
+// A field the dependency gives must be the same in the argument, which takes it if it has none.
+static bool field_matches(const char **arg_field, const char *dep_field)
+{
+	if (!dep_field) return true;
+	if (!*arg_field) *arg_field = dep_field;
+	return str_eq(*arg_field, dep_field);
+}
+
+// What to fetch for `arg`, which must name a dependency of the project, or of a library it depends on.
+// A bare name uses the path of the dependency, or else is looked up in the registry.
+// The registry is the project's for its own dependencies, and the default one for those of libraries.
+static LibraryPathInfo resolve_fetch(BuildOptions *options, const char *arg, const char **direct, const char **derived)
+{
+	LibraryPathInfo wanted = parse_library_path(arg);
+	if (wanted.error) error_exit("Failed: '%s' is not a valid library, %s.", arg, wanted.error);
+	bool found = false;
+	bool found_direct = false;
+	const char *path = NULL;
+	bool path_direct = false;
+	const char **dep_set[2] = { direct, derived };
+	for (int i = 0; i < 2; i++)
+	{
+		const char **deps = dep_set[i];
+		FOREACH(const char *, dep, deps)
+		{
+			LibraryPathInfo info = parse_library_path(dep);
+			if (!str_eq(info.name, wanted.name)) continue;
+			found = true;
+			if (deps == direct) found_direct = true;
+			if (!info.use_remote_fetch) continue;
+			if (path && !str_eq(path, dep))
+			{
+				error_exit("Failed: '%s' is ambiguous, the dependencies have both '%s' and '%s'.", arg, path, dep);
+			}
+			if (!path) path_direct = deps == direct;
+			path = dep;
+		}
+	}
+	if (!found) error_exit("Failed: '%s' is not a dependency of the project, or of the libraries it depends on.", arg);
+
+	const char *base = DEFAULT_FETCH_URL;
+	if ((path && path_direct) || (!path && found_direct)) base = registry_url(options);
+
+	LibraryPathInfo library;
+	if (wanted.use_remote_fetch)
+	{
+		library = wanted;
+		if (path)
+		{
+			// Given something like foo/bar as the fetch parameter, we require that the path also contains foo/bar
+			// so the user-provided info needs to match the project provided data.
+			LibraryPathInfo dep = parse_library_path(path);
+			if (!str_eq(dep.id, library.id) || !field_matches(&library.url, dep.url)
+				|| !field_matches(&library.version, dep.version) || !field_matches(&library.checksum, dep.checksum))
+			{
+				error_exit("Failed: '%s' doesn't match the dependency '%s'.", arg, path);
+			}
+		}
+		if (!library.url) library.url = base;
+		return library;
+	}
+
+	// We just have the path.
+	if (path)
+	{
+		library = parse_library_path(path);
+		if (!library.url) library.url = base;
+		return library;
+	}
+
+	// Try to find the library in the remote.
+	const char *id;
+	const char *error = registry_find_library(base, wanted.name, &id);
+	if (error) error_exit("Failed: %s.", error);
+	library = parse_library_path(id);
+	if (library.error) error_exit("Failed: the registry has an invalid library '%s', %s.", id, library.error);
+	if (!library.url) library.url = base;
+	return library;
+}
 
 
-
+// Fetch the libraries named on the command line, in order. Each must be a dependency of the project,
+// or of a library that is installed, possibly by an earlier one of them.
 void fetch_project(BuildOptions* options)
 {
 	if (!download_available())
@@ -293,81 +448,75 @@ void fetch_project(BuildOptions* options)
 		error_exit("Failed: no project file found.");
 	}
 
-	if (str_eq(options->path, DEFAULT_PATH))
-	{
-		{
-			const char** deps_dirs =  get_project_dependency_directories();
-			int num_lib = vec_size(deps_dirs);
-			if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
-		}
-	}
-
-	const char **libdirs = get_project_dependency_directories();
-	const char **deps = get_project_dependencies();
 	const char *filename;
-	JSONObject *project_json = project_json_load(&filename);
-
-	JSONObject *targets_json = json_map_get(project_json, "targets");
-
-	if (targets_json && targets_json->type == J_OBJECT)
+	JSONObject *project = project_json_load(&filename);
+	JSONObject *project_targets = json_map_get(project, "targets");
+	if (project_targets && project_targets->type != J_OBJECT) project_targets = NULL;
+	const char **direct = NULL;
+	str_list_add_all_unique(&direct, get_list(filename, project, NULL, "dependencies", "dependencies-override"));
+	if (project_targets)
 	{
-
-		FOREACH_IDX(i, JSONObject *, target, targets_json->members)
+		FOREACH_IDX(i, JSONObject *, target, project_targets->members)
 		{
-			const char *key = targets_json->keys[i];
-			if (target->type != J_OBJECT)
-			{
-				error_exit("Invalid data in target '%s'", key);
-			}
-
-			const char **target_deps = get_optional_string_array((BuildParseContext) { filename, key, false }, target, "dependencies");
-
-			FOREACH(const char*, dep, target_deps)
-			{
-				vec_add(deps, dep);
-			}
+			if (target->type != J_OBJECT) error_exit("Invalid data in target '%s'", project_targets->keys[i]);
+			str_list_add_all_unique(&direct, get_list(filename, project, project_targets->keys[i], "dependencies", "dependencies-override"));
 		}
 	}
-
-	// dependency check tree
-	while (vec_size(deps) > 0)
+	FOREACH(const char *, dep, direct)
 	{
-		FOREACH(const char*, dir, libdirs)
+		const char *error = parse_library_path(dep).error;
+		if (error) error_exit("Failed: invalid dependency '%s' in the project file, %s.", dep, error);
+	}
+	const char **dirs = get_list(filename, project, NULL, "dependency-search-paths", "dependency-search-paths-override");
+	if (!vec_size(dirs))
+	{
+		error_exit("Failed: no 'dependency-search-paths' to fetch into.\n"
+				   "Add e.g. \"dependency-search-paths\": [ \"lib\" ] to the project file.");
+	}
+
+	if (!vec_size(options->libraries_to_fetch))
+	{
+		const char **all = NULL;
+		str_list_add_all_unique(&all, direct);
+		str_list_add_all_unique(&all, derived_dependencies(dirs, direct));
+		const char **missing = NULL;
+		FOREACH(const char *, dep, all)
 		{
-			const char *dep = VECLAST(deps);
-			if (file_exists(file_append_path(dir, str_printf("%s.c3l", dep))))
-			{
-				vec_pop(deps);
-				break;
-			}
-
-			printf("Fetching missing library '%s'...\n", dep);
-			fflush(stdout);
-
-			const char *error = vendor_fetch_single(dep, options->vendor_download_path, use_ansi());
-
-			if (error)
-			{
-				printf("Failed: '%s'\n", error);
-			}
-
-			vec_pop(deps);
-			break;
+			const char *name = parse_library_path(dep).name;
+			if (find_library_dir(dirs, name) || str_findlist(name, vec_size(missing), missing) != -1) continue;
+			vec_add(missing, name);
 		}
+		if (!vec_size(missing))
+		{
+			puts("All dependencies are installed.");
+			return;
+		}
+		puts("Missing dependencies, fetch them with 'c3c project fetch <library>...':");
+		FOREACH(const char *, name, missing) printf("  %s\n", name);
+		return;
+	}
+
+	FOREACH(const char *, arg, options->libraries_to_fetch)
+	{
+		LibraryPathInfo library = resolve_fetch(options, arg, direct, derived_dependencies(dirs, direct));
+		// A new library goes into the first search path, an installed one is replaced where it is.
+		const char *dir = find_library_dir(dirs, library.name);
+		printf("Fetching '%s'...\n", library_path_info_to_string(&library));
+		fflush(stdout);
+		const char *error = registry_fetch_single(options, &library, dir ? dir : dirs[0], use_ansi());
+		if (error) error_exit("Failed to fetch '%s': %s", arg, error);
 	}
 }
 
-
-
-void add_libraries_to_project_file(const char** libs, const char* target_name) {
-
+// Add the library names to "dependencies", unless there already is a dependency with that name.
+void add_libraries_to_project_file(const char** libs)
+{
+	if (!vec_size(libs)) return;
 	if (!file_exists(PROJECT_JSON5) && !file_exists(PROJECT_JSON)) return;
-	//TODO! Target name option not implemented
 
 	const char *filename;
 	JSONObject *project_json = project_json_load(&filename);
 
-	// TODO! check if target is specified and exists (NULL at the moment)
 	JSONObject *libraries_json = json_map_get(project_json, "dependencies");
 	if (!libraries_json)
 	{
@@ -381,13 +530,15 @@ void add_libraries_to_project_file(const char** libs, const char* target_name) {
 		vec_add(dependencies, element->str);
 	}
 
-	// check if libraries are already present
 	FOREACH(const char*, lib, libs)
 	{
-		if (str_findlist(lib, vec_size(dependencies), dependencies)!=-1) continue;
+		FOREACH(const char *, dependency, dependencies)
+		{
+			if (str_eq(parse_library_path(dependency).name, lib)) goto NEXT;
+		}
 		vec_add(dependencies, lib);
+		NEXT:;
 	}
-
 	JSONObject** elements = NULL;
 	FOREACH(const char*, dep, dependencies)
 	{
@@ -422,7 +573,7 @@ void add_target_project(BuildOptions *build_options)
 		error_exit("Target with name '%s' already exists", build_options->project_options.target_name);
 	}
 
-	JSONObject *target_type_obj = json_new_string(targets[build_options->project_options.target_type]);
+	JSONObject *target_type_obj = json_new_string(target_types[build_options->project_options.target_type]);
 
 	JSONObject *new_target = json_new_map();
 	json_map_set(new_target, "type", target_type_obj);
@@ -567,6 +718,7 @@ void view_project(BuildOptions *build_options)
 	VIEW_STRING("CPU name", "cpu");
 	VIEW_STRING("CPU flags", "cpu-flags");
 	VIEW_SETTING("Debug level", "debug-info", debug_levels);
+	VIEW_STRING_ARRAY("Environment variables for scripts", "env", ", ");
 	VIEW_STRING_ARRAY("Scripts to run", "exec", ", ");
 	VIEW_STRING_ARRAY("Enabled features", "features", ", ");
 	VIEW_SETTING("Floating point behaviour", "fp-math", fp_math);

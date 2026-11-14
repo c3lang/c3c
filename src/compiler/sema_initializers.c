@@ -14,7 +14,7 @@ static inline void sema_not_enough_elements_error(SemaContext *context, Expr *in
 static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *assigned_type, Type *flattened, Expr *expr, bool *no_match_ref);
 static void sema_create_const_initializer_from_designated_init(ConstInitializer *const_init, Expr *initializer);
 static Decl *sema_resolve_element_for_name(SemaContext *context, Decl **decls, DesignatorElement ***elements_ref, int *index, bool is_substruct);
-static Type *sema_expr_analyse_designator(SemaContext *context, Type *current, Expr *expr, ArrayIndex *max_index, Decl **member_ptr);
+static Type *sema_expr_analyse_designator(SemaContext *context, Type *current, Expr *expr, ArrayIndex *max_index, Decl **member_ptr, bool *no_match_ref);
 INLINE bool sema_initializer_list_is_empty(Expr *value);
 static Type *sema_find_type_of_element(SemaContext *context, Type *type, DesignatorElement ***elements_ref, int *curr_index, bool *did_report_error, ArrayIndex *max_index, Decl **member_ptr);
 static ArrayIndex sema_analyse_designator_index(SemaContext *context, Expr *index);
@@ -485,7 +485,7 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 	FOREACH(Expr *, expr, init_expressions)
 	{
 		Decl *member;
-		Type *result = sema_expr_analyse_designator(context, original, expr, &max_index, &member);
+		Type *result = sema_expr_analyse_designator(context, original, expr, &max_index, &member, no_match_ref);
 		if (!result) return false;
 		bool is_bitmember = member && member->decl_kind == DECL_VAR && member->var.kind == VARDECL_BITMEMBER;
 		Expr *value = expr->designator_expr.value;
@@ -510,7 +510,11 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 	Type *type;
 	if (!is_structlike && is_inferred)
 	{
-		type = type_from_inferred(flattened, flattened->array.base, (ArrayIndex)(max_index + 1));
+		if (max_index >= MAX_ARRAY_SIZE)
+		{
+			RETURN_SEMA_ERROR(initializer, "Inferred size would exceed max supported array size (%lld).", (long long)MAX_ARRAY_SIZE);
+		}
+		type = type_from_inferred(flattened, flattened->array.base, (int)(max_index + 1));
 	}
 	else
 	{
@@ -582,13 +586,10 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 	}
 	ASSERT(expr->expr_kind == EXPR_INITIALIZER_LIST);
 
-	// 2. Grab the expressions inside.
+	// 2. Expand, then grab the expressions inside.
+	if (!sema_expand_vasplat_exprs(context, &expr->initializer_list, NULL)) return false;
 	Expr **init_expressions = expr->initializer_list;
 
-	if (init_expressions)
-	{
-		expr->initializer_list = init_expressions = sema_expand_vasplat_exprs(context, init_expressions, NULL);
-	}
 	int init_expression_count = vec_size(init_expressions);
 
 	// 3. Zero size init will initialize to empty.
@@ -1090,6 +1091,11 @@ static inline ConstInitializer *sema_update_const_initializer_at_index(ConstInit
                                                                        ArrayIndex index,
                                                                        ArrayIndex *insert_index_ref)
 {
+	if (const_init->kind == CONST_INIT_ARRAY_FULL)
+	{
+		return const_init->init_array_full[index];
+	}
+
 	ConstInitializer **array_elements = const_init->init_array.elements;
 	ArrayIndex insert_index = *insert_index_ref;
 	ArrayIndex array_count = (ArrayIndex)vec_size(array_elements);
@@ -1227,7 +1233,7 @@ static inline void sema_update_const_initializer_with_designator(
 	}
 }
 
-static Type *sema_expr_analyse_designator(SemaContext *context, Type *current, Expr *expr, ArrayIndex *max_index, Decl **member_ptr)
+static Type *sema_expr_analyse_designator(SemaContext *context, Type *current, Expr *expr, ArrayIndex *max_index, Decl **member_ptr, bool *no_match_ref)
 {
 	ASSERT(expr->expr_kind == EXPR_DESIGNATOR);
 	DesignatorElement **path = expr->designator_expr.path;
@@ -1241,7 +1247,9 @@ static Type *sema_expr_analyse_designator(SemaContext *context, Type *current, E
 		Type *new_current = sema_find_type_of_element(context, current, &path, &i, &did_report_error, i == 0 ? max_index : NULL, &member_found);
 		if (!new_current)
 		{
-			if (!did_report_error) SEMA_ERROR(expr, "This is not a valid member of '%s'.", type_to_error_string(current));
+			if (did_report_error) return NULL;
+			if (no_match_ref) return *no_match_ref = true, NULL;
+			SEMA_ERROR(expr, "This is not a valid member of '%s'.", type_to_error_string(current));
 			return NULL;
 		}
 		current = new_current;
@@ -1305,7 +1313,7 @@ static Type *sema_find_type_of_element(SemaContext *context, Type *type, Designa
 		{
 			case TYPE_INFERRED_ARRAY:
 			case TYPE_INFERRED_VECTOR:
-				len = MAX_ARRAYINDEX;
+				len = max_array_index();
 				base = type_flattened->array.base;
 				break;
 			case TYPE_ARRAY:
@@ -1397,11 +1405,8 @@ static ArrayIndex sema_analyse_designator_index(SemaContext *context, Expr *inde
 		SEMA_ERROR(index, "The index must be a constant value.");
 		return -1;
 	}
-	if (!int_fits(index->const_expr.ixx, TYPE_I32))
-	{
-		SEMA_ERROR(index, "The value of the index does not fit in an int.");
-		return -1;
-	}
+	if (!sema_check_array_index(context, index, false)) return -1;
+
 	int64_t index_val = int_to_i64(index->const_expr.ixx);
 	if (index_val < 0)
 	{

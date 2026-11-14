@@ -1,0 +1,17 @@
+// #target: macos-x64
+module test;
+
+const char[8] NAME = "abc";
+
+// A constant string padded to an array keeps its zero padding when it is turned into a vector.
+fn int main()
+{
+	char[<8>] w = (char[<8>])(char[8])"abc";
+	char[<8>] v = (char[<8>])NAME;
+	return 0;
+}
+
+/* #expect: test.ll
+
+  store <8 x i8> <i8 97, i8 98, i8 99, i8 0, i8 0, i8 0, i8 0, i8 0>, ptr %w, align 8
+  store <8 x i8> <i8 97, i8 98, i8 99, i8 0, i8 0, i8 0, i8 0, i8 0>, ptr %v, align 8

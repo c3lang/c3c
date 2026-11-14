@@ -149,9 +149,9 @@ fn void main()
 
 ### Current status
 
-The current stable version of the compiler is **version 0.8.4**.
+The current stable version of the compiler is **version 0.8.6**.
 
-The upcoming 0.8.4 release will further refine the standard library and fix bugs.
+The upcoming 0.8.7 release will further refine the standard library and fix bugs.
 Follow the issues [here](https://github.com/c3lang/c3c/issues).
 
 If you have suggestions on how to improve the language, either [file an issue](https://github.com/c3lang/c3c/issues)
@@ -446,7 +446,7 @@ called `hello_world` or `hello_world.exe`depending on platform.
 1. Make sure you have Visual Studio 17 2022 installed or alternatively install the "Buildtools for Visual Studio" (https://aka.ms/vs/17/release/vs_BuildTools.exe) and then select "Desktop development with C++"
 2. Install CMake
 3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
-4. Enter the C3C directory: `cd c3c`.
+4. Open Developer Command Prompt for VS (or run `vsvarsall.bat`) and enter the C3C directory: `cd c3c`.
 5. Set up the CMake build: `cmake --preset windows-vs-2022-release -D C3_FETCH_LLVM=ON`
 6. Build: `cmake --build --preset windows-vs-2022-release`
 
@@ -543,19 +543,4 @@ Editor plugins can be found at https://github.com/c3lang/editor-plugins.
 
 A huge **THANK YOU** goes out to all contributors and sponsors.
 
-A special thank you to sponsors [Zack Puhl](https://github.com/NotsoanoNimus) and [konimarti](https://github.com/konimarti) for going the extra mile.
-
-And honorable mention goes to past sponsors:
-[Ygor Pontelo](https://github.com/ygorpontelo), [Simone Raimondi](https://github.com/SRaimondi),
-[Jan Válek](https://github.com/jan-valek), [Pierre Curto](https://github.com/pierrec),
-[Caleb-o](https://github.com/Caleb-o) and [devdad](https://github.com/devdad)
-
-## Star History
-
-<a href="https://star-history.dera.page/#c3lang/c3c&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=c3lang/c3c&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=c3lang/c3c&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://star-history.dera.page/svg?repos=c3lang/c3c&type=date&legend=top-left" />
- </picture>
-</a>
+A special thank you to sponsors [Josh Ring](https://github.com/joshring) and [konimarti](https://github.com/konimarti) for going the extra mile.

@@ -37,12 +37,11 @@ entry:
   %hi = load i64, ptr %ptradd, align 8
   %2 = call i64 @"std.collections.map.HashMap$String$fn$void$String$$.get"(ptr %retparam, ptr %map, ptr %lo, i64 %hi)
   %not_err = icmp eq i64 %2, 0
-  %3 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %3, label %after_check, label %else_block
+  br i1 %not_err, label %after_check, label %else_block
 
 after_check:                                      ; preds = %entry
-  %4 = load ptr, ptr %retparam, align 8
-  call void %4(ptr @.str.2, i64 11)
+  %3 = load ptr, ptr %retparam, align 8
+  call void %3(ptr @.str.2, i64 11)
   br label %phi_block
 
 else_block:                                       ; preds = %entry

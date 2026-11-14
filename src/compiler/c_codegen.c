@@ -5,39 +5,55 @@
 The C backend has some known issues / potential problems:
 
 1. A 64-bit bitstruct write to the top field wipes the other fields. bitstruct W : ulong { uint lo : 0..31; uint hi : 32..63; } then w.lo = 1; w.hi = 2 leaves lo == 0. The mask test is bit_size + start_bit >= 64 where it should be bit_size >= 64. It appears at c_codegen_expr.c:1343 and again at c_codegen_lvalue.c:417.
+(Fixed)
 
 2. Signed sat_mul saturates the wrong way. long::min.sat_mul(1000) gives MAX, because c_codegen_builtins.c:251 only looks at b's sign.
+(Fixed needs testing)
 
 3. float16, bfloat and float128 lower to float/double (c_codegen_type.c:544-548). struct { float16 a, b; } is 4 bytes to c3c but 8 in C, so mem::new_array(Pair, 4) overflows the heap (ASan-confirmed). Half-precision rounding is also lost.
 
 4. popcount and clz sign-extend narrow negative ints: popcount((int)-1) gives 64 and clz gives -32.
 sat_shl never saturates: int::max.sat_shl(1) gives -2.
+(Fixed)
 
 5. roundeven is mapped to round (c_codegen_builtins.c:29).
+(Fixed)
 
 6. $$sysclock is hard-wired to 0, so benchmarks report 0.00 CPU clocks.
+(Fixed)
 
 7. $$breakpoint aborts.
+(Fixed)
 
 8. Stack use-after-scope (ASan-confirmed). Temporaries are declared inside conditional C blocks. int* p = c ? &&5 : &&7; *p dangles, and so do (int[]){…} slices in ternary branches.
+(Fixed)
 
 9. @finalizer order is reversed (c_codegen_function.c:653-660). LLVM runs priority 1, 2, default. The C build runs default, 2, 1, because it feeds the priority straight into destructor(N).
+(Tested: LLVM also executes default, 2, 1 via atexit LIFO; behavior matches LLVM)
 
 10. Null handling differs from LLVM. &((Foo*)null).b yields 0 instead of the field offset (c_codegen_lvalue.c:575). Loads through a null address silently return 0 (:1024).
+(Fixed)
 
 11. Compound-assignment evaluation order differs. arr[idx()] += val() evaluates val() first in C but idx() first in LLVM (c_codegen_expr.c:852).
+(Fixed)
 
 12. goto to an undeclared label. is_opt emits goto __C3_LABEL_n (c_codegen_expr.c:994,1002), but the label is only emitted on the fall-through path (:1236). Shifts, vector ops, float %, slice compares and similar early-return paths skip it. int? r = get(3) << 2; fails. It also hits real stdlib code: std::gfx scale_to_monitor (monitor.scale * (Vec2)size) breaks --strip-unused=no.
+(Fixed cd0f39819)
 
 13. trap-on-wrap is broken. It emits __builtin_add_overflow(a, b, &___var_N) into a variable that is never declared (c_codegen_expr.c:1046). Ordinary stdlib code fails with use of undeclared identifier. The same block is duplicated at :1042-1056, and every check is type_is_signed, so unsigned overflow never traps (LLVM traps it).
+(Fixed)
 
 14. A module containing only an enum with associated values fails to link. c_module_has_live_code (c_codegen.c:373) ignores unit->enums, so no .c is written. The result is undefined: colors__Color__assoc_label.
+(Fixed)
 
 15. Symbol collisions. Modules net_utils and net::utils both mangle to net_utils__init and hit a duplicate-symbol link error (c_codegen.c:14-33, :126-128).
+(Fixed)
 
 16. An absolute -o breaks single-module builds. static-lib, -Oz and --single-module=yes build <objdir>//abs/path.c and fail (c_codegen.c:823). LLVM is fine here.
+(Fixed)
 
 17. Hello world doesn't compile on this clang. It emits typedef void (*f)(...) (c_codegen_type.c:820-827), which needs C23.
+(Fixed by 71485732d)
 
 18. Only four safe_mode_enabled() sites exist, versus 14+ in LLVM. Nothing checks slice ranges, array or slice indexing, null dereference, / or % by zero, or enum ordinal range. Division by zero silently returns 0 on arm64, and on x86 it crashes with SIGFPE and no panic. Panic messages are dropped too, so assert(x, "msg") becomes a bare trap. Contracts and shifts are checked. The unit tests pass because they don't exercise any of this.
 
@@ -46,12 +62,22 @@ sat_shl never saturates: int::max.sat_shl(1) gives -2.
 20. @section and @noinline are dropped; I confirmed this by diffing the emitted C against LLVM IR. @inline, @naked and @noreturn also look unhandled.
 
 21. --emit-llvm and --emit-asm print "written" but create empty directories.
+(Fixed)
 
 22. Every temp is declared at function top and again inline. A small function's frame is 944 bytes, about 1.7× LLVM's. nbodies at -O0 takes 5.3s versus 1.4s, with parity at -O2.
+(Fixed)
 
 23 The TCC-only runtime code has bugs, by inspection: unsigned narrow __c3_tcc_sub_overflow never writes *res, and "+r"((uint8_t)desired) isn't an lvalue.
 
+24. Inline assembly (asm { ... }) is emitted as GNU extended inline assembly (__asm__ __volatile__). MSVC (cl.exe) on x64/ARM64 does not support inline assembly, so compiling code with inline asm under cl.exe triggers a compile-time #error. Use clang-cl, gcc, or LLVM when inline assembly is needed.
+
 */
+
+static HTable c_decl_name_cache;
+static HTable c_shared_gen_decl;
+static HTable c_shared_gen_def;
+static HTable c_shared_decl_names;
+static HTable c_shared_emitted_global_decls;
 
 const char *c_intern(const char *str)
 {
@@ -64,30 +90,41 @@ const char *c_intern(const char *str)
 	return symtab_add(str, len, fnv1a(str, len), &type);
 }
 
+static inline char c_sanitize_char(char c)
+{
+	if (c == '*') return 'p';
+	if (char_is_alphanum_(c)) return c;
+	return '_';
+}
+
 const char *c_sanitize_name(const char *name)
 {
-	if (!name)
+	if (!name) return "_anon";
+	const char *p = name;
+	while (*p && c_sanitize_char(*p) == *p) p++;
+	if (!*p) return c_intern(name);
+
+	scratch_buffer_push();
+	scratch_buffer_clear();
+	for (p = name; *p; p++)
 	{
-		return "_anon";
-	}
-	char *res = str_dup(name);
-	for (char *p = res; *p; p++)
-	{
-		if (*p == '*')
+		if (*p == '.')
 		{
-			*p = 'p';
+			scratch_buffer_append("__");
 		}
-		else if (!((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' && *p <= '9') || *p == '_'))
+		else
 		{
-			*p = '_';
+			scratch_buffer_append_char(c_sanitize_char(*p));
 		}
 	}
-	return c_intern(res);
+	const char *interned = scratch_buffer_interned();
+	scratch_buffer_pop();
+	return interned;
 }
 
 static inline bool c_is_builtin_symbol_collision(const char *name)
 {
-	return strncmp(name, "__atomic_", 9) == 0 || strncmp(name, "__builtin_", 10) == 0;
+	return str_start_with(name, "__atomic_") || str_start_with(name, "__builtin_");
 }
 
 static const char *c_check_collision(const char *name)
@@ -99,6 +136,27 @@ static const char *c_check_collision(const char *name)
 	return name;
 }
 
+INLINE bool c_extname_is_asm(const char *extname)
+{
+	return extname && extname[0] == '\x01';
+}
+
+static bool c_decl_has_asm_name(Decl *decl)
+{
+	if (!decl) return false;
+	decl = c_decl_unwrap(decl);
+	return decl->has_extname && c_extname_is_asm(decl->extname);
+}
+
+static const char *c_extname_identifier(const char *extname)
+{
+	if (c_extname_is_asm(extname))
+	{
+		return c_intern(str_printf("__c3_asm_%s", c_sanitize_name(extname + 1)));
+	}
+	return c_sanitize_name(extname);
+}
+
 const char *c_get_decl_asm_name(Decl *decl)
 {
 	if (!decl)
@@ -108,7 +166,7 @@ const char *c_get_decl_asm_name(Decl *decl)
 	decl = c_decl_unwrap(decl);
 	if (decl->has_extname && decl->extname)
 	{
-		return decl->extname;
+		return c_extname_is_asm(decl->extname) ? decl->extname + 1 : decl->extname;
 	}
 	if (decl->is_extern && decl->name)
 	{
@@ -117,38 +175,20 @@ const char *c_get_decl_asm_name(Decl *decl)
 	return NULL;
 }
 
-const char *c_get_decl_name(Decl *decl)
+bool c_decl_needs_asm_label(Decl *decl)
 {
-	if (!decl)
-	{
-		return "unknown";
-	}
-	decl = c_decl_unwrap(decl);
+	const char *asm_name = c_get_decl_asm_name(decl);
+	return asm_name && (c_decl_has_asm_name(decl) || c_is_builtin_symbol_collision(asm_name));
+}
 
-	if ((decl == compiler.context.main && !decl->func_decl.type_parent) ||
-	    (decl->is_synthetic && decl->name && strcmp(decl->name, "main") == 0))
-	{
-		if (compiler.platform.os == OS_TYPE_WIN32 && decl->decl_kind == DECL_FUNC && vec_size(decl->func_decl.signature.params) == 4)
-		{
-			Decl *param2 = decl->func_decl.signature.params[2];
-			Type *t2 = c_decl_type(param2);
-			if (t2 && t2->type_kind == TYPE_POINTER && t2->pointer && t2->pointer->type_kind == TYPE_U16)
-			{
-				return "wWinMain";
-			}
-			return "WinMain";
-		}
-		if (!decl->unit || !decl->unit->main_function || !decl->unit->main_function->is_synthetic || decl == decl->unit->main_function)
-		{
-			return "main";
-		}
-	}
+static const char *c_compute_decl_name(Decl *decl)
+{
 	if (decl->is_extern)
 	{
 		const char *name = NULL;
 		if (decl->has_extname && decl->extname)
 		{
-			name = c_sanitize_name(decl->extname);
+			name = c_extname_identifier(decl->extname);
 		}
 		else if (decl->name)
 		{
@@ -167,7 +207,7 @@ const char *c_get_decl_name(Decl *decl)
 
 	if (decl->has_extname && decl->extname)
 	{
-		return c_check_collision(c_sanitize_name(decl->extname));
+		return c_check_collision(c_extname_identifier(decl->extname));
 	}
 
 	if (!decl->unit || !decl->unit->module)
@@ -175,10 +215,22 @@ const char *c_get_decl_name(Decl *decl)
 		return c_check_collision(c_sanitize_name(decl->name));
 	}
 
-	decl->is_export = true;
+	scratch_buffer_push();
 	scratch_buffer_set_extern_decl_name(decl, true);
 	char *str = scratch_buffer_copy();
+	scratch_buffer_pop();
 	return c_check_collision(c_sanitize_name(str));
+}
+
+const char *c_get_decl_name(Decl *decl)
+{
+	if (!decl) return "unknown";
+	decl = c_decl_unwrap(decl);
+	const char *cached = htable_get(&c_decl_name_cache, decl);
+	if (cached) return cached;
+	const char *name = c_compute_decl_name(decl);
+	htable_set(&c_decl_name_cache, decl, (void *)name);
+	return name;
 }
 
 const char *c_get_enum_assoc_name(Decl *enum_decl, Decl *param)
@@ -280,14 +332,67 @@ void c_emit_string_literal(GenContext *c, const char *bytes, ArrayIndex len)
 	PRINT("\"");
 }
 
+void c_emit_panic(GenContext *c, const char *message, SourceLocId loc, Expr **args)
+{
+	Decl *panic_var = compiler.context.panic_var;
+	if (no_panic() || !panic_var)
+	{
+		PRINT("__c3_abort();\n");
+		return;
+	}
+
+	SourceLoc *location = sourcelocptrzero(loc);
+	File *file = source_file_by_id(location ? location->file_id : 0);
+	const char *filename = file ? file->name : "";
+	const char *funcname = c->cur_func_name ? c->cur_func_name : (c->cur_func_decl ? c->cur_func_decl->name : "");
+	uint32_t line = location ? location->row : 0;
+
+	int num_args = vec_size(args);
+	const char *summary = num_args ? panic_fn_desc[PANIC_FN_ASSERT_VIOLATION].format : (message ? message : "");
+	VariableId arr_var = 0;
+	if (num_args)
+	{
+		arr_var = c_emit_alloca_array(c, type_any, num_args);
+		for (int i = 0; i < num_args; i++)
+		{
+			CValue arg_val = {0};
+			c_emit_expr(c, &arg_val, args[i]);
+			c_value_rvalue(c, &arg_val);
+			char slot[64];
+			snprintf(slot, sizeof(slot), "___var_%d[%d]", arr_var, i);
+			c_emit_assign_to_any(c, slot, &arg_val);
+		}
+	}
+	const char *panic_name = c_get_decl_name(panic_var);
+	PRINTF("if (%s) { ((void (*)(__c3_slice_uint8_t, __c3_slice_uint8_t, __c3_slice_uint8_t, int32_t, __c3_slice_uint8_t, __c3_slice___c3_any__))%s)((__c3_slice_uint8_t){(uint8_t*)", panic_name, panic_name);
+	c_emit_string_literal(c, summary, (ArrayIndex)strlen(summary));
+	PRINTF(", %zu}, (__c3_slice_uint8_t){(uint8_t*)", strlen(summary));
+	c_emit_string_literal(c, filename, (ArrayIndex)strlen(filename));
+	PRINTF(", %zu}, (__c3_slice_uint8_t){(uint8_t*)", strlen(filename));
+	c_emit_string_literal(c, funcname, (ArrayIndex)strlen(funcname));
+	PRINTF(", %zu}, %u, ", strlen(funcname), line);
+	if (num_args)
+	{
+		PRINT("(__c3_slice_uint8_t){(uint8_t*)");
+		c_emit_string_literal(c, message, (ArrayIndex)strlen(message));
+		PRINTF(", %zu}, (__c3_slice___c3_any__){ .ptr = ___var_%d, .len = %d }); } __c3_abort();\n", strlen(message), arr_var, num_args);
+		return;
+	}
+	PRINT("(__c3_slice_uint8_t){0}, (__c3_slice___c3_any__){0}); } __c3_abort();\n");
+}
+
 static void c_traverse_decl(GenContext *c, Decl *d, CDeclVisitor visitor, void *userdata)
 {
-	if (!d || d->decl_kind == DECL_POISONED || d->decl_kind == DECL_ERASED || d->replacement)
+	if (!d)
 	{
 		return;
 	}
-	if (d->decl_kind == DECL_MACRO || d->decl_kind == DECL_IMPORT || d->decl_kind == DECL_ATTRIBUTE || d->decl_kind == DECL_CONTRACT)
+	if (d->decl_kind == DECL_GROUP)
 	{
+		FOREACH(Decl *, gd, d->decl_list)
+		{
+			c_traverse_decl(c, gd, visitor, userdata);
+		}
 		return;
 	}
 	if (d->decl_kind == DECL_GENERIC)
@@ -306,28 +411,19 @@ static void c_traverse_decl(GenContext *c, Decl *d, CDeclVisitor visitor, void *
 		}
 		return;
 	}
-	if (d->decl_kind == DECL_ALIAS)
-	{
-		Decl *raw = c_decl_unwrap(d);
-		if (raw && raw != d)
-		{
-			c_traverse_decl(c, raw, visitor, userdata);
-		}
-		return;
-	}
-	if (d->decl_kind == DECL_GROUP)
-	{
-		FOREACH(Decl *, gd, d->decl_list)
-		{
-			c_traverse_decl(c, gd, visitor, userdata);
-		}
-		return;
-	}
-	if (d->is_template)
+	d = c_decl_unwrap(d);
+	if (!d || d->decl_kind == DECL_POISONED || d->decl_kind == DECL_ERASED || d->replacement)
 	{
 		return;
 	}
-	decl_append_links_to_global_during_codegen(d);
+	if (d->decl_kind == DECL_MACRO || d->decl_kind == DECL_IMPORT || d->decl_kind == DECL_ATTRIBUTE || d->decl_kind == DECL_CONTRACT)
+	{
+		return;
+	}
+	if (d->is_template || !c_decl_is_live(d))
+	{
+		return;
+	}
 	visitor(c, d, userdata);
 
 	if (decl_has_members(d) && d->strukt.members)
@@ -467,6 +563,13 @@ static bool c_module_has_live_code(Module *module)
 				return true;
 			}
 		}
+		FOREACH(Decl *, d, unit->enums)
+		{
+			if (d && !d->is_extern && !d->replacement && d->enums.parameters && d->enums.values && (!strip_unused() || d->is_live))
+			{
+				return true;
+			}
+		}
 	}
 	return false;
 }
@@ -513,47 +616,13 @@ static void visit_type_decl(GenContext *c, Decl *d, void *ud)
 static void visit_fn_prototype(GenContext *c, Decl *d, void *ud)
 {
 	(void)ud;
-	d = c_decl_unwrap(d);
-	if (!d || d->decl_kind != DECL_FUNC)
+	if (d->decl_kind != DECL_FUNC)
 	{
 		return;
 	}
-	if (d->func_decl.attr_test)
-	{
-		if (!compiler.build.build_test)
-		{
-			return;
-		}
-	}
-	else if (d->func_decl.attr_benchmark)
-	{
-		if (!compiler.build.build_benchmark)
-		{
-			return;
-		}
-	}
-	else if (strip_unused() && !d->is_live)
-	{
-		return;
-	}
+	decl_append_links_to_global_during_codegen(d);
 	bool is_current = (!c->current_module || (d->unit && d->unit->module == c->current_module));
 	c_emit_function_decl(c, d, is_current);
-}
-
-static void visit_mark_declared(GenContext *c, Decl *d, void *ud)
-{
-	(void)ud;
-	d = c_decl_unwrap(d);
-	if (d && d->decl_kind == DECL_FUNC)
-	{
-		const char *fn_name = c_get_decl_name(d);
-		htable_set(&c->decl_names, (void *)fn_name, (void *)1);
-	}
-	if (d && d->decl_kind == DECL_VAR && c_is_file_global(d))
-	{
-		const char *vname = c_get_decl_name(d);
-		htable_set(&c->emitted_global_decls, (void *)vname, (void *)1);
-	}
 }
 
 static void visit_dynamic_dispatcher(GenContext *c, Decl *d, void *ud)
@@ -571,11 +640,7 @@ static void visit_dynamic_dispatcher(GenContext *c, Decl *d, void *ud)
 static void visit_global_forward_decl(GenContext *c, Decl *d, void *ud)
 {
 	(void)ud;
-	d = c_decl_unwrap(d);
-	if (!d || (strip_unused() && !d->is_live))
-	{
-		return;
-	}
+	decl_append_links_to_global_during_codegen(d);
 	if (d->decl_kind == DECL_VAR && c_is_file_global(d))
 	{
 		c_emit_global_decl(c, d);
@@ -595,11 +660,11 @@ static void visit_global_forward_decl(GenContext *c, Decl *d, void *ud)
 				continue;
 			}
 			const char *arr_name = c_get_enum_assoc_name(d, p);
-			if (htable_get(&c->emitted_global_decls, (void *)arr_name))
+			if (htable_get(c->emitted_global_decls, (void *)arr_name))
 			{
 				continue;
 			}
-			htable_set(&c->emitted_global_decls, (void *)arr_name, (void *)1);
+			htable_set(c->emitted_global_decls, (void *)arr_name, (void *)1);
 			Type *ptype = p->type ? c_safe_type_lower(p->type) : type_int;
 			c_emit_type_forward_decl(c, ptype);
 			PRINTF("extern const %s %s[%d];\n", c_type_name(c, ptype), arr_name, num_values);
@@ -610,11 +675,6 @@ static void visit_global_forward_decl(GenContext *c, Decl *d, void *ud)
 static void visit_global_def(GenContext *c, Decl *d, void *ud)
 {
 	(void)ud;
-	d = c_decl_unwrap(d);
-	if (!d || (strip_unused() && !d->is_live))
-	{
-		return;
-	}
 	bool is_current = (!c->current_module || (d->unit && d->unit->module == c->current_module));
 	if (!is_current)
 	{
@@ -672,14 +732,14 @@ static void c_emit_shared_header(const char *dir)
 	}
 
 	GenContext *c = cmalloc(sizeof(GenContext));
-	*c            = (GenContext){
-	    .file           = f,
-	    .current_module = NULL,
+	*c = (GenContext){
+	    .file                 = f,
+	    .current_module       = NULL,
+	    .gen_decl             = &c_shared_gen_decl,
+	    .gen_def              = &c_shared_gen_def,
+	    .decl_names           = &c_shared_decl_names,
+	    .emitted_global_decls = &c_shared_emitted_global_decls,
 	};
-	htable_init(&c->gen_decl, 16384);
-	htable_init(&c->gen_def, 16384);
-	htable_init(&c->decl_names, 8192);
-	htable_init(&c->emitted_global_decls, 8192);
 
 	fputs("/* Generated by C3 Compiler (Shared Header) */\n", f);
 	fputs("#ifndef __C3_SHARED_H__\n", f);
@@ -725,22 +785,7 @@ static void c_emit_shared_header(const char *dir)
 
 	fputs("#endif /* __C3_SHARED_H__ */\n", f);
 	fclose(f);
-}
-
-static void c_mark_all_types_declared(GenContext *c)
-{
-	int type_count = vec_size(compiler.context.type);
-	for (int i = 0; i < type_count; i++)
-	{
-		Type *t = compiler.context.type[i];
-		if (c_type_needs_emission(t))
-		{
-			const char *tname = c_type_name(c, t);
-			htable_set(&c->gen_decl, (void *)tname, (void *)1);
-			htable_set(&c->gen_def, (void *)tname, (void *)1);
-		}
-	}
-	c_traverse_all_modules(c, visit_mark_declared, NULL);
+	free(c);
 }
 
 static void c_try_emit_function_def(GenContext *c, Decl *decl, bool only_used)
@@ -749,14 +794,7 @@ static void c_try_emit_function_def(GenContext *c, Decl *decl, bool only_used)
 	{
 		return;
 	}
-	if (decl->func_decl.attr_test && !compiler.build.build_test)
-	{
-		return;
-	}
-	if (decl->func_decl.attr_benchmark && !compiler.build.build_benchmark)
-	{
-		return;
-	}
+	if (decl_skip_benchtest_function(decl)) return;
 	if (only_used && !decl->is_live)
 	{
 		return;
@@ -869,7 +907,7 @@ static GenContext *c_gen_module(Module *module, int num)
 	}
 	else
 	{
-		base_name       = build_base_name();
+		base_name       = filename(build_base_name());
 		object_filename = file_append_path(compiler.build.object_file_dir ? compiler.build.object_file_dir : ".", str_printf("%s%s", base_name, get_object_extension()));
 	}
 
@@ -883,30 +921,38 @@ static GenContext *c_gen_module(Module *module, int num)
 
 	GenContext *c = cmalloc(sizeof(GenContext));
 	*c            = (GenContext){
-	    .file               = f,
-	    .base_name          = base_name,
-	    .c_filename         = c_filename,
-	    .object_filename    = object_filename,
-	    .current_module     = module,
-	    .current_block_live = true,
+	    .file                 = f,
+	    .base_name            = base_name,
+	    .c_filename           = c_filename,
+	    .object_filename      = object_filename,
+	    .current_module       = module,
+	    .current_block_live   = true,
+	    .gen_decl             = &c_shared_gen_decl,
+	    .gen_def              = &c_shared_gen_def,
+	    .decl_names           = &c_shared_decl_names,
+	    .emitted_global_decls = &c_shared_emitted_global_decls,
 	};
-	htable_init(&c->gen_decl, 16384);
-	htable_init(&c->gen_def, 16384);
 	htable_init(&c->local_vars, 4096);
 	htable_init(&c->local_fault_vars, 4096);
 	htable_init(&c->declared_vars, 4096);
-	htable_init(&c->decl_names, 8192);
 	htable_init(&c->emitted_func_defs, 8192);
-	htable_init(&c->emitted_global_decls, 8192);
 	htable_init(&c->emitted_global_defs, 8192);
 
 	fputs("/* Generated by C3 Compiler */\n", f);
 	fputs("#include \"__c3_shared.h\"\n\n", f);
 
-	c_mark_all_types_declared(c);
-
 	fputs("/* GLOBALS */\n", f);
-	c_traverse_all_modules(c, visit_global_def, NULL);
+	if (module)
+	{
+		FOREACH(CompilationUnit *, unit, module->units)
+		{
+			c_traverse_unit(c, unit, visit_global_def, NULL);
+		}
+	}
+	else
+	{
+		c_traverse_all_modules(c, visit_global_def, NULL);
+	}
 	fputs("\n", f);
 
 	fputs("/* FUNCTION BODIES */\n", f);
@@ -1066,84 +1112,79 @@ static GenContext *c_gen_module(Module *module, int num)
 static const char *c_backend_cc     = NULL;
 static const char *c_backend_cflags = NULL;
 
-static inline void c_buf_append(char *buf, size_t cap, const char *str)
-{
-	size_t len = strlen(buf);
-	if (len + 1 < cap)
-	{
-		strncat(buf, str, cap - len - 1);
-	}
-}
 
 static const char *c_backend_build_cflags(const char *cc)
 {
 	bool is_cl    = str_ends_with(cc, "cl.exe");
 	bool is_tcc   = str_ends_with(cc, "tcc");
 	bool is_clang = strstr(cc, "clang") != NULL || strstr(cc, "zig") != NULL;
-	char buf[4096];
-	buf[0] = '\0';
 
+	scratch_buffer_clear();
 	bool has_warn_flags = compiler.build.cflags && (strstr(compiler.build.cflags, "-W") || strstr(compiler.build.cflags, "/W"));
 	if (is_cl)
 	{
-		c_buf_append(buf, sizeof(buf), has_warn_flags ? "/nologo " : "/nologo /w ");
+		scratch_buffer_append(has_warn_flags ? "/nologo " : "/nologo /w ");
+		if (!compiler.build.cflags || !strstr(compiler.build.cflags, "/std:"))
+		{
+			scratch_buffer_append("/std:c11 ");
+		}
 	}
 	else if (is_tcc)
 	{
 		if (!has_warn_flags)
 		{
-			c_buf_append(buf, sizeof(buf), "-w ");
+			scratch_buffer_append("-w ");
 		}
 	}
 	else
 	{
 		if (!has_warn_flags)
 		{
-			c_buf_append(buf, sizeof(buf), "-w -Wno-incompatible-pointer-types ");
+			scratch_buffer_append("-w -Wno-incompatible-pointer-types ");
 		}
-		c_buf_append(buf, sizeof(buf), "-fno-builtin -fwrapv -fno-strict-aliasing ");
+		scratch_buffer_append("-fno-builtin -fwrapv -fno-strict-aliasing ");
 
 		if (is_clang && compiler.build.arch_os_target != default_target)
 		{
-			c_buf_append(buf, sizeof(buf), "--target=");
-			c_buf_append(buf, sizeof(buf), compiler.platform.target_triple);
-			c_buf_append(buf, sizeof(buf), " ");
+			scratch_buffer_append("--target=");
+			scratch_buffer_append(compiler.platform.target_triple);
+			scratch_buffer_append(" ");
 		}
 		if (compiler.platform.os == OS_TYPE_IOS && compiler.build.ios.sysroot)
 		{
-			c_buf_append(buf, sizeof(buf), "-isysroot \"");
-			c_buf_append(buf, sizeof(buf), compiler.build.ios.sysroot);
-			c_buf_append(buf, sizeof(buf), "\" ");
+			scratch_buffer_append("-isysroot \"");
+			scratch_buffer_append(compiler.build.ios.sysroot);
+			scratch_buffer_append("\" ");
 		}
 		if (compiler.platform.os != OS_TYPE_WIN32 && compiler.platform.reloc_model != RELOC_NONE)
 		{
-			c_buf_append(buf, sizeof(buf), "-fPIC ");
+			scratch_buffer_append("-fPIC ");
 		}
 	}
 
 	switch (compiler.build.optsize)
 	{
 		case SIZE_OPTIMIZATION_SMALL:
-			c_buf_append(buf, sizeof(buf), is_cl ? "/O1 " : "-Os ");
+			scratch_buffer_append(is_cl ? "/O1 " : "-Os ");
 			break;
 		case SIZE_OPTIMIZATION_TINY:
-			c_buf_append(buf, sizeof(buf), is_cl ? "/O1 " : "-Oz ");
+			scratch_buffer_append(is_cl ? "/O1 " : "-Oz ");
 			break;
 		default:
 			switch (compiler.build.optlevel)
 			{
 				case OPTIMIZATION_NONE:
 				case OPTIMIZATION_NOT_SET:
-					c_buf_append(buf, sizeof(buf), is_cl ? "/Od " : "-O0 ");
+					scratch_buffer_append(is_cl ? "/Od " : "-O0 ");
 					break;
 				case OPTIMIZATION_LESS:
-					c_buf_append(buf, sizeof(buf), is_cl ? "/O1 " : "-O1 ");
+					scratch_buffer_append(is_cl ? "/O1 " : "-O1 ");
 					break;
 				case OPTIMIZATION_MORE:
-					c_buf_append(buf, sizeof(buf), is_cl ? "/O2 " : "-O2 ");
+					scratch_buffer_append(is_cl ? "/O2 " : "-O2 ");
 					break;
 				case OPTIMIZATION_AGGRESSIVE:
-					c_buf_append(buf, sizeof(buf), is_cl ? "/O2 " : "-O3 ");
+					scratch_buffer_append(is_cl ? "/O2 " : "-O3 ");
 					break;
 			}
 			break;
@@ -1151,113 +1192,130 @@ static const char *c_backend_build_cflags(const char *cc)
 
 	if (compiler.build.debug_info == DEBUG_INFO_FULL)
 	{
-		c_buf_append(buf, sizeof(buf), is_cl ? "/Z7 " : "-g ");
+		scratch_buffer_append(is_cl ? "/Z7 " : (is_clang ? "-g -fno-standalone-debug " : "-g "));
 	}
 	else if (compiler.build.debug_info == DEBUG_INFO_LINE_TABLES)
 	{
-		c_buf_append(buf, sizeof(buf), is_cl ? "/Z7 " : "-g1 ");
+		scratch_buffer_append(is_cl ? "/Z7 " : (is_clang ? "-gline-tables-only " : "-g1 "));
 	}
 	else if (!is_cl && compiler.build.debug_info == DEBUG_INFO_NONE)
 	{
-		c_buf_append(buf, sizeof(buf), "-g0 ");
+		scratch_buffer_append("-g0 ");
 	}
 
 	switch (compiler.build.feature.fp_math)
 	{
 		case FP_FAST:
-			c_buf_append(buf, sizeof(buf), is_cl ? "/fp:fast " : "-ffast-math ");
+			scratch_buffer_append(is_cl ? "/fp:fast " : "-ffast-math ");
 			break;
 		case FP_RELAXED:
 			if (!is_cl)
 			{
-				c_buf_append(buf, sizeof(buf), "-fno-trapping-math ");
+				scratch_buffer_append("-fno-trapping-math ");
 			}
 			break;
 		case FP_STRICT:
 		default:
-			c_buf_append(buf, sizeof(buf), is_cl ? "/fp:precise " : "-fno-fast-math ");
+			scratch_buffer_append(is_cl ? "/fp:precise " : "-fno-fast-math ");
 			break;
 	}
 
 	if (compiler.build.feature.sanitize_address)
 	{
-		c_buf_append(buf, sizeof(buf), is_cl ? "/fsanitize=address " : "-fsanitize=address ");
+		scratch_buffer_append(is_cl ? "/fsanitize=address " : "-fsanitize=address ");
 	}
 	if (!is_cl)
 	{
 		if (compiler.build.feature.sanitize_memory)
 		{
-			c_buf_append(buf, sizeof(buf), "-fsanitize=memory ");
+			scratch_buffer_append("-fsanitize=memory ");
 		}
 		if (compiler.build.feature.sanitize_thread)
 		{
-			c_buf_append(buf, sizeof(buf), "-fsanitize=thread ");
+			scratch_buffer_append("-fsanitize=thread ");
 		}
 		if (compiler.build.unroll_loops == UNROLL_LOOPS_ON)
 		{
-			c_buf_append(buf, sizeof(buf), "-funroll-loops ");
+			scratch_buffer_append("-funroll-loops ");
 		}
 		if (compiler.build.loop_vectorization == VECTORIZATION_ON)
 		{
-			c_buf_append(buf, sizeof(buf), "-ftree-vectorize ");
+			scratch_buffer_append("-ftree-vectorize ");
 		}
 		else if (compiler.build.loop_vectorization == VECTORIZATION_OFF)
 		{
-			c_buf_append(buf, sizeof(buf), "-fno-tree-vectorize ");
+			scratch_buffer_append("-fno-tree-vectorize ");
 		}
 	}
 
 	FOREACH(const char *, inc, compiler.build.cinclude_dirs)
 	{
-		c_buf_append(buf, sizeof(buf), is_cl ? "/I \"" : "-I \"");
-		c_buf_append(buf, sizeof(buf), inc);
-		c_buf_append(buf, sizeof(buf), "\" ");
+		scratch_buffer_append(is_cl ? "/I \"" : "-I \"");
+		scratch_buffer_append(inc);
+		scratch_buffer_append("\" ");
+	}
+
+	if (is_cl)
+	{
+		if (compiler.build.win.vs_dirs)
+		{
+			const char *semi = strchr(compiler.build.win.vs_dirs, ';');
+			if (semi)
+			{
+				int sdk_len = (int)(semi - compiler.build.win.vs_dirs);
+				const char *vs_dir = semi + 1;
+				scratch_buffer_append(str_printf("/I \"%.*s\\include\\ucrt\" ", sdk_len, compiler.build.win.vs_dirs));
+				scratch_buffer_append(str_printf("/I \"%.*s\\include\\um\" ", sdk_len, compiler.build.win.vs_dirs));
+				scratch_buffer_append(str_printf("/I \"%.*s\\include\\shared\" ", sdk_len, compiler.build.win.vs_dirs));
+				scratch_buffer_append(str_printf("/I \"%s\\include\" ", vs_dir));
+			}
+		}
+		else
+		{
+			scratch_buffer_push();
+			WindowsSDK *sdk = windows_get_sdk();
+			scratch_buffer_pop();
+			if (sdk && sdk->cl_include_env && !getenv("INCLUDE"))
+			{
+				StringSlice env = slice_from_string(sdk->cl_include_env);
+				while (env.len)
+				{
+					StringSlice slice = slice_next_token(&env, ';');
+					if (slice.len > 0)
+					{
+						scratch_buffer_append("/I \"");
+						scratch_buffer_append_slice(slice);
+						scratch_buffer_append("\" ");
+					}
+				}
+			}
+		}
 	}
 
 	if (compiler.build.cflags)
 	{
-		c_buf_append(buf, sizeof(buf), compiler.build.cflags);
-		c_buf_append(buf, sizeof(buf), " ");
+		scratch_buffer_append(compiler.build.cflags);
+		scratch_buffer_append(" ");
 	}
 
-	return str_dup(buf);
+	return scratch_buffer_copy();
 }
 
-const char *c_codegen(void *context)
+bool c_codegen(void *context, const char **out_name)
 {
+	*out_name = NULL;
 	GenContext *c = (GenContext *)context;
 	if (!c || (c->current_module && !compiler_should_output_file(c->base_name)))
 	{
-		return NULL;
+		return true;
 	}
 
-	if (compiler.build.emit_object_files || compiler.build.type == TARGET_TYPE_EXECUTABLE || compiler.build.type == TARGET_TYPE_STATIC_LIB || compiler.build.type == TARGET_TYPE_DYNAMIC_LIB || compiler.build.type == TARGET_TYPE_TEST || compiler.build.type == TARGET_TYPE_BENCHMARK)
+	if (c_backend_cc)
 	{
-		const char *cc     = c_backend_cc ? c_backend_cc : (compiler.build.cc ? compiler.build.cc : find_c_compiler());
-		const char *cflags = c_backend_cflags ? c_backend_cflags : "";
-		bool is_cl         = str_ends_with(cc, "cl.exe");
-		char cmd[4096];
-		if (is_cl)
-		{
-			snprintf(cmd, sizeof(cmd), "\"%s\" %s/c \"%s\" /Fo:\"%s\"", cc, cflags, c->c_filename, c->object_filename);
-		}
-		else
-		{
-			snprintf(cmd, sizeof(cmd), "\"%s\" %s-c \"%s\" -o \"%s\"", cc, cflags, c->c_filename, c->object_filename);
-		}
-		if (compiler.build.print_linking)
-		{
-			puts(cmd);
-		}
-		DEBUG_LOG("Compiling c sources using '%s'", cmd);
-		if (system(cmd) != 0)
-		{
-			fprintf(stderr, "Failed to compile '%s' using command '%s'.\n", c->c_filename, cmd);
-			exit(EXIT_FAILURE);
-		}
-		return c->object_filename;
+		*out_name = cc_compiler(c_backend_cc, c->c_filename, c->object_filename, c_backend_cflags, NULL, NULL);
+		return *out_name != NULL;
 	}
-	return NULL;
+	return true;
 }
 
 void **c_gen(Module **modules, int module_count)
@@ -1266,19 +1324,39 @@ void **c_gen(Module **modules, int module_count)
 	{
 		return NULL;
 	}
+	htable_init(&c_decl_name_cache, 16384);
+	htable_init(&c_shared_gen_decl, 16384);
+	htable_init(&c_shared_gen_def, 16384);
+	htable_init(&c_shared_decl_names, 8192);
+	htable_init(&c_shared_emitted_global_decls, 8192);
+	htable_init(&c_needed_typeids, 1024);
+	c_needed_typeids_vec = NULL;
+	c_recording_typeids = true;
+
 	const char *dir = compiler.build.object_file_dir ? compiler.build.object_file_dir : ".";
-	c_emit_runtime_header(dir);
+	scratch_buffer_clear();
+	scratch_buffer_append(dir);
+	dir_make_recursive(scratch_buffer_to_string());
 	c_emit_shared_header(dir);
 
-	c_backend_cc     = compiler.build.cc ? compiler.build.cc : find_c_compiler();
-	c_backend_cflags = c_backend_build_cflags(c_backend_cc);
+	bool will_compile = compiler.build.emit_object_files
+		|| compiler.build.type == TARGET_TYPE_EXECUTABLE
+		|| compiler.build.type == TARGET_TYPE_STATIC_LIB
+		|| compiler.build.type == TARGET_TYPE_DYNAMIC_LIB
+		|| compiler.build.type == TARGET_TYPE_TEST
+		|| compiler.build.type == TARGET_TYPE_BENCHMARK;
+	if (will_compile)
+	{
+		c_backend_cc     = find_c_compiler();
+		c_backend_cflags = c_backend_build_cflags(c_backend_cc);
+	}
+	else
+	{
+		c_backend_cc     = NULL;
+		c_backend_cflags = NULL;
+	}
 
 	GenContext **gen_contexts = NULL;
-	GenContext *rt            = c_emit_runtime_c(dir);
-	if (rt)
-	{
-		vec_add(gen_contexts, rt);
-	}
 
 	if (compiler.build.single_module == SINGLE_MODULE_ON)
 	{
@@ -1287,16 +1365,26 @@ void **c_gen(Module **modules, int module_count)
 		{
 			vec_add(gen_contexts, c);
 		}
-		return (void **)gen_contexts;
 	}
-
-	for (int i = 0; i < module_count; i++)
+	else
 	{
-		GenContext *c = c_gen_module(modules[i], i);
-		if (c)
+		for (int i = 0; i < module_count; i++)
 		{
-			vec_add(gen_contexts, c);
+			GenContext *c = c_gen_module(modules[i], i);
+			if (c)
+			{
+				vec_add(gen_contexts, c);
+			}
 		}
 	}
+
+	c_recording_typeids = false;
+	c_emit_runtime_header(dir);
+	GenContext *rt = c_emit_runtime_c(dir);
+	if (rt)
+	{
+		vec_add(gen_contexts, rt);
+	}
+
 	return (void **)gen_contexts;
 }

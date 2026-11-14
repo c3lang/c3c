@@ -263,3 +263,46 @@ fn void test_escape_len()
                test.input, calculated_len, actual_len);
     }
 }
+
+// Each 0x01 escapes to 4 bytes (`\x01`), so the result far outgrows the initial capacity of the escape.
+const sz LONG_ESCAPE_INPUT_LEN = 100_000;
+
+macro String long_escape_input()
+{
+    char[] buf = mem::talloc_array(char, LONG_ESCAPE_INPUT_LEN);
+    foreach (&c : buf) *c = 1;
+    return (String)buf;
+}
+
+macro void check_long_escape(String result, bool strip_quotes)
+{
+    sz quote_len = strip_quotes ? 0 : 2;
+    assert(result.len == LONG_ESCAPE_INPUT_LEN * 4 + quote_len,
+           "escaped length was %d, expected %d", result.len, LONG_ESCAPE_INPUT_LEN * 4 + quote_len);
+    if (!strip_quotes)
+    {
+        assert(result[0] == '"' && result[^1] == '"', "missing surrounding quotes");
+        result = result[1:^2];
+    }
+    for (sz i = 0; i < LONG_ESCAPE_INPUT_LEN; i++)
+    {
+        assert(result[i * 4:4] == `\x01`, "wrong escape at input index %d", i);
+    }
+}
+
+fn void test_escape_outgrowing_initial_capacity_tmem() => @pool()
+{
+    check_long_escape(long_escape_input().tescape(), false);
+    check_long_escape(long_escape_input().tescape(strip_quotes: true), true);
+}
+
+fn void test_escape_outgrowing_initial_capacity_explicit_allocator() => @pool()
+{
+    String result = long_escape_input().escape(mem);
+    defer result.free(mem);
+    check_long_escape(result, false);
+
+    String stripped = long_escape_input().escape(mem, strip_quotes: true);
+    defer stripped.free(mem);
+    check_long_escape(stripped, true);
+}

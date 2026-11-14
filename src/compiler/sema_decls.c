@@ -47,7 +47,7 @@ static inline bool sema_analyse_alias(SemaContext *context, Decl *decl, bool *er
 static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param);
 static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl);
-static inline bool sema_analyse_constdef(SemaContext *context, Decl *decl, bool *erase_decl);
+static inline bool sema_analyse_constset(SemaContext *context, Decl *decl, bool *erase_decl);
 
 /*
  * Check `@align` - must be integer, 0 < align <= MAX_ALIGNMENT, and be power-of-two
@@ -193,7 +193,7 @@ static inline bool sema_resolve_implemented_interfaces(SemaContext *context, Dec
 			}
 		}
 		// If this is a resolve_interfaces check, then we also resolve the interface itself (this would mean resolving function types)
-		if (resolve_interfaces && !sema_resolve_type_decl(context, inf_type)) return false;
+		if (resolve_interfaces && !sema_analyse_decl(context, inf_type->decl)) return false;
 	}
 	return true;
 }
@@ -326,7 +326,7 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
  */
 static inline bool sema_check_struct_holes(SemaContext *context, Decl *parent, Decl *member)
 {
-	// Get the underlying type, skipping things like typedef, constdef
+	// Get the underlying type, skipping things like typedef, constset
 	Type* member_type = type_flatten(member->type);
 
 	// If it's not a union or struct, then we're done
@@ -540,7 +540,7 @@ RETRY:;
 		case TYPE_SLICE:
 			return compiler.platform.align_pointer.align / 8;
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 			// Look at the container type
 			type = enum_inner_type(type);
 			goto RETRY;
@@ -1166,7 +1166,7 @@ RETRY:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
@@ -1761,16 +1761,16 @@ static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param)
 	return true;
 }
 
-static inline void sema_print_enum_to_cenum_error(SemaContext *context, Decl *decl, Expr *arg)
+static inline void sema_print_enum_to_constset_error(SemaContext *context, Decl *decl, Expr *arg)
 {
 	TypeInfo *type_info = decl->enums.type_info;
 	if (type_info->type == type_int)
 	{
-		SEMA_ERROR(arg, "Assigning a value requires the declaration of associated values for the enum. Did you perhaps want C-style enums? In that case use constdef, defined like 'constdef %s : { ... }'", decl->name);
+		SEMA_ERROR(arg, "Assigning a value requires the declaration of associated values for the enum. Did you perhaps want C-style enums? In that case use constset, defined like 'constset %s : { ... }'", decl->name);
 	}
 	else
 	{
-		SEMA_ERROR(arg, "Assigning a value requires the declaration of associated values for the enum. Did you perhaps want C-style enums? In that case use constdef, defined like 'constdef %s : %s { ... }'", decl->name, type_to_error_string(type_info->type));
+		SEMA_ERROR(arg, "Assigning a value requires the declaration of associated values for the enum. Did you perhaps want C-style enums? In that case use constset, defined like 'constset %s : %s { ... }'", decl->name, type_to_error_string(type_info->type));
 	}
 }
 static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl)
@@ -1874,7 +1874,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		{
 			if (!associated_value_count)
 			{
-				sema_print_enum_to_cenum_error(context, decl, args[0]);
+				sema_print_enum_to_constset_error(context, decl, args[0]);
 				return false;
 			}
 			RETURN_SEMA_ERROR(args[associated_value_count], "You're adding too many values, only %d associated value%s are defined for '%s'.", associated_value_count, associated_value_count != 1 ? "s" : "", decl->name);
@@ -1900,7 +1900,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		{
 			if (!associated_value_count)
 			{
-				sema_print_enum_to_cenum_error(context, decl, args[0]);
+				sema_print_enum_to_constset_error(context, decl, args[0]);
 				return false;
 			}
 			RETURN_SEMA_ERROR(args[associated_value_count], "You're adding too many values, only %d associated value%s are defined for '%s'.", associated_value_count, associated_value_count != 1 ? "s" : "", decl->name);
@@ -1918,6 +1918,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 			{
 				RETURN_SEMA_ERROR(arg, "Associated values must be constant expressions.");
 			}
+			sema_fold_global_init(arg);
 		}
 		enum_value->resolve_status = RESOLVE_DONE;
 	}
@@ -1943,7 +1944,7 @@ static bool sema_analyse_const_enum_constant_val(SemaContext *context, Decl *dec
 	}
 	return true;
 }
-static inline bool sema_analyse_constdef(SemaContext *context, Decl *decl, bool *erase_decl)
+static inline bool sema_analyse_constset(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_ENUM, erase_decl)) return decl_poison(decl);
 	if (decl_is_deprecated(decl)) context->call_env.ignore_deprecation = true;
@@ -1969,18 +1970,18 @@ static inline bool sema_analyse_constdef(SemaContext *context, Decl *decl, bool 
 			SEMA_ERROR(decl->enums.type_info, "No type can be inferred from the optional result.");
 			return decl_poison(decl);
 		case STORAGE_VOID:
-			SEMA_ERROR(decl->enums.type_info, "A constdef may not have a void type.");
+			SEMA_ERROR(decl->enums.type_info, "A constset may not have a void type.");
 			return decl_poison(decl);
 		case STORAGE_COMPILE_TIME:
-			SEMA_ERROR(decl->enums.type_info, "A constdef may not be %s.", type_invalid_storage_type_name(type));
+			SEMA_ERROR(decl->enums.type_info, "A constset may not be %s.", type_invalid_storage_type_name(type));
 			return decl_poison(decl);
 		case STORAGE_UNKNOWN:
-			SEMA_ERROR(decl->enums.type_info, "A constdef may not be %s, as it has an unknown size.",
+			SEMA_ERROR(decl->enums.type_info, "A constset may not be %s, as it has an unknown size.",
 				type_quoted_error_string(type));
 			return decl_poison(decl);
 	}
 
-	DEBUG_LOG("* Constdef type resolved to %s.", type->name);
+	DEBUG_LOG("* constset type resolved to %s.", type->name);
 
 	ASSERT_SPAN(decl, !decl->enums.parameters);
 
@@ -1998,7 +1999,7 @@ static inline bool sema_analyse_constdef(SemaContext *context, Decl *decl, bool 
 		{
 			if (enums == 1)
 			{
-				RETURN_SEMA_ERROR(decl, "No constdef values left in constdef after @if and @feat resolution, there must be at least one.");
+				RETURN_SEMA_ERROR(decl, "No constset values left in constset after @if and @feat resolution, there must be at least one.");
 			}
 			vec_erase_at(enum_values, i);
 			enums--;
@@ -2006,12 +2007,12 @@ static inline bool sema_analyse_constdef(SemaContext *context, Decl *decl, bool 
 			continue;
 		}
 		enum_value->type = decl->type;
-		DEBUG_LOG("* Checking constdef constant %s.", enum_value->name);
+		DEBUG_LOG("* Checking constset constant %s.", enum_value->name);
 		if (!enum_value->enum_constant.value)
 		{
 			if (!type_is_integer(flat))
 			{
-				RETURN_SEMA_ERROR(enum_value, "Constdefs with missing values must be of integer type.");
+				RETURN_SEMA_ERROR(enum_value, "Constsets with missing values must be of integer type.");
 			}
 			if (i == 0)
 			{
@@ -3045,9 +3046,9 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 				goto NOT_VALID_NAME;
 			}
 			FALLTHROUGH;
-		case TYPE_CONSTDEF:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
+		case TYPE_BITSTRUCT:
 		{
 			Decl *d = sema_decl_stack_find_decl_member(context, par_type->canonical->decl, kw, FIELDS_ONLY);
 			if (!decl_ok(d)) return false;
@@ -3099,8 +3100,8 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 		case TYPE_FUNC_PTR:
 		case TYPE_POINTER:
 		case TYPE_FUNC_RAW:
-		case TYPE_BITSTRUCT:
 		case TYPE_TYPEDEF:
+		case TYPE_CONSTSET:
 			break;
 		case TYPE_TYPEID:
 			if (type_property_by_name(kw) != TYPE_PROPERTY_NONE)
@@ -3181,13 +3182,13 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 		case ATTR_BITSTRUCT_MEMBER: return "bitstruct member";
 		case ATTR_FUNC:             return "function";
 		case ATTR_PARAM:            return "parameter";
-		case ATTR_ENUM_VALUE:       return "enum value";
+		case ATTR_ENUM_VALUE:       return "enum or constset value";
 		case ATTR_GLOBAL:           return "global variable";
 		case ATTR_ENUM:             return "enum";
 		case ATTR_STRUCT:           return "struct";
 		case ATTR_UNION:            return "union";
 		case ATTR_CONST:            return "constant";
-		case ATTR_FAULT:            return "faultdef";
+		case ATTR_FAULT:            return "excuse";
 		case ATTR_ALIAS:            return "alias";
 		case ATTR_CALL:             return "call";
 		case ATTR_TYPEDEF:          return "typedef";
@@ -3339,6 +3340,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
 			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | LOCAL_VARIABLE_TYPES | ATTR_GLOBAL | ATTR_BITSTRUCT | ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER, // NOLINT
 			[ATTRIBUTE_ALLOW_DEPRECATED] = ATTR_FUNC,
+			[ATTRIBUTE_ASMNAME] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST,
 			[ATTRIBUTE_BENCHMARK] = ATTR_FUNC,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST,
@@ -3691,6 +3693,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 		case ATTRIBUTE_SIMD:
 			RETURN_SEMA_ERROR(attr, "'@simd' is only allowed on typedef types.");
 		case ATTRIBUTE_SECTION:
+		case ATTRIBUTE_ASMNAME:
 		case ATTRIBUTE_CNAME:
 			if (decl->is_templated)
 			{
@@ -3701,11 +3704,23 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 				RETURN_SEMA_ERROR(attr, "'%s' requires a string argument, e.g. %s(\"foo\").", attr->name, attr->name);
 			}
 			if (!sema_analyse_attribute_string_const(context, expr)) return false;
+			if (type != ATTRIBUTE_SECTION)
+			{
+				if (!expr->const_expr.bytes.len) RETURN_SEMA_ERROR(expr, "'%s' requires a non-empty name.", attr->name);
+				if (decl->has_extname) RETURN_SEMA_ERROR(attr, "An external name is already defined, so '%s' cannot be used.", attr->name);
+			}
 			switch (type)
 			{
 				case ATTRIBUTE_SECTION:
 					if (!sema_check_section(context, attr)) return false;
 					attr_data->section = expr->const_expr.bytes.ptr;
+					break;
+				case ATTRIBUTE_ASMNAME:
+					decl->has_extname = true;
+					scratch_buffer_clear();
+					scratch_buffer_append_char(1);
+					scratch_buffer_append_len(expr->const_expr.bytes.ptr, expr->const_expr.bytes.len);
+					decl->extname = scratch_buffer_copy();
 					break;
 				case ATTRIBUTE_CNAME:
 					decl->has_extname = true;
@@ -4811,6 +4826,7 @@ INLINE bool sema_analyse_macro_body(SemaContext *context, Decl **body_parameters
 		{
 			RETURN_SEMA_ERROR(param->var.init_expr, "Body parameters cannot use default values.");
 		}
+		if (param->var.self_addr) RETURN_SEMA_ERROR(param, "Body parameters cannot be '&' parameters.");
 		switch (kind)
 		{
 			case VARDECL_PARAM:
@@ -4935,7 +4951,9 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 	// Sanity check "always const"
 	if (always_const)
 	{
-		if (typeget(sig->rtype) == type_void) RETURN_SEMA_ERROR(decl, "'@const' macros may not return 'void', they should always return a constant value.");
+		Type *rtype = typeget(sig->rtype);
+		if (rtype == type_void) RETURN_SEMA_ERROR(decl, "'@const' macros may not return 'void', they should always return a constant value.");
+		if (rtype && type_no_optional(rtype) == type_void) RETURN_SEMA_ERROR(decl, "'@const' macros may not return 'void?', they should always return a constant value.");
 		if (body_parameters) RETURN_SEMA_ERROR(decl, "'@const' macros cannot have body parameters.");
 		Ast *body = astptr(decl->func_decl.body);
 		ASSERT(body->ast_kind == AST_COMPOUND_STMT);
@@ -5013,7 +5031,7 @@ RETRY:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_SLICE:
 			size = i128_mult64(size, type_size(type));
 			break;
@@ -5310,6 +5328,7 @@ static bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, 
 		}
 		if (!sema_analyse_expr_rvalue(context, init_expr)) return false;
 		if (check_defined || global_level_var || !type_is_aggregate(init_expr->type)) sema_cast_const(init_expr);
+		if (global_level_var) sema_fold_global_init(init_expr);
 		if (global_level_var && !expr_is_runtime_const(init_expr))
 		{
 			if (check_defined) return *check_defined = true, false;
@@ -5438,6 +5457,7 @@ static bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, 
 		}
 		if (!success) goto EXIT_OK;
 		if (global_level_var || !type_is_aggregate(init->type)) sema_cast_const(init);
+		if (global_level_var) sema_fold_global_init(init);
 		if (expr_is_const(init))
 		{
 			init->const_expr.is_hex = false;
@@ -5593,11 +5613,6 @@ static inline bool sema_analyse_alias(SemaContext *context, Decl *decl, bool *er
 	{
 		RETURN_SEMA_ERROR(decl, "A local symbol like '%s' may not be aliased to 'private' or 'public' visibility, please change it to at least be '@private'", symbol->name);
 	}
-	// If the symbol is more hidden than the alias, then we must increase the visibility.
-	if (decl_is_externally_visible(decl) && !decl_is_externally_visible(symbol))
-	{
-		symbol->is_external_visible = true;
-	}
 	return true;
 }
 
@@ -5621,7 +5636,7 @@ RETRY:
 			return true;
 		case TYPE_FUNC_RAW:
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
@@ -5808,8 +5823,8 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_ENUM:
 			if (!sema_analyse_enum(context, decl, &erase_decl)) goto FAILED;
 			break;
-		case DECL_CONSTDEF:
-			if (!sema_analyse_constdef(context, decl, &erase_decl)) goto FAILED;
+		case DECL_CONSTSET:
+			if (!sema_analyse_constset(context, decl, &erase_decl)) goto FAILED;
 			break;
 		case DECL_FAULT:
 			if (!sema_analyse_fault(context, decl, &erase_decl)) goto FAILED;

@@ -8,7 +8,7 @@ fn void main()
   @test(;$f)
   {
 	Foo x = $f;
-	int xd = $f; // #error: you can use .ordinal
+	int xd = $f; // #error: you can use an explicit cast or .ordinal
   };
 }
 

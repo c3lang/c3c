@@ -1,5 +1,214 @@
 # C3C Release Notes
 
+## 0.8.7 Change list
+
+### Changes / improvements
+- A `case` after `default` is now an error in switches that are evaluated as an if-chain, since it cannot be reached.
+- `@const` macros may no longer return `void?`.
+
+### Fixes
+- `nextcase x` in a `@jump` switch read `x` after the defers of the case had run.
+- Overwriting a full array, like `{ .c = { 1, 2, 3 }, .c[2] = 7 };` would be lowered incorrectly.
+- Evaluation order for array comparison was incorrectly right->left.
+- A lambda created in a macro could be reused for a compile time argument with the same value but a different type.
+- `foreach_r` over a type indexed by an enum, such as `EnumMap`, failed to compile.
+- `$case` ranges were rejected when switching over a typedef of an integer.
+- `$foreach` over a constant slice with designated elements, like `{ [2] = 7 }`, was rejected.
+- `$defined` analysed a compound literal, `$reflect` or `$vaarg` passed as a `#` macro argument in the macro's scope instead of the caller's.
+- A `void?` macro with only compile time parameters lost its optional, so `!`, `!!` and `@catch` on it were rejected.
+- `$defined` on an out of range `$vaarg` index was an error instead of `false`.
+- The alignment arguments of `$$memcpy`, `$$memmove`, `$$memset` are now correctly checked to be power-of-2.
+- An enum switch with a non-constant `case` was counted as exhaustive when the other cases covered all but one value.
+- `@jump` on an `ichar`, `char` or `short` switch could crash the compiler when the cases spanned more than half the type's range.
+- `@str_replace` didn't work properly with an empty pattern. 
+- `String.replace` and `String.treplace` would never return on an empty pattern. 
+- Taking the address of a member through a constant array index, like `&g.arr[1]` or `&g[1].x`, was rejected in global and static initializers.
+- `&p[1]` in a global initializer, where `p` is a non-constant global pointer, was accepted and then crashed the compiler.
+- `f()~ ?? x` dropped the call to `f`, so its side effects never happened.
+- Constant folding of a pointer difference gave a wrong result when it was negative, e.g. `(int*)4 - (int*)16`.
+- `$eval` printed an "Unlocalized error" for a string with a type before `::`, like `"Col::GREEN"`, and could intern such a name as a plain identifier.
+- Assignment to a vector element, bitstruct field or swizzle (and a slice, in the C backend) evaluated the LHS before RHS.
+- An early exit, such as `foo()!` on a fault, in a subscript index or on either side of a vector element, bitstruct field, swizzle or slice assignment could crash the compiler.
+- The address of a thread-local variable was incorrectly considered a compile time constant.
+- Indexing a constant byte array always gave a `char`, so an `ichar[*]` element could be 255 and a typedef element type was lost.
+- Fix error for `x <<= v`, with `v` a vector and `x` a scalar.
+- A range `case` in a `typeid` switch crashed the compiler; it is now an error.
+- `$defined` on an invalid `+++` with a string or bytes on the left, like `"a" +++ 1.0`, was an error instead of `false`.
+- `...$vaarg[a..b]` crashed the compiler when a `^` start exceeded the number of arguments, hung when the end was before the start, and rejected a range ending at the last argument.
+- A `&` body parameter, like `@body(int& a)`, was accepted and acted as a value parameter; it is now an error.
+- Casting constant bytes to a wider integer or float array or vector used the target's signedness instead of the source's: `(int[<2>])(ichar[2])x"FF01"` gave `[<255, 1>]`.
+- `while (bool b = true)` and the same declaration in a `for` condition dropped the declaration, so the compiler crashed or generated wrong code.
+- Converting `int128::min` to `float` or `double` at runtime gave the wrong value.
+- Passing a struct by value on x64 crashed the compiler when its second eightbyte was only padding, e.g. a struct with `@align(16)` holding a single `float`.
+- Passing a union with a `float[<3>]` member by value on x64 hit an assert in codegen.
+- Recursive interface declarations were not detected. #3655
+
+### Stdlib changes
+- `String.tokenize` and `String.tokenize_all` with an empty split now return each character.
+
+## 0.8.6 Change list
+
+### Changes / improvements
+- `@asmname` allows defining external names like `@cname` but without normal name mangling.
+- Improved GfxKey mappings.
+- Add the `source-lib` target type (and `c3c source-lib` command) to pack the C3 sources, C sources and headers of a project into a `.c3l` library.
+- `.c3l` manifests without `targets` now work for all platforms, and may contain `version`, `authors` and `langrev`.
+- `fetch`, `vendor-fetch` and `project fetch` now unpack libraries into a `<name>.c3l` directory by default. Use `--decompress=no` to keep them compressed.
+- `fetch` now verifies the downloaded library against the `checksum` (`sha256:<hex>`) of the registry, and refuses a library that doesn't match.
+- `dependencies`, in projects and in library manifests, may name a registry library as `[<url>:]<namespace>/<name>[@<version>]`. The build only uses the name.
+- `fetch` adds just the library name to `dependencies`.
+- `project fetch` only fetches the libraries it is given: `c3c project fetch <library>...`. Without any, it lists the missing ones. Each must be a dependency of the project, or of a library that is installed. A name uses the path of the dependency, or is looked up in the registry: the `fetch-url` project property or `--fetch-url` for the project's dependencies, the default registry for those of libraries.
+- A version in the registry's library info may have a `url`, which `fetch` downloads the library from instead of from the registry itself.
+- A registry library can be locked to a checksum: `<namespace>/<name>@<version>:<sha256>`. `fetch` refuses a library that doesn't match.
+- An `else if` now requires `{ }` around a single statement, like `else` does. `else if (x) foo();` is an error. #3473
+- Add `depends-on` to project targets, allowing them to depend on other targets.
+- LLVM IR (`.ll`) and bitcode (`.bc`) files can be added to the compilation, just like .o files #3339
+- `project.json` strings (except `exec` and `type`) expand environment variables written as `${NAME}`. #3580
+- Add `env` and `env-override` to `project.json`, setting environment variables (`"NAME=value"`) for the `exec` scripts. #3580
+- Add `-gline-tables-only` to emit line tables debug info only.
+- Disallow `{ .a = 1, .a = 1 }`. #3579
+- Add better instantiation error output.
+- Implicitly converting a negative constant to a wider unsigned type, e.g. `ulong x = -1;`, is now correctly an error.
+- Improved the error when implicitly casting an enum to an integer, it now points to the explicit cast.
+- Casting a non-constant integer larger than a pointer, e.g. an `int128`, to a pointer is now an error. Cast it to `uptr` first.
+- Converting between signed and unsigned integers of the same size in arrays, slices and vectors, e.g. `int[3]` to `uint[3]`, requires explicit casts.
+- `float16` and `bfloat` no longer convert implicitly to each other, as both directions lose information.
+- An explicit cast of a slice to a pointer is now allowed for any pointer type, like a cast between pointers.
+- Selectors are now a stable 128 bit signature. The first 16 bytes are guaranteed unique.
+- Add `--stats=<none|summary|full|json>` for compiler statistics.
+- Removed `--print-large-functions`, `--stats=full` replaces it.
+- Compiler generated panics will now be emitted to the `std::core::runtime::panics` module.
+- `PanicFn` is changed to support both formatting and non-formatted messages.
+- `--panic-msg=no` only traps if `--show-backtrace=no` is also set, otherwise it gives the short message with file, function and line. `--show-backtrace=no` stops passing file, function and line.
+- `--panicfn` now names a function rather than a function pointer variable, and sets the initial value of `builtin::panic` through the new `$$PANIC_FN`, so stdlib panics and `abort` also reach it. #3443
+- Make panic on infinite loops opt-in with `--infinite-loop-detect=yes` – and is only added in safe mode. #3630
+- Removed the unused TB (Tilde) backend: `--backend=tb` and the `C3_USE_TB` CMake option.
+
+### Fixes
+- Compressed `.c3l` libraries were not unpacked again when only files other than `manifest.json` had changed.
+- Fixed regression for MacOS loading multiple C3 dylibs. `@finalizer` now correctly works in descending order.
+- Fix miscompilation for OpenBSD on later processors. #3563
+- Polling a GfxEvent for a window and having events on other windows would silently discard the last event.
+- Setting no-border state during fullscreen on Win32 would not work properly.
+- X11 window destruction order was incorrect.
+- Win32 did not support sharing of OpenGL contexts.
+- Win32 OpenGL pixel format selection ignored several hints.
+- Added `FAILED_TO_CREATE_WGL_CONTEXT` for Win32 WGL format fails.
+- Win32 handle would leak on drag-and-drop when dnd was disabled.
+- X11 mode change did not change the stored mode.
+- X11 window name is now kept when recreating a window for opengl init.
+- Doc viewer collision between modules and declarations sharing the same path. #3572
+- Fixes to transparent mouse pointer.
+- Compiler crashes when using a value derived from a const as an initializer elsewhere. #3574
+- Improve OpenGL-handling of vsync.
+- Regression for emscripten, accidentally retainin unused panic functions. #3575.
+- Compiler hangs on c3c project fetch #3562
+- Temp dirs were left behind by `c3c compile` (including unpacked `.c3l` libraries), `fetch-list`, `vendor-fetch` and the SDK fetch commands, in particular after errors. #3553
+- Fix integer overflow vulnerabilities in regex compiler (CVE-2026-107891). #3585
+- Compiler crashes when emitting line-tables debug info. #3581
+- Do not pass PIE/PIC on Windows. #3586
+- Crashes in slice->vector and ptrvec->intvec conversions.
+- Implicit cast rules too loose for slice->arrptr.
+- Invalid lowering for `(Bitstruct)-1` where the bitstruct is backed by an unsigned type.
+- Cast to `any` from typedef with an underlying inline pointer, would cause a crash.
+- Cast from constant `bool[<2>]` to `float[<2>]` would crash.
+- Padding would be incorrectly lowered in things like `(char[<8>])(char[8])"abc"`.
+- Const casting a const slice derived from a zero array initializer (e.g. `(bool)(int[])(int[3]){}`) would incorrectly return false.
+- Casting a constant to an alias to an enum would be incorrectly checked.
+- Cast to aliased bitstruct would fail when non-aliased cast would succeed.
+- Casting an optional distinct index would incorrectly fail.
+- Aarch64 MacOS did not zero/sign-extend args (and Win32 Aarch64 incorrectly did). #3593
+- Overaligned structs were not passed correctly on Linux Aarch64.
+- Add alignstack for Linux Aarch64 ABI for correct HFA/HVA handling.
+- `string::unescape` and `string::escape` would not work correctly after initial size was reached. #3592
+- `$defined` on an untyped list that cannot be converted, e.g. `$defined(int[*] y = $list)` with `var $list = { 1, "a" };`, would print an error instead of being false.
+- An empty constant string could not be converted to an array, e.g. `char[4] x = "";`.
+- A constset inlining a constset that in turn inlines a third one, could not be implicitly converted to the one in the middle.
+- `$defined` on an implicit pointer conversion was true for pointers to distinct types, and printed an error instead of being false when the pointee alignment would increase.
+- Casting a `typeid` or `fault` to a wider signed integer, e.g. `(int128)t`, would sign extend instead of zero extend.
+- An implicit cast between unrelated distinct types would report the error twice.
+- The hints in cast errors (for enums, distinct types, `ZString` and pointers to slices) were missing when the value was optional.
+- Casting between `float16` and `bfloat`, also in vectors, would abort the compiler. An explicit cast now converts through `float`.
+- Casting a constant float to an integer it does not fit, e.g. `(int)1e30`, `(char)300.5`, infinity or NaN, would abort the compiler or give a wrong value. It is now an error, also for the elements of a constant float vector or array cast to an integer vector.
+- An inline distinct signed integer, or an inline constset of one, would implicitly convert to an unsigned integer of the same size, e.g. `uint y = my_inline_int;`, which `int` to `uint` does not allow.
+- Explicitly casting a pointer wrapped in an inline distinct type to `any` or an interface was an error, even though the implicit cast worked.
+- A struct implementing an interface through an alias, e.g. `struct Foo (IAlias)`, would not convert to the interface, and an interface inheriting through an alias would not convert to its parent.
+- Casting an enum to a distinct type over that enum, e.g. `(MyFoo)foo` with `typedef MyFoo = Foo;`, was an error. It is now allowed with an explicit cast, like for a distinct type over an integer.
+- Errors in multithreaded compilation tasks, such as a failing `c-sources` file, could crash the compiler. A failing task now aborts the remaining tasks and the compiler exits with an error. #3584
+- Fix error message rethrowing in a non-function context.
+- Fix name mangling of untyped list.
+- `"max-vector-size"` was not whitelisted as a project property.
+- In some cases, optional ref was extracted before it was created during LLVM IR codegen #3598.
+- Bitstruct method did not check if field with the same name existed #3602.
+- Casting a constant string (or constant bytes) to a vector at compile time would cause a crash. #3601
+- Support unicode paths on Windows when running processes from the compiler. #3605
+- Fixes to i128 compiler_rt.
+- Using a const from another module that refers to a private symbol would fail to link in some cases e.g. `static List{int} g = list::ONHEAP{int};`.
+- Reading an enum associated value at runtime from another module would fail to link if it referred to a private symbol.
+- A function only used in an `@ensure` could be stripped when it wasn't the first statement to run on return, failing to link.
+- The sign of constant NaN expressions was ignored during codegen.
+- Generic type inference fails with optional expected types #3612.
+- Signed shift amounts narrower than the shifted value were zero extended affecting the panic message of an invalid shift amount.
+- A function with `@test @benchmark` would effectively never be included.
+- Incorrect compiler error using `from_ordinal` when exceeding max.
+- Concatenated base64 literals lost decoded bytes after the first chunk.
+- Improve accuracy of `log` and `logf` without a C library (wasm32, freestanding, or `-D C3_MATH`).
+- 16-byte align JmpBuf on Win32.
+- Win64 returned `@simd` vectors through a hidden pointer instead of XMM0. #3628
+- Fix regression when slices or pointers exceed 2 GB. #3595
+- `XmlSerializer.start_doc` was missing the closing quote after the encoding.
+- `XmlSerializer` escaped comments and processing instructions when serializing a document.
+- `gfx::get_vulkan_physical_device_presentation_support` was broken.
+- `argon2::tencode` took `key_id` as a `char` instead of a `char[]`.
+- The libc allocator was incorrectly declared in `std::core::mem::allocator`.
+- Fixes to the `benchmarks.c3`, `map.c3` and `xml/3_xml_write_stream.c3` examples.
+- A global slice of vectors, e.g. `int[<2>][] g = { { 1, 2 } };`, would be lowered incorrectly.
+- Instantiating a generic with the type of an anonymous inner struct/union would crash the compiler. #3631
+- Anonymous inner structs/unions of the same parent shared a name. They are now named by member index, e.g. `Foo.0`.
+- Inner structs/unions of a generic struct lacked the generic parameters in their name.
+- Fix Win32 compiler support  for paths containing non-ASCII characters. #3606
+- A constant struct containing a union initialized by a smaller member was emitted too small.
+- Codegen for `%` on float vectors was incorrect. 
+- `/`, `%` and `>>` on unsigned integer vectors used signed operations.
+- Assigning to `v[^i]` on a vector with a non-constant `i` wrote the wrong element.
+- Assigning to a vector element or swizzle discarded would not evaluate right to left. 
+- `++` and `--` on a multi-component swizzle, e.g. `v.xy++`, did not change the vector.
+- Comparing constant bitstructs could crash the compiler.
+- Constant `!=` on faults and on addresses of globals returned the result of `==`.
+- `a += e` on an optional `a` did not assign the fault when `e` was a fault. It now works like `a = a + e`.
+- Constant folding of `int::min / -1` was incorrect.
+- `return`, `break`, `continue`, `nextcase` and rethrow in a macro's trailing body were allowed when the macro invoked the body from a `defer`.
+- `!` on a non-bool vector gave the wrong lanes when stored into a bool vector.
+- The `$$overflow_add`, `$$overflow_sub` and `$$overflow_mul` were lowered incorrectly for vectors.
+- `!` on an optional vector lost the optional and could cause the compiler to crash.
+- `math::overflow_add` and `math::overflow_sub` failed on vectors.
+- `json::unmarshal` failed to compile for an `inline String` constdef or typedef.
+- `json::marshal` did not escape the keys of an `Object` map.
+
+### Stdlib changes
+- Added termios support for OpenBSD.
+- Add `file::open_fd` to open files directly from file descriptors.
+- Changed regex fault and flag names, removed `NOSUB`. #3585
+- Added missing `__muloti4` to compiler_rt.
+- `List.insert_at` and `List.push_front` now use a single `memmove` instead of an element-by-element shift. `List.push` has an inline fast path when there is spare capacity.
+- `List.remove_item`, `List.compact` (and the same functions on `FixedList`) are now single pass instead of quadratic.
+- Cryptos now try to use funnel shift and rotation.
+- Add `unordered` parameter to `List.remove_first` and `.remove_last`
+- Added `matrix::perspective_infinite`, `matrix::perspective_reverse_z` and `matrix::perspective_infinite_reverse_z`.
+- Added `column`, `row`, `set_column` and `set_row` to `Matrix2x2`, `Matrix3x3` and `Matrix4x4`, and `scale_factors` to `Matrix3x3` and `Matrix4x4`.
+- `math::sign` now supports floats.
+- Add `chmod` support #3536.
+- `std::hash::crc32` now uses slicing-by-16, about 5x faster. This also speeds up gzip and zip.
+- `std::hash::adler32` `update` is about 3.5x faster (blocked modulo and portable vectors), results unchanged.
+- Rewrite `std::compression::deflate` inflate: table driven decoder, 2-3x faster decompression; truncated input is now rejected and `Inflater.init` works with the default `bit_reader_buf`.
+- Add an optional `level` (1-9) to `std::compression::deflate` `compress`, `compress_stream` and `Deflater.init`; the default level produces the same output as before. Faster deflate encoding, and incompressible data is stored instead of expanded.
+- Add an optional `level` to `std::compression::gzip` `compress`, `compress_stream` and `GzipWriter.init` (sets XFL per RFC 1952); the default is unchanged.
+- Add an optional `level` to `std::compression::zip` `ZipArchive.open_writer` and `ZipArchive.write_file` (DEFLATE only); the default is unchanged.
+- Fix several `std::compression::zip` problems: `open` and `recover` closed the file twice on errors, `open` failed on ZIP64 archives with a comment or exactly 65535 entries, rejected data after the end record, and silently dropped entries after a broken central directory header. `recover` now reads ZIP64 local headers, `extract` verifies the CRC32 and no longer overwrites the modification time, `ZipEntryReader.seek` rejects negative positions, and the central directory flags match the local header.
+- Added `XmlSerializer.add_raw` to write unescaped text.
+- `json::marshal` and `json::unmarshal` use the key set with `@Json("key")` on a struct member, and `@JsonOmitEmpty` leaves an empty member out of `json::marshal`. Both support pointers, including `Nullable` and `NonNull`, written as the value they point to or `null`, and an `Object*` member holds any JSON value. `json::unmarshal` accepts `null` only for strings, slices and pointers other than `NonNull`.
+- `json::marshal` and `json::unmarshal` read and write a `HashMap` or `OrderedMap` with String keys as a JSON object.
+
 ## 0.8.5 Change list
 
 ### Changes / improvements
@@ -7,8 +216,10 @@
 - Experimental C backend.
 - Allow the `@section` attribute on local static variables.
 - Make `$feat` accept the same syntax as `@feat`.
-- Added `@asmname`, which works similar to `@cname` but do not add any normal name-prefixing on targets where that is normal (such as MachO).
 - Add `--function-sections` and `--data-sections` (`function-sections` / `data-sections` in project.json) to place each function or global variable in its own section, so the linker can discard unused ones #3051.
+- Removed experimental support for `cenum`, `faultset` and `distinct` alternative names.
+- Docs now use the `constset`, `attrmacro` and `excuse`.
+- The static Linux binary now uses mimalloc for faster codegen and is aliased to `c3-linux.tar.gz`.
 
 ### Fixes
 - Regression for `vec.pow(x)`.
@@ -18,17 +229,19 @@
 - Fix source locations for byte literal values continued on a new line.
 - Faulty selection of subscript operator overload when calling method #3499
 - Retain `@nostrip` on optimized code even if no use is found, static variables may now also have nostrip. #3500
-- `!=` overload would on structs would behave as `==` #3547.
+- `!=` overloads on structs behaved as `==` #3547.
 - Multi-dimensional array comparisons on types with `==` overloaded would not compare.
 - Lazy resolution of function pointer types could cause a segfault when unifying ternary types. #3552
 - `@swap` now works with non-pure arguments.
+- Incorrect lowering of vectors when created from designated initializers with zeroes at the end.
+- Aligned typedefs in macros/generics would not work correctly.
 
 ### Stdlib changes
 - Added `std::gfx` module.
 - Added `IntRect`, `IntVec2`, `IntVec3` and `IntVec4` types.
 - Updated organization of the MacOS / Darwin bindings, reorganized by framework, added many functions and split into std::os::darwin and std::os::macos, with among other things easy ObjC dispatch.
 - Updated win32 bindings with many functions, reorganized by header.
-- Cross-platform dylib handling with `DylibHandler`, `os::dlopen`, `os::dlsym` and related functions in `std::os`.
+- Cross-platform dylib handling with `DylibHandle`, `os::dlopen`, `os::dlsym` and related functions in `std::os`.
 - Added `Duration.to_sec`
 - Updated posix libc with `shm_open`, `shm_unlink`, `truncate` and `ftruncate`.
 - Add `NonNull` and `Nullable` types for members with mandatory null checks.

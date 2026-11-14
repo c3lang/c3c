@@ -117,6 +117,7 @@ bool command_accepts_files(CompilerCommand command)
 		case COMMAND_COMPILE_RUN:
 		case COMMAND_DYNAMIC_LIB:
 		case COMMAND_STATIC_LIB:
+		case COMMAND_SOURCE_LIB:
 		case COMMAND_COMPILE_BENCHMARK:
 		case COMMAND_COMPILE_TEST:
 		case COMMAND_UNIT_TEST:
@@ -133,6 +134,9 @@ bool command_accepts_files(CompilerCommand command)
 		case COMMAND_BENCHMARK:
 		case COMMAND_TEST:
 		case COMMAND_VENDOR_FETCH:
+		case COMMAND_FETCH:
+		case COMMAND_FETCH_INFO:
+		case COMMAND_FETCH_LIST:
 		case COMMAND_PROJECT:
 		case COMMAND_FETCH_SDK:
 			return false;
@@ -155,6 +159,7 @@ bool command_passes_args(CompilerCommand command)
 		case COMMAND_COMPILE_ONLY:
 		case COMMAND_DYNAMIC_LIB:
 		case COMMAND_STATIC_LIB:
+		case COMMAND_SOURCE_LIB:
 		case COMMAND_COMPILE_BENCHMARK:
 		case COMMAND_COMPILE_TEST:
 		case COMMAND_UNIT_TEST:
@@ -166,6 +171,9 @@ bool command_passes_args(CompilerCommand command)
 		case COMMAND_DIST:
 		case COMMAND_PRINT_SYNTAX:
 		case COMMAND_VENDOR_FETCH:
+		case COMMAND_FETCH:
+		case COMMAND_FETCH_INFO:
+		case COMMAND_FETCH_LIST:
 		case COMMAND_PROJECT:
 		case COMMAND_FETCH_SDK:
 			return false;
@@ -271,6 +279,7 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 	COPY_IF_DEFAULT(target->feature.fp_math, fp_opt);
 	COPY_IF_DEFAULT(target->unroll_loops, unroll_loops);
 	COPY_IF_DEFAULT(target->merge_functions, merge_functions);
+	COPY_IF_DEFAULT(target->infinite_loop_detect, INFINITE_LOOP_DETECT_OFF);
 	COPY_IF_DEFAULT(target->slp_vectorization, slp_vectorization);
 	COPY_IF_DEFAULT(target->loop_vectorization, vectorization);
 	COPY_IF_DEFAULT(target->single_module, single_module);
@@ -374,6 +383,8 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 					error_exit("The '%s' target is a test target and not compatible with the benchmark command.", target->name);
 				case TARGET_TYPE_PREPARE:
 					error_exit("The '%s' target is a prepare target and not compatible with the benchmark command.", target->name);
+				case TARGET_TYPE_SOURCE_LIB:
+					error_exit("The '%s' target is a source library target and not compatible with the benchmark command.", target->name);
 			}
 BENCHMARK:
 		case COMMAND_COMPILE_BENCHMARK:
@@ -410,6 +421,8 @@ BENCHMARK:
 					error_exit("The '%s' target is a benchmark target and not compatible with the test command.", target->name);
 				case TARGET_TYPE_PREPARE:
 					error_exit("The '%s' target is a prepare target and not compatible with the test command.", target->name);
+				case TARGET_TYPE_SOURCE_LIB:
+					error_exit("The '%s' target is a source library target and not compatible with the test command.", target->name);
 			}
 		case COMMAND_COMPILE_TEST:
 TEST:
@@ -452,6 +465,7 @@ TEST:
 					break;
 				case TARGET_TYPE_STATIC_LIB:
 				case TARGET_TYPE_DYNAMIC_LIB:
+				case TARGET_TYPE_SOURCE_LIB:
 					error_exit("'%s' is a library target and cannot be run.", target->name);
 				case TARGET_TYPE_OBJECT_FILES:
 					error_exit("'%s' is an object file target and cannot be run.", target->name);
@@ -479,6 +493,9 @@ TEST:
 		case COMMAND_STATIC_LIB:
 			target->type = TARGET_TYPE_STATIC_LIB;
 			break;
+		case COMMAND_SOURCE_LIB:
+			target->type = TARGET_TYPE_SOURCE_LIB;
+			break;
 		case COMMAND_BUILD:
 		case COMMAND_DIST:
 BUILD:
@@ -503,6 +520,9 @@ BUILD:
 		case COMMAND_PRINT_SYNTAX:
 		case COMMAND_PROJECT:
 		case COMMAND_FETCH_SDK:
+		case COMMAND_FETCH:
+		case COMMAND_FETCH_INFO:
+		case COMMAND_FETCH_LIST:
 		case COMMAND_DOCGEN:
 			target->run_after_compile = false;
 			break;
@@ -524,7 +544,6 @@ BUILD:
 
 	target->backend = options->backend;
 
-	target->print_large_functions = options->print_large_functions;
 	// Remove feature flags
 	FOREACH(const char *, remove_feature, options->removed_feature_names)
 	{
@@ -560,6 +579,7 @@ BUILD:
 	set_if_updated(target->single_module, options->single_module);
 	set_if_updated(target->unroll_loops, options->unroll_loops);
 	set_if_updated(target->merge_functions, options->merge_functions);
+	set_if_updated(target->infinite_loop_detect, options->infinite_loop_detect);
 	set_if_updated(target->data_sections, options->data_sections);
 	set_if_updated(target->function_sections, options->function_sections);
 	set_if_updated(target->loop_vectorization, options->loop_vectorization);
@@ -592,6 +612,7 @@ BUILD:
 	set_if_updated(target->stack_protector, options->stack_protector);
 
 	OVERRIDE_IF_SET(output_dir);
+	OVERRIDE_IF_SET(no_compress);
 	OVERRIDE_IF_SET(panicfn);
 	OVERRIDE_IF_SET(testfn);
 	OVERRIDE_IF_SET(benchfn);
@@ -714,7 +735,15 @@ BUILD:
 	target->emit_llvm = options->emit_llvm;
 	target->build_threads = options->build_threads;
 	target->emit_asm = options->emit_asm;
-	target->print_stats = options->verbosity_level >= 2;
+	target->stats = options->stats_mode != STATS_NOT_SET ? options->stats_mode : (options->verbosity_level >= 2 ? STATS_SUMMARY : STATS_NONE);
+	if (options->stats_file)
+	{
+		if (options->stats_mode != STATS_NOT_SET && options->stats_mode != STATS_JSON) error_exit("--stats-file can only be used with --stats=json.");
+		target->stats = STATS_JSON;
+		target->stats_file = options->stats_file;
+	}
+	target->collect_stats = target->stats != STATS_NONE;
+	target->collect_stats_lists = target->stats == STATS_FULL || target->stats == STATS_JSON;
 
 #if defined(__linux__) && __linux__
 	static bool libc_detected = false;
@@ -863,13 +892,6 @@ BUILD:
 			target->output_ast = true;
 			break;
 	}
-	if (options->benchmark_mode)
-	{
-		target->benchmark_output = true;
-		target->emit_llvm = false;
-		target->emit_asm = false;
-		target->emit_object_files = false;
-	}
 	if (options->lsp_mode)
 	{
 		target->lsp_output = true;
@@ -887,6 +909,17 @@ BUILD:
 	if (options->no_obj)
 	{
 		target->emit_object_files = false;
+	}
+	if (target->backend == BACKEND_C)
+	{
+		if (target->emit_llvm)
+		{
+			error_exit("'--emit-llvm' is not supported with the C backend.");
+		}
+		if (target->emit_asm)
+		{
+			error_exit("'--emit-asm' is not supported with the C backend.");
+		}
 	}
 	if (options->output_name && target->emit_object_files
 		&& target->single_module != SINGLE_MODULE_ON && target->type == TARGET_TYPE_OBJECT_FILES)
@@ -937,7 +970,12 @@ void init_build_target(BuildTarget *target, BuildOptions *options)
 	}
 
 
-	*target = *project_select_target(filename, project, options->target_select, options->command);
+	BuildTarget *selected = project_select_target(filename, project, options->target_select, options->command);
+	if (selected->env_expand_error) error_exit("%s", selected->env_expand_error);
+	*target = *selected;
+	// The dependencies are built by separate invocations, which must not build them again, and 'clean' leaves them alone.
+	bool build_dependencies = !options->no_deps && options->command != COMMAND_CLEAN;
+	target->depends_on = build_dependencies ? project_dependency_order(filename, project, selected) : NULL;
 
 	if (project_path) target->project_dir = str_dup(project_path);
 	update_build_target_from_options(target, options);

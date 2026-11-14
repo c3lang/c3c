@@ -41,7 +41,7 @@ entry:
   %ptradd1 = getelementptr inbounds i8, ptr %tag_start, i64 8
   store i64 %4, ptr %ptradd1, align 8
   call void @llvm.memset.p0.i64(ptr align 8 %.assign_list, i8 0, i64 32, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %.assign_list, ptr align 8 %6, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %.assign_list, ptr align 8 %6, i64 16, i1 false)
   %ptradd2 = getelementptr inbounds i8, ptr %.assign_list, i64 16
   store i64 ptrtoint (ptr @std.io.EOF to i64), ptr %error_var, align 8
   br label %guard_block
@@ -64,7 +64,7 @@ entry:
   %ptradd1 = getelementptr inbounds i8, ptr %tag_start, i64 8
   store i64 %4, ptr %ptradd1, align 8
   call void @llvm.memset.p0.i64(ptr align 8 %.assign_list, i8 0, i64 32, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %.assign_list, ptr align 8 %6, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %.assign_list, ptr align 8 %6, i64 16, i1 false)
   %ptradd2 = getelementptr inbounds i8, ptr %.assign_list, i64 16
   store i64 ptrtoint (ptr @std.io.EOF to i64), ptr %error_var, align 8
   br label %guard_block

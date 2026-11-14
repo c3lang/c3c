@@ -2,6 +2,7 @@ module std::io::os @feat(NO_LIBC);
 import libc;
 
 alias FopenFn = fn void*?(String, String);
+alias FdopenFn = fn void*?(CInt, String);
 alias FreopenFn = fn void*?(void*, String, String);
 alias FcloseFn = fn void?(void*);
 alias FseekFn = fn void?(void*, long, SeekOrigin);
@@ -14,6 +15,7 @@ alias FputcFn = fn void?(int, void*);
 alias SetModifiedTimeFn = fn void?(String, Time_t);
 
 FopenFn native_fopen_fn @weak;
+FdopenFn native_fdopen_fn @weak;
 FcloseFn native_fclose_fn @weak;
 FreopenFn native_freopen_fn @weak;
 FseekFn native_fseek_fn @weak;
@@ -32,6 +34,15 @@ SetModifiedTimeFn native_set_modified_time_fn @weak;
 fn void*? native_fopen(String filename, String mode) @inline
 {
 	if (native_fopen_fn) return native_fopen_fn(filename, mode);
+	return io::UNSUPPORTED_OPERATION~;
+}
+
+<*
+ @require mode.len > 0
+*>
+fn void*? native_fdopen(CInt fd, String mode) @inline
+{
+	if (native_fdopen_fn) return native_fdopen_fn(fd, mode);
 	return io::UNSUPPORTED_OPERATION~;
 }
 

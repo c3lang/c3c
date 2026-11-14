@@ -21,7 +21,7 @@ entry:
   %x = alloca %Foo, align 4
   %.anon = alloca i64, align 8
   %a = alloca i32, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x, ptr align 4 @.__const, i64 4, i1 false)
   %0 = call i64 @test.Foo.len(ptr %x)
   store i64 0, ptr %.anon, align 8
   br label %loop.cond

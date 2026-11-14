@@ -1,0 +1,91 @@
+// #target: linux-aarch64
+module test;
+
+// Small integers: only the Darwin ABI extends them.
+extern fn void set_color(char r, ushort g, bool b, short c, int d);
+extern fn char get_char();
+fn char native_char(char a, short b) { return a + (char)b; }
+
+// An `@align` on the passed struct/union itself is ignored by AAPCS, alignment of members is not.
+struct Aligned16 @align(16) { char a; }
+struct Wrapped { Aligned16 a; }
+struct MemberAligned { char a @align(16); }
+union AlignedUnion @align(16) { char a; }
+struct PackedInt128 @packed { int128 x; }
+extern fn void take_aligned(int i, Aligned16 a);
+extern fn void take_wrapped(int i, Wrapped a);
+extern fn void take_member(int i, MemberAligned a);
+extern fn void take_union(int i, AlignedUnion a);
+extern fn void take_packed(int i, PackedInt128 a);
+extern fn Aligned16 ret_aligned();
+fn void native_aligned(int i, Aligned16 a) {}
+
+// Homogeneous aggregates get a stack alignment on AAPCS.
+typedef Vec4 = int[<4>] @simd;
+struct Hfa2 { float a, b; }
+struct Hva { Vec4 v; }
+struct Hfa16 { float[4] a @align(16); }
+extern fn void take_hfa(int i, Hfa2 a);
+extern fn void take_hva(Hva a);
+extern fn void take_hfa16(Hfa16 a);
+fn void native_hfa(Hfa2 a) {}
+
+fn void main()
+{
+	set_color(1, 2, true, 3, 4);
+	get_char();
+	native_char(1, 2);
+	Aligned16 a;
+	Wrapped w;
+	MemberAligned m;
+	AlignedUnion u;
+	PackedInt128 p;
+	take_aligned(1, a);
+	take_wrapped(1, w);
+	take_member(1, m);
+	take_union(1, u);
+	take_packed(1, p);
+	ret_aligned();
+	native_aligned(1, a);
+	Hfa2 h;
+	Hva v;
+	Hfa16 h16;
+	take_hfa(1, h);
+	take_hva(v);
+	take_hfa16(h16);
+	native_hfa(h);
+}
+
+/* #expect: test.ll
+
+declare void @set_color(i8, i16, i8, i16, i32)
+declare i8 @get_char()
+define i8 @test.native_char(i8 %0, i16 %1)
+
+declare void @take_aligned(i32, [2 x i64])
+declare void @take_wrapped(i32, i128)
+declare void @take_member(i32, i128)
+declare void @take_union(i32, [2 x i64])
+declare void @take_packed(i32, [2 x i64])
+declare i128 @ret_aligned()
+define void @test.native_aligned(i32 %0, [2 x i64] %1)
+
+declare void @take_hfa(i32, [2 x float] alignstack(8))
+declare void @take_hva(<4 x i32> alignstack(16))
+declare void @take_hfa16([4 x float] alignstack(16))
+define void @test.native_hfa([2 x float] alignstack(8) %0)
+
+define void @test.main()
+call void @set_color(i8 1, i16 2, i8 1, i16 3, i32 4)
+call i8 @test.native_char(i8 1, i16 2)
+call void @take_aligned(i32 1, [2 x i64]
+call void @take_wrapped(i32 1, i128
+call void @take_member(i32 1, i128
+call void @take_union(i32 1, [2 x i64]
+call void @take_packed(i32 1, [2 x i64]
+call i128 @ret_aligned()
+call void @test.native_aligned(i32 1, [2 x i64]
+call void @take_hfa(i32 1, [2 x float] alignstack(8)
+call void @take_hva(<4 x i32> alignstack(16)
+call void @take_hfa16([4 x float] alignstack(16)
+call void @test.native_hfa([2 x float] alignstack(8)

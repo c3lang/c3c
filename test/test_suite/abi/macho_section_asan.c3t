@@ -1,0 +1,16 @@
+// #target: macos-aarch64
+// #opt: --sanitize=address
+module test;
+
+int z @section("__DATA,__custom");
+int w;
+
+fn void main()
+{
+    int a = z + w;
+}
+
+/* #expect: test.ll
+
+@test.z = local_unnamed_addr global i32 0, section "__DATA,__custom", no_sanitize_address, align 4
+@test.w = local_unnamed_addr global i32 0, align 4

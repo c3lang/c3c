@@ -4,8 +4,8 @@
 
 #include "sema_internal.h"
 
-static bool sema_append_const_array_one(SemaContext *context, Expr *expr, Expr *list, Expr *element);
-static bool sema_append_concat_const_bytes(SemaContext *context, Expr *expr, Expr *list, Expr *element);
+static bool sema_append_const_array_one(SemaContext *context, Expr *expr, Expr *list, Expr *element, bool *failed_ref);
+static bool sema_append_concat_const_bytes(SemaContext *context, Expr *expr, Expr *list, Expr *element, bool *failed_ref);
 
 ArrayIndex sema_len_from_const(Expr *expr)
 {
@@ -54,7 +54,7 @@ ARRAY_LEN:
 	return -1;
 }
 
-static inline bool sema_expr_const_append(SemaContext *context, Expr *append_expr, Expr *list, Expr *element)
+static inline bool sema_expr_const_append(SemaContext *context, Expr *append_expr, Expr *list, Expr *element, bool *failed_ref)
 {
 	Expr **untyped_list = NULL;
 	switch (list->const_expr.const_kind)
@@ -62,14 +62,14 @@ static inline bool sema_expr_const_append(SemaContext *context, Expr *append_exp
 		case CONST_INITIALIZER:
 		case CONST_SLICE:
 			ASSERT(list->type != type_untypedlist);
-			return sema_append_const_array_one(context, append_expr, list, element);
+			return sema_append_const_array_one(context, append_expr, list, element, failed_ref);
 		case CONST_UNTYPED_LIST:
 			untyped_list = list->const_expr.untyped_list;
 			break;
 		case CONST_POINTER:
 		case CONST_BYTES:
 		case CONST_STRING:
-			return sema_append_concat_const_bytes(context, append_expr, list, element);
+			return sema_append_concat_const_bytes(context, append_expr, list, element, failed_ref);
 		default:
 			RETURN_SEMA_ERROR(list, "Expected some kind of list or vector here.");
 	}
@@ -142,9 +142,13 @@ static void expr_concat_character(Expr *expr, Type *type, const char *a, ArrayIn
  * 5. String + (i)char array/vector => String // Disallowed for now
  * 6. Bytes + (i)char array/vector => Bytes   // Disallowed for now
  */
-static bool sema_concat_bytes_and_other(SemaContext *context, Expr *expr, Expr *left, Expr *right)
+static bool sema_concat_bytes_and_other(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref)
 {
 	ArrayIndex len = left->const_expr.bytes.len;
+	if (len == MAX_ARRAY_SIZE)
+	{
+		RETURN_SEMA_ERROR(expr, "The result of the concatenation would exceed max supported length.");
+	}
 	bool is_bytes = left->const_expr.const_kind == CONST_BYTES;
 	ASSERT(is_bytes || left->const_expr.const_kind == CONST_STRING);
 	Type *indexed = type_get_indexed_type(left->type);
@@ -158,7 +162,7 @@ RETRY:;
 			if (is_bytes)
 			{
 				// 2. Bytes + (i)char => Bytes
-				if (!cast_implicit(context, right, type_char, false)) return false;
+				if (!cast_implicit_checked(context, right, type_char, false, failed_ref)) return false;
 				char c = (char) int_to_i64(right->const_expr.ixx);
 				expr_concat_const_bytes(expr, left->type, true, left_bytes, &c, len, 1);
 				return true;
@@ -166,6 +170,7 @@ RETRY:;
 			// 1. String + character => String
 			if (int_is_neg(right->const_expr.ixx) || int_icomp(right->const_expr.ixx, 0x10FFFF, BINARYOP_GT))
 			{
+				CHECK_ON_DEFINED(failed_ref);
 				RETURN_SEMA_ERROR(right, "Cannot concatenate a string with an non-unicode value.");
 			}
 			expr_concat_character(expr, left->type, left_bytes, len, right->const_expr.ixx.i.low);
@@ -179,21 +184,27 @@ RETRY:;
 		case CONST_MEMBER:
 		case CONST_REFLECTION:
 		case CONST_REF:
+			CHECK_ON_DEFINED(failed_ref);
 			RETURN_SEMA_ERROR(expr, "Concatenating %s with %s is not possible at compile time.",
 			                  type_quoted_error_string(left->type), type_to_error_string(right->type));
 		case CONST_BYTES:
 		case CONST_STRING:
+			if (len > MAX_ARRAY_SIZE - right->const_expr.bytes.len)
+			{
+				RETURN_SEMA_ERROR(expr, "The result of the concatenation would exceed max supported length.");
+			}
 			expr_concat_const_bytes(expr, left->type, is_bytes, left_bytes, right->const_expr.bytes.ptr,
 				len, right->const_expr.bytes.len);
 			return true;
 		case CONST_UNTYPED_LIST:
-			if (!cast_implicit(context, right, type_get_inferred_array(indexed), false)) return false;
+			if (!cast_implicit_checked(context, right, type_get_inferred_array(indexed), false, failed_ref)) return false;
 			goto RETRY;
 		case CONST_SLICE:
 		case CONST_INITIALIZER:
-			if (!cast_implicit(context, right, type_get_inferred_array(indexed), false)) return false;
+			if (!cast_implicit_checked(context, right, type_get_inferred_array(indexed), false, failed_ref)) return false;
 			if (!sema_cast_const(right))
 			{
+				CHECK_ON_DEFINED(failed_ref);
 				RETURN_SEMA_ERROR(right, "Could not concatenate with the right hand side.");
 			}
 			expr_contract_array(&right->const_expr, left->const_expr.const_kind);
@@ -201,11 +212,11 @@ RETRY:;
 	}
 	UNREACHABLE
 }
-static bool sema_append_concat_const_bytes(SemaContext *context, Expr *expr, Expr *list, Expr *element)
+static bool sema_append_concat_const_bytes(SemaContext *context, Expr *expr, Expr *list, Expr *element, bool *failed_ref)
 {
 	Type *indexed = type_get_indexed_type(list->type);
 	ASSERT(indexed && "This should always work");
-	if (!cast_implicit(context, element, indexed, false)) return false;
+	if (!cast_implicit_checked(context, element, indexed, false, failed_ref)) return false;
 	size_t str_len = list->const_expr.bytes.len;
 	bool is_bytes = list->const_expr.const_kind == CONST_BYTES;
 	char *data = malloc_arena(str_len + 2);
@@ -225,12 +236,12 @@ static bool sema_append_concat_const_bytes(SemaContext *context, Expr *expr, Exp
 	return true;
 }
 
-static bool sema_append_const_array_one(SemaContext *context, Expr *expr, Expr *list, Expr *element)
+static bool sema_append_const_array_one(SemaContext *context, Expr *expr, Expr *list, Expr *element, bool *failed_ref)
 {
 	Type *array_type = type_flatten(list->type);
 	bool is_slice = list->const_expr.const_kind == CONST_SLICE;
 	Type *indexed = type_get_indexed_type(is_slice ? list->type : list->const_expr.initializer->type);
-	if (!cast_implicit(context, element, indexed, false)) return false;
+	if (!cast_implicit_checked(context, element, indexed, false, failed_ref)) return false;
 	if (expr_is_empty_const_slice(list))
 	{
 		// Create a single length array
@@ -314,7 +325,7 @@ static inline ConstInitializer *expr_const_initializer_from_expr(Expr *expr)
 bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *left, Expr *right, bool *failed_ref)
 {
 	ASSERT_SPAN(concat_expr, concat_expr->resolve_status == RESOLVE_RUNNING);
-	if (!sema_check_left_right_const(context, left, right)) return false;
+	if (!sema_check_left_right_const(context, left, right, failed_ref)) return false;
 	ArrayIndex len = 0;
 	TypeKind vec_type = TYPE_POISONED;
 	Type *indexed_type = NULL;
@@ -336,7 +347,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 			RETURN_SEMA_ERROR(left, "Only bytes, strings and list-like constants can be concatenated.");
 		case CONST_BYTES:
 		case CONST_STRING:
-			return sema_concat_bytes_and_other(context, concat_expr, left, right);
+			return sema_concat_bytes_and_other(context, concat_expr, left, right, failed_ref);
 		case CONST_SLICE:
 		case CONST_INITIALIZER:
 			switch (type_flatten(element_type)->type_kind)
@@ -380,29 +391,29 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 		case CONST_MEMBER:
 		case CONST_REFLECTION:
 		case CONST_REF:
-			return sema_expr_const_append(context, concat_expr, left, right);
+			return sema_expr_const_append(context, concat_expr, left, right, failed_ref);
 		case CONST_BYTES:
 		case CONST_STRING:
-			if (left->type == type_untypedlist || indexed_type == right_type) return sema_expr_const_append(context, concat_expr, left, right);
+			if (left->type == type_untypedlist || indexed_type == right_type) return sema_expr_const_append(context, concat_expr, left, right, failed_ref);
 			if (!type_is_integer(indexed_type) || type_size(indexed_type) != 1)
 			{
 				CHECK_ON_DEFINED(failed_ref);
 				RETURN_SEMA_ERROR(right, "You can't concatenate %s and %s.", type_quoted_error_string(left->type),
 				                  type_to_error_string(right_type));
 			}
-			if (!cast_implicit(context, right, type_get_inferred_array(indexed_type), false)) return false;
+			if (!cast_implicit_checked(context, right, type_get_inferred_array(indexed_type), false, failed_ref)) return false;
 			expr_contract_array(&left->const_expr, CONST_BYTES);
-			return sema_concat_bytes_and_other(context, concat_expr, left, right);
+			return sema_concat_bytes_and_other(context, concat_expr, left, right, failed_ref);
 		case CONST_UNTYPED_LIST:
 			break;
 		case CONST_INITIALIZER:
 			if (!indexed_type && type_is_union_or_strukt(right->const_expr.initializer->type))
 			{
-				return sema_expr_const_append(context, concat_expr, left, right);
+				return sema_expr_const_append(context, concat_expr, left, right, failed_ref);
 			}
 			FALLTHROUGH;
 		case CONST_SLICE:
-			if (indexed_type && cast_implicit_silent(context, right, indexed_type, false)) return sema_expr_const_append(context, concat_expr, left, right);
+			if (indexed_type && cast_implicit_silent(context, right, indexed_type, false)) return sema_expr_const_append(context, concat_expr, left, right, failed_ref);
 			break;
 	}
 	if (indexed_type && !cast_implicit_silent(context, right, type_get_inferred_array(indexed_type), false))
@@ -410,6 +421,10 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 		indexed_type = NULL;
 	}
 	ArrayIndex len_rhs = sema_len_from_const(right);
+	if (len > max_array_index() - len_rhs)
+	{
+		RETURN_SEMA_ERROR(left, "Constant expression would exceed the maximum length (%lld).", (long long)max_array_index());
+	}
 	len += len_rhs;
 	if (!indexed_type)
 	{

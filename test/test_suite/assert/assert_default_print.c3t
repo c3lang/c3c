@@ -8,8 +8,9 @@ fn void main()
 }
 
 /* #expect: test.ll
-
-@.panic_msg = internal constant [23 x i8] c"Assert \22a > 0\22 failed.\00", align 1
+@.panic_str = private unnamed_addr constant <{ i32, [24 x i8] }> <{ i32 23, [24 x i8] c"assert_default_print.c3\00" }>, align 4
+@.panic_str.1 = private unnamed_addr constant <{ i32, [5 x i8] }> <{ i32 4, [5 x i8] c"main\00" }>, align 4
+@.panic_str.2 = private unnamed_addr constant <{ i32, [6 x i8] }> <{ i32 5, [6 x i8] c"a > 0\00" }>, align 4
 
 define void @test.main() #0 {
 entry:
@@ -20,8 +21,7 @@ entry:
   br i1 %gt, label %assert_ok, label %assert_fail
 
 assert_fail:                                      ; preds = %entry
-  %1 = load ptr, ptr @std.core.builtin.panic, align 8
-  call void %1(ptr @.panic_msg, i64 22, ptr @.file, i64 23, ptr @.func, i64 4, i32 5) #1
+  call void @std.core.runtime.panics.assert(ptr @.panic_str, ptr @.panic_str.1, i32 5, ptr @.panic_str.2) #2
   unreachable
 
 assert_ok:                                        ; preds = %entry

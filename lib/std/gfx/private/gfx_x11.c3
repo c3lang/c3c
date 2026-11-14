@@ -98,8 +98,13 @@ fn void? init_platform(String class_name, GfxInitOption flags)
 
 	dload_cursor_xi_ext();
 
-	char[4] blk;
-	gfx::_gfx.hidden_mouse = gfx::_create_mouse((void*)&blk, { 1, 1 }, RGBA8) ?? null;
+	Pixmap blank = xCreateBitmapFromData(ctx.display, xDefaultRootWindow(ctx.display), &&(char[1]){}, 1, 1);
+	if (blank)
+	{
+		XColor dummy;
+		gfx::_gfx.hidden_mouse = (GfxMouse*)xCreatePixmapCursor(ctx.display, blank, blank, &dummy, &dummy, 0, 0);
+		xFreePixmap(ctx.display, blank);
+	}
 	gfx::_gfx.unix_clipboard = null;
 
 	xSetErrorHandler(&_error_handler);
@@ -306,27 +311,14 @@ fn void? monitor_request_mode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorM
 	if (!oi) return gfx::MONITOR_MODE_CHANGE_FAILED~;
 	defer xRRFreeOutputInfo(oi);
 
-	bool output = false;
-	RRMode native = 0;
-
 	for (int i = 0; i < oi.nmode; i++)
 	{
 		GfxMonitorMode found_mode;
 		void* mi = _get_mode(ci, res, oi.modes[i], &found_mode);
 		if (mi == null) continue;
-		if (mode.equals_request(&found_mode, request))
-		{
-			native = ((XRRModeInfoNative*)mi).id;
-			output = true;
-			mon.mode = found_mode;
-			break;
-		}
+		if (mode.equals_request(&found_mode, request)) return monitor_set_mode(mon, &found_mode);
 	}
-	if (native != 0)
-	{
-		xRRSetCrtcConfig(ctx.display, res, mon.node.crtc, 0, ci.x, ci.y, native, ci.rotation, ci.outputs, ci.noutput);
-	}
-	if (!output) return gfx::MONITOR_MODE_CHANGE_FAILED~;
+	return gfx::MONITOR_MODE_CHANGE_FAILED~;
 }
 
 fn void? monitor_set_gamma(GfxMonitor* monitor, float gamma)
@@ -370,6 +362,7 @@ fn void? monitor_set_mode(GfxMonitor* mon, GfxMonitorMode* mode)
 	xRRFreeCrtcInfo(ci);
 	xRRFreeScreenResources(res);
 	if (!out) return gfx::MONITOR_MODE_CHANGE_FAILED~;
+	mon.mode = *mode;
 }
 
 fn void poll_monitors()
@@ -907,15 +900,19 @@ fn void window_show_platform(GfxWindow* win)
 
 // Window - opengl
 
-fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* context, GfxGlHints* hints)
+fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* context, GfxGlHints* hints) => @pool()
 {
+	// Does nothing if init() already loaded OpenGL.
+	load_opengl()!;
 	win.src.ctx.native = context;
 	win.src.backing = { .opengl };
 
 	bool show_window = false;
+	String name = "";
 	if (win.src.window)
 	{
 		show_window = !window_is_minimized(win);
+		name = _window_name(win.src.window);
 		x11::window_destroy_platform(win);
 	}
 
@@ -977,7 +974,17 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* conte
 	XVisualInfo visual = *vi;
 	xFree(vi);
 
-	_create_window(visual, "", win.internal.flags, win)!;
+	_create_window(visual, name, win.internal.flags, win)!;
+	win.set_name(name);
+
+	if (win.internal.flags.hide_mouse)
+	{
+		win.show_mouse(false);
+	}
+	else if (win.internal.mouse)
+	{
+		win.set_mouse(win.internal.mouse);
+	}
 
 	if (show_window) win.show();
 
@@ -986,7 +993,6 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* conte
 	switch (hints.profile)
 	{
 		case ES:                    mask |= GLX_CONTEXT_ES_PROFILE_BIT_EXT;
-		case FORWARD_COMPATIBILITY: mask |= GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
 		case COMPATIBILITY:         mask |= GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
 		default:                    mask |= GLX_CONTEXT_CORE_PROFILE_BIT_ARB;
 	}
@@ -1009,6 +1015,7 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* conte
 
 	int gl_flags = 0;
 	if (hints.debug) gl_flags |= GLX_CONTEXT_DEBUG_BIT_ARB;
+	if (hints.profile == FORWARD_COMPATIBILITY) gl_flags |= GLX_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB;
 	if (hints.robustness && opengl_extension_is_supported_platform("GLX_ARB_create_context_robustness")) gl_flags |= GLX_CONTEXT_ROBUST_ACCESS_BIT_ARB;
 	if (gl_flags != 0) stack.push_all({ GLX_CONTEXT_FLAGS_ARB, gl_flags });
 
@@ -1045,7 +1052,7 @@ fn void window_make_current_opengl_context(GfxWindow* win)
 {
 	if (!win)
 	{
-		_glx_make_current_fn(null, 0, null);
+		_glx_make_current_fn(ctx.display, 0, null);
 	}
 	else
 	{
@@ -1061,21 +1068,67 @@ fn void window_opengl_swap_buffers(GfxWindow* win)
 
 fn void window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* gl_ctx)
 {
-	if ((GLXWindow)win.src.ctx.native.window != win.src.window) _glx_destroy_window_fn(ctx.display, (GLXWindow)win.src.ctx.native.window);
+
+	if (_glx_get_current_context_fn() == gl_ctx.ctx)
+	{
+		window_make_current_opengl_context(null);
+	}
+	if ((GLXWindow)gl_ctx.window != win.src.window) _glx_destroy_window_fn(ctx.display, (GLXWindow)gl_ctx.window);
 	_glx_destroy_context_fn(ctx.display, gl_ctx.ctx);
-	win.src.ctx.native = null;
+	if (win.src.ctx.native == gl_ctx) win.src.ctx.native = null;
 }
 
-fn void window_set_opengl_swap_interval(GfxWindow* win, int swap_interval)
+fn void? window_set_opengl_swap_interval(GfxWindow* win, int swap_interval)
 {
-	switch
+	if (!win.src.ctx.native)
 	{
-		case _glx_swap_interval_ext_fn != null:
-			_glx_swap_interval_ext_fn(ctx.display, (GLXWindow)win.src.ctx.native.window, swap_interval);
-		case _glx_swap_interval_native_fn != null:
-			_glx_swap_interval_native_fn(swap_interval);
-		default:
-			log::warn("Failed to load swap interval function", category: log::CATEGORY_VIDEO);
+		log::warn("The swap interval can't be set, the window has no OpenGL context.", category: log::CATEGORY_VIDEO);
+		return gfx::GL_CONTEXT_NOT_ACTIVE~;
+	}
+	if (_glx_swap_interval_ext_fn)
+	{
+		// This one takes the drawable, so the context does not have to be current.
+		_glx_swap_interval_ext_fn(ctx.display, (GLXWindow)win.src.ctx.native.window, swap_interval);
+		return;
+	}
+	if (!_glx_swap_interval_mesa_fn && !_glx_swap_interval_sgi_fn)
+	{
+		log::warn("The swap interval can't be set, none of GLX_EXT_swap_control, GLX_MESA_swap_control and GLX_SGI_swap_control is available.", category: log::CATEGORY_VIDEO);
+		return gfx::OPERATION_NOT_SUPPORTED~;
+	}
+	// The other two set the interval of the current context, which has to be the one of this window.
+	GLXContext current = _glx_get_current_context_fn();
+	if (!current)
+	{
+		log::warn("The swap interval can't be set, no OpenGL context is current.", category: log::CATEGORY_VIDEO);
+		return gfx::GL_CONTEXT_NOT_FOUND~;
+	}
+	if (current != win.src.ctx.native.ctx)
+	{
+		log::warn("The swap interval is set for the current context, which is not the one of the window.", category: log::CATEGORY_VIDEO);
+		return gfx::GL_CONTEXT_NOT_ACTIVE~;
+	}
+	if (_glx_swap_interval_mesa_fn)
+	{
+		int error = _glx_swap_interval_mesa_fn(swap_interval);
+		if (error)
+		{
+			log::warn("glXSwapIntervalMESA(%d) failed with %d.", swap_interval, error, category: log::CATEGORY_VIDEO);
+			return gfx::GENERAL_ERROR~;
+		}
+		return;
+	}
+	// SGI doesn't accept an interval below 1, so with only this one vsync can't be disabled.
+	if (swap_interval < 1)
+	{
+		log::warn("GLX_SGI_swap_control can't disable vsync, the swap interval has to be 1 or more.", category: log::CATEGORY_VIDEO);
+		return gfx::OPERATION_NOT_SUPPORTED~;
+	}
+	int error = _glx_swap_interval_sgi_fn(swap_interval);
+	if (error)
+	{
+		log::warn("glXSwapIntervalSGI(%d) failed with %d.", swap_interval, error, category: log::CATEGORY_VIDEO);
+		return gfx::GENERAL_ERROR~;
 	}
 }
 
@@ -1239,16 +1292,22 @@ fn void? load_opengl()
 	_glx_create_window_fn                = os::dlsym(gfx::_gfx.gl.native_handle, "glXCreateWindow");
 	_glx_destroy_window_fn               = os::dlsym(gfx::_gfx.gl.native_handle, "glXDestroyWindow");
 	_glx_query_extensions_string_fn      = os::dlsym(gfx::_gfx.gl.native_handle, "glXQueryExtensionsString");
-	_glx_create_context_attribs_arb_fn   = os::dlsym(gfx::_gfx.gl.native_handle, "glXCreateContextAttribsARB");
-	_glx_swap_interval_ext_fn            = os::dlsym(gfx::_gfx.gl.native_handle, "glXSwapIntervalEXT");
-	if (!_glx_swap_interval_ext_fn)
+	// The extension functions are not symbols of libGLX: libglvnd only exports the core ones, so they have to be asked for.
+	if (opengl_extension_is_supported_platform("GLX_ARB_create_context"))
 	{
-		ZString[2] array = {"GLX_MESA_swap_control", "GLX_SGI_swap_control"};
-		foreach (name : array)
-		{
-			_glx_swap_interval_native_fn = os::dlsym(gfx::_gfx.gl.native_handle, name);
-			if (_glx_swap_interval_native_fn) break;
-		}
+		_glx_create_context_attribs_arb_fn = get_opengl_proc("glXCreateContextAttribsARB");
+	}
+	if (opengl_extension_is_supported_platform("GLX_EXT_swap_control"))
+	{
+		_glx_swap_interval_ext_fn = (GlxSwapIntervalEXTProc)get_opengl_proc("glXSwapIntervalEXT");
+	}
+	if (opengl_extension_is_supported_platform("GLX_MESA_swap_control"))
+	{
+		_glx_swap_interval_mesa_fn = (GlxSwapIntervalNativeProc)get_opengl_proc("glXSwapIntervalMESA");
+	}
+	if (opengl_extension_is_supported_platform("GLX_SGI_swap_control"))
+	{
+		_glx_swap_interval_sgi_fn = (GlxSwapIntervalNativeProc)get_opengl_proc("glXSwapIntervalSGI");
 	}
 }
 
@@ -1268,11 +1327,20 @@ fn void init_keycodes_platform()
 fn GfxKey physical_to_mapped_key(GfxKey key)
 {
 	KeyCode keycode = (KeyCode)key.to_api();
-	KeySym sym = xkbKeycodeToKeysym(ctx.display, keycode, 0, 0);
-	if (sym < 256) return (GfxKey)sym;
+	// Level 0 is the key without modifiers, in the keyboard group that is active.
+	XkbStateRec state;
+	int group = xkbGetState(ctx.display, XKB_USE_CORE_KBD, &state) == 0 ? (int)state.group : 0;
+	KeySym sym = xkbKeycodeToKeysym(ctx.display, keycode, group, 0);
+	// Only printable ASCII is a mapped key: a GfxKey above 127 is a special key.
+	if (sym >= 32 && sym < 128) return (GfxKey)sym;
 
 	switch (sym)
 	{
+		case XK_BACK_SPACE: return BACK_SPACE;
+		case XK_TAB: return TAB;
+		case XK_RETURN: return ENTER;
+		case XK_ESCAPE: return ESCAPE;
+		case XK_DELETE: return DELETE;
 		case XK_F1: return F1; case XK_F2: return F2; case XK_F3: return F3;
 		case XK_F4: return F4; case XK_F5: return F5; case XK_F6: return F6;
 		case XK_F7: return F7; case XK_F8: return F8; case XK_F9: return F9;
@@ -1295,24 +1363,12 @@ fn GfxKey physical_to_mapped_key(GfxKey key)
 		case XK_PAGE_UP: return PAGE_UP; case XK_PAGE_DOWN: return PAGE_DOWN;
 		case XK_INSERT: return INSERT;
 		case XK_MENU: return MENU;
-		case XK_KP_ADD: return PAD_PLUS;
-		case XK_KP_SUBTRACT: return PAD_MINUS;
-		case XK_KP_MULTIPLY: return PAD_MULTIPLY;
-		case XK_KP_DIVIDE: return PAD_SLASH;
-		case XK_KP_EQUAL: return PAD_EQUAL;
-		case XK_KP_ENTER: return PAD_RETURN;
-		case XK_KP_DECIMAL: return PAD_PERIOD;
-		case XK_KP_0: return PAD0; case XK_KP_1: return PAD1;
-		case XK_KP_2: return PAD2; case XK_KP_3: return PAD3;
-		case XK_KP_4: return PAD4; case XK_KP_5: return PAD5;
-		case XK_KP_6: return PAD6; case XK_KP_7: return PAD7;
-		case XK_KP_8: return PAD8; case XK_KP_9: return PAD9;
 		case XK_PRINT: return PRINT_SCREEN;
 		case XK_PAUSE: return PAUSE;
 		default: break;
 	}
 
-	return NULL;
+	return key;
 }
 
 const int X_TRUE = 1;
@@ -1985,6 +2041,18 @@ fn void _x11_im_init_callback(XDisplay* d, XPointer client_data, XPointer call_d
 	xSetIMValues(ctx.im, "destroyCallback", &callback, (char*)null);
 }
 
+fn String _window_name(XWindow window) @local
+{
+	Atom actual_type;
+	int actual_format;
+	CULong nitems, bytes_after;
+	char* data;
+	int status = xGetWindowProperty(ctx.display, window, ctx.net_wm_name, 0, ~0, 0, ctx.utf8_string, &actual_type, &actual_format, &nitems, &bytes_after, &data);
+	if (status || !data) return "";
+	defer xFree(data);
+	return ((String)data[:(sz)nitems]).tcopy();
+}
+
 fn int _error_handler(XDisplay* display, XErrorEvent* ev) @local
 {
 	char[512] error_text;
@@ -2177,7 +2245,8 @@ GlxChooseFBConfigProc _glx_choose_fb_config_fn;
 GlxDestroyContextProc _glx_destroy_context_fn;
 GlxCreateWindowProc _glx_create_window_fn;
 GlxDestroyWindowProc _glx_destroy_window_fn;
-GlxSwapIntervalNativeProc _glx_swap_interval_native_fn;
+GlxSwapIntervalNativeProc _glx_swap_interval_mesa_fn;
+GlxSwapIntervalNativeProc _glx_swap_interval_sgi_fn;
 
 
 macro void xi_set_mask(char* mask, int event)
@@ -2187,6 +2256,8 @@ macro void xi_set_mask(char* mask, int event)
 
 macro bool xi_mask_is_set(char* mask, int event) => (mask[event / 8] & (char)(1 << (event % 8))) != 0;
 
+const KeySym XK_BACK_SPACE = 0xff08; const KeySym XK_TAB = 0xff09; const KeySym XK_RETURN = 0xff0d;
+const KeySym XK_ESCAPE = 0xff1b; const KeySym XK_DELETE = 0xffff;
 const KeySym XK_F1 = 0xffbe; const KeySym XK_F2 = 0xffbf; const KeySym XK_F3 = 0xffc0; const KeySym XK_F4 = 0xffc1;
 const KeySym XK_F5 = 0xffc2; const KeySym XK_F6 = 0xffc3; const KeySym XK_F7 = 0xffc4; const KeySym XK_F8 = 0xffc5;
 const KeySym XK_F9 = 0xffc6; const KeySym XK_F10 = 0xffc7; const KeySym XK_F11 = 0xffc8; const KeySym XK_F12 = 0xffc9;

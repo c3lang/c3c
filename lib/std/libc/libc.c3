@@ -51,8 +51,10 @@ fn void errno_set(Errno e)
 
 alias TerminateFunction = fn void();
 alias CompareFunction = fn int(void*, void*);
-alias JmpBuf = uptr[$$JMP_BUF_SIZE];
-alias SigJmpBuf = uptr[$$JMP_BUF_SIZE + 1];
+
+typedef JmpBuf = uptr[$$JMP_BUF_SIZE] @align(jmpbuf_alignment());
+typedef SigJmpBuf = uptr[$$JMP_BUF_SIZE + 1] @align(jmpbuf_alignment());
+macro int jmpbuf_alignment() @local @const => $feat(WIN32 & X86_64) ??? 16 : uptr::alignment;
 alias Fd = CInt;
 alias Fpos_t @feat(WIN32) = long;
 alias SignalFunction = fn void(CInt);
@@ -87,7 +89,7 @@ extern fn DivResult div(CInt numer, CInt denom);
 extern fn void exit(CInt status);
 extern fn void _exit(CInt status) @cname("_Exit");
 extern fn CInt fclose(CFile stream);
-extern fn CFile fdopen(CInt fd, ZString mode) @feat(!WIN32);
+extern fn CFile fdopen(Fd fd, ZString mode) @feat(!WIN32);
 extern fn CInt feof(CFile stream);
 extern fn CInt ferror(CFile stream);
 extern fn CInt fflush(CFile stream);
@@ -236,7 +238,6 @@ fn void siglongjmp(SigJmpBuf* ptr, CInt i) => os::exit(i);
 
 
 module libc @feat(NETBSD, OPENBSD);
-extern fn int fcntl(CInt socket, int cmd, ...);
 extern fn usz malloc_size(void* ptr);
 extern fn void* aligned_alloc(usz align, usz size);
 extern fn Tm* gmtime_r(Time_t* timer, Tm* buf) @cname("__gmtime_r50") @feat(NETBSD);

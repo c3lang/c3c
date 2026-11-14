@@ -48,8 +48,36 @@ void c_register_function_local(GenContext *c, VariableId id, Type *type, bool is
 	{
 		lowered = type_int;
 	}
-	CLocalVar lv = {.id = id, .type = lowered, .is_static = is_static, .decl = decl};
+	CLocalVar lv = {.id = id, .type = lowered, .is_static = is_static, .is_alloca = false, .alloca_count = 0, .decl = decl};
 	vec_add(c->function_locals, lv);
+}
+
+VariableId c_emit_alloca(GenContext *c, Type *type)
+{
+	Type *lowered = (type && is_valid_type_ptr(type)) ? c_safe_type_lower(type) : type_int;
+	if (lowered->type_kind == TYPE_VOID)
+	{
+		lowered = type_int;
+	}
+	c_emit_type_forward_decl(c, lowered);
+	VariableId id = c_create_variable(c);
+	CLocalVar lv = {.id = id, .type = lowered, .is_static = false, .is_alloca = true, .alloca_count = 0, .decl = NULL};
+	vec_add(c->function_locals, lv);
+	return id;
+}
+
+VariableId c_emit_alloca_array(GenContext *c, Type *base_type, int count)
+{
+	Type *lowered = (base_type && is_valid_type_ptr(base_type)) ? c_safe_type_lower(base_type) : type_int;
+	if (lowered->type_kind == TYPE_VOID)
+	{
+		lowered = type_int;
+	}
+	c_emit_type_forward_decl(c, lowered);
+	VariableId id = c_create_variable(c);
+	CLocalVar lv = {.id = id, .type = lowered, .is_static = false, .is_alloca = true, .alloca_count = count, .decl = NULL};
+	vec_add(c->function_locals, lv);
+	return id;
 }
 
 VariableId c_emit_temp_var(GenContext *c, CValue *value, Type *type)
@@ -147,7 +175,7 @@ void c_emit_assign_decl_fault(GenContext *c, Decl *decl, CValue *src_val, Expr *
 	{
 		PRINTF("___var_%d = NULL;\n", fvid);
 	}
-	PRINTF("__c3_current_fault = ___var_%d;\n", fvid);
+	PRINT("__c3_current_fault = NULL;\n");
 }
 
 VariableId c_ensure_cvalue_var(GenContext *c, CValue *val, Type *fallback_type)
@@ -193,6 +221,7 @@ void c_value_rvalue(GenContext *c, CValue *val)
 
 	if (c_type_is_aggregate(t))
 	{
+		PRINTF("%s ___var_%d;\n", tname, temp);
 		PRINTF("__c3_memcpy(&___var_%d, (void*)___var_%d, sizeof(%s));\n", temp, val->var, tname);
 	}
 	else
@@ -216,13 +245,8 @@ void c_value_addr(GenContext *c, CValue *val)
 		t = type_int;
 	}
 
-	Type *ptr_type = type_get_ptr(t);
-	c_emit_type_forward_decl(c, ptr_type);
-	const char *ptname = c_type_name(c, ptr_type);
-	int temp           = c_create_variable(c);
-	c_register_function_local(c, temp, ptr_type, false, NULL);
-
-	PRINTF("%s ___var_%d = (%s)&___var_%d;\n", ptname, temp, ptname, val->var);
+	VariableId temp = c_emit_alloca(c, t);
+	c_emit_assign_var(c, temp, t, val);
 	val->var  = temp;
 	val->kind = CV_ADDRESS;
 }
@@ -286,16 +310,12 @@ void c_emit_assign_to_any(GenContext *c, const char *dst_expr, CValue *src)
 		return;
 	}
 
-	if (src->kind == CV_ADDRESS)
+	if (src->kind != CV_ADDRESS)
 	{
-		PRINTF("%s = (__c3_any__){ .ptr = (void*)___var_%d, .typeid = (c3typeid_t)&%s };\n",
-		       dst_expr, src->var, c_typeid_name(src_type));
+		c_value_addr(c, src);
 	}
-	else
-	{
-		PRINTF("%s = (__c3_any__){ .ptr = (void*)&___var_%d, .typeid = (c3typeid_t)&%s };\n",
-		       dst_expr, src->var, c_typeid_name(src_type));
-	}
+	PRINTF("%s = (__c3_any__){ .ptr = (void*)&___var_%d, .typeid = (c3typeid_t)&%s };\n",
+	       dst_expr, src->var, c_typeid_name(src_type));
 }
 
 void c_emit_assign_var(GenContext *c, VariableId dst_var, Type *dst_type, CValue *src_val)
@@ -412,11 +432,11 @@ bool c_emit_function_decl(GenContext *c, Decl *fn, bool is_current_module)
 	}
 	const char *fn_name = c_get_decl_name(fn);
 
-	if (htable_get(&c->decl_names, (void *)fn_name))
+	if (htable_get(c->decl_names, (void *)fn_name))
 	{
 		return false;
 	}
-	htable_set(&c->decl_names, (void *)fn_name, (void *)1);
+	htable_set(c->decl_names, (void *)fn_name, (void *)1);
 
 	Signature *sig = &fn->func_decl.signature;
 	Type *rtype    = typeget(sig->rtype);
@@ -465,20 +485,21 @@ bool c_emit_function_decl(GenContext *c, Decl *fn, bool is_current_module)
 	{
 		if (emitted_count > 0)
 		{
-			PRINT(", ");
+			PRINT(", ...");
+			emitted_count++;
 		}
-		PRINT("...");
-		emitted_count++;
 	}
 	if (emitted_count == 0)
 	{
-		PRINT("void");
+		if (sig->variadic != VARIADIC_RAW)
+		{
+			PRINT("void");
+		}
 	}
 	PRINT(")");
-	const char *asm_name = c_get_decl_asm_name(fn);
-	if (asm_name && (strncmp(asm_name, "__atomic_", 9) == 0 || strncmp(asm_name, "__builtin_", 10) == 0))
+	if (c_decl_needs_asm_label(fn))
 	{
-		PRINTF(" __asm__(\"%s\")", asm_name);
+		PRINTF(" __asm__(\"%s\")", c_get_decl_asm_name(fn));
 	}
 	PRINT(";\n");
 	return !fn->is_extern;
@@ -488,6 +509,10 @@ void c_emit_local_var_declarations(GenContext *c)
 {
 	FOREACH(CLocalVar, lv, c->function_locals)
 	{
+		if (!lv.decl && !lv.is_alloca)
+		{
+			continue;
+		}
 		if (htable_get(&c->declared_vars, (void *)(uintptr_t)lv.id))
 		{
 			continue;
@@ -502,7 +527,11 @@ void c_emit_local_var_declarations(GenContext *c)
 		const char *tname     = c_type_name(c, vt);
 		const char *align_str = c_local_align_str(lv.decl, vt);
 
-		if (c_type_is_aggregate(vt))
+		if (lv.alloca_count > 0)
+		{
+			PRINTF("\t%s%s ___var_%d[%d] = {0};\n", align_str, tname, lv.id, lv.alloca_count);
+		}
+		else if (c_type_is_aggregate(vt))
 		{
 			PRINTF("\t%s%s ___var_%d = {0};\n", align_str, tname, lv.id);
 		}
@@ -539,6 +568,8 @@ void c_emit_function(GenContext *c, Decl *fn)
 	const char *ret_type_name = c_type_name(c, rtype);
 
 	c->current_return_type      = rtype;
+	c->cur_func_name            = fn->name;
+	c->cur_func_decl            = fn;
 	c->current_macro_ret_var    = 0;
 	c->current_macro_fault_var  = 0;
 	c->current_macro_ret_type   = NULL;
@@ -689,14 +720,16 @@ void c_emit_function(GenContext *c, Decl *fn)
 	{
 		if (emitted_params > 0)
 		{
-			PRINT(", ");
+			PRINT(", ...");
+			emitted_params++;
 		}
-		PRINT("...");
-		emitted_params++;
 	}
 	if (emitted_params == 0)
 	{
-		PRINT("void");
+		if (sig->variadic != VARIADIC_RAW)
+		{
+			PRINT("void");
+		}
 	}
 	PRINT(") {\n");
 

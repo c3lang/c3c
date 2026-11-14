@@ -17,14 +17,17 @@ const char *project_default_keys[][2] = {
 		{"c-sources", "Set the C sources to be compiled."},
 		{"cc", "Set C compiler."},
 		{"cflags", "C compiler flags."},
+		{"compress", "Compress a 'source-lib' target into a single .c3l file, otherwise output an uncompressed directory (default: true)."},
 		{"cpu", "CPU name, used for optimizations in the compiler backend."},
 		{"cpu-flags", "Set the cpu flags to add or remove with the format '+avx,-sse'."},
 		{"data-sections", "Place each global variable in its own section, so the linker can discard unused ones (no effect on Mach-O)."},
 		{"debug-info", "Debug level: none, line-tables, full."},
 		{"dependencies", "C3 library dependencies for all targets."},
 		{"dependency-search-paths", "The C3 library search paths."},
+		{"env", "Environment variables (NAME=value) set for the 'exec' scripts of all targets."},
 		{"exec", "Scripts run for all targets."},
 		{"features", "Features enabled for all targets."},
+		{"fetch-url", "Registry that 'dependencies' written as <namespace>/<name>[@<version>] are fetched from, --fetch-url overrides it. A dependency can name its own registry with <url>:<namespace>/<name>[@<version>]."},
 		{"fp-math", "Set math behaviour: `strict`, `relaxed` or `fast`."},
 		{"function-sections", "Place each function in its own section, so the linker can discard unused ones (no effect on Mach-O)."},
 		{"implicit-float", "Allow implicit use of floating point instructions. (default: true)"},
@@ -44,7 +47,9 @@ const char *project_default_keys[][2] = {
 		{"loop-vectorize", "Force enable/disable loop auto-vectorization."},
 		{"macos-min-version", "Set the minimum MacOS version to compile for."},
 		{"macos-sdk", "Set the directory for the MacOS SDK for cross compilation."},
+		{"infinite-loop-detect", "Panic on empty infinite loops in safe mode."},
 		{"macos-sdk-version", "Set the MacOS SDK compiled for." },
+		{"max-vector-size", "Set the maximum allowed vector size in bits."},
 		{"memory-env", "Set the memory environment: normal, small, tiny, none."},
 		{"merge-functions", "Force enable/disable function merging."},
 		{"no-entry", "Do not generate (or require) a main function."},
@@ -108,6 +113,7 @@ const char* project_target_keys[][2] = {
 		{"cc", "Set C compiler."},
 		{"cflags", "Additional C compiler flags for the target."},
 		{"cflags-override", "C compiler flags for the target, overriding global settings."},
+		{"compress", "Compress a 'source-lib' target into a single .c3l file, otherwise output an uncompressed directory (default: true)."},
 		{"cpu", "CPU name, used for optimizations in the compiler backend."},
 		{"cpu-flags", "Additional cpu flags to add or remove with the format '+avx,-sse'."},
 		{"cpu-flags-override", "Additional cpu flags to add or remove with the format '+avx,-sse', overriding global settings."},
@@ -117,6 +123,9 @@ const char* project_target_keys[][2] = {
 		{"dependencies-override", "C3 library dependencies for this target, overriding global settings."},
 		{"dependency-search-paths", "Additional C3 library search paths for the target."},
 		{"dependency-search-paths-override", "C3 library search paths for this target, overriding global settings."},
+		{"depends-on", "Targets that are built before this target, in the order listed."},
+		{"env", "Additional environment variables (NAME=value) set for the 'exec' scripts of the target."},
+		{"env-override", "Environment variables (NAME=value) set for the 'exec' scripts of the target, overriding global settings."},
 		{"exec", "Additional scripts to run for the target."},
 		{"exec-override", "Scripts to run for this target, overriding global settings."},
 		{"extension", "Override the default file extension for the build output."},
@@ -143,7 +152,9 @@ const char* project_target_keys[][2] = {
 		{"loop-vectorize", "Force enable/disable loop auto-vectorization."},
 		{"macos-min-version", "Set the minimum MacOS version to compile for."},
 		{"macos-sdk", "Set the directory for the MacOS SDK for cross compilation."},
+		{"infinite-loop-detect", "Panic on empty infinite loops in safe mode."},
 		{"macos-sdk-version", "Set the MacOS SDK compiled for." },
+		{"max-vector-size", "Set the maximum allowed vector size in bits."},
 		{"memory-env", "Set the memory environment: normal, small, tiny, none."},
 		{"merge-functions", "Force enable/disable function merging."},
 		{"name", "Set the name to be different from the target name."},
@@ -178,7 +189,7 @@ const char* project_target_keys[][2] = {
 		{"test-sources-override", "Paths to project test sources for this target, overriding global settings."},
 		{"testfn", "Override the test function."},
 		{"trap-on-wrap", "Make signed and unsigned integer overflow generate a panic rather than wrapping."},
-		{"type", "Type of output, one of 'executable', 'static-lib', 'dynamic-lib', 'benchmark', 'test', 'object-files' and 'prepare'." },
+		{"type", "Type of output, one of 'executable', 'static-lib', 'dynamic-lib', 'benchmark', 'test', 'object-files', 'prepare' and 'source-lib'." },
 		{"unroll-loops", "Force enable/disable loop unrolling optimization."},
 		{"use-stdlib", "Include the standard library (default: true)."},
 		{"vendor", "Vendor specific extensions, ignored by c3c."},
@@ -263,6 +274,9 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 		{
 			error_exit("Error reading %s: output extension '%s' must start with a '.'", context.file, target->extension);
 		}
+
+		// Targets to build first
+		append_strings_to_strings(&target->depends_on, get_optional_string_array(context, json, "depends-on"));
 	}
 	else
 	{
@@ -289,6 +303,27 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	}
 	// "Before compilation" execution
 	APPEND_STRING_LIST(&target->exec, "exec");
+
+	if (context.target)
+	{
+		const char **env_override = get_optional_string_array(context, json, "env-override");
+		if (env_override) target->env = env_override;
+	}
+	append_strings_to_strings(&target->env, get_optional_string_array(context, json, "env"));
+	FOREACH(const char *, env, target->env)
+	{
+		const char *eq = strchr(env, '=');
+		bool valid = eq && eq != env && !char_is_digit(env[0]);
+		for (const char *c = env; valid && c < eq; c++) valid = char_is_alphanum_(*c);
+		if (!valid)
+		{
+			scratch_buffer_clear();
+			scratch_buffer_append(env);
+			char *env_copy = scratch_buffer_to_string();
+			str_elide_in_place(env_copy, 32);
+			error_exit("Error reading %s: invalid 'env' entry '%s', expected 'NAME=value' where NAME contains only letters, digits and '_'.", context.file, env_copy);
+		}
+	}
 
 	// CFlags
 	target->cflags = get_cflags(context, json, target->cflags);
@@ -320,6 +355,7 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 
 	// Dependencies
 	APPEND_STRING_LIST(&target->libs, "dependencies");
+	convert_library_paths_to_plain_library_names(target->libs);
 
 	FOREACH(const char *, name, target->libs)
 	{
@@ -351,8 +387,10 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	target->slp_vectorization = (AutoVectorization)get_valid_bool(context, json, "slp-vectorize", target->slp_vectorization);
 	target->unroll_loops = (UnrollLoops)get_valid_bool(context, json, "unroll-loops", target->unroll_loops);
 	target->merge_functions = (MergeFunctions)get_valid_bool(context, json, "merge-functions", target->merge_functions);
+	target->infinite_loop_detect = (InfiniteLoopDetect)get_valid_bool(context, json, "infinite-loop-detect", target->infinite_loop_detect);
 	target->data_sections = (SectionsSetting)get_valid_bool(context, json, "data-sections", target->data_sections);
 	target->function_sections = (SectionsSetting)get_valid_bool(context, json, "function-sections", target->function_sections);
+	target->no_compress = !get_valid_bool(context, json, "compress", !target->no_compress);
 
 	static const char *opt_settings[8] = {
 			[OPT_SETTING_O0] = "O0",
@@ -736,6 +774,125 @@ static JSONObject* resolve_template(BuildTarget *target, const char *template_re
 	return template;
 }
 
+// These keys are not expanded
+static const char *env_unexpanded_keys[] = { "$schema", "exec", "exec-override", "targets", "type", "vendor" };
+
+// Expand ${NAME}, while `$${` is a literal '${'. Any other '$' is kept as is.
+// On failure NULL is returned and the problem is described in `problem_ref`.
+static const char *expand_env_string(const char *str, const char **problem_ref)
+{
+	*problem_ref = NULL;
+	if (!strstr(str, "${")) return str;
+	scratch_buffer_clear();
+	for (const char *p = str; *p; p++)
+	{
+		// No `$`
+		if (p[0] != '$')
+		{
+			scratch_buffer_append_char(*p);
+			continue;
+		}
+
+		// "$${" -> copy as "${"
+		if (p[1] == '$' && p[2] == '{')
+		{
+			scratch_buffer_append("${");
+			p += 2;
+			continue;
+		}
+
+		// $X -> $X
+		if (p[1] != '{')
+		{
+			scratch_buffer_append_char('$');
+			continue;
+		}
+
+		// Actual replacement
+		const char *name = p + 2;
+
+		if (!char_is_letter_(*name))
+		{
+			*problem_ref = "contains '${' without a valid environment variable name";
+			return NULL;
+		}
+
+		const char *end = name;
+
+		// Move forward to find the end
+		while (char_is_alphanum_(*end)) end++;
+
+		if (*end != '}')
+		{
+			*problem_ref = str_printf("contains '${%.*s' without a closing '}'", (int)(end - name), name);
+			return NULL;
+		}
+
+		int len = (int)(end - name);
+		scratch_buffer_push();
+		scratch_buffer_clear();
+		scratch_buffer_append_len(name, len);
+		const char *value = getenv(scratch_buffer_to_string());
+		scratch_buffer_pop();
+
+		if (!value)
+		{
+			*problem_ref = str_printf("uses the undefined environment variable '%.*s'", len, name);
+			return NULL;
+		}
+
+		scratch_buffer_append(value);
+		p = end;
+	}
+
+	return scratch_buffer_copy();
+}
+
+// Expand the string in place.
+static bool expand_env_json_string(JSONObject *string, const char **problem_ref)
+{
+	const char *problem = NULL;
+	const char *expanded = expand_env_string(string->str, &problem);
+	if (expanded) string->str = expanded;
+	if (problem) *problem_ref = problem;
+	return !problem;
+}
+
+/**
+ * Expand environment variables in the strings of a project or target object, which is changed in place.
+ *
+ * @param target the target name, NULL for the project.
+ */
+static bool expand_env_in_object(const char *file, const char *target, JSONObject *json, const char **problem_ref)
+{
+	FOREACH_IDX(i, JSONObject *, member, json->members)
+	{
+		const char *key = json->keys[i];
+		if (str_findlist(key, ELEMENTLEN(env_unexpanded_keys), env_unexpanded_keys) >= 0) continue;
+		const char *problem = NULL;
+		if (member->type == J_STRING)
+		{
+			expand_env_json_string(member, &problem);
+		}
+		else if (member->type == J_ARRAY)
+		{
+			FOREACH(JSONObject *, element, member->elements)
+			{
+				if (element->type != J_STRING) continue;
+				if (!expand_env_json_string(element, &problem)) break;
+			}
+		}
+		if (problem)
+		{
+			*problem_ref = target
+				? str_printf("Error reading %s: '%s' in '%s' %s.", file, key, target, problem)
+				: str_printf("Error reading %s: '%s' %s.", file, key, problem);
+			return false;
+		}
+	}
+	return true;
+}
+
 static void project_add_target(BuildParseContext context, Project *project, BuildTarget *default_target, JSONObject *json,
                                const char *type, TargetType target_type)
 {
@@ -747,6 +904,7 @@ static void project_add_target(BuildParseContext context, Project *project, Buil
 	duplicate_prop(&target->csources);
 	duplicate_prop(&target->cinclude_dirs);
 	duplicate_prop(&target->exec);
+	duplicate_prop(&target->env);
 	duplicate_prop(&target->feature_list);
 	duplicate_prop(&target->sources);
 	duplicate_prop(&target->source_dirs);
@@ -758,6 +916,10 @@ static void project_add_target(BuildParseContext context, Project *project, Buil
 	duplicate_prop(&target->link_args);
 
 	BuildParseContext target_context = { context.file, str_printf("%s %s", type, context.target), false };
+	// An undefined variable is only an error if the target is used, so loading the target is skipped.
+	target->env_expand_error = NULL;
+	bool valid_expansion = expand_env_in_object(context.file, context.target, json, &target->env_expand_error);
+	if (!valid_expansion) goto ADD;
 	const char *template_ref = get_optional_string(target_context, json, "template");
 	if (template_ref)
 	{
@@ -767,6 +929,7 @@ static void project_add_target(BuildParseContext context, Project *project, Buil
 		const char **default_libs = target->libs;
 		APPEND_STRING_LIST(&target->libdirs, "dependency-search-paths");
 		APPEND_STRING_LIST(&target->libs, "dependencies");
+		convert_library_paths_to_plain_library_names(target->libs);
 		const char *manifest_path = NULL;
 		JSONObject *template_json = resolve_template(target, template_ref, &manifest_path);
 		target->libdirs = default_libdirs;
@@ -774,7 +937,7 @@ static void project_add_target(BuildParseContext context, Project *project, Buil
 		BuildParseContext template_context = { manifest_path, str_printf("template '%s'", template_ref), true };
 		load_into_build_target(template_context, template_json, target);
 	}
-
+ADD:;
 	vec_add(project->targets, target);
 	target->name = context.target;
 	target->type = target_type;
@@ -786,7 +949,16 @@ static void project_add_target(BuildParseContext context, Project *project, Buil
 			error_exit("More %s contained more than one target with the name %s. Please make all target names unique.", context.file, target->name);
 		}
 	}
-	load_into_build_target(target_context, json, target);
+	if (valid_expansion) load_into_build_target(target_context, json, target);
+}
+
+static BuildTarget *project_find_target(Project *project, const char *name)
+{
+	FOREACH(BuildTarget *, target, project->targets)
+	{
+		if (str_eq(target->name, name)) return target;
+	}
+	return NULL;
 }
 
 static void project_add_targets(const char *filename, Project *project, JSONObject *project_data)
@@ -794,28 +966,74 @@ static void project_add_targets(const char *filename, Project *project, JSONObje
 	ASSERT(project_data->type == J_OBJECT);
 
 	BuildTarget default_target = default_build_target;
+	const char *problem = NULL;
+	if (!expand_env_in_object(filename, NULL, project_data, &problem)) error_exit("%s", problem);
 	load_into_build_target((BuildParseContext) { .file = filename }, project_data, &default_target);
 	JSONObject *targets_json = json_map_get(project_data, "targets");
-	if (!targets_json)
-	{
-		error_exit("No targets found in project.");
-	}
-	if (targets_json->type != J_OBJECT)
-	{
-		error_exit("'targets' did not contain map of targets.");
-	}
+	if (!targets_json) error_exit("No targets found in project.");
+	if (targets_json->type != J_OBJECT) error_exit("'targets' did not contain map of targets.");
 	FOREACH_IDX(i, JSONObject *, object, targets_json->members)
 	{
 		const char *key = targets_json->keys[i];
-		if (object->type != J_OBJECT)
-		{
-			error_exit("Invalid data in target '%s'", key);
-		}
+		if (object->type != J_OBJECT) error_exit("Invalid data in target '%s'", key);
 		BuildParseContext context = { filename, key, false };
-		int type = get_valid_string_setting(context, object, "type", targets, 0, ELEMENTLEN(targets), "a target type like 'executable' or 'static-lib'");
+		int type = get_valid_string_setting(context, object, "type", target_types, 0, ELEMENTLEN(target_types), "a target type like 'executable' or 'static-lib'");
 		if (type < 0) error_exit("Target %s did not contain 'type' key.", key);
 		project_add_target(context, project, &default_target, object, target_desc[type], type);
 	}
+	FOREACH(BuildTarget *, target, project->targets)
+	{
+		FOREACH(const char *, dependency, target->depends_on)
+		{
+			if (!project_find_target(project, dependency))
+			{
+				error_exit("Error reading %s: target '%s' depends on target '%s', which does not exist.", filename, target->name, dependency);
+			}
+		}
+	}
+}
+
+static bool is_listed(const char **list, const char *name)
+{
+	return str_findlist(name, vec_size(list), list) >= 0;
+}
+
+static void add_dependency_order(const char *filename, Project *project, BuildTarget *target, const char ***path_ref, const char ***order_ref)
+{
+	FOREACH(const char *, name, target->depends_on)
+	{
+		if (is_listed(*path_ref, name))
+		{
+			scratch_buffer_clear();
+			FOREACH(const char *, path_name, *path_ref)
+			{
+				scratch_buffer_printf("%s -> ", path_name);
+			}
+			scratch_buffer_append(name);
+			error_exit("Error reading %s: circular 'depends-on': %s.", filename, scratch_buffer_to_string());
+		}
+		if (is_listed(*order_ref, name)) continue;
+		vec_add(*path_ref, name);
+		add_dependency_order(filename, project, project_find_target(project, name), path_ref, order_ref);
+		vec_pop(*path_ref);
+		vec_add(*order_ref, name);
+	}
+}
+
+/**
+ * The targets that must be built before the target, in the order they should be built.
+ * Targets are built in the order they are listed in 'depends-on', after their own 'depends-on' targets,
+ * and each target is only listed once.
+ *
+ * @return the names of the targets, not including the target itself.
+ */
+const char **project_dependency_order(const char *filename, Project *project, BuildTarget *target)
+{
+	const char **path = NULL;
+	const char **order = NULL;
+	vec_add(path, target->name);
+	add_dependency_order(filename, project, target, &path, &order);
+	return order;
 }
 
 
@@ -858,6 +1076,9 @@ BuildTarget *project_select_target(const char *filename, Project *project, const
 					if (compiler_command == COMMAND_BUILD || compiler_command == COMMAND_DIST) break;
 					if (compiler_command == COMMAND_RUN) break; // Can be used but isn't the default
 					continue; // Only compatible with build and dist
+				case TARGET_TYPE_SOURCE_LIB:
+					if (compiler_command == COMMAND_BUILD || compiler_command == COMMAND_DIST) return target;
+					continue; // Only compatible with build and dist
 				case TARGET_TYPE_EXECUTABLE:
 					return target;
 			}
@@ -865,10 +1086,8 @@ BuildTarget *project_select_target(const char *filename, Project *project, const
 		}
 		return best ? best : project->targets[0];
 	}
-	FOREACH(BuildTarget *, target, project->targets)
-	{
-		if (str_eq(target->name, optional_target)) return target;
-	}
+	BuildTarget *found = project_find_target(project, optional_target);
+	if (found) return found;
 	error_exit("No build target named '%s' was found in %s. Was it misspelled?", optional_target, filename);
 	UNREACHABLE
 }

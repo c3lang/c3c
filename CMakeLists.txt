@@ -109,8 +109,7 @@ set(C3_WITH_LLVM            ON                          CACHE BOOL   "Build with
 set(C3_PROFILING            OFF                         CACHE BOOL   "Build for profiling")
 set(C3_LLVM_VERSION         "auto"                      CACHE STRING "Use LLVM version [default: auto]")
 set(C3_USE_MIMALLOC         OFF                         CACHE BOOL   "Use built-in mimalloc")
-set(C3_MIMALLOC_TAG         "v1.7.3"                    CACHE STRING "Used version of mimalloc")
-set(C3_USE_TB               OFF                         CACHE BOOL   "Use TB")
+set(C3_MIMALLOC_TAG         "v2.5.2"                    CACHE STRING "Used version of mimalloc")
 set(C3_LLD_DIR              ""                          CACHE STRING "Use custom LLD directory")
 set(C3_LLD_INCLUDE_DIR      ""                          CACHE STRING "Use custom LLD include directory")
 set(C3_ENABLE_CLANGD_LSP    OFF                         CACHE BOOL   "Enable/Disable output of compile commands during generation")
@@ -133,40 +132,24 @@ set(C3_OPTIONS
         C3_LLVM_VERSION
         C3_USE_MIMALLOC
         C3_MIMALLOC_TAG
-        C3_USE_TB
         C3_LLD_DIR
         C3_ENABLE_CLANGD_LSP
         LLVM_CRT_LIBRARY_DIR
         C3_AVR_DISABLE
 )
 
-set(C3_USE_MIMALLOC OFF)
 if(C3_USE_MIMALLOC)
-    option(MI_BUILD_TESTS OFF)
-    option(MI_BUILD_SHARED OFF)
-    option(MI_PADDING OFF)
-    option(MI_DEBUG_FULL OFF)
+    set(MI_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(MI_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+    set(MI_PADDING OFF CACHE BOOL "" FORCE)
+    set(MI_DEBUG_FULL OFF CACHE BOOL "" FORCE)
+    set(MI_STATS "OFF" CACHE STRING "" FORCE)
     FetchContent_Declare(
             mimalloc
             GIT_REPOSITORY https://github.com/microsoft/mimalloc.git
             GIT_TAG ${C3_MIMALLOC_TAG}
     )
     FetchContent_MakeAvailable(mimalloc)
-endif()
-
-find_package(Git QUIET)
-if(C3_USE_TB AND GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
-    # Update submodules as needed
-    option(GIT_SUBMODULE "Check submodules during build" ON)
-    if(GIT_SUBMODULE)
-        message(STATUS "Submodule update")
-        execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
-                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                RESULT_VARIABLE GIT_SUBMOD_RESULT)
-        if(NOT GIT_SUBMOD_RESULT EQUAL "0")
-            message(FATAL_ERROR "git submodule update --init --recursive failed with ${GIT_SUBMOD_RESULT}, please checkout submodules")
-        endif()
-    endif()
 endif()
 
 # Clangd LSP support
@@ -505,6 +488,7 @@ add_executable(c3c
         src/compiler/bigint.c
         src/compiler/codegen_general.c
         src/compiler/compiler.c
+        src/compiler/compiler_stats.c
         src/compiler/compiler.h
         src/compiler/subprocess.c
         src/compiler/subprocess.h
@@ -558,6 +542,8 @@ add_executable(c3c
         src/utils/file_utils.c
         src/utils/find_msvc.c
         src/utils/malloc.c
+        src/utils/sha256.c
+        src/utils/stats.c
         src/utils/stringutils.c
         src/utils/taskqueue.c
         src/utils/json.c
@@ -594,6 +580,7 @@ add_executable(c3c
         src/compiler/sema_const.c
         ${CMAKE_BINARY_DIR}/git_hash.h
         ${CMAKE_BINARY_DIR}/docs_template.h
+        ${CMAKE_BINARY_DIR}/c_runtime_header.h
         src/utils/xar.c
         src/utils/pbzx.c
         src/utils/xz_stream.c
@@ -638,6 +625,18 @@ add_custom_command(
                 ${CMAKE_SOURCE_DIR}/scripts/embed.cmake
         COMMENT "Embedding resources/docs.html into docs_template.h")
 
+# Embed src/compiler/c_runtime.h into a C header
+add_custom_command(
+        OUTPUT ${CMAKE_BINARY_DIR}/c_runtime_header.h
+        COMMAND ${CMAKE_COMMAND}
+            -DINPUT=${CMAKE_SOURCE_DIR}/src/compiler/c_runtime.h
+            -DOUTPUT=${CMAKE_BINARY_DIR}/c_runtime_header.h
+            -DVAR_NAME=c_runtime_header_boilerplate
+            -P ${CMAKE_SOURCE_DIR}/scripts/embed.cmake
+        DEPENDS ${CMAKE_SOURCE_DIR}/src/compiler/c_runtime.h
+                ${CMAKE_SOURCE_DIR}/scripts/embed.cmake
+        COMMENT "Embedding src/compiler/c_runtime.h into c_runtime_header.h")
+
 if(C3_WITH_LLVM)
     target_sources(c3c PRIVATE
             src/compiler/llvm_codegen.c
@@ -670,7 +669,9 @@ if(C3_WITH_LLVM)
 else()
     target_sources(c3c PRIVATE src/utils/hostinfo.c)
     target_compile_definitions(c3c PUBLIC LLVM_AVAILABLE=0)
-    target_link_libraries(c3c PRIVATE m)
+    if (NOT MSVC)
+        target_link_libraries(c3c PRIVATE m)
+    endif()
 endif()
 
 target_include_directories(c3c PRIVATE
@@ -682,45 +683,6 @@ target_include_directories(miniz PUBLIC
 
 target_include_directories(xz_embedded PUBLIC
         "${CMAKE_SOURCE_DIR}/dependencies/xz/")
-
-if (C3_USE_TB)
-    file(GLOB tilde-sources
-            tilde-backend/src/tb/*.c
-            tilde-backend/src/tb/codegen/*.c
-            tilde-backend/src/tb/bigint/*.c
-            tilde-backend/src/tb/objects/*.c
-            tilde-backend/src/tb/system/*.c
-            tilde-backend/src/tb/debug/cv/*.c
-            tilde-backend/src/tb/opt/*.c
-            tilde-backend/src/tb/x64/*.c
-            tilde-backend/src/tb/wasm/*.c
-            tilde-backend/src/tb/aarch64/*.c
-    )
-    target_sources(c3c PRIVATE
-            src/compiler/tilde_codegen.c
-            src/compiler/tilde_codegen_instr.c
-            src/compiler/tilde_codegen_value.c
-            src/compiler/tilde_codegen_storeload.c
-            src/compiler/tilde_codegen_expr.c
-            src/compiler/tilde_codegen_stmt.c
-            src/compiler/tilde_codegen_type.c
-            src/compiler/tilde_codegen_abi.c
-            src/compiler/tilde_codegen_storeload.c)
-
-    target_compile_definitions(c3c PUBLIC TB_AVAILABLE=1)
-    target_link_libraries(c3c PRIVATE tilde-backend)
-    add_library(tilde-backend STATIC ${tilde-sources})
-    target_include_directories(tilde-backend PRIVATE
-            "${CMAKE_SOURCE_DIR}/tilde-backend/src/" "${CMAKE_SOURCE_DIR}/tilde-backend/include")
-
-    target_include_directories(c3c PRIVATE
-            "${CMAKE_SOURCE_DIR}/tilde-backend/include/")
-
-else()
-
-    target_compile_definitions(c3c PUBLIC TB_AVAILABLE=0)
-
-endif()
 
 if(C3_WITH_LLVM)
     target_link_libraries(c3c PRIVATE miniz xz_embedded c3c_wrappers)

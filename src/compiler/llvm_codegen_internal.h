@@ -10,11 +10,14 @@
 #include <llvm-c/Target.h>
 #include <llvm-c/DebugInfo.h>
 #include "dwarf.h"
+
 #include "c3_llvm.h"
 #define SLICE_MAX_UNROLL 4
 
 extern const char *varargslots_name;
 extern const char *temp_name;
+
+#define PANIC_SLOT_COUNT 11
 
 typedef enum
 {
@@ -76,6 +79,17 @@ typedef struct OptionalCatch_
 	LLVMBasicBlockRef block;
 } OptionalCatch;
 
+// The slice checks, in the order they are reported.
+typedef enum
+{
+	SLICE_CHECK_START_GT_LEN = 1 << 0,
+	SLICE_CHECK_START_NEGATIVE = 1 << 1,
+	SLICE_CHECK_LEN_NEGATIVE = 1 << 2,
+	SLICE_CHECK_LEN_END = 1 << 3,
+	SLICE_CHECK_RANGE_NEGATIVE = 1 << 4,
+	SLICE_CHECK_RANGE_END = 1 << 5,
+} SliceCheck;
+
 
 #define NO_CATCH (OptionalCatch) { NULL, NULL }
 typedef struct GenContext_
@@ -83,6 +97,7 @@ typedef struct GenContext_
 	bool shared_context;
 	bool in_init_ref;
 	bool emitting_load_store_check;
+	bool failed;
 	LLVMModuleRef module;
 	LLVMBuilderRef global_builder;
 	LLVMTargetMachineRef machine;
@@ -102,6 +117,7 @@ typedef struct GenContext_
 	LLVMTypeRef atexit_type;
 	LLVMTypeRef fault_type;
 	LLVMTypeRef size_type;
+	LLVMTypeRef selector_type;
 	LLVMTypeRef typeid_type;
 	LLVMTypeRef dtable_type;
 	LLVMTypeRef ptr_type;
@@ -109,7 +125,6 @@ typedef struct GenContext_
 	LLVMTypeRef xtor_entry_type;
 	LLVMTypeRef xtor_func_type;
 	Decl *panic_var;
-	Decl *panicf;
 	struct
 	{
 		LLVMValueRef ref;
@@ -141,6 +156,9 @@ typedef struct GenContext_
 		LLVMBasicBlockRef current_block;
 		// The panic blocks to emit at the end.
 		LLVMBasicBlockRef *panic_blocks;
+		// Stack slots shared by the panic calls in panic_slots_func.
+		LLVMValueRef panic_slots_func;
+		BEValue panic_slots[PANIC_SLOT_COUNT];
 		// Debug data
 		DebugContext debug;
 	};
@@ -154,6 +172,7 @@ typedef struct GenContext_
 	LLVMValueRef memcmp_function;
 	LLVMTypeRef memcmp_function_type;
 	unsigned module_size;
+	StatsEntry *timing;
 } GenContext;
 
 // LLVM Intrinsics
@@ -276,6 +295,7 @@ typedef struct
 {
 	unsigned afn;             // allow approximate functions
 	unsigned align;           // align
+	unsigned alignstack;      // alignstack (param)
 	unsigned alwaysinline;    // Force inlining
 	unsigned arcp;            // allow reciprocal
 	unsigned byval;           // ByVal (param)
@@ -289,6 +309,7 @@ typedef struct
 	unsigned nnan;            // no nans
 	unsigned noalias;         // noalias (pointer)
 	unsigned noinline;        // No function inlining
+	unsigned nomerge;         // Calls may not be merged
 	unsigned noredzone;       // No redzone for function
 	unsigned noreturn;        // No function return
 	unsigned nounwind;        // No exceptions
@@ -328,12 +349,16 @@ LLVMAttributeRef LLVMCreateTypeAttribute(LLVMContextRef C, unsigned KindID,
 #endif
 
 LLVMBuilderRef llvm_create_builder(GenContext *c);
+LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl);
 
-static inline LLVMValueRef decl_optional_ref(Decl *decl)
+static inline LLVMValueRef decl_optional_ref(GenContext *c, Decl *decl)
 {
 	ASSERT(decl->decl_kind == DECL_VAR);
-	if (decl->var.kind == VARDECL_UNWRAPPED) return decl_optional_ref(decl->var.alias);
+	if (decl->var.kind == VARDECL_UNWRAPPED) return decl_optional_ref(c, decl->var.alias);
 	if (decl->type->type_kind != TYPE_OPTIONAL) return NULL;
+
+	// A global may not be declared in this module yet, this creates its fault slot.
+	llvm_get_ref(c, decl);
 	return decl->var.optional_ref;
 }
 
@@ -387,7 +412,6 @@ void llvm_attribute_add_type(GenContext *c, LLVMValueRef value_to_add_attribute_
 void llvm_attribute_add_int(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute, uint64_t val, int index);
 
 // -- Linking --
-void llvm_set_selector_linkage(GenContext *c, LLVMValueRef selector);
 void llvm_set_linkonce(GenContext *c, LLVMValueRef global);
 void llvm_set_comdat(GenContext *c, LLVMValueRef global);
 void llvm_set_private_declaration(LLVMValueRef alloc);
@@ -539,7 +563,7 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, int *arg_count_ref, ABIArgInfo *info, BEValue *be_value);
 
 // -- Dynamic interface --
-LLVMValueRef llvm_get_selector(GenContext *c, const char *name);
+LLVMValueRef llvm_get_selector_hash(GenContext *c, const char *name);
 
 // -- C3 Lowering --
 void llvm_emit_expr_global_value(GenContext *c, BEValue *value, Expr *expr);
@@ -550,11 +574,16 @@ LLVMValueRef llvm_emit_expr_to_rvalue(GenContext *c, Expr *expr);
 LLVMValueRef llvm_emit_exprid_to_rvalue(GenContext *c, ExprId expr_id);
 void llvm_emit_ignored_expr(GenContext *c, Expr *expr);
 void llvm_emit_stmt(GenContext *c, Ast *ast);
-void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name, SourceLocId loc,
-							 const char *fmt, BEValue *value_1, BEValue *value_2);
-void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceLocId loc, const char *fmt, BEValue *value_1,
-							 BEValue *value_2);
-void llvm_emit_panic(GenContext *c, const char *message, SourceLocId loc, const char *fmt, BEValue *varargs);
+void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, PanicFunction id, SourceLocId loc, const char *text, BEValue *value_1, BEValue *value_2);
+void llvm_emit_panic_if_true(GenContext *c, BEValue *value, PanicFunction id, SourceLocId loc, const char *text, BEValue *value_1, BEValue *value_2);
+void llvm_emit_panic(GenContext *c, PanicFunction id, SourceLocId loc, const char **texts, BEValue *values);
+INLINE bool llvm_panic_functions_available(GenContext *c)
+{
+	return !no_panic() && c->panic_var && panic_use_format() && !llvm_is_global_eval(c) && c->current_block;
+}
+void llvm_emit_panic_function_check(GenContext *c, LLVMValueRef failed, PanicFunction id, Type *type, SourceLocId loc, const char *text, LLVMValueRef *values);
+LLVMValueRef llvm_get_panic_function(GenContext *c, PanicFunction id, Type **types);
+void llvm_emit_panic_function_body(GenContext *c, PanicFunction id, Type **types, LLVMValueRef func);
 void llvm_emit_unreachable(GenContext *c);
 void llvm_emit_assume_true(GenContext *c, BEValue *assume_true);
 LLVMValueRef llvm_emit_expect_raw(GenContext *c, LLVMValueRef expect_true);
@@ -565,6 +594,7 @@ void llvm_emit_slice_pointer(GenContext *c, BEValue *slice, BEValue *pointer);
 void llvm_emit_compound_stmt(GenContext *c, Ast *ast);
 LLVMValueRef llvm_emit_const_bitstruct(GenContext *c, ConstInitializer *initializer);
 void llvm_emit_function_body(GenContext *c, Decl *decl);
+void llvm_stats_record_function(Decl *decl, int instructions, double ir_gen_time);
 void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs);
 BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *ref_expr, Expr *expr, LLVMValueRef optional, bool is_init);
 INLINE void llvm_emit_exprid(GenContext *c, BEValue *value, ExprId expr);
@@ -572,7 +602,6 @@ INLINE void llvm_emit_statement_chain(GenContext *c, AstId current);
 void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref, ConstInitializer *initializer);
 INLINE bool llvm_emit_rvalue_id_in_block(GenContext *c, BEValue *value, ExprId expr_id) { return llvm_emit_rvalue_in_block(c, value, exprptr(expr_id)); }
 
-LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl);
 LLVMValueRef llvm_emit_call_intrinsic(GenContext *c, unsigned intrinsic, LLVMTypeRef *types, int type_count, LLVMValueRef *values, int arg_count);
 void llvm_emit_local_var_alloca(GenContext *c, Decl *decl);
 void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value);
@@ -598,9 +627,11 @@ LLVMMetadataRef llvm_get_debug_file(GenContext *c, FileId file_id);
 	c__->debug.block_stack = &new_scope; } } while (0)
 #define DEBUG_POP_LEXICAL_SCOPE(c__) do { c__->debug.block_stack = old_scope; } while (0)
 INLINE bool llvm_use_debug(GenContext *context);
+INLINE bool llvm_use_debug_variables(GenContext *context);
 DebugScope llvm_debug_create_lexical_scope(GenContext *context, SourceLocId location);
 LLVMMetadataRef llvm_debug_current_scope(GenContext *context);
 void llvm_emit_debug_function(GenContext *c, Decl *decl);
+void llvm_emit_debug_artificial_function(GenContext *c, LLVMValueRef function);
 void llvm_emit_debug_location(GenContext *c, SourceLocId location);
 LLVMMetadataRef llvm_create_debug_location(GenContext *c, SourceLocId location);
 void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, int index, LLVMMetadataRef scope);
@@ -618,7 +649,6 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *var);
 
 LLVMAtomicOrdering llvm_atomic_ordering(Atomicity atomicity);
 
-bool module_should_weaken(Module *module);
 
 // Implementations
 

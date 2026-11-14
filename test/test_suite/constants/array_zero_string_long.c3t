@@ -11,11 +11,11 @@ fn int main()
 
 /* #expect: test.ll
 
-@.str = private unnamed_addr constant <{ [5 x i8], [5 x i8] }> <{ [5 x i8] c"abcd\00", [5 x i8] zeroinitializer }>, align 1
+@.str = private unnamed_addr constant [11 x i8] c"abcd\00\00\00\00\00\00\00", align 1
 
 define i32 @main() #0 {
 entry:
   %x = alloca [10 x i8], align 1
-  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %x, ptr align 1 @.str, i32 10, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 1 %x, ptr align 1 @.str, i64 10, i1 false)
   ret i32 0
 }

@@ -20,7 +20,7 @@ void yyerror(YYLTYPE * yylloc_param , yyscan_t yyscanner, const char *yymsgp);
 %token AND_OP OR_OP MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN ADD_ASSIGN
 %token SUB_ASSIGN SHL_ASSIGN SHR_ASSIGN AND_ASSIGN
 %token XOR_ASSIGN OR_ASSIGN VAR NUL ELVIS NEXTCASE
-%token MODULE IMPORT TYPEDEF ATTRDEF FAULTDEF EXTERN
+%token MODULE IMPORT TYPEDEF ATTRMACRO EXCUSE EXTERN
 %token CHAR SHORT INT LONG FLOAT DOUBLE CONST VOID USZ SZ UPTR IPTR ANY
 %token ICHAR USHORT UINT ULONG BOOL INT128 UINT128 FLOAT16 FLOAT128 BFLOAT16
 %token TYPEID BITSTRUCT STATIC BANGBANG AT_CONST_IDENT HASH_TYPE_IDENT
@@ -31,7 +31,7 @@ void yyerror(YYLTYPE * yylloc_param , yyscan_t yyscanner, const char *yymsgp);
 %token FN FAULT MACRO CT_IF CT_ENDIF CT_ELSE CT_SWITCH CT_CASE CT_DEFAULT CT_FOR CT_FOREACH CT_ENDFOREACH
 %token CT_ENDFOR CT_ENDSWITCH BUILTIN IMPLIES CT_ECHO CT_ASSERT CT_EVALTYPE CT_VATYPE
 %token TRY CATCH SCOPE DEFER LVEC RVEC OPTELSE CT_TYPEFROM CT_TYPEOF TLOCAL
-%token CT_VASPLAT INLINE DISTINCT CT_VACOUNT CT_VAARG
+%token CT_VASPLAT INLINE CT_VACOUNT CT_VAARG
 %token CT_SIZEOF CT_STRINGIFY CT_FEATURE
 %token CT_REFLECT CT_EVAL CT_DEFINED ASSERT CT_EXPAND
 %token ASM CHAR_LITERAL REAL TRUE FALSE CT_CONST_IDENT
@@ -85,7 +85,7 @@ top_level_no_module
 
 top_level_decl
 	: opt_contract alias_declaration
-	| opt_contract attrdef_declaration
+	| opt_contract attrmacro_declaration
 	| opt_contract EXTERN func_definition
 	| opt_contract EXTERN const_declaration
 	| opt_contract EXTERN global_declaration
@@ -98,7 +98,7 @@ top_level_decl
 	| import_decl
 	| const_declaration
 	| global_declaration
-	| faultdef_declaration
+	| excuse_declaration
 	| typedef_declaration
 	| struct_declaration
 	| bitstruct_declaration
@@ -125,11 +125,11 @@ func_typedef
 	: FN optional_type fn_parameter_list
 	;
 
-attrdef_declaration
-	: ATTRDEF attrdef_def ';'
+attrmacro_declaration
+	: ATTRMACRO attrmacro_def ';'
 	;
 
-attrdef_def
+attrmacro_def
 	: AT_TYPE_IDENT '(' parameters ')' opt_attributes opt_attr_def_body
 	| AT_TYPE_IDENT opt_attributes opt_attr_def_body
 	;
@@ -202,8 +202,9 @@ global_declaration
 	| global_storage optional_type IDENT opt_attributes '=' expr ';'
 	;
 
-faultdef_declaration
-	: FAULTDEF faults ';'
+excuse_declaration
+	: EXCUSE faults ';'
+	| EXCUSE '{' faults '}'
 	;
 
 faults

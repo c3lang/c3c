@@ -210,6 +210,13 @@ run_dynlib_tests() {
         ./multi
     fi
 
+    if [[ "$OS_MODE" == "mac" ]]; then
+        local DL_DIR="$ROOT_DIR/resources/examples/dynlib-test"
+        run_c3c -vv dynamic-lib "$DL_DIR/linked_a.c3" "$DL_DIR/linked_foo.c3" -o linked_a
+        run_c3c -vv dynamic-lib "$DL_DIR/linked_b.c3" "$DL_DIR/linked_foo.c3" -o linked_b
+        run_c3c -vv compile-run "$DL_DIR/linked_main.c3" "$DL_DIR/linked_foo.c3" -l linked_a.dylib -l linked_b.dylib
+    fi
+
     if [[ "$OS_MODE" == "windows" ]]; then
         run_c3c -vv compile-run "$ROOT_DIR/resources/examples/dynlib-test/test.c3" -l "add.lib"
     elif [[ "$OS_MODE" == "mac" ]]; then
@@ -256,6 +263,27 @@ run_staticlib_tests() {
             run_c3c compile-run "$ROOT_DIR/resources/examples/staticlib-test/test.c3" -L . -l add
         fi
     fi
+}
+
+run_sourcelib_tests() {
+    local MY_WORK_DIR="$WORK_DIR/sourcelib"
+    mkdir -p "$MY_WORK_DIR"
+
+    echo "--- Running Source Lib Tests ---"
+    cd "$ROOT_DIR/resources/examples/sourcelib-test"
+
+    # Build the library from a project target, first compressed, then as a directory replacing the file.
+    for flags in "" "--no-compress"; do
+        run_c3c build sourcelib $flags
+        if [[ "$OS_MODE" == "ios" ]]; then
+            sim_run "$ROOT_DIR/resources/examples/sourcelib-test/test.c3" --libdir "$MY_WORK_DIR" --lib sourcelib
+        else
+            run_c3c compile-run "$ROOT_DIR/resources/examples/sourcelib-test/test.c3" --libdir "$MY_WORK_DIR" --lib sourcelib
+        fi
+    done
+
+    # Build the library without a project.
+    run_c3c source-lib src/sourcelib.c3 src/extra/double.c3 -o standalone
 }
 
 run_testproject() {
@@ -536,6 +564,7 @@ run_parallel cli run_cli_tests
 run_parallel dynlib run_dynlib_tests
 run_parallel staticlib run_staticlib_tests
 run_parallel testproject run_testproject
+run_parallel sourcelib run_sourcelib_tests
 run_parallel wasm run_wasm_compile
 run_parallel bsd_cross run_bsd_cross_compile
 run_parallel http run_http_server_tests

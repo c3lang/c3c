@@ -9,12 +9,10 @@
 typedef struct SymtabEntry_
 {
 	struct SymtabEntry_* next;
-	const char *value;
-	uint16_t key_len;
-	TokenType type : 16;
-	uint32_t hash;
-	uint32_t index;
 	const char* symbol;
+	uint32_t index;
+	uint32_t key_len;
+	TokenType type;
 } SymtabEntry;
 
 typedef struct
@@ -153,6 +151,7 @@ void symtab_init(uint32_t capacity)
 	builtin_defines[BUILTIN_DEF_LINE] = KW_DEF("LINE");
 	builtin_defines[BUILTIN_DEF_LINE_RAW] = KW_DEF("LINE_RAW");
 	builtin_defines[BUILTIN_DEF_MODULE] = KW_DEF("MODULE");
+	builtin_defines[BUILTIN_DEF_PANIC_FN] = KW_DEF("PANIC_FN");
 	builtin_defines[BUILTIN_DEF_TIME] = KW_DEF("TIME");
 	builtin_defines[BUILTIN_DEF_BENCHMARK_NAMES] = KW_DEF("BENCHMARK_NAMES");
 	builtin_defines[BUILTIN_DEF_BENCHMARK_FNS] = KW_DEF("BENCHMARK_FNS");
@@ -403,6 +402,7 @@ void symtab_init(uint32_t capacity)
 	kw_at_return = KW_DEF("@return");
 	attribute_list[ATTRIBUTE_ALIGN] = kw_at_align;
 	attribute_list[ATTRIBUTE_ALLOW_DEPRECATED] = KW_DEF("@allow_deprecated");
+	attribute_list[ATTRIBUTE_ASMNAME] = KW_DEF("@asmname");
 	attribute_list[ATTRIBUTE_BENCHMARK] = KW_DEF("@benchmark");
 	attribute_list[ATTRIBUTE_BIGENDIAN] = KW_DEF("@bigendian");
 	attribute_list[ATTRIBUTE_BUILTIN] = KW_DEF("@builtin");
@@ -621,7 +621,7 @@ void htable_init(HTable *table, uint32_t initial_size)
 	ASSERT(initial_size && "Size must be larger than 0");
 	size_t size = next_highest_power_of_2(initial_size);
 
-	size_t mem_size = initial_size * sizeof(HTEntry);
+	size_t mem_size = size * sizeof(HTEntry *);
 	table->entries = calloc_arena(mem_size);
 
 	table->mask = size - 1;
@@ -680,7 +680,7 @@ void pathtable_init(PathTable *table, uint32_t initial_size)
 	ASSERT(initial_size && "Size must be larger than 0");
 	size_t size = next_highest_power_of_2(initial_size);
 
-	size_t mem_size = initial_size * sizeof(PathTableEntry);
+	size_t mem_size = size * sizeof(PathTableEntry *);
 	table->entries = calloc_arena(mem_size);
 
 	table->mask = size - 1;
@@ -697,7 +697,7 @@ void pathtable_set(PathTable *table, Decl *value)
 	PathTableEntry *entry = *entry_ref;
 	if (!entry)
 	{
-		entry = CALLOCS(HTEntry);
+		entry = CALLOCS(PathTableEntry);
 		entry->short_path = short_path;
 		entry->name = name;
 		entry->value = value;
@@ -715,7 +715,7 @@ void pathtable_set(PathTable *table, Decl *value)
 		entry = entry->next;
 	} while (entry);
 
-	entry = CALLOCS(HTEntry);
+	entry = CALLOCS(PathTableEntry);
 	entry->short_path = short_path;
 	entry->name = name;
 	entry->value = value;

@@ -81,12 +81,12 @@ enum Enum : int
 
 fn void test11()
 {
-	int a = Enum.A; // #error: It is not possible to cast
+	int a = Enum.A; // #error: It is not possible to implicitly cast
 }
 
 fn void test112()
 {
-	ichar b = Enum.B; // #error: It is not possible to cast
+	ichar b = Enum.B; // #error: It is not possible to implicitly cast
 }
 
 fn void test12()

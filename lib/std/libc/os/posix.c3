@@ -8,13 +8,18 @@ extern fn CInt shutdown(Fd sockfd, CInt how);
 extern fn sz recv(Fd socket, void *buffer, usz length, CInt flags);
 extern fn sz send(Fd socket, void *buffer, usz length, CInt flags);
 
-const CInt O_RDONLY = 0x0000;
-const CInt O_WRONLY = 0x0001;
-const CInt O_RDWR   = 0x0002;
-const CInt O_ASYNC  = $feat(LINUX) ? 0x2000 : 0x0040;
-const CInt O_CREAT  = $feat(LINUX) ? 0x0040 : 0x0200;
-const CInt O_EXCL   = $feat(LINUX) ? 0x0080 : 0x0800;
-const CInt O_TRUNC  = $feat(LINUX) ? 0x0200 : 0x0400;
+const CInt O_RDONLY  = 0x0000;
+const CInt O_WRONLY  = 0x0001;
+const CInt O_RDWR    = 0x0002;
+const CInt O_ACCMODE = 0x0003;
+const CInt O_ASYNC   = $feat(LINUX) ? 0x2000 : 0x0040;
+const CInt O_CREAT   = $feat(LINUX) ? 0x0040 : 0x0200;
+const CInt O_EXCL    = $feat(LINUX) ? 0x0080 : 0x0800;
+const CInt O_TRUNC   = $feat(LINUX) ? 0x0200 : 0x0400;
+
+const CInt F_GETFL = 3;
+
+extern fn CInt fcntl(Fd fd, CInt cmd, ...);
 
 extern fn int shm_open(ZString name, int oflag, int mode);
 extern fn int shm_unlink(ZString name);

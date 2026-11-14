@@ -1,6 +1,5 @@
 module std::core::mem::mempool;
-import std::core::mem, std::core::mem::allocator, std::math;
-import std::core::sanitizer::asan;
+import std::math;
 
 <* Sentinel `capacity` value meaning "pick a capacity automatically from the OS page size". *>
 const INITIAL_CAPACITY = 0;

@@ -170,7 +170,7 @@ entry:
 define double @test.f_ret_double_s() #0 {
 entry:
   %literal = alloca %Double_s, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %literal, ptr align 8 @.__const, i64 8, i1 false)
   %0 = load double, ptr %literal, align 8
   ret double %0
 }
@@ -189,7 +189,7 @@ entry:
 define { double, double } @test.f_ret_double_double_s() #0 {
 entry:
   %literal = alloca %Double_double_s, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.1, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %literal, ptr align 8 @.__const.1, i64 16, i1 false)
   %0 = load double, ptr %literal, align 8
   %ptradd = getelementptr inbounds i8, ptr %literal, i64 8
   %1 = load double, ptr %ptradd, align 8
@@ -212,7 +212,7 @@ entry:
 define { double, float } @test.f_ret_double_float_s() #0 {
 entry:
   %literal = alloca %Double_float_s, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.2, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %literal, ptr align 8 @.__const.2, i64 16, i1 false)
   %0 = load double, ptr %literal, align 8
   %ptradd = getelementptr inbounds i8, ptr %literal, i64 8
   %1 = load float, ptr %ptradd, align 8
@@ -243,7 +243,7 @@ entry:
 define { double, i8 } @test.f_ret_double_int8_s() #0 {
 entry:
   %literal = alloca %Double_int8_s, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.3, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %literal, ptr align 8 @.__const.3, i64 16, i1 false)
   %0 = load double, ptr %literal, align 8
   %ptradd = getelementptr inbounds i8, ptr %literal, i64 8
   %1 = load i8, ptr %ptradd, align 8
@@ -266,7 +266,7 @@ entry:
 define { double, i8 } @test.f_ret_double_uint8_s() #0 {
 entry:
   %literal = alloca %Double_uint8_s, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.4, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %literal, ptr align 8 @.__const.4, i64 16, i1 false)
   %0 = load double, ptr %literal, align 8
   %ptradd = getelementptr inbounds i8, ptr %literal, i64 8
   %1 = load i8, ptr %ptradd, align 8
@@ -289,7 +289,7 @@ entry:
 define { double, i32 } @test.f_ret_double_int32_s() #0 {
 entry:
   %literal = alloca %Double_int32_s, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.5, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %literal, ptr align 8 @.__const.5, i64 16, i1 false)
   %0 = load double, ptr %literal, align 8
   %ptradd = getelementptr inbounds i8, ptr %literal, i64 8
   %1 = load i32, ptr %ptradd, align 8
@@ -312,7 +312,7 @@ entry:
 define { double, i64 } @test.f_ret_double_int64_s() #0 {
 entry:
   %literal = alloca %Double_int64_s, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.6, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %literal, ptr align 8 @.__const.6, i64 16, i1 false)
   %0 = load double, ptr %literal, align 8
   %ptradd = getelementptr inbounds i8, ptr %literal, i64 8
   %1 = load i64, ptr %ptradd, align 8
@@ -349,7 +349,7 @@ entry:
 define double @test.f_ret_doublearr1_s() #0 {
 entry:
   %literal = alloca %Doublearr1_s, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.7, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %literal, ptr align 8 @.__const.7, i64 8, i1 false)
   %0 = load double, ptr %literal, align 8
   ret double %0
 }
@@ -368,7 +368,7 @@ entry:
 define { double, double } @test.f_ret_doublearr2_s() #0 {
 entry:
   %literal = alloca %Doublearr2_s, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.8, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %literal, ptr align 8 @.__const.8, i64 16, i1 false)
   %0 = load double, ptr %literal, align 8
   %ptradd = getelementptr inbounds i8, ptr %literal, i64 8
   %1 = load double, ptr %ptradd, align 8
@@ -391,7 +391,7 @@ entry:
 define { double, double } @test.f_ret_doublearr2_tricky1_s() #0 {
 entry:
   %literal = alloca %Doublearr2_tricky1_s, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.9, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %literal, ptr align 8 @.__const.9, i64 16, i1 false)
   %0 = load double, ptr %literal, align 8
   %ptradd = getelementptr inbounds i8, ptr %literal, i64 8
   %1 = load double, ptr %ptradd, align 8
@@ -410,8 +410,8 @@ entry:
 define void @test.f_ret_int_double_int_s(ptr noalias sret(%Int_double_int_s) align 8 %0) #0 {
 entry:
   %literal = alloca %Int_double_int_s, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.10, i32 24, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %0, ptr align 8 %literal, i32 24, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %literal, ptr align 8 @.__const.10, i64 24, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %0, ptr align 8 %literal, i64 24, i1 false)
   ret void
 }
 
@@ -427,7 +427,7 @@ entry:
 define [2 x i64] @test.f_ret_char_char_double_s() #0 {
 entry:
   %literal = alloca %Char_char_double_s, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.11, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %literal, ptr align 8 @.__const.11, i64 16, i1 false)
   %0 = load [2 x i64], ptr %literal, align 8
   ret [2 x i64] %0
 }
@@ -444,7 +444,7 @@ entry:
 define i64 @test.f_ret_double_u() #0 {
 entry:
   %literal = alloca %Double_u, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.12, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %literal, ptr align 8 @.__const.12, i64 8, i1 false)
   %0 = load i64, ptr %literal, align 8
   ret i64 %0
 }

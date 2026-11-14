@@ -28,7 +28,7 @@ static inline bool sema_defer_has_try_or_catch(AstId defer_top, AstId defer_bott
 static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *statement);
 static inline bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement);
 static inline bool sema_analyse_for_cond(SemaContext *context, ExprId *cond_ref, bool *infinite);
-static inline bool assert_create_from_contract(SemaContext *context, Expr *directive, AstId **asserts, SourceLocId evaluation_location, SourceLocId* arg_loc_map);
+static inline bool assert_create_from_contract(SemaContext *context, Expr *directive, bool is_ensure, AstId **asserts, SourceLocId evaluation_location, SourceLocId* arg_loc_map);
 static bool sema_analyse_asm_string_stmt(SemaContext *context, Ast *stmt);
 static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond);
 static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr);
@@ -211,10 +211,10 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 			if (!message_expr)
 			{
 				scratch_buffer_clear();
-				scratch_buffer_append("Assert \"");
 				loc_to_scratch(expr->loc);
-				scratch_buffer_append("\" failed.");
-				message_expr = expr_new_const_string(expr->loc, scratch_buffer_copy());
+				statement->assert_stmt.panic_function = PANIC_FN_ASSERT;
+				statement->assert_stmt.panic_text[0] = scratch_buffer_copy();
+				message_expr = expr_new_const_string(expr->loc, str_printf(panic_fn_desc[PANIC_FN_ASSERT].format, statement->assert_stmt.panic_text[0]));
 				statement->assert_stmt.message = exprid(message_expr);
 			}
 			return true;
@@ -434,13 +434,26 @@ static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond)
 
 // --- Sema analyse stmts
 
+static PanicFunction contract_panic_function(Expr *contract, bool is_ensure)
+{
+	if (contract->contract_expr.comment) return is_ensure ? PANIC_FN_ENSURE_MESSAGE : PANIC_FN_REQUIRE_MESSAGE;
+	return is_ensure ? PANIC_FN_ENSURE : PANIC_FN_REQUIRE;
+}
+
+const char *contract_to_message(Expr *contract, bool is_ensure)
+{
+	return str_printf(panic_fn_desc[contract_panic_function(contract, is_ensure)].format, contract->contract_expr.expr_string, contract->contract_expr.comment);
+}
+
 /**
  * Turn a "require" or "ensure" into a contract in the callee.
  */
-static inline bool assert_create_from_contract(SemaContext *context, Expr *directive, AstId **asserts, SourceLocId evaluation_location, SourceLocId* arg_loc_map)
+static inline bool assert_create_from_contract(SemaContext *context, Expr *directive, bool is_ensure, AstId **asserts, SourceLocId evaluation_location, SourceLocId* arg_loc_map)
 {
 	Expr *declexpr = directive->contract_expr.decl_exprs;
 	ASSERT(declexpr->expr_kind == EXPR_EXPRESSION_LIST);
+	const char *comment = contract_to_message(directive, is_ensure);
+	PanicFunction panic_function = contract_panic_function(directive, is_ensure);
 	FOREACH(Expr *, expr, declexpr->expression_list)
 	{
 		if (expr->expr_kind == EXPR_DECL) RETURN_SEMA_ERROR(expr, "Only expressions are allowed in contracts.");
@@ -451,12 +464,14 @@ static inline bool assert_create_from_contract(SemaContext *context, Expr *direc
 		{
 			expr->loc = arg_loc_map[directive->contract_expr.param.index];
 		}
-		const char *comment = directive->contract_expr.comment;
-		if (!comment) comment = directive->contract_expr.expr_string;
 		if (expr_is_const_bool(expr))
 		{
 			if (expr->const_expr.b) continue;
+			// With an evaluation location the error is at the call site, outside any generic instance.
+			Decl *generic_instance = context->generic_instance;
+			if (evaluation_location) context->generic_instance = NULL;
 			sema_error_at(context, expr->loc, "%s", comment);
+			context->generic_instance = generic_instance;
 			return false;
 		}
 
@@ -465,6 +480,9 @@ static inline bool assert_create_from_contract(SemaContext *context, Expr *direc
 		assert->assert_stmt.expr = exprid(expr);
 		Expr *comment_expr = expr_new_const_string(assert->loc, comment);
 		assert->assert_stmt.message = exprid(comment_expr);
+		assert->assert_stmt.panic_function = panic_function;
+		assert->assert_stmt.panic_text[0] = directive->contract_expr.expr_string;
+		assert->assert_stmt.panic_text[1] = directive->contract_expr.comment;
 		ast_append(asserts, assert);
 	}
 	return true;
@@ -584,9 +602,7 @@ static bool sema_analyse_macro_constant_ensures(SemaContext *context, Expr *ret_
 				// Skipping non-const.
 				if (result == COND_MISSING) continue;
 				if (result == COND_TRUE) continue;
-				const char *comment = directive->contract_expr.comment;
-				if (!comment) comment = directive->contract_expr.expr_string;
-				SEMA_ERROR(ret_expr, "%s", comment);
+				SEMA_ERROR(ret_expr, "%s", contract_to_message(directive, true));
 				success = false;
 				goto END;
 			}
@@ -788,7 +804,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 			bool success;
 			SCOPE_START_WITH_FLAGS(SCOPE_ENSURE, statement->loc);
 			{
-				success = assert_create_from_contract(context, copy_expr_single(ensure), &append_id, statement->loc, NULL);
+				success = assert_create_from_contract(context, copy_expr_single(ensure), true, &append_id, statement->loc, NULL);
 			}
 			SCOPE_END;
 			if (!success) return false;
@@ -1405,7 +1421,7 @@ static inline bool sema_analyse_for_cond(SemaContext *context, ExprId *cond_ref,
 	// If this is const true, then set this to infinite and remove the expression.
 	if (result == COND_TRUE)
 	{
-		if (cond->expr_kind != EXPR_COND || vec_size(cond->cond_expr) == 1)
+		if (cond->expr_kind != EXPR_COND || (vec_size(cond->cond_expr) == 1 && cond->cond_expr[0]->expr_kind != EXPR_DECL))
 		{
 			cond = NULL;
 		}
@@ -1876,7 +1892,7 @@ SKIP_OVERLOAD:;
 	if (is_reverse)
 	{
 		// Create __idx$ > 0
-		Expr *rhs = expr_new_const_int(enumerator->loc, index_type, 0);
+		Expr *rhs = expr_new_const_int(enumerator->loc, actual_index_type, 0);
 		cond = expr_new_binary(idx_decl->loc, expr_variable(idx_decl), rhs, BINARYOP_GT);
 
 		// Create --__idx$
@@ -2035,6 +2051,16 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 				SEMA_ERROR(else_body,
 						   "An 'else' must use '{ }' even around a single statement.");
 				success = false;
+			}
+			if (success && else_body->ast_kind == AST_IF_STMT)
+			{
+				// Without an 'else' of its own the inner if-statement would accept a single statement.
+				Ast *else_then = astptr(else_body->if_stmt.then_body);
+				if (ast_ok(else_then) && else_then->ast_kind != AST_COMPOUND_STMT)
+				{
+					SEMA_ERROR(else_then, "An 'else if' must use '{ }' even around a single statement.");
+					success = false;
+				}
 			}
 		}
 		if (!sema_check_for_dead_code(context, then))
@@ -2415,6 +2441,10 @@ static inline bool sema_analyse_compound_statement_no_scope(SemaContext *context
 static inline bool sema_check_type_case(SemaContext *context, Ast *case_stmt, Ast **cases, int index)
 {
 	Expr *expr = exprptr(case_stmt->case_stmt.expr);
+	if (case_stmt->case_stmt.to_expr)
+	{
+		RETURN_SEMA_ERROR(exprptr(case_stmt->case_stmt.to_expr), "Case ranges are not allowed when switching on a typeid.");
+	}
 	if (!sema_analyse_expr_rhs(context, type_typeid, expr, false, NULL, false)) return false;
 
 	if (sema_cast_const(expr))
@@ -2449,12 +2479,12 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 
 	bool is_range = to_expr != NULL;
 	bool first_is_const = sema_cast_const(expr) && (expr_is_const_int(expr) || expr_is_const_enum(expr));
-	(*actual_cases_ref)++;
 	if (!is_range && !first_is_const)
 	{
 		*if_chained = true;
 		return true;
 	}
+	(*actual_cases_ref)++;
 	if (is_range)
 	{
 		bool second_is_const = sema_cast_const(to_expr) && (expr_is_const_int(to_expr) || expr_is_const_enum(to_expr));
@@ -2649,6 +2679,14 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 		POP_NEXT();
 	}
 
+	if (success && if_chain && default_case && cases[case_count - 1] != default_case)
+	{
+		int i = 0;
+		while (cases[i] != default_case) i++;
+		SEMA_ERROR(cases[i + 1], "A 'case' may not follow 'default' in this switch: its cases are evaluated in order, so this case would never be evaluated.");
+		SEMA_NOTE(default_case, "The 'default' is here.");
+		return false;
+	}
 	if (!exhaustive && is_enum_switch) exhaustive = actual_enum_cases == vec_size(enum_values);
 	bool all_jump_end = exhaustive;
 	for (int i = 0; i < case_count; i++)
@@ -2679,6 +2717,8 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 		max_ranged = false;
 		if (low.type != TYPE_POISONED)
 		{
+			high.type = TYPE_I128;
+			low.type = TYPE_I128;
 			Int range = int_sub(high, low);
 			Int max = { .i.low = compiler.build.switchjump_max_size, .type = range.type };
 			if (int_comp(range, max, BINARYOP_GE))
@@ -2716,7 +2756,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 			is_type = true;
 			FALLTHROUGH;
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case ALL_INTS:
 		case ALL_FLOATS:
 		case TYPE_BOOL:
@@ -2749,7 +2789,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 				Expr *expr = exprptr(stmt->case_stmt.expr);
 				assert(expr);
 				Expr *to_expr = exprptrzero(stmt->case_stmt.to_expr);
-				if (to_expr && !type_is_integer(type))
+				if (to_expr && !type_is_integer(type_flatten(type)))
 				{
 					SEMA_ERROR(to_expr, "$case ranges are only allowed for integers.");
 					goto FAILED;
@@ -2913,19 +2953,18 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 			}
 			else
 			{
-				// Empty list
-				if (init_type == CONST_INIT_ZERO)
+				count = sema_len_from_const(collection);
+				if (count <= 0)
 				{
+					if (count < 0 && init_type != CONST_INIT_ZERO)
+					{
+						SEMA_ERROR(collection, "Only regular arrays are allowed here.");
+						goto FAILED;
+					}
 					sema_context_pop_ct_stack(context, ct_context);
 					statement->ast_kind = AST_NOP_STMT;
 					return true;
 				}
-				if (init_type != CONST_INIT_ARRAY_FULL)
-				{
-					SEMA_ERROR(collection, "Only regular arrays are allowed here.");
-					goto FAILED;
-				}
-				count = vec_size(initializer->init_array_full);
 			}
 			break;
 		case CONST_UNTYPED_LIST:
@@ -3396,7 +3435,7 @@ bool sema_analyse_contracts(SemaContext *context, Decl *contract, Expr **require
 
 	FOREACH(Expr *, require, requires)
 	{
-		if (!assert_create_from_contract(context, require, asserts, call_loc, arg_loc_map)) return false;
+		if (!assert_create_from_contract(context, require, false, asserts, call_loc, arg_loc_map)) return false;
 	}
 	if (!has_ensures) return true;
 	FOREACH(Expr *, ensure, ensures)

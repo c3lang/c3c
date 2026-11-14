@@ -117,10 +117,12 @@ void llvm_emit_debug_function(GenContext *c, Decl *decl)
 	ASSERT(c->debug.file.debug_file);
 	LLVMMetadataRef debug_type = llvm_get_debug_type(c, decl->type);
 	scratch_buffer_set_extern_decl_name(decl, true);
+	const char *linkage_name = scratch_buffer_to_string();
+	if (linkage_name[0] == '\x01') linkage_name++;
 	c->debug.function = LLVMDIBuilderCreateFunction(c->debug.builder,
 													c->debug.file.debug_file,
 													decl->name, strlen(decl->name),
-													scratch_buffer_to_string(), scratch_buffer.len,
+													linkage_name, strlen(linkage_name),
 													c->debug.file.debug_file,
 													row,
 													debug_type,
@@ -131,6 +133,18 @@ void llvm_emit_debug_function(GenContext *c, Decl *decl)
 													compiler.build.optlevel != OPTIMIZATION_NONE);
 	LLVMSetSubprogram(decl->backend_ref, c->debug.function);
 
+}
+
+void llvm_emit_debug_artificial_function(GenContext *c, LLVMValueRef function)
+{
+	size_t len;
+	const char *name = LLVMGetValueName2(function, &len);
+	LLVMMetadataRef file = c->debug.file.debug_file;
+	LLVMMetadataRef debug_type = LLVMDIBuilderCreateSubroutineType(c->debug.builder, file, NULL, 0, LLVMDIFlagZero);
+	c->debug.function = LLVMDIBuilderCreateFunction(c->debug.builder, file, name, len, name, len, file, 0, debug_type,
+	                                                false, true, 0, LLVMDIFlagArtificial | LLVMDIFlagNoReturn, // NOLINT
+	                                                compiler.build.optlevel != OPTIMIZATION_NONE);
+	LLVMSetSubprogram(function, c->debug.function);
 }
 
 static void llvm_emit_debug_value(GenContext *c, LLVMValueRef value, LLVMMetadataRef debug_val, unsigned row, unsigned col, LLVMMetadataRef scope)
@@ -450,7 +464,7 @@ static LLVMMetadataRef llvm_debug_structlike_type(GenContext *c, Type *type, LLV
 	{
 		scratch_buffer_set_extern_decl_name(decl, true);
 		extname = scratch_buffer_to_string();
-		extname_len = (int)scratch_buffer.len;
+		extname_len = scratch_buffer_len();
 	}
 	if (type->type_kind == TYPE_UNION)
 	{
@@ -670,7 +684,7 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 			return type->backend_debug_type = llvm_debug_pointer_type(c, type);
 		case TYPE_ENUM:
 			return type->backend_debug_type = llvm_debug_enum_type(c, type, scope);
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 			return type->backend_debug_type = llvm_debug_raw_enum_type(c, type, scope);
 		case TYPE_FUNC_RAW:
 			return type->backend_debug_type = llvm_debug_func_type(c, type);

@@ -10,6 +10,19 @@ fn void test_int_mod() @test
 	assert((int[<2>]){ 10, 99 } / { 3, 5 } == { 3, 19 });
 }
 
+fn void test_float_mod() @test
+{
+	float[<2>] v = { 7.5, -3.5 };
+	float[<2>] w = { 2, 2 };
+	assert(v % w == { 1.5, -1.5 });
+	assert(v % 2 == { 1.5, -1.5 });
+	v %= 2;
+	assert(v == { 1.5, -1.5 });
+	double[<2>] d = { 7.5, 9 };
+	d %= { 2, 4 };
+	assert(d == { 1.5, 1 });
+}
+
 fn void test_swizzle_assign() @test
 {
 	int[<3>] abc;
@@ -139,4 +152,147 @@ fn void testi() @test
     assert(w == { 0, -1, 0, 0 });
     w = y.comp_ne(z);
     assert(w == { -1, 0, -1, -1 });
+}
+
+fn void test_unsigned_vector_div() @test
+{
+	uint[<4>] a = { 1, 0x8000_0000, 0xFFFF_FFFF, 5 };
+	assert(a / 3 == { 0, 0x2AAA_AAAA, 0x5555_5555, 1 });
+	assert(a % 3 == { 1, 2, 0, 2 });
+	assert(a >> 4 == { 0, 0x0800_0000, 0x0FFF_FFFF, 0 });
+	a /= 3;
+	assert(a == { 0, 0x2AAA_AAAA, 0x5555_5555, 1 });
+	char[<2>] c = { 200, 255 };
+	assert(c / 2 == { 100, 127 });
+	assert(c >> 1 == { 100, 127 });
+}
+
+fn void test_vector_index_from_end() @test
+{
+	int[<4>] v = { 1, 2, 3, 4 };
+	int i = 1;
+	v[^i] = 70;
+	assert(v == { 1, 2, 3, 70 });
+	i = 4;
+	v[^i] += 10;
+	assert(v == { 11, 2, 3, 70 });
+	i = 2;
+	v[^i]++;
+	assert(v == { 11, 2, 4, 70 });
+}
+
+fn int write_last(int[<4>]* v)
+{
+	(*v)[3] = 99;
+	return 5;
+}
+
+fn int write_first_index(int[<4>]* v)
+{
+	(*v)[0] = 42;
+	return 1;
+}
+
+fn int[<2>] write_last2(int[<4>]* v)
+{
+	(*v)[3] = 77;
+	return { 5, 6 };
+}
+
+fn void test_vector_assign_side_effects() @test
+{
+	int[<4>] v = { 1, 2, 3, 4 };
+	v[0] = write_last(&v);
+	assert(v == { 5, 2, 3, 99 });
+	v = { 1, 2, 3, 4 };
+	v[1] += write_last(&v);
+	assert(v == { 1, 7, 3, 99 });
+	v = { 1, 2, 3, 4 };
+	v[write_first_index(&v)] = 9;
+	assert(v == { 42, 9, 3, 4 });
+	v = { 1, 2, 3, 4 };
+	v[write_first_index(&v)]++;
+	assert(v == { 42, 3, 3, 4 });
+	v = { 1, 2, 3, 4 };
+	v.xy = write_last2(&v);
+	assert(v == { 5, 6, 3, 77 });
+	v = { 1, 2, 3, 4 };
+	v.xy += write_last2(&v);
+	assert(v == { 6, 8, 3, 77 });
+}
+
+fn void test_swizzle_inc_dec() @test
+{
+	int[<3>] f = { 1, 2, 3 };
+	f.yz++;
+	assert(f == { 1, 3, 4 });
+	++f.xz;
+	assert(f == { 2, 3, 5 });
+	f.zx--;
+	assert(f == { 1, 3, 4 });
+	int[<2>] r = f.xy++;
+	assert(r == { 1, 3 });
+	assert(f == { 2, 4, 4 });
+	r = --f.yx;
+	assert(r == { 3, 1 });
+	assert(f == { 1, 3, 4 });
+	float[<2>] g = { 1.5, 2.5 };
+	g.yx++;
+	assert(g == { 2.5, 3.5 });
+}
+
+struct NotVecHolder
+{
+	bool[<4>] b;
+	int guard;
+}
+
+fn void test_vector_not() @test
+{
+	int[<4>] a = { 1, 0, 5, 0 };
+	bool[<4>] b = !a;
+	assert(b == { false, true, false, true });
+	float[<2>] f = { 0.0f, 2.5f };
+	bool[<2>] nf = !f;
+	assert(nf == { true, false });
+	double[<2>] d = { 3.0, 0.0 };
+	assert(!d == { false, true });
+	long[<2>] l = { 0, 1L << 40 };
+	assert(!l == { true, false });
+	char[<4>] c = { 0, 1, 0, 255 };
+	assert(!c == { true, false, true, false });
+	bool[<4>] bb = { true, false, false, true };
+	assert(!bb == { false, true, true, false });
+	int[<4>] mask = !a;
+	assert(mask == { 0, -1, 0, -1 });
+	NotVecHolder h = { .guard = 0x1234_5678 };
+	h.b = !a;
+	assert(h.b == { false, true, false, true });
+	assert(h.guard == 0x1234_5678);
+}
+
+faultdef NOT_VEC_FAULT;
+
+fn int[<2>]? not_vec_source(bool fail)
+{
+	if (fail) return NOT_VEC_FAULT~;
+	return { 0, 3 };
+}
+
+fn bool[<2>]? bool_vec_source(bool fail)
+{
+	if (fail) return NOT_VEC_FAULT~;
+	return { true, false };
+}
+
+fn void test_vector_not_optional() @test
+{
+	bool[<2>]? r = !not_vec_source(false);
+	assert(r!! == { true, false });
+	r = !not_vec_source(true);
+	assert(@catch(r) == NOT_VEC_FAULT);
+	r = !bool_vec_source(false);
+	assert(r!! == { false, true });
+	r = !bool_vec_source(true);
+	assert(@catch(r) == NOT_VEC_FAULT);
 }

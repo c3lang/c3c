@@ -50,7 +50,7 @@ const float PIN_HEAD_RADIUS  = 0.03f;
 const float PIN_HEIGHT_SCALE = 1.03f;
 const int PIN_SIDES          = 8;
 
-constdef Ui : inline int
+constset Ui : inline int
 {
 	MARGIN      = 20,
 	FONT_SIZE   = 20,

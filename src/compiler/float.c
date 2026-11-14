@@ -168,7 +168,7 @@ Float float_from_string(const char *string, char **error)
 		if (error) *error = err_float_out_of_range;
 		return (Float){ .type = TYPE_POISONED };
 	}
-	char *expected_end = scratch_buffer.str + scratch_buffer.len;
+	char *expected_end = scratch_buffer_end_ptr();
 	if (d == 0 && end != expected_end)
 	{
 		if (error) *error = err_float_format_invalid;
@@ -215,7 +215,10 @@ Float float_from_hex(const char *string, char **error)
 		scratch_buffer_append_char('-');
 		index++;
 	}
-	else if (*index == '+') index++;
+	else if (*index == '+')
+	{
+		index++;
+	}
 	while ((c = *(index++)) && (c >= '0' && c <= '9'))
 	{
 		scratch_buffer_append_char(c);
@@ -232,7 +235,7 @@ Float float_from_hex(const char *string, char **error)
 		if (error) *error = err_float_out_of_range;
 		return (Float){ .type = TYPE_POISONED };
 	}
-	if (d == 0 && end != scratch_buffer.str + scratch_buffer.len)
+	if (d == 0 && end != scratch_buffer_end_ptr())
 	{
 		if (error) *error = err_float_format_invalid;
 		return (Float){ .type = TYPE_POISONED };

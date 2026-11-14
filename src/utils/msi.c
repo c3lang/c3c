@@ -435,7 +435,9 @@ static bool cab_extract_buffer(uint8_t *data, size_t size, const char *out_root,
 					const char *real_path = entry->str;
 					char *norm_path = str_dup(real_path);
 					for (char *p = norm_path; *p; p++)
+					{
 						if (*p == '\\') *p = '/';
+					}
 					char *full_dst = (char *)file_append_path(out_root, norm_path); // NOLINT(readability-suspicious-call-argument)
 					file_create_folders(full_dst);
 					if (files[j].uoffset + files[j].usize <= total_usize)
@@ -482,7 +484,9 @@ static void free_string_table(StringTable *st)
 {
 	if (!st) return;
 	for (uint32_t i = 0; i < st->count; i++)
+	{
 		free(st->strings[i]);
+	}
 	free(st->strings);
 	free(st);
 }
@@ -761,7 +765,9 @@ bool msi_extract(const char *msi_path, const char *out_root, const char *cab_dir
 			pname++;
 		}
 		while (*pname && !isalnum(*pname) && *pname != '_')
+		{
 			pname++;
+		}
 
 		if (strcmp(pname, "File") == 0) t.f_data = ole2_read_stream(ole, streams[i].first_sector, streams[i].size, &t.f_size);
 		else if (strcmp(pname, "Directory") == 0) t.d_data = ole2_read_stream(ole, streams[i].first_sector, streams[i].size, &t.d_size);

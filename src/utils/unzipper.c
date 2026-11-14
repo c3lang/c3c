@@ -356,3 +356,60 @@ const char *zip_file_write(FILE *zip, ZipFile *file, const char *dir, bool overw
 	inflateEnd(&strm);
 	return NULL;
 }
+
+const char *zip_create(const char *zip_path, const ZipEntry *entries, size_t count)
+{
+	mz_zip_archive zip = { .m_archive_size = 0 };
+	if (!mz_zip_writer_init_heap(&zip, 0, 0)) return "Failed to initialize the archive";
+	const char *error = NULL;
+	for (size_t i = 0; i < count; i++)
+	{
+		const ZipEntry *entry = &entries[i];
+		char *file_data = NULL;
+		const char *data = entry->data;
+		size_t size = entry->size;
+		if (entry->file_path)
+		{
+			FILE *f = file_open_read(entry->file_path);
+			if (!f)
+			{
+				error = "Failed to open a file to add to the archive";
+				goto END;
+			}
+			fseek(f, 0, SEEK_END);
+			long file_size = ftell(f);
+			rewind(f); // NOLINT
+			size = file_size > 0 ? (size_t)file_size : 0;
+			data = file_data = cmalloc(size + 1);
+			bool read_ok = fread(file_data, 1, size, f) == size;
+			fclose(f);
+			if (!read_ok) error = "Failed to read a file to add to the archive";
+		}
+		if (!error && !mz_zip_writer_add_mem(&zip, entry->name, data, size, MZ_BEST_COMPRESSION))
+		{
+			error = "Failed to add a file to the archive";
+		}
+		free(file_data);
+		if (error) goto END;
+	}
+	void *buffer = NULL;
+	size_t buffer_size = 0;
+	if (mz_zip_writer_finalize_heap_archive(&zip, &buffer, &buffer_size))
+	{
+		if (file_write_all(zip_path, buffer, buffer_size))
+		{
+			mz_free(buffer);
+			mz_zip_writer_end(&zip);
+			return NULL;
+		}
+		error = "Failed to write the archive";
+		mz_free(buffer);
+	}
+	else
+	{
+		error = "Failed to finalize the archive";
+	}
+END:;
+	mz_zip_writer_end(&zip);
+	return error;
+}

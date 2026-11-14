@@ -2,6 +2,7 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::hash::crc32;
+import std::thread;
 
 struct Crc32
 {
@@ -20,12 +21,7 @@ fn void Crc32.update_byte(&self, char c)
 
 fn void Crc32.update(&self, char[] data)
 {
-	uint result = self.result;
-	foreach (char x : data)
-	{
-		result = (result >> 8) ^ CRC32_TABLE[(result ^ x) & 0xFF];
-	}
-	self.result = result;
+	self.result = update_bytes(self.result, data);
 }
 
 fn uint Crc32.final(&self)
@@ -35,12 +31,67 @@ fn uint Crc32.final(&self)
 
 fn uint hash(char[] data)
 {
-	uint result = ~(uint)(0);
-	foreach (char x : data)
+	return ~update_bytes(~(uint)0, data);
+}
+
+// "Slicing-by-16": CRC32_SLICE[k * 256 + b] is the CRC of byte `b` followed by `k` zero bytes, which allows
+// 16 input bytes to be folded in with independent table lookups instead of one dependent lookup per byte.
+uint[16 * 256] crc32_slice @private;
+
+fn void init_slice_tables() @private
+{
+	static OnceFlag once;
+	once.call(fn void() {
+		for (uint i = 0; i < 256; i++) crc32_slice[i] = CRC32_TABLE[i];
+		for (uint k = 1; k < 16; k++)
+		{
+			for (uint i = 0; i < 256; i++)
+			{
+				uint prev = crc32_slice[(k - 1) * 256 + i];
+				crc32_slice[k * 256 + i] = (prev >> 8) ^ CRC32_TABLE[prev & 0xFF];
+			}
+		}
+	});
+}
+
+fn uint load_le32(char* p) @private @inline
+{
+	uint w = mem::load((uint*)p, 1);
+	$if env::BIG_ENDIAN:
+		w = bswap(w);
+	$endif
+	return w;
+}
+
+fn uint update_bytes(uint crc, char[] data) @private
+{
+	char* p = data.ptr;
+	sz len = data.len;
+	if (len >= 32)
 	{
-		result = (result >> 8) ^ CRC32_TABLE[(result ^ x) & 0xFF];
+		init_slice_tables();
+		uint* t = &crc32_slice[0];
+		while (len >= 16)
+		{
+			uint a = load_le32(p) ^ crc;
+			uint b = load_le32(p + 4);
+			uint c = load_le32(p + 8);
+			uint d = load_le32(p + 12);
+			crc = t[15 * 256 + (a & 0xFF)] ^ t[14 * 256 + ((a >> 8) & 0xFF)] ^ t[13 * 256 + ((a >> 16) & 0xFF)] ^ t[12 * 256 + (a >> 24)]
+				^ t[11 * 256 + (b & 0xFF)] ^ t[10 * 256 + ((b >> 8) & 0xFF)] ^ t[9 * 256 + ((b >> 16) & 0xFF)] ^ t[8 * 256 + (b >> 24)]
+				^ t[7 * 256 + (c & 0xFF)] ^ t[6 * 256 + ((c >> 8) & 0xFF)] ^ t[5 * 256 + ((c >> 16) & 0xFF)] ^ t[4 * 256 + (c >> 24)]
+				^ t[3 * 256 + (d & 0xFF)] ^ t[2 * 256 + ((d >> 8) & 0xFF)] ^ t[256 + ((d >> 16) & 0xFF)] ^ t[d >> 24];
+			p += 16;
+			len -= 16;
+		}
 	}
-	return ~result;
+	while (len > 0)
+	{
+		crc = (crc >> 8) ^ CRC32_TABLE[(crc ^ *p) & 0xFF];
+		p++;
+		len--;
+	}
+	return crc;
 }
 
 const uint[256] CRC32_TABLE @private = {

@@ -65,11 +65,15 @@ static void usage(bool full)
 	print_cmd("clean-run [<target>] [-- [<arg1> ...]]", "Clean, then run the target.");
 	print_cmd("compile-run <file1> [<file2> ...] [-- [<arg1> ...]]", "Compile files then immediately run the result.");
 	print_cmd("compile-only <file1> [<file2> ...]", "Compile files but do not perform linking.");
-	print_cmd("compile-benchmark <file1> [<file2> ...]", "Compile files into a test-executable and run benchmarks.");
-	print_cmd("compile-test <file1> [<file2> ...]", "Compile files into a benchmark-executable and run unit tests.");
+	print_cmd("compile-benchmark <file1> [<file2> ...]", "Compile files into a benchmark-executable and run benchmarks.");
+	print_cmd("compile-test <file1> [<file2> ...]", "Compile files into a test-executable and run unit tests.");
 	print_cmd("static-lib <file1> [<file2> ...]", "Compile files without a project into a static library.");
 	print_cmd("dynamic-lib <file1> [<file2> ...]", "Compile files without a project into a dynamic library.");
+	print_cmd("source-lib <file1> [<file2> ...]", "Pack files without a project into a source library (.c3l), use -o to set the library name.");
 	print_cmd("vendor-fetch <library> ...", "Fetches one or more libraries from the vendor collection.");
+	print_cmd("fetch <library> ...", "Fetches one or more libraries.");
+	print_cmd("fetch-list", "Prints all available libraries");
+	print_cmd("fetch-info <library>", "Prints info about a given library.");
 	print_cmd("project <subcommand> ...", "Manipulate or view project files.");
 	print_cmd("fetch-sdk <windows|macos|android> ...", "Fetches the SDK required for cross-compiling.");
 	print_cmd("docgen [<path1> <path2> ...]", "Generate documentation for the project, or specific files and directories.");
@@ -79,6 +83,8 @@ static void usage(bool full)
 	print_opt("-V --version", "Print version information.");
 	print_opt("-q --quiet", "Silence unnecessary output.");
 	print_opt("-v -vv -vvv", "Verbose output, -v for default, -vv and -vvv gives more information.");
+	print_opt("--stats=<none|summary|full|json>", "Compiler statistics: timings and memory, 'full' adds top lists, 'json' saves everything to a file. -vv implies 'summary'.");
+	print_opt("--stats-file <path>", "Write the JSON statistics to this file. Implies --stats=json.");
 	print_opt("-E", "Lex only.");
 	print_opt("-P", "Only parse and output the AST as JSON.");
 	print_opt("-C", "Only lex, parse and check.");
@@ -113,6 +119,7 @@ static void usage(bool full)
 		print_opt("--max-mem <value>", "Set the maximum memory size (in MB).");
 		print_opt("--run-once", "After running the output file, delete it immediately.");
 		print_opt("--suppress-run", "Build but do not run on test/benchmark options.");
+		print_opt("--no-deps", "Do not first build the targets listed in 'depends-on'.");
 		print_opt("--trust=<option>", "Trust level: none (default), include ($include allowed), full ($exec / exec allowed).");
 		print_opt("--output-dir <dir>", "Override general output directory.");
 		print_opt("--build-dir <dir>", "Override build output directory.");
@@ -128,10 +135,12 @@ static void usage(bool full)
 		print_opt("--no-obj", "Do not output object files, this is only valid for `compile-only`.");
 		print_opt("--keep-obj", "Do not delete object files after linking.");
 		print_opt("--no-headers", "Do not generate C headers when building a library.");
+		print_opt("--no-compress", "Output a source library as an uncompressed directory instead of a compressed .c3l file.");
 		print_opt("--target <target>", "Compile for a particular architecture + OS target.");
 		print_opt("--threads <number>", "Set the number of threads to use for compilation.");
 		print_opt("--safe=<yes|no>", "Turn safety (contracts, runtime bounds checking, null pointer checks etc) on or off.");
 		print_opt("--panic-msg=<yes|no>", "Turn panic message output on or off.");
+		print_opt("--infinite-loop-detect=<yes|no>", "Panic on empty infinite loops such as `for (;;) {}` in safe mode (default: no).");
 		print_opt("--optlevel=<option>", "Code optimization level: none, less, more, max.");
 		print_opt("--optsize=<option>", "Code size optimization: none, small, tiny.");
 		print_opt("--unroll-loops=<yes|no>", "Enable loop unrolling.");
@@ -143,7 +152,6 @@ static void usage(bool full)
 		print_opt("--single-module=<yes|no>", "Compile all modules together, enables more inlining.");
 		print_opt("--show-backtrace=<yes|no>", "Show detailed backtrace on segfaults.");
 		print_opt("--lsp", "Emit data about errors suitable for a LSP.");
-		print_opt("--print-large-functions", "Print functions with large compile size.");
 		print_opt("--warn-deadcode=<yes|no|error>", "Print warning on dead-code: yes, no, error.");
 		print_opt("--warn-recursivecontracts=<yes|no|error>", "Print warning on recursive contracts: yes, no, error.");
 		print_opt("--warn-methodvisibility=<yes|no|error>", "Print warning when methods have ignored visibility attributes.");
@@ -152,12 +160,16 @@ static void usage(bool full)
 		print_opt("--warn-builtin=<yes|no|error>", "Print warning when using builtin functions outside of the stdlib: yes, no, error.");
 		print_opt("--warn-unusedparam=<yes|no|error>", "Print warning when a parameter is not used after compile-time folding: yes, no, error.");
 		print_opt("--warn-unusedlocal=<yes|no|error>", "Print warning when a local is not used after compile-time folding: yes, no, error.");
+		PRINTF("");
+		print_opt("--fetch-url <url>", "Use this URL for fetching libraries.");
+		print_opt("--decompress=<yes|no>", "Unpack fetched libraries into directories (default: yes), no keeps them as compressed .c3l files.");
 	}
 	PRINTF("");
 	print_opt("-g", "Emit debug info.");
 	print_opt("-g0", "Emit no debug info.");
 	if (full)
 	{
+		print_opt("-gline-tables-only", "Emit line tables debug info only.");
 		PRINTF("");
 		print_opt("--ansi=<yes|no>", "Set colour output using ansi on/off, default is to try to detect it.");
 		print_opt("--echo-prefix <arg>", "Sets the prefix for any output using '$echo', defaults to 'c3c:'.");
@@ -359,7 +371,7 @@ static void project_usage(void)
 	PRINTF("Project Subcommands:");
 	print_cmd("view", "view the current projects structure.");
 	print_cmd("add-target <name>  <target_type>  [sources...]", "add a new target to the project.");
-	print_cmd("fetch", "fetch missing project libraries.");
+	print_cmd("fetch [<library>...]", "fetch the named project libraries, or list the missing ones.");
 }
 
 static void project_view_usage(void)
@@ -453,7 +465,7 @@ static void parse_project_subcommand(BuildOptions *options)
 		options->project_options.target_name = next_arg();
 
 		if (at_end() || next_is_opt()) error_exit("Expected a target type like 'executable' or 'static-lib'");
-		options->project_options.target_type = (TargetType)get_valid_enum_from_string(next_arg(), "type", targets, ELEMENTLEN(targets), "a target type like 'executable' or 'static-lib'");
+		options->project_options.target_type = (TargetType)get_valid_enum_from_string(next_arg(), "type", target_types, ELEMENTLEN(target_types), "a target type like 'executable' or 'static-lib'");
 
 		while (!at_end() && !next_is_opt())
 		{
@@ -465,6 +477,10 @@ static void parse_project_subcommand(BuildOptions *options)
 	if (arg_match("fetch"))
 	{
 		options->project_options.command = SUBCOMMAND_FETCH;
+		while (!at_end() && !next_is_opt())
+		{
+			vec_add(options->libraries_to_fetch, next_arg());
+		}
 		return;
 	}
 
@@ -543,13 +559,49 @@ static void parse_command(BuildOptions *options)
 		while (!at_end() && !next_is_opt())
 		{
 			const char *lib = next_arg();
+			vec_add(options->vendor_libraries_to_fetch, lib);
+		}
+		return;
+	}
+	if (arg_match("fetch"))
+	{
+		options->command = COMMAND_FETCH;
+		if (at_end() || next_is_opt()) error_exit("Expected a library name after 'fetch'.");
+		while (!at_end() && !next_is_opt())
+		{
+			const char *lib = next_arg();
 			vec_add(options->libraries_to_fetch, lib);
 		}
+		return;
+	}
+	if (arg_match("fetch-info"))
+	{
+		if (at_end() || next_is_opt()) error_exit("Expected a library name after 'fetch-info'.");
+		options->search_name = next_arg();
+		options->command = COMMAND_FETCH_INFO;
+		return;
+	}
+	if (arg_match("fetch-list"))
+	{
+		options->command = COMMAND_FETCH_LIST;
+		if (at_end() || next_is_opt()) return;
+		const char *lib = next_arg();
+		if (str_start_with(lib, "tag:"))
+		{
+			options->search_tag = lib + 4;
+			return;
+		}
+		options->search_name = lib;
 		return;
 	}
 	if (arg_match("dynamic-lib"))
 	{
 		options->command = COMMAND_DYNAMIC_LIB;
+		return;
+	}
+	if (arg_match("source-lib"))
+	{
+		options->command = COMMAND_SOURCE_LIB;
 		return;
 	}
 	if (arg_match("build"))
@@ -687,21 +739,27 @@ static void parse_command(BuildOptions *options)
 				if (match_longopt("msvc-version"))
 				{
 					if (at_end() || next_is_opt())
+					{
 						error_exit("error: msvc-version needs a version.");
+					}
 					options->msvc_version_override = next_arg();
 					continue;
 				}
 				if (match_longopt("sdk-version"))
 				{
 					if (at_end() || next_is_opt())
+					{
 						error_exit("error: sdk-version needs a version.");
+					}
 					options->msvc_sdk_version_override = next_arg();
 					continue;
 				}
 				if (match_longopt("arch"))
 				{
 					if (at_end() || next_is_opt())
+					{
 						error_exit("error: --arch needs an architecture (x64, arm64).");
+					}
 					vec_add(options->fetch_sdk_archs, next_arg());
 					continue;
 				}
@@ -739,7 +797,9 @@ static void parse_command(BuildOptions *options)
 				if (match_longopt("sdk-version"))
 				{
 					if (at_end() || next_is_opt())
+					{
 						error_exit("error: sdk-version needs a version.");
+					}
 					options->macos_sdk_version_override = next_arg();
 					continue;
 				}
@@ -794,15 +854,10 @@ static void print_version(void)
 	PRINTF("Installed directory:       %s", find_executable_path());
 	PRINTF("Git Hash:                  %s", GIT_HASH);
 
-#if LLVM_AVAILABLE && TB_AVAILABLE
-	PRINTF("Backends:                  LLVM; TB");
-#elif LLVM_AVAILABLE
-	PRINTF("Backends:                  LLVM");
-#elif TB_AVAILABLE
-	PRINTF("Backends:                  TB");
+#if LLVM_AVAILABLE
+	PRINTF("Backends:                  LLVM; C");
 #else
-
-	PRINTF("No backends available");
+	PRINTF("Backends:                  C");
 #endif
 
 #if LLVM_AVAILABLE
@@ -876,7 +931,7 @@ static void parse_option(BuildOptions *options) // NOLINT
 			if (match_shortopt("gline-tables-only"))
 			{
 				options->debug_info_override = DEBUG_INFO_LINE_TABLES;
-				FATAL_ERROR("Line tables only are currently not available");
+				return;
 			}
 			if (match_shortopt("g") || match_shortopt("g1"))
 			{
@@ -1035,9 +1090,31 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->validation_level = parse_opt_select(ValidationLevel, argopt, validation_levels);
 				return;
 			}
+			if (match_longopt("stats-file")) // NOLINT
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --stats-file needs a filename.");
+				options->stats_file = next_arg();
+				return;
+			}
+			if ((argopt = match_argopt("stats"))) // NOLINT
+			{
+				options->stats_mode = parse_opt_select(StatsMode, argopt, stats_modes);
+				return;
+			}
 			if ((argopt = match_argopt("ansi"))) // NOLINT
 			{
 				options->ansi = parse_opt_select(Ansi, argopt, on_off);
+				return;
+			}
+			if (match_longopt("fetch-url"))
+			{
+				if (at_end() || next_is_opt()) FAIL_WITH_ERR_LONG("'--fetch-url' expected a URL.");
+				options->fetch_url = next_arg();
+				return;
+			}
+			if ((argopt = match_argopt("decompress"))) // NOLINT
+			{
+				options->fetch_compressed = !parse_opt_select(bool, argopt, on_off);
 				return;
 			}
 			if (match_longopt("max-mem"))
@@ -1100,11 +1177,6 @@ static void parse_option(BuildOptions *options) // NOLINT
 			if (match_longopt("benchmark-csv-report"))
 			{
 				options->benchmark_csv_report = true;
-				return;
-			}
-			if (match_longopt("print-large-functions"))
-			{
-				options->print_large_functions = true;
 				return;
 			}
 			if ((argopt = match_argopt("warn-deadcode"))) // NOLINT
@@ -1236,6 +1308,11 @@ static void parse_option(BuildOptions *options) // NOLINT
 			if ((argopt = match_argopt("merge-functions"))) // NOLINT
 			{
 				options->merge_functions = parse_opt_select(MergeFunctions, argopt, on_off);
+				return;
+			}
+			if ((argopt = match_argopt("infinite-loop-detect"))) // NOLINT
+			{
+				options->infinite_loop_detect = parse_opt_select(InfiniteLoopDetect, argopt, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("data-sections"))) // NOLINT
@@ -1460,6 +1537,11 @@ static void parse_option(BuildOptions *options) // NOLINT
 			if (match_longopt("no-headers"))
 			{
 				options->no_headers = true;
+				return;
+			}
+			if (match_longopt("no-compress"))
+			{
+				options->no_compress = true;
 				return;
 			}
 			if (match_longopt("print-linking"))
@@ -1798,11 +1880,6 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->run_dir = unchecked_dir(options, next_arg());
 				return;
 			}
-			if (match_longopt("benchmark"))
-			{
-				options->benchmark_mode = true;
-				return;
-			}
 			if (match_longopt("lsp"))
 			{
 				options->lsp_mode = true;
@@ -1876,6 +1953,11 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->suppress_run = true;
 				return;
 			}
+			if (match_longopt("no-deps"))
+			{
+				options->no_deps = true;
+				return;
+			}
 			if (match_longopt("help"))
 			{
 				if (options->command == COMMAND_DOCGEN)
@@ -1892,6 +1974,14 @@ static void parse_option(BuildOptions *options) // NOLINT
 
 	}
 	FAIL_WITH_ERR_LONG("Cannot process the unknown option \"%s\".", current_arg);
+}
+
+// Is this option target specific, or passed on to targets it depends on?
+static bool is_target_specific_option(const char *arg)
+{
+	return str_eq(arg, "-o") || str_eq(arg, "--path") || str_eq(arg, "--sources") || str_eq(arg, "--build-env")
+	       || str_eq(arg, "--run-dir") || str_eq(arg, "--run-once") || str_eq(arg, "--suppress-run")
+	       || str_start_with(arg, "--test-") || str_start_with(arg, "--benchmark-");
 }
 
 BuildOptions parse_arguments(int argc, const char *argv[])
@@ -1920,7 +2010,11 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.build_threads = cpus(),
 		.command = COMMAND_MISSING,
 		.reloc_model = RELOC_DEFAULT,
+#if LLVM_AVAILABLE
 		.backend = BACKEND_LLVM,
+#else
+		.backend = BACKEND_C,
+#endif
 		.x86_vector_capability = X86VECTOR_DEFAULT,
 		.win_64_simd = WIN64_SIMD_DEFAULT,
 		.win_debug = WIN_DEBUG_DEFAULT,
@@ -1940,11 +2034,13 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.validation_level = VALIDATION_NOT_SET,
 		.implicit_float = IMPLICIT_FLOAT_NOT_SET,
 		.ansi = ANSI_DETECT,
+		.stats_mode = STATS_NOT_SET,
 		.strip_unused = STRIP_UNUSED_NOT_SET,
 		.single_module = SINGLE_MODULE_NOT_SET,
 		.sanitize_mode = SANITIZE_NOT_SET,
 		.unroll_loops = UNROLL_LOOPS_NOT_SET,
 		.merge_functions = MERGE_FUNCTIONS_NOT_SET,
+		.infinite_loop_detect = INFINITE_LOOP_DETECT_NOT_SET,
 		.data_sections = SECTIONS_SETTING_NOT_SET,
 		.function_sections = SECTIONS_SETTING_NOT_SET,
 		.slp_vectorization = VECTORIZATION_NOT_SET,
@@ -1987,7 +2083,11 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		}
 		if (current_arg[0] == '-')
 		{
+			int first_index = arg_index;
 			parse_option(&build_options);
+			if (is_target_specific_option(args[first_index])) continue;
+			// The option and the values it consumed are also passed on to the builds of 'depends-on' targets.
+			for (int i = first_index; i <= arg_index; i++) vec_add(build_options.dependency_args, args[i]);
 			continue;
 		}
 		if (build_options.command == COMMAND_MISSING)
@@ -2024,7 +2124,11 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		case COMMAND_COMPILE_RUN:
 		case COMMAND_STATIC_LIB:
 		case COMMAND_DYNAMIC_LIB:
+		case COMMAND_SOURCE_LIB:
 		case COMMAND_VENDOR_FETCH:
+		case COMMAND_FETCH:
+		case COMMAND_FETCH_INFO:
+		case COMMAND_FETCH_LIST:
 		case COMMAND_UNIT_TEST:
 		case COMMAND_PRINT_SYNTAX:
 		case COMMAND_PROJECT:

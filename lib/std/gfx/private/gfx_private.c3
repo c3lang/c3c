@@ -1,6 +1,6 @@
 module std::gfx @feat(LINUX, BSD, MACOS, WASM, WIN32) @feat(!(BSD | LINUX) | WAYLAND | !NO_X11) @private;
-import libc, std::math, std::collections::list, std::os, std::gfx::x11 @public, std::gfx::egl @public, std::time, std::net::url;
-import std::gfx::wl @public;
+import libc, std::math, std::collections::list, std::os, std::gfx::win32 @public, std::gfx::x11 @public;
+import std::gfx::egl @public, std::time, std::net::url, std::gfx::wl @public;
 
 const MAX_EVENTS = 32;
 const PREALLOCATED_MONITORS = 0;
@@ -128,6 +128,7 @@ struct GfxWindowInternal
 	bool in_focus;
 	bool mouse_inside;
 	bool maximized_state;
+	bool window_in_fullscreen;
 	GfxKeyModifier mod;
 	GfxEventMask enabled_events;
 	GfxWindowFlags flags;
@@ -227,18 +228,23 @@ fn void _init_unix_keycodes() @feat(LINUX, BSD)
 fn void _init_keycodes()
 {
 	_gfx.keycodes = {};
+	_gfx.api_keycodes = {};
 	_init_keycodes_platform();
-	for (int i = 0; i < GFX_KEYS; i++)
+	// Key 0, NULL, keeps the api keycode 0.
+	for (int i = 1; i < GFX_KEYS; i++)
 	{
-		for (int y = 0; y < _gfx.keycodes.len; y++)
+		foreach_r (y, key : _gfx.keycodes)
 		{
-			if (_gfx.keycodes[y] == (GfxKey)i)
+			if (key == (GfxKey)i)
 			{
 				_gfx.api_keycodes[i] = (uint)y;
 				break;
 			}
 		}
 	}
+	$if $feat(WIN32):
+		win32::init_mapped_keys();
+	$endif
 	reset_key();
 }
 
@@ -278,7 +284,7 @@ fn void _event_queue_call_push(GfxEvent* event)
 <*
  Remove and return the oldest queued event belonging to a window.
 
- Events for other windows are rotated to the back of the queue rather than discarded.
+ Events for other windows are kept in order.
 
  @param [in] win : "The window to filter on"
  @return "The oldest event for this window, or a window-independent event"
@@ -286,14 +292,34 @@ fn void _event_queue_call_push(GfxEvent* event)
 *>
 fn GfxEvent? _window_event_queue_pop(GfxWindow* win)
 {
-	GfxEvent ev = event_queue_pop()!;
-	for (int i = 1; i < _gfx.event_len && ev.common.win != win && ev.common.win != null; i++)
+	int event_count = _gfx.event_len;
+	GfxEvent* first = &_gfx.events[0];
+	GfxEvent* last = first + MAX_EVENTS;
+	GfxEvent* current = first + _gfx.event_bottom;
+	for (int i = 0; i < event_count; i++)
 	{
-		event_queue_push(&ev);
-		ev = event_queue_pop()!!;
+		// A match?
+		if (current.common.win != win && current.common.win)
+		{
+			// Nope, continue
+			if (++current == last) current = first;
+			continue;
+		}
+
+		// Match
+		GfxEvent result = *current;
+		// Copy up the bottom
+		for (int j = i; j > 0; j--)
+		{
+			GfxEvent* prev = current--;
+			if (prev == first) current = last - 1;
+			*prev = *current;
+		}
+		_gfx.event_bottom = (_gfx.event_bottom + 1) % MAX_EVENTS;
+		if (_gfx.event_len-- == 1) _gfx.event_error_reported = false;
+		return result;
 	}
-	if (ev.common.win != win && ev.common.win != null) return NO_MORE_ELEMENT~;
-	return ev;
+	return NO_MORE_ELEMENT~;
 }
 
 fn void _reset_prev_state()

@@ -129,16 +129,21 @@ macro bool is_approx_rel(x, y, eps)
 }
 
 <*
- @require [x] values::@is_int(x) : `The input must be an integer`
+ Return -1, 0 or 1 depending on the sign of x. For floats, ±0 and NaN are returned unchanged.
+
+ @require [x] values::@is_int(x) || values::@is_float(x) : `The input must be an integer or floating point value`
 *>
 macro sign(x)
 {
 	var $Type = $Typeof(x);
-	$if $Type::kind == UNSIGNED_INT:
-		return ($Type)(x > 0);
-	$else
-		return ($Type)(x > 0) - ($Type)(x < 0);
-	$endif
+	$switch $Type::kind:
+		$case UNSIGNED_INT:
+			return ($Type)(x > 0);
+		$case FLOAT:
+			return $$abs(x) > 0 ? $$copysign(($Type)1, x) : x;
+		$default:
+			return ($Type)(x > 0) - ($Type)(x < 0);
+	$endswitch
 }
 
 <*
@@ -1014,7 +1019,7 @@ macro overflow_mul_helper(x, y) @local
  @require values::@is_flat_intlike(a) &&& values::@is_flat_intlike(b) : "a and b must both be integer or integer vector based"
  @require $defined(*out) &&& @typematch(*out, a) : "out must be a pointer of the same type as a and b"
 *>
-macro bool overflow_add(a, b, out) => $$overflow_add(a, b, out);
+macro overflow_add(a, b, out) => $$overflow_add(a, b, out);
 
 <*
  @param [&out] out : "Where the result of the subtraction is stored"
@@ -1023,7 +1028,7 @@ macro bool overflow_add(a, b, out) => $$overflow_add(a, b, out);
  @require values::@is_flat_intlike(a) &&& values::@is_flat_intlike(b) : "a and b must both be integer or integer vector based"
  @require $defined(*out) &&& @typematch(*out, a) : "out must be a pointer of the same type as a and b"
 *>
-macro bool overflow_sub(a, b, out) => $$overflow_sub(a, b, out);
+macro overflow_sub(a, b, out) => $$overflow_sub(a, b, out);
 
 <*
  @param [&out] out : "Where the result of the multiplication is stored"

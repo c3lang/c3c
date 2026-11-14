@@ -83,6 +83,19 @@ char *win_utf16to8(const uint16_t *wname UNUSED)
 #endif
 }
 
+static int file_stat_mode(const char *path, int *mode)
+{
+#if PLATFORM_WINDOWS
+	struct _stat64 info;
+	int err = _wstat64(win_utf8to16(path), &info);
+#else
+	struct stat info;
+	int err = stat(path, &info);
+#endif
+	*mode = err ? 0 : info.st_mode;
+	return err;
+}
+
 bool dir_make(const char *path)
 {
 #if (_MSC_VER)
@@ -104,33 +117,61 @@ const char *find_temp_dir(void)
 }
 #endif
 
-const char *dir_make_temp_dir(void)
-{
-	char buffer[PATH_MAX];
-#if PLATFORM_WINDOWS
-	char temp_path[PATH_MAX];
-	if (!GetTempPathA(PATH_MAX, temp_path)) return NULL;
+static const char **dirs_to_delete;
 
-	if (!GetTempFileNameA(temp_path, "c3c", 0, buffer)) return NULL;
+const char *dir_make_temp_dir_in(const char *base)
+{
+	const char *copy;
+#if PLATFORM_WINDOWS
+	// The paths are UTF-8, so use the wide functions.
+	wchar_t buffer[MAX_PATH];
+	if (!GetTempFileNameW(win_utf8to16(base), L"c3c", 0, buffer)) return NULL;
 
 	// Delete the temp file
-	if (!DeleteFileA(buffer)) return NULL;
+	if (!DeleteFileW(buffer)) return NULL;
 
 	// Create a directory instead
-	if (!CreateDirectoryA(buffer, NULL))
+	if (!CreateDirectoryW(buffer, NULL))
 	{
 		return NULL;
 	}
-	return str_copy(buffer, strlen(buffer));
+	copy = win_utf16to8(buffer);
 #else
-	const char *temp_dir = find_temp_dir();
-	const char *format = str_has_suffix(temp_dir, "/") ? "%sc3cXXXXXXX" : "%s/c3cXXXXXXX";
-	int result = snprintf(buffer, PATH_MAX, format, find_temp_dir());
+	char buffer[PATH_MAX];
+	const char *format = str_has_suffix(base, "/") ? "%sc3cXXXXXXX" : "%s/c3cXXXXXXX";
+	int result = snprintf(buffer, PATH_MAX, format, base);
 	if (result < 0 || result >= PATH_MAX) return NULL;
 	const char *out = mkdtemp(buffer);
 	if (out == NULL) return NULL;
-	return str_copy(buffer, strlen(buffer));
+	copy = str_dup(buffer);
 #endif
+	dir_delete_on_cleanup(copy);
+	return copy;
+}
+
+const char *dir_make_temp_dir(void)
+{
+#if PLATFORM_WINDOWS
+	wchar_t temp_path[MAX_PATH + 1];
+	if (!GetTempPathW(MAX_PATH, temp_path)) return NULL;
+	return dir_make_temp_dir_in(win_utf16to8(temp_path));
+#else
+	return dir_make_temp_dir_in(find_temp_dir());
+#endif
+}
+
+void dir_delete_on_cleanup(const char *path)
+{
+	vec_add(dirs_to_delete, path);
+}
+
+void dir_delete_registered(void)
+{
+	FOREACH(const char *, dir, dirs_to_delete)
+	{
+		file_delete_dir(dir);
+	}
+	dirs_to_delete = NULL;
 }
 
 bool dir_make_recursive(char *path)
@@ -406,19 +447,19 @@ char *file_read_binary(const char *path, size_t *size)
 
 static inline const char *lib_find(const char *exe_path, const char *rel_path)
 {
-	struct stat info;
+	int mode;
 	scratch_buffer_clear();
 	scratch_buffer_printf("%s%sstd", exe_path, rel_path);
 	DEBUG_LOG("Checking %s", scratch_buffer_to_string());
-	int err = stat(scratch_buffer_to_string(), &info);
+	int err = file_stat_mode(scratch_buffer_to_string(), &mode);
 
 	// Not a dir or had error?
-	if (err || !S_ISDIR(info.st_mode)) return NULL;
+	if (err || !S_ISDIR(mode)) return NULL;
 
 	DEBUG_LOG("Potential lib found, sanity check for libc...");
 	scratch_buffer_append("/libc/libc.c3");
-	err = stat(scratch_buffer_to_string(), &info);
-	if (err || !S_ISREG(info.st_mode)) return NULL;
+	err = file_stat_mode(scratch_buffer_to_string(), &mode);
+	if (err || !S_ISREG(mode)) return NULL;
 
 	const char *lib_path = str_printf("%s%s", exe_path, rel_path);
 	INFO_LOG("Library path found at %s", lib_path);
@@ -429,7 +470,7 @@ const char *find_rel_exe_dir(const char *dir)
 {
 	const char *path = find_executable_path();
 	INFO_LOG("Detected executable path at %s", path);
-	struct stat info;
+	int mode;
 	const char *attempts[5] = { "/../", "/lib/", "/../lib/", "/", "/../../lib/" };
 
 	for (size_t i = 0; i < 5; i++)
@@ -437,10 +478,10 @@ const char *find_rel_exe_dir(const char *dir)
 		scratch_buffer_clear();
 		scratch_buffer_printf("%s%s%s", path, attempts[i], dir);
 		DEBUG_LOG("Checking %s", scratch_buffer_to_string());
-		int err = stat(scratch_buffer_to_string(), &info);
+		int err = file_stat_mode(scratch_buffer_to_string(), &mode);
 
 		// Not a dir or had error?
-		if (err || !S_ISDIR(info.st_mode)) continue;
+		if (err || !S_ISDIR(mode)) continue;
 		return scratch_buffer_to_string();
 	}
 	return NULL;
@@ -520,9 +561,9 @@ void file_find_top_dir(void)
 {
 	while (1)
 	{
-		struct stat info;
+		int mode;
 		const char *filename = file_exists(PROJECT_JSON5) ? PROJECT_JSON5 : PROJECT_JSON;
-		int err = stat(filename, &info);
+		int err = file_stat_mode(filename, &mode);
 
 		// Error and the it's not a "missing file"?
 		if (err && errno != ENOENT)
@@ -531,7 +572,7 @@ void file_find_top_dir(void)
 		}
 
 		// Everything worked and it's a regular file? We're done!
-		if (!err && S_ISREG(info.st_mode)) return; // NOLINT(hicpp-signed-bitwise)
+		if (!err && S_ISREG(mode)) return; // NOLINT(hicpp-signed-bitwise)
 
 		// Otherwise just continue upwards.
 		// Note that symbolically linked files are ignored.
@@ -563,16 +604,16 @@ bool file_has_suffix_in_list(const char *file_name, int name_len, const char **s
 
 bool file_is_dir(const char *file)
 {
-	struct stat st;
-	if (stat(file, &st)) return false;
-	return S_ISDIR(st.st_mode);
+	int mode;
+	if (file_stat_mode(file, &mode)) return false;
+	return S_ISDIR(mode);
 }
 
 bool file_exists(const char *path)
 {
-	struct stat st;
-	if (stat(path, &st)) return false;
-	return S_ISDIR(st.st_mode) || S_ISREG(st.st_mode) || S_ISREG(st.st_mode);
+	int mode;
+	if (file_stat_mode(path, &mode)) return false;
+	return S_ISDIR(mode) || S_ISREG(mode);
 }
 
 bool file_executable_in_path(const char *name)
@@ -704,6 +745,22 @@ bool file_delete_file(const char *path)
 #endif
 }
 
+bool file_replace(const char *src_path, const char *dst_path)
+{
+	// A concurrent fetch may put its copy in place between our delete and our rename, then we just try again.
+	for (int attempt = 0; attempt < 5; attempt++)
+	{
+		if (file_is_dir(dst_path)) file_delete_dir(dst_path);
+		file_delete_file(dst_path);
+#if (_MSC_VER)
+		if (MoveFileW(win_utf8to16(src_path), win_utf8to16(dst_path))) return true;
+#else
+		if (!rename(src_path, dst_path)) return true;
+#endif
+	}
+	return false;
+}
+
 void file_copy_dir(const char *src_path, const char *dst_path)
 {
 #if (_WIN32)
@@ -821,7 +878,7 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 
 #endif
 
-const char **target_expand_source_names(const char *base_dir, const char** dirs, const char **suffix_list, const char ***object_list_ref, int suffix_count, bool error_on_mismatch)
+const char **target_expand_source_names(const char *base_dir, const char** dirs, const char **suffix_list, const char ***object_list_ref, const char ***llvm_ir_list_ref, int suffix_count, bool error_on_mismatch)
 {
 	const char **files = NULL;
 	FOREACH(const char *, name, dirs)
@@ -830,14 +887,25 @@ const char **target_expand_source_names(const char *base_dir, const char** dirs,
 		INFO_LOG("Searching for sources in %s", name);
 		size_t name_len = strlen(name);
 		if (name_len < 1) goto INVALID_NAME;
+		const char ***extra_list_ref = NULL;
+		const char *extra_kind = "object file";
 		if (object_list_ref && (str_has_suffix(name, ".o") || str_has_suffix(name, ".obj")))
+		{
+			extra_list_ref = object_list_ref;
+		}
+		else if (llvm_ir_list_ref && (str_has_suffix(name, ".ll") || str_has_suffix(name, ".bc")))
+		{
+			extra_list_ref = llvm_ir_list_ref;
+			extra_kind = "LLVM IR file";
+		}
+		if (extra_list_ref)
 		{
 			if (!file_exists(name))
 			{
 				if (!error_on_mismatch) continue;
-				error_exit("The object file '%s' could not be found.", name);
+				error_exit("The %s '%s' could not be found.", extra_kind, name);
 			}
-			vec_add(*object_list_ref, name);
+			vec_add(*extra_list_ref, name);
 			continue;
 		}
 		if (name[name_len - 1] == '*')

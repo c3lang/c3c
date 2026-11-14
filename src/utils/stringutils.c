@@ -8,7 +8,29 @@
 #include "lib.h"
 #include <stdio.h>
 
-struct ScratchBuf scratch_buffer;
+static struct ScratchBuf scratch_buffer;
+#define SCRATCH_BUFFERS 8
+static struct ScratchBuf *buffers[SCRATCH_BUFFERS] = { [0] = &scratch_buffer };
+static int buffer_counter = 0;
+struct ScratchBuf *sb_current = &scratch_buffer;
+
+void scratch_buffer_push(void)
+{
+	ASSERT(buffer_counter + 1 < SCRATCH_BUFFERS && "TOO MANY BUFFERS");
+	struct ScratchBuf *buf = buffers[++buffer_counter];
+	if (!buf)
+	{
+		buf = buffers[buffer_counter] = cmalloc(sizeof(struct ScratchBuf));
+	}
+	buf->len = 0;
+	sb_current = buf;
+}
+
+void scratch_buffer_pop(void)
+{
+	ASSERT(buffer_counter > 0 && "Unbalanced scratch buffer pop");
+	sb_current = buffers[--buffer_counter];
+}
 
 int str_findlist(const char *value, int count, const char** elements)
 {
@@ -17,6 +39,14 @@ int str_findlist(const char *value, int count, const char** elements)
 		if (strcmp(value, elements[i]) == 0) return (int)i;
 	}
 	return -1;
+}
+
+void str_list_add_all_unique(const char ***list, const char **items)
+{
+	FOREACH(const char *, item, items)
+	{
+		if (str_findlist(item, vec_size(*list), *list) == -1) vec_add(*list, item);
+	}
 }
 
 
@@ -251,6 +281,10 @@ bool str_start_with(const char *name, const char *prefix)
 	return true;
 }
 
+const char *slice_copy(StringSlice slice)
+{
+	return str_copy(slice.ptr, slice.len);
+}
 
 StringSlice slice_next_token(StringSlice *slice, char separator)
 {
@@ -354,6 +388,48 @@ char *str_cat_len(const char *a, size_t a_len, const char *b, size_t b_len)
 	return buffer;
 }
 
+static char alphabet[256] = {
+	['0'] = 1,  ['1'] = 2,  ['2'] = 3,  ['3'] = 4,  ['4'] = 5,
+	['5'] = 6,  ['6'] = 7,  ['7'] = 8,  ['8'] = 9,  ['9'] = 10,
+	['_'] = 11,
+	['A'] = 12, ['B'] = 13, ['C'] = 14, ['D'] = 15, ['E'] = 16,
+	['F'] = 17, ['G'] = 18, ['H'] = 19, ['I'] = 20, ['J'] = 21,
+	['K'] = 22, ['L'] = 23, ['M'] = 24, ['N'] = 25, ['O'] = 26,
+	['P'] = 27, ['Q'] = 28, ['R'] = 29, ['S'] = 30, ['T'] = 31,
+	['U'] = 32, ['V'] = 33, ['W'] = 34, ['X'] = 35, ['Y'] = 36,
+	['Z'] = 37,
+	['a'] = 38, ['b'] = 39, ['c'] = 40, ['d'] = 41, ['e'] = 42,
+	['f'] = 43, ['g'] = 44, ['h'] = 45, ['i'] = 46, ['j'] = 47,
+	['k'] = 48, ['l'] = 49, ['m'] = 50, ['n'] = 51, ['o'] = 52,
+	['p'] = 53, ['q'] = 54, ['r'] = 55, ['s'] = 56, ['t'] = 57,
+	['u'] = 58, ['v'] = 59, ['w'] = 60, ['x'] = 61, ['y'] = 62,
+	['z'] = 63,
+	['@'] = 1,
+};
+
+void stable_identifier_hash(const char *name, uint64_t output[2])
+{
+	int name_len = (int)strlen(name);
+	int len = name_len > 16 ? 16 : name_len;
+	uint64_t val = name_len <= 16 ? 0 : a5hash(name + len, name_len - len, name_len);
+	output[0] = output[1] = 0;
+
+	// 16 characters, 6 bits each, using 96 bits total.
+	for (int i = 0; i < len; i++)
+	{
+		uint64_t code = (uint64_t)alphabet[(unsigned char)name[i]];
+		int bit = i * 6;
+		int word = bit / 64;
+		uint64_t shift = (uint64_t)(bit % 64);
+		output[word] |= code << shift;
+		if (shift > 58) output[word + 1] |= code >> (64 - shift);
+	}
+
+	// Add the low 32 bits of the hash as the last bits to differentiate between
+	// identifiers over 16 bytes long.
+	output[1] |= val << 32u;
+}
+
 char *str_dup(const char *str)
 {
 	return str_copy(str, strlen(str));
@@ -367,20 +443,26 @@ char *str_copy(const char *start, size_t str_len)
 	return dst;
 }
 
+
 void scratch_buffer_delete(size_t len)
 {
-	ASSERT(scratch_buffer.len >= len);
-	scratch_buffer.len -= len;
+	ASSERT((size_t)sb_current->len >= len);
+	sb_current->len -= (int)len;
 }
 
 void scratch_buffer_clear(void)
 {
-	scratch_buffer.len = 0;
+	sb_current->len = 0;
 }
 
 bool scratch_buffer_may_append(size_t len)
 {
-	return len + scratch_buffer.len < MAX_STRING_BUFFER - 1;
+	return len + sb_current->len < MAX_STRING_BUFFER - 1;
+}
+
+void scratch_buffer_append_slice(StringSlice slice)
+{
+	scratch_buffer_append_len(slice.ptr, slice.len);
 }
 
 void scratch_buffer_append_len(const char *string, size_t len)
@@ -389,8 +471,8 @@ void scratch_buffer_append_len(const char *string, size_t len)
 	{
 		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
 	}
-	memcpy(scratch_buffer.str + scratch_buffer.len, string, len);
-	scratch_buffer.len += (uint32_t)len;
+	memcpy(sb_current->str + sb_current->len, string, len);
+	sb_current->len += (uint32_t)len;
 }
 
 static void scratch_buffer_append_double_quoted(const char *string)
@@ -419,6 +501,8 @@ static void scratch_buffer_append_double_quoted(const char *string)
 				}
 				continue;
 			}
+			default:
+				break;
 		}
 		scratch_buffer_append_char(c);
 	}
@@ -448,7 +532,7 @@ static bool contains_whitespace_or_quotes(const char *string)
 void scratch_buffer_append_cmd_argument(const char *string)
 {
 #if PLATFORM_WINDOWS
-	if (contains_whitespace_or_quotes(string))
+	if (!string[0] || contains_whitespace_or_quotes(string))
 	{
 		scratch_buffer_append_double_quoted(string);
 	}
@@ -503,13 +587,13 @@ void scratch_buffer_append_double(double d)
 	scratch_buffer_printf("%f", d);
 
 	//removing unused zeroes and dot
-	while (scratch_buffer.len > 0)
+	while (sb_current->len > 0)
 	{
-		if (scratch_buffer.str[scratch_buffer.len - 1] != '0' && scratch_buffer.str[scratch_buffer.len - 1] != '.')
+		if (sb_current->str[sb_current->len - 1] != '0' && sb_current->str[sb_current->len - 1] != '.')
 		{
 			return;
 		}
-		scratch_buffer.len--;
+		sb_current->len--;
 	}
 }
 
@@ -522,14 +606,14 @@ void scratch_buffer_printf(const char *format, ...)
 {
 	va_list args;
 	va_start(args, format);
-	size_t available = MAX_STRING_BUFFER - scratch_buffer.len;
-	uint32_t len_needed = (uint32_t)vsnprintf(&scratch_buffer.str[scratch_buffer.len], available, format, args);
+	size_t available = MAX_STRING_BUFFER - sb_current->len;
+	uint32_t len_needed = (uint32_t)vsnprintf(&sb_current->str[sb_current->len], available, format, args);
 	if (len_needed > available - 1)
 	{
 		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
 	}
 	va_end(args);
-	scratch_buffer.len += len_needed;
+	sb_current->len += len_needed;
 }
 
 void scratch_buffer_append_in_quote(const char *string)
@@ -569,12 +653,12 @@ void scratch_buffer_append_remove_space(const char *start, int len)
 
 void scratch_buffer_append_char(char c)
 {
-	if (scratch_buffer.len + 1 > MAX_STRING_BUFFER - 1)
+	if (sb_current->len + 1 > MAX_STRING_BUFFER - 1)
 	{
 		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
 	}
 
-	scratch_buffer.str[scratch_buffer.len++] = c;
+	sb_current->str[sb_current->len++] = c;
 }
 
 void scratch_buffer_append_char_repeat(char c, size_t count)
@@ -587,13 +671,31 @@ void scratch_buffer_append_char_repeat(char c, size_t count)
 
 char *scratch_buffer_to_string(void)
 {
-	scratch_buffer.str[scratch_buffer.len] = '\0';
-	return scratch_buffer.str;
+	sb_current->str[sb_current->len] = '\0';
+	return sb_current->str;
+}
+
+char *scratch_buffer_end_ptr(void)
+{
+	return sb_current->str + sb_current->len;
 }
 
 char *scratch_buffer_copy(void)
 {
-	return str_copy(scratch_buffer.str, scratch_buffer.len);
+	return str_copy(sb_current->str, sb_current->len);
 }
 
+void scratch_buffer_set_len(int len)
+{
+	sb_current->len = len;
+}
 
+int scratch_buffer_len(void)
+{
+	return sb_current->len;
+}
+
+const char *scratch_buffer_ptr(void)
+{
+	return sb_current->str;
+}

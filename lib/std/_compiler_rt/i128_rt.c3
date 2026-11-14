@@ -75,8 +75,8 @@ macro uint128 @__udivmodti4(uint128 a, uint128 b, bool $return_rem)
 			$endif
 		}
 		sr = (int)$$clz(d.high) - (int)$$clz(n.high);
-		// 0 <= sr <= n_udword_bits - 2 or sr large
-		if (sr > 64 - 2)
+		// 0 <= sr <= n_udword_bits - 2 or sr large, negative sr means d > n
+		if ((uint)sr > 64 - 2)
 		{
 			$if $return_rem:
 				return n.all;
@@ -134,8 +134,8 @@ macro uint128 @__udivmodti4(uint128 a, uint128 b, bool $return_rem)
 		else
 		{
 			sr = (int)$$clz(d.high) - (int)$$clz(n.high);
-			// 0 <= sr <= n_udword_bits - 1 or sr large
-			if (sr > 64 - 1)
+			// 0 <= sr <= n_udword_bits - 1 or sr large, negative sr means d > n
+			if ((uint)sr > 64 - 1)
 			{
 				$if $return_rem:
 					return n.all;
@@ -245,16 +245,17 @@ fn int128 __ashrti3(int128 a, uint b) @cname("__ashrti3") @weak @nostrip
 {
 	Int128bits result;
 	result.all = (uint128)a;
+	// The high part is shifted as signed, so that the sign is extended.
 	if (b >= 64)
 	{
-		result.low = result.high >> (b - 64);
-		result.high = result.high >> 63;
+		result.low = (ulong)((long)result.high >> (b - 64));
+		result.high = (ulong)((long)result.high >> 63);
 	}
 	else
 	{
 		if (b == 0) return a;
 		result.low = result.high << (64 - b) | (result.low >> b);
-		result.high  = result.high >> b;
+		result.high  = (ulong)((long)result.high >> b);
 	}
 	return (int128)result.all;
 }
@@ -307,6 +308,36 @@ fn int128 __multi3(int128 a, int128 b) @cname("__multi3") @weak @nostrip
 	return (int128)r.all;
 }
 
+fn int128 __muloti4(int128 a, int128 b, CInt* overflow) @cname("__muloti4") @weak @nostrip
+{
+	*overflow = 0;
+	int128 result = a * b;
+	if (a == int128::min)
+	{
+		if (b != 0 && b != 1) *overflow = 1;
+		return result;
+	}
+	if (b == int128::min)
+	{
+		if (a != 0 && a != 1) *overflow = 1;
+		return result;
+	}
+	int128 sa = a >> 127;
+	int128 abs_a = (a ^ sa) - sa;
+	int128 sb = b >> 127;
+	int128 abs_b = (b ^ sb) - sb;
+	if (abs_a < 2 || abs_b < 2) return result;
+	if (sa == sb)
+	{
+		if (abs_a > int128::max / abs_b) *overflow = 1;
+	}
+	else
+	{
+		if (abs_a > int128::min / -abs_b) *overflow = 1;
+	}
+	return result;
+}
+
 fn float __floattisf(int128 a) @cname("__floattisf") @weak @nostrip => float_from_i128(float, a);
 fn double __floattidf(int128 a) @cname("__floattidf") @weak @nostrip => float_from_i128(double, a);
 fn float __floatuntisf(uint128 a) @cname("__floatuntisf") @weak @nostrip => float_from_u128(float, a);
@@ -318,6 +349,12 @@ fn int128 __fixsfti(float a) @weak @cname("__fixsfti") @nostrip => fixint(a);
 
 
 macro float_from_i128($Type, int128 a) @private
+{
+	uint128 sign = (uint128)(a >> 127);
+	return float_from_u128($Type, ((uint128)a ^ sign) - sign, a < 0);
+}
+
+macro float_from_u128($Type, uint128 a, bool neg = false) @private
 {
 	var $Rep;
 	$switch $Type:
@@ -335,63 +372,6 @@ macro float_from_i128($Type, int128 a) @private
 			const SIGNIFICANT_BITS = 23;
 			const MANTISSA_MASK = 0x7F_FFFFU;
 			const SIGN_BIT = 1U << 31;
-		$case float16:
-			$Rep = ushort;
-			const MANT_DIG = math::HALF_MANT_DIG;
-		$case float128:
-			$Rep = uint128;
-			const MANT_DIG = QUAD_MANT_DIG;
-	$endswitch
-	if (a == 0) return 0;
-	// Grab and remove sign.
-	int128 sign = a >> 127;
-	a = (a ^ sign) - sign;
-	int sd = 128 - (int)$$clz(a); // digits
-	int e = sd - 1; // exponent
-	if (sd > MANT_DIG)
-	{
-		switch (sd)
-		{
-			case MANT_DIG + 1:
-				a <<= 1;
-			case MANT_DIG + 2:
-				break;
-			default:
-				a = (a >> (sd - (MANT_DIG + 2)))
-					| (int128)(((uint128)a & ((uint128)(-1) >> ((128 + MANT_DIG + 2) - sd))) != 0);
-		}
-		a |= (int128)((a & 4) != 0);
-		a++;
-		a >>= 2;
-		if (a & (1LL << MANT_DIG))
-		{
-			a >>= 1;
-			e++;
-		}
-	}
-	else
-	{
-		a <<= (MANT_DIG - sd);
-	}
-	return bitcast((($Rep)sign & SIGN_BIT) | ((($Rep)e + ($Rep)EXP_BIAS) << SIGNIFICANT_BITS) | (($Rep)a & ($Rep)MANTISSA_MASK), $Type);
-}
-
-macro float_from_u128($Type, uint128 a) @private
-{
-	var $Rep;
-	$switch $Type:
-		$case double:
-			$Rep = ulong;
-			const MANT_DIG = DOUBLE_MANT_DIG;
-			const SIGNIFICANT_BITS = 52;
-			const EXP_BIAS = 1023;
-			const MANTISSA_MASK = 0xFFFFF_FFFF_FFFFUL;
-		$case float:
-			$Rep = uint;
-			const MANT_DIG = FLOAT_MANT_DIG;
-			const EXP_BIAS = 127;
-			const SIGNIFICANT_BITS = 23;
-			const MANTISSA_MASK = 0x7F_FFFFU;
 		$default:
 			$error "Unsupported type";
 	$endswitch
@@ -423,7 +403,7 @@ macro float_from_u128($Type, uint128 a) @private
 	{
 		a <<= (MANT_DIG - sd);
 	}
-	return bitcast(((($Rep)e + ($Rep)EXP_BIAS) << SIGNIFICANT_BITS) | (($Rep)a & ($Rep)MANTISSA_MASK), $Type);
+	return bitcast((neg ? SIGN_BIT : 0) | ((($Rep)e + ($Rep)EXP_BIAS) << SIGNIFICANT_BITS) | (($Rep)a & ($Rep)MANTISSA_MASK), $Type);
 }
 
 

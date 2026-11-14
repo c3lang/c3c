@@ -56,11 +56,11 @@ entry:
   %element7 = alloca i64, align 8
   %varargslots10 = alloca [1 x %any], align 16
   %retparam11 = alloca i64, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x, ptr align 4 @.__const, i64 8, i1 false)
   store i64 2, ptr %v, align 8
   %ptradd = getelementptr inbounds i8, ptr %v, i64 8
   store ptr %x, ptr %ptradd, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %vector, ptr align 8 %v, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %vector, ptr align 8 %v, i64 16, i1 false)
   %0 = load i64, ptr %vector, align 8
   store i64 0, ptr %.anon, align 8
   br label %loop.cond
@@ -93,7 +93,7 @@ loop.body:                                        ; preds = %loop.cond
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %vector2, ptr align 8 %v, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %vector2, ptr align 8 %v, i64 16, i1 false)
   %12 = load i64, ptr %vector2, align 8
   store i64 0, ptr %.anon3, align 8
   br label %loop.cond4

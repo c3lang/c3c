@@ -84,6 +84,8 @@ typedef struct
 	VariableId id;
 	Type *type;
 	bool is_static;
+	bool is_alloca;
+	int alloca_count;
 	Decl *decl;
 } CLocalVar;
 
@@ -108,17 +110,22 @@ typedef struct GenContext
 	CValue retval;
 
 	CLocalVar *function_locals;
+	const char *cur_func_name;
+	Decl *cur_func_decl;
 
-	HTable gen_decl;
-	HTable gen_def;
+	HTable *gen_decl;
+	HTable *gen_def;
 	HTable local_vars;
 	HTable local_fault_vars;
 	HTable declared_vars;
-	HTable decl_names;
+	HTable *decl_names;
 	HTable emitted_func_defs;
-	HTable emitted_global_decls;
+	HTable *emitted_global_decls;
 	HTable emitted_global_defs;
 } GenContext;
+
+VariableId c_emit_alloca(GenContext *c, Type *type);
+VariableId c_emit_alloca_array(GenContext *c, Type *base_type, int count);
 
 typedef void (*CDeclVisitor)(GenContext *c, Decl *d, void *userdata);
 
@@ -133,9 +140,11 @@ const char *c_intern(const char *str);
 const char *c_sanitize_name(const char *name);
 const char *c_get_decl_name(Decl *decl);
 const char *c_get_decl_asm_name(Decl *decl);
+bool c_decl_needs_asm_label(Decl *decl);
 const char *c_get_enum_assoc_name(Decl *enum_decl, Decl *param);
 void c_emit_string_literal(GenContext *c, const char *bytes, ArrayIndex len);
 void c_traverse_all_modules(GenContext *c, CDeclVisitor visitor, void *userdata);
+void c_emit_panic(GenContext *c, const char *message, SourceLocId loc, Expr **args);
 
 /* Function & Variable Management */
 int c_create_label(GenContext *c);
@@ -169,7 +178,9 @@ void c_emit_bitstruct_accessors_to_file(FILE *f, Decl *decl);
 const char *c_emit_bitstruct_container(GenContext *c, Expr *parent_expr, Decl *member, int *out_container_var, Decl **out_bitstruct_decl);
 void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target_type);
 void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target_type);
-void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *right_val, const char *assign_op, CValue *out_val);
+void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *addr, CValue *right_val, const char *assign_op, CValue *out_val);
+void c_emit_null_deref_check(GenContext *c, Expr *expr, VariableId addr_var);
+void c_emit_vec_compound_assign(GenContext *c, const char *lhs_fmt, int len, const char *assign_op, CValue *right_val);
 
 /* Global & Runtime */
 bool c_is_file_global(Decl *decl);
@@ -355,13 +366,25 @@ static inline Decl *c_type_get_decl(Type *t)
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_TYPEDEF:
 		case TYPE_INTERFACE:
 			return t->decl;
 		default:
 			return NULL;
 	}
+}
+
+static inline bool c_decl_is_live(Decl *d)
+{
+	if (!d) return false;
+	if (d->decl_kind == DECL_FUNC)
+	{
+		if (d->func_decl.attr_test && !compiler.build.build_test) return false;
+		if (d->func_decl.attr_benchmark && !compiler.build.build_benchmark) return false;
+	}
+	if (strip_unused() && !d->is_live) return false;
+	return true;
 }
 
 static inline bool c_type_needs_emission(Type *t)
@@ -377,6 +400,10 @@ static inline bool c_type_needs_emission(Type *t)
 	}
 	Decl *d = c_type_get_decl(t);
 	if (d && (!d->unit || !d->unit->module))
+	{
+		return false;
+	}
+	if (strip_unused() && !t->is_live)
 	{
 		return false;
 	}
@@ -407,5 +434,11 @@ void c_emit_expr(GenContext *c, CValue *value, Expr *expr);
 void c_emit_ignored_expr(GenContext *c, Expr *expr);
 void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr);
 void c_emit_inc_dec(GenContext *c, CValue *value, Expr *expr, bool is_post);
+
+/* Typeid Tracking */
+extern HTable c_needed_typeids;
+extern Type **c_needed_typeids_vec;
+extern bool c_recording_typeids;
+void c_record_needed_typeid(Type *type, const char *sym);
 
 #endif /* C_CODEGEN_INTERNAL_H */

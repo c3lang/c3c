@@ -17,6 +17,7 @@
 #define DEFAULT_SWITCHRANGE_MAX_SIZE (256)
 #define DEFAULT_SWITCH_JUMP_MAX_SIZE (0x3FFF)
 #define DEFAULT_PATH "."
+#define DEFAULT_FETCH_URL "https://raw.githubusercontent.com/c3lang/vendor/refs/heads/registry"
 #define DEFAULT_STACK_PROBE_SIZE (0x1000)
 
 typedef enum
@@ -32,10 +33,14 @@ typedef enum
 	COMMAND_COMPILE_RUN,
 	COMMAND_STATIC_LIB,
 	COMMAND_DYNAMIC_LIB,
+	COMMAND_SOURCE_LIB,
 	COMMAND_RUN,
 	COMMAND_CLEAN_RUN,
 	COMMAND_CLEAN,
 	COMMAND_VENDOR_FETCH,
+	COMMAND_FETCH,
+	COMMAND_FETCH_LIST,
+	COMMAND_FETCH_INFO,
 	COMMAND_DIST,
 	COMMAND_BENCHMARK,
 	COMMAND_TEST,
@@ -90,6 +95,7 @@ typedef enum
 	TARGET_TYPE_BENCHMARK,
 	TARGET_TYPE_TEST,
 	TARGET_TYPE_PREPARE,
+	TARGET_TYPE_SOURCE_LIB,
 } TargetType;
 
 typedef struct
@@ -132,7 +138,7 @@ static const char *project_view_flags[PROJECT_VIEW_TYPE_MAX + 1] = {
 	[PROJECT_VIEW_TYPE_TARGETS] = "targets",
 };
 
-static const char *targets[7] = {
+static const char *target_types[8] = {
 	[TARGET_TYPE_EXECUTABLE] = "executable",
 	[TARGET_TYPE_STATIC_LIB] = "static-lib",
 	[TARGET_TYPE_DYNAMIC_LIB] = "dynamic-lib",
@@ -140,18 +146,42 @@ static const char *targets[7] = {
 	[TARGET_TYPE_TEST] = "test",
 	[TARGET_TYPE_OBJECT_FILES] = "object-files",
 	[TARGET_TYPE_PREPARE] = "prepare",
+	[TARGET_TYPE_SOURCE_LIB] = "source-lib",
 };
-static const char *target_desc[7] = {
+static const char *target_desc[8] = {
 	[TARGET_TYPE_EXECUTABLE] = "Executable",
 	[TARGET_TYPE_STATIC_LIB] = "Static library",
 	[TARGET_TYPE_DYNAMIC_LIB] = "Dynamic library",
 	[TARGET_TYPE_BENCHMARK] = "benchmark suite",
 	[TARGET_TYPE_TEST] = "test suite",
 	[TARGET_TYPE_OBJECT_FILES] = "object files",
-	[TARGET_TYPE_PREPARE] = "prepare"
-
+	[TARGET_TYPE_PREPARE] = "prepare",
+	[TARGET_TYPE_SOURCE_LIB] = "Source library",
 };
 
+
+#define LIBRARY_PATH_FORMAT "[<url>:]<namespace>/<name>[@<version>][:<checksum>]"
+
+typedef struct
+{
+	bool use_remote_fetch;
+	const char *url;
+	const char *id;
+	const char *name;
+	const char *version;
+	const char *checksum;
+	const char *error;
+} LibraryPathInfo;
+
+typedef struct LibraryInfo
+{
+	struct JSONObject_ *versions;
+	const char *latest;
+	const char *library;
+	const char *updated;
+	const char *description;
+	struct JSONObject_ **tags;
+} LibraryInfo;
 
 typedef struct BuildOptions_
 {
@@ -201,10 +231,15 @@ typedef struct BuildOptions_
 	const char *bsd_sysroot;
 	int build_threads;
 	const char *echo_prefix;
+	const char *search_name;
+	const char *search_tag;
+	const char *fetch_url;
+	const char **vendor_libraries_to_fetch;
 	const char **libraries_to_fetch;
 	const char **files;
 	const char *test_filter;
 	const char **args;
+	const char **dependency_args;
 	const char **feature_names;
 	const char **removed_feature_names;
 	const char *output_name;
@@ -225,7 +260,6 @@ typedef struct BuildOptions_
 	bool test_noleak;
 	bool test_show_output;
 	bool benchmark_csv_report;
-	bool print_large_functions;
 	const char *custom_linker_path;
 	uint32_t symtab_size;
 	unsigned version;
@@ -258,27 +292,30 @@ typedef struct BuildOptions_
 	SingleModule single_module;
 	UnrollLoops unroll_loops;
 	MergeFunctions merge_functions;
+	InfiniteLoopDetect infinite_loop_detect;
 	SectionsSetting function_sections;
 	SectionsSetting data_sections;
 	AutoVectorization loop_vectorization;
 	AutoVectorization slp_vectorization;
 	bool emit_llvm;
 	bool emit_asm;
-	bool benchmark_mode;
 	bool test_mode;
 	bool lsp_mode;
 	bool no_entry;
 	bool no_obj;
 	bool keep_object_files;
 	bool no_headers;
+	bool no_compress;
 	bool read_stdin;
 	bool print_output;
 	bool print_input;
 	bool run_once;
 	bool suppress_run;
+	bool no_deps;
 	bool docgen_json_out;
 	bool docgen_append;
 	bool fetch_accept_license;
+	bool fetch_compressed;
 	bool msvc_show_versions;
 	bool msvc_fetch_headers;
 	ImplicitFloat implicit_float;
@@ -289,6 +326,8 @@ typedef struct BuildOptions_
 	bool macos_list_sdks, macos_fetch_sdk_list;
 	const char **fetch_sdk_archs;
 	int verbosity_level;
+	StatsMode stats_mode;
+	const char *stats_file;
 	const char *panicfn;
 	const char *benchfn;
 	const char *testfn;
@@ -399,6 +438,7 @@ typedef struct
 	const char **test_source_dirs;
 	const char **sources;
 	const char **object_files;
+	const char **llvm_ir_files;
 	const char **libdirs;
 	const char **libs;
 	const char **linker_libdirs;
@@ -422,13 +462,13 @@ typedef struct
 	bool delete_after_run;
 	bool generate_benchmark_runner;
 	bool generate_test_runner;
-	bool benchmark_output;
 	bool test_output;
 	bool lsp_output;
 	bool docgen;
 	bool docgen_json_out;
 	bool docgen_append;
 	bool output_headers;
+	bool no_compress;
 	bool output_ast;
 	bool lex_only;
 	bool parse_only;
@@ -447,9 +487,11 @@ typedef struct
 	bool print_linking;
 	bool no_entry;
 	bool kernel_build;
-	bool print_stats;
+	StatsMode stats;
+	const char *stats_file;
+	bool collect_stats;
+	bool collect_stats_lists;
 	bool single_threaded;
-	bool print_large_functions;
 	int build_threads;
 	TrustLevel trust_level;
 	OptimizationSetting optsetting;
@@ -468,6 +510,7 @@ typedef struct
 	SectionsSetting function_sections;
 	SectionsSetting data_sections;
 	MergeFunctions merge_functions;
+	InfiniteLoopDetect infinite_loop_detect;
 	UnrollLoops unroll_loops;
 	AutoVectorization loop_vectorization;
 	AutoVectorization slp_vectorization;
@@ -495,6 +538,9 @@ typedef struct
 	const char **csources;
 	const char **cinclude_dirs;
 	const char **exec;
+	const char **env;
+	const char *env_expand_error;
+	const char **depends_on;
 	AuthorEntry *authors;
 	const char **feature_list;
 	const char *custom_linker_path;
@@ -592,6 +638,7 @@ static BuildTarget default_build_target = {
 		.single_module = SINGLE_MODULE_NOT_SET,
 		.unroll_loops = UNROLL_LOOPS_NOT_SET,
 		.merge_functions = MERGE_FUNCTIONS_NOT_SET,
+		.infinite_loop_detect = INFINITE_LOOP_DETECT_NOT_SET,
 		.slp_vectorization = VECTORIZATION_NOT_SET,
 		.loop_vectorization = VECTORIZATION_NOT_SET,
 		.function_sections = SECTIONS_SETTING_NOT_SET,
@@ -649,12 +696,21 @@ BuildOptions parse_arguments(int argc, const char *argv[]);
 ArchOsTarget arch_os_target_from_string(const char *target);
 bool command_accepts_files(CompilerCommand command);
 bool command_passes_args(CompilerCommand command);
-void update_build_target_with_opt_level(BuildTarget *target,
-	OptimizationSetting level);
+void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting level);
 const char *check_dir(const char *path);
 void create_project(BuildOptions *build_options);
 void create_library(BuildOptions *build_options);
 void resolve_libraries(BuildTarget *build_target);
+const char** get_project_dependency_directories(void);
+void add_libraries_to_project_file(const char** libs);
+const char *registry_url(BuildOptions *options);
+void fetch_lib(BuildOptions *options, bool is_vendor, const char **libraries_to_fetch);
+LibraryPathInfo parse_library_path(const char *path);
+const char *load_fetch_info(const char *base, const char *name, LibraryInfo *info);
+const char *registry_fetch_single(BuildOptions *options, LibraryPathInfo *dependency, const char *path, bool progress);
+const char *library_path_info_to_string(LibraryPathInfo *dependency);
+void convert_library_paths_to_plain_library_names(const char **libs);
+void build_source_library(BuildTarget *target);
 void view_project(BuildOptions *build_options);
 void add_target_project(BuildOptions *build_options);
 void fetch_project(BuildOptions* options);

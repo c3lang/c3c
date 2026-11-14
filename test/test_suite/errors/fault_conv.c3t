@@ -91,8 +91,7 @@ entry:
 testblock:                                        ; preds = %entry
   %2 = call i64 @test.canFail()
   %not_err = icmp eq i64 %2, 0
-  %3 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %3, label %after_check, label %assign_optional
+  br i1 %not_err, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %testblock
   store i64 %2, ptr %err, align 8
@@ -103,14 +102,14 @@ after_check:                                      ; preds = %testblock
   br label %end_block
 
 end_block:                                        ; preds = %after_check, %assign_optional
-  %4 = load i64, ptr %err, align 8
-  %i2b = icmp ne i64 %4, 0
+  %3 = load i64, ptr %err, align 8
+  %i2b = icmp ne i64 %3, 0
   br i1 %i2b, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %end_block
-  %5 = load i64, ptr %err, align 8
-  %6 = call i32 @test.exitcode(i64 %5)
-  ret i32 %6
+  %4 = load i64, ptr %err, align 8
+  %5 = call i32 @test.exitcode(i64 %4)
+  ret i32 %5
 
 if.exit:                                          ; preds = %end_block
   ret i32 0

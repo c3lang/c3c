@@ -17,7 +17,7 @@ fn void long_name_bench() @benchmark
 
 fn void very_long_name_bench() @benchmark
 {
-    return std::thread::sleep_ms(10);
+    std::thread::sleep_ms(10)!!;
 }
 
 fn void initialize() @init

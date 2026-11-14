@@ -32,7 +32,7 @@ fn int main()
 
 		// Item 2
 		w.start_element("item")!!;
-			w.attr("id", "c3-002")!!;
+			w.add_attribute("id", "c3-002")!!;
 			w.start_element("name")!!;
 				w.add_content("Heap-Safe Potion")!!;
 			w.end_element("name")!!;

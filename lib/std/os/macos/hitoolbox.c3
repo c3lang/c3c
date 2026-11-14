@@ -3,8 +3,11 @@ import std::os::darwin;
 
 const uint UC_KEY_ACTION_DOWN = 0;
 const uint UC_KEY_TRANSLATE_NO_DEAD_KEYS_BIT = 0;
+const uint UC_KEY_TRANSLATE_NO_DEAD_KEYS_MASK = 1 << UC_KEY_TRANSLATE_NO_DEAD_KEYS_BIT;
+const uint KEYBOARD_ISO = 0x49534F20; // 'ISO '
 
 extern fn char lmGetKbdType() @cname("LMGetKbdType");
+extern fn uint kbGetLayoutType(short keyboardType) @cname("KBGetLayoutType");
 
 extern fn int ucKeyTranslate(UCKeyboardLayout* layout, ushort virtualKeyCode, ushort keyAction, uint modifierKeyState, uint keyboardType, uint keyTranslateOptions, uint* deadKeyState, uint maxStringLength, uint* actualStringLength, ushort* unicodeString) @cname("UCKeyTranslate");
 

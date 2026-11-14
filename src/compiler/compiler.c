@@ -17,6 +17,16 @@
 #define MAX_OUTPUT_FILES 1000000
 #define MAX_MODULES 100000
 
+typedef struct LibraryOverview
+{
+	const char *name;
+	const char *description;
+	const char *latest;
+	const char *updated;
+	JSONObject **tags;
+	JSONObject **versions;
+} LibraryOverview;
+
 
 CompilerState compiler;
 
@@ -26,14 +36,51 @@ Vmem decl_arena;
 Vmem type_info_arena;
 Vmem sourceloc_arena;
 
-static double compiler_init_time;
-static double compiler_parsing_time;
-static double compiler_sema_time;
-static double compiler_ir_gen_time;
-static double compiler_codegen_time;
-static double compiler_link_time;
 
 const char* c3_suffix_list[3] = { ".c3", ".c3t", ".c3i" };
+
+const PanicFunctionDescriptor panic_fn_desc[PANIC_FN_COUNT] = {
+	[PANIC_FN_MESSAGE] = { "message", .text_count = 1 },
+	[PANIC_FN_ASSERT] = { "assert", "Assert \"%s\" failed.", "Assert failed", .text_count = 1 },
+	[PANIC_FN_ASSERT_VIOLATION] = { "assert_violation", "Assert violation" },
+	[PANIC_FN_ASSERT_ARGS] = { "assert_args", NULL, "Assert violation", .text_count = 1, .value_count = 1 },
+	[PANIC_FN_REQUIRE] = { "require", "@require \"%s\" violated.", "@require violated", .text_count = 1 },
+	[PANIC_FN_REQUIRE_MESSAGE] = { "require_message", "@require \"%s\" violated: '%s'.", "@require violated", .text_count = 2 },
+	[PANIC_FN_ENSURE] = { "ensure", "@ensure \"%s\" violated.", "@ensure violated", .text_count = 1 },
+	[PANIC_FN_ENSURE_MESSAGE] = { "ensure_message", "@ensure \"%s\" violated: '%s'.", "@ensure violated", .text_count = 2 },
+	[PANIC_FN_REF_PARAM] = { "ref_param", "Reference parameter '%s' was passed a null pointer argument.", "Reference parameter was passed a null pointer argument.", .text_count = 1 },
+	[PANIC_FN_REF_ARG] = { "ref_arg", "Passed null to a ref ('&') parameter." },
+	[PANIC_FN_NULL_METHOD] = { "null_method", "Called a method on a null value." },
+	[PANIC_FN_NULL_POINTER] = { "null_pointer", "Dereference of null pointer, '%s' was null.", "Dereference of null pointer", .text_count = 1 },
+	[PANIC_FN_DEREF] = { "deref", .text_count = 1, .value_count = 2 },
+	[PANIC_FN_NULL_FUNCTION] = { "null_function", "Calling null function pointer, '%s' was null.", "Calling null function pointer", .text_count = 1 },
+	[PANIC_FN_NO_METHOD] = { "no_method", "No method '%s' could be found on target", "No method could be found on target", .text_count = 1 },
+	[PANIC_FN_ADD_OVERFLOW] = { "add_overflow", "Addition overflow" },
+	[PANIC_FN_SUB_OVERFLOW] = { "sub_overflow", "Subtraction overflow" },
+	[PANIC_FN_MUL_OVERFLOW] = { "mul_overflow", "Integer multiplication overflow" },
+	[PANIC_FN_NEG_OVERFLOW] = { "neg_overflow", "Signed negation overflow" },
+	[PANIC_FN_DIV_ZERO] = { "div_zero", "Division by zero." },
+	[PANIC_FN_REM_ZERO] = { "rem_zero", "% by zero." },
+	[PANIC_FN_INFINITE_LOOP] = { "infinite_loop", "Infinite loop found" },
+	[PANIC_FN_ACCESS_INNER] = { "access_inner", "Attempted to access 'inner' on non composite type" },
+	[PANIC_FN_ACCESS_NAMES] = { "access_names", "Attempted to access 'names' on non enum/fault type." },
+	[PANIC_FN_ACCESS_LEN] = { "access_len", "Attempted to access 'len' on non array type" },
+	[PANIC_FN_UNALIGNED] = { "unaligned", "Unaligned access: ptr %% %s = %s, use mem::load / mem::store for unaligned access.", "Unaligned pointer access detected", .value_count = 2 },
+	[PANIC_FN_UNWRAP] = { "unwrap", "Unexpected fault '%s' was unwrapped!", "Force unwrap failed!", .value_count = 1 },
+	[PANIC_FN_SHIFT] = { "shift", "Shift amount out of range (was %s).", "Invalid shift", .value_count = 1 },
+	[PANIC_FN_INDEX] = { "index", .value_count = 2 },
+	[PANIC_FN_INDEX_NEGATIVE] = { "index_negative", "Negative array indexing (index was %d)", "Negative array indexing", .value_count = 1 },
+	[PANIC_FN_INDEX_BOUNDS] = { "index_bounds", "Array index out of bounds (array had size %d, index was %d)", "Array index out of bounds", .value_count = 2 },
+	[PANIC_FN_SLICE] = { "slice", .value_count = 4 },
+	[PANIC_FN_SLICE_START] = { "slice_start", "Index exceeds array length (array had size %d, index was %d).", "Index exceeds array len", .value_count = 2 },
+	[PANIC_FN_SLICE_START_NEGATIVE] = { "slice_start_negative", "Negative indexing (%d)", "Negative value", .value_count = 1 },
+	[PANIC_FN_SLICE_LEN_NEGATIVE] = { "slice_len_negative", "Negative value (%d) given for slice length.", "Negative slice length", .value_count = 1 },
+	[PANIC_FN_SLICE_END] = { "slice_end", "End index out of bounds (end index of %d exceeds size of %d)", "End index out of bounds", .value_count = 2 },
+	[PANIC_FN_SLICE_RANGE_NEGATIVE] = { "slice_range_negative", "Negative size (slice was: [%d..%d])", "Negative size", .value_count = 2 },
+	[PANIC_FN_SLICE_COPY] = { "slice_copy", "Slice copy length mismatch (%d != %d).", "Length mismatch", .value_count = 2 },
+	[PANIC_FN_ENUM_NEGATIVE] = { "enum_negative", "Attempt to convert a negative value (%d) to enum '%s' failed.", "Attempt to convert negative value to enum failed.", .text_count = 1, .value_count = 1 },
+	[PANIC_FN_ENUM_RANGE] = { "enum_range", "Attempting to convert %d to enum '%s' failed as the value exceeds the max ordinal (%d).", "Failed integer to enum conversion", .text_count = 1, .value_count = 2 },
+};
 
 
 static const char *out_name(void)
@@ -63,12 +110,12 @@ void compiler_init(BuildOptions *build_options)
 		}
 	}
 
-	compiler_init_time = -1;
-	compiler_parsing_time = -1;
-	compiler_sema_time = -1;
-	compiler_ir_gen_time = -1;
-	compiler_codegen_time = -1;
-	compiler_link_time = -1;
+	compiler.stats.init_time = -1;
+	compiler.stats.parsing_time = -1;
+	compiler.stats.sema_time = -1;
+	compiler.stats.ir_gen_time = -1;
+	compiler.stats.codegen_time = -1;
+	compiler.stats.link_time = -1;
 
 	INFO_LOG("Version: %s", COMPILER_VERSION);
 
@@ -148,46 +195,63 @@ typedef struct CompileData_
 	void *context;
 	const char *object_name;
 	Task task;
+	const char *c_file;
+	const char *cc;
+	const char *cflags;
+	const char **cinclude_dirs;
+	const char *output_subdir;
+	bool (*compile)(void *compile_data);
+	double time;
 } CompileData;
 
 #if LLVM_AVAILABLE
-void thread_compile_task_llvm(void *compile_data)
+static bool thread_compile_task_llvm(void *compile_data)
 {
 	CompileData *data = compile_data;
-	data->object_name = llvm_codegen(data->context);
+	return llvm_codegen(data->context, &data->object_name);
+}
+
+static bool thread_compile_task_llvm_ir(void *compile_data)
+{
+	CompileData *data = compile_data;
+	return llvm_codegen_ir_file(data->context, &data->object_name);
 }
 #else 
-void thread_compile_task_llvm(void *compile_data)
+static bool thread_compile_task_llvm(void *compile_data)
 {
-	error_exit("LLVM backend not available.");
+	eprintf("LLVM backend not available.\n");
+	return false;
 }
 #endif 
 
-void thread_compile_task_c(void *compile_data)
+static bool thread_compile_c_source(void *compile_data)
 {
 	CompileData *data = compile_data;
-	data->object_name = c_codegen(data->context);
+	data->object_name = cc_compiler(data->cc, data->c_file, NULL, data->cflags, data->cinclude_dirs, data->output_subdir);
+	return data->object_name != NULL;
 }
 
-void thread_compile_task_tb(void *compile_data)
+static bool thread_compile_task_c(void *compile_data)
 {
 	CompileData *data = compile_data;
-	data->object_name = tilde_codegen(data->context);
+	return c_codegen(data->context, &data->object_name);
 }
 
-#if !TB_AVAILABLE
-const char *tilde_codegen(void *context)
+static bool thread_compile_task_timed(void *compile_data)
 {
-	error_exit("TB backend not available.");
-	UNREACHABLE
-}
-void **tilde_gen(Module** modules, int module_count)
-{
-	error_exit("TB backend not available.");
-	UNREACHABLE
+	CompileData *data = compile_data;
+	BenchTime start = benchstart();
+	bool success = data->compile(data);
+	data->time = benchmark(start);
+	return success;
 }
 
-#endif
+static Task *compile_data_task(CompileData *data, bool (*compile)(void *compile_data))
+{
+	data->compile = compile;
+	data->task = (Task){ compiler.build.collect_stats ? &thread_compile_task_timed : compile, data };
+	return &data->task;
+}
 
 const char *build_base_name(void)
 {
@@ -271,34 +335,13 @@ const char *static_lib_name(void)
 
 static void free_arenas(void)
 {
-	if (compiler.build.print_stats)
+	if (compiler.build.collect_stats)
 	{
-		printf("-- AST/EXPR/TYPE INFO -- \n");
-		printf(" * Ast size:       %u bytes\n", (unsigned)sizeof(Ast));
-		printf(" * Decl size:      %u bytes\n", (unsigned)sizeof(Decl));
-		printf(" * Expr size:      %u bytes\n", (unsigned)sizeof(Expr));
-		printf(" * TypeInfo size:  %u bytes\n", (unsigned)sizeof(TypeInfo));
-		printf(" * SourceLoc size: %u bytes\n", (unsigned)sizeof(SourceLoc));
-		printf(" - Memory use ----------- \n");
-
-		printf(" * Ast:       %llu kb (%u elements)\n",
-			   (unsigned long long)ast_arena.allocated / 1024,
-			   (unsigned)(ast_arena.allocated / sizeof(Ast)));
-		printf(" * Decl:      %llu kb (%u elements)\n",
-			   (unsigned long long)decl_arena.allocated / 1024,
-			   (unsigned)(decl_arena.allocated / sizeof(Decl)));
-		printf(" * Expr:      %llu kb (%u elements)\n",
-			   (unsigned long long)expr_arena.allocated / 1024,
-			   (unsigned)(expr_arena.allocated / sizeof(Expr)));
-		printf(" * TypeInfo:  %llu kb (%u elements)\n",
-			   (unsigned long long)type_info_arena.allocated / 1024,
-			   (unsigned)(type_info_arena.allocated / sizeof(TypeInfo)));
-		printf(" * SourceLoc: %llu kb (%u elements)\n",
-			   (unsigned long long)sourceloc_arena.allocated / 1024,
-			   (unsigned)(sourceloc_arena.allocated / sizeof(SourceLoc)));
-		printf(" * Total:     %llu kb\n",
-			   (unsigned long long)(sourceloc_arena.allocated + decl_arena.allocated + expr_arena.allocated + type_info_arena.allocated + type_info_arena.allocated) / 1024);
-
+		compiler.stats.ast_memory = ast_arena.allocated;
+		compiler.stats.decl_memory = decl_arena.allocated;
+		compiler.stats.expr_memory = expr_arena.allocated;
+		compiler.stats.type_info_memory = type_info_arena.allocated;
+		compiler.stats.sourceloc_memory = sourceloc_arena.allocated;
 	}
 
 	ast_arena_free();
@@ -306,90 +349,6 @@ static void free_arenas(void)
 	expr_arena_free();
 	type_info_arena_free();
 	sourceloc_arena_free();
-
-	if (compiler.build.print_stats) print_arena_status();
-}
-
-static int compile_cfiles(const char *cc, const char **files, const char *flags, const char **include_dirs,
-						  const char **out_files, const char *output_subdir)
-{
-	if (!cc || !file_executable_in_path(cc))
-	{
-		cc = find_c_compiler();
-	}
-	int total = 0;
-	FOREACH(const char *, file, files)
-	{
-		out_files[total++] = cc_compiler(cc, file, flags, include_dirs, output_subdir);
-	}
-	return total;
-}
-
-static void compiler_print_bench(void)
-{
-	if (compiler.build.print_stats)
-	{
-		puts("--------- Compilation time statistics --------\n");
-		double last = compiler_init_time;
-		double parse_time = compiler_parsing_time - compiler_init_time;
-		if (compiler_parsing_time >= 0) last = compiler_parsing_time;
-		double sema_time = compiler_sema_time - compiler_parsing_time;
-		if (compiler_sema_time >= 0) last = compiler_sema_time;
-		double ir_time = compiler_ir_gen_time - compiler_sema_time;
-		if (compiler_ir_gen_time >= 0) last = compiler_ir_gen_time;
-		double codegen_time = compiler_codegen_time - compiler_ir_gen_time;
-		if (compiler_codegen_time >= 0) last = compiler_codegen_time;
-		double link_time = compiler_link_time - compiler_codegen_time;
-		if (compiler_link_time >= 0) last = compiler_link_time;
-		printf("Frontend -------------------- Time --- %% total\n");
-		if (compiler_init_time >= 0)
-		{
-			compiler_init_time -= compiler.script_time;
-			printf("Initialization took: %10.3f ms  %8.1f %%\n", compiler_init_time * 1000, compiler_init_time * 100 / last);
-			if (compiler.script_time > 0)
-			{
-				printf("Scripts took:        %10.3f ms  %8.1f %%\n", compiler.script_time * 1000, compiler.script_time * 100 / last);
-			}
-		}
-		if (compiler_parsing_time >= 0) printf("Parsing took:        %10.3f ms  %8.1f %%\n", parse_time * 1000, parse_time * 100 / last);
-		if (compiler_sema_time >= 0)
-		{
-			printf("Analysis took:       %10.3f ms  %8.1f %%\n", sema_time * 1000, sema_time * 100 / last);
-			if (compiler.exec_time > 0)
-			{
-				printf(" - Scripts took:     %10.3f ms  %8.1f %%\n", compiler.exec_time * 1000, compiler.exec_time * 100 / last);
-			}
-			printf("TOTAL:               %10.3f ms  %8.1f %%\n", compiler_sema_time * 1000, compiler_sema_time * 100 / last);
-			puts("");
-		}
-		if (compiler_ir_gen_time >= 0)
-		{
-			printf("Backend --------------------- Time --- %% total\n");
-			printf("Ir gen took:         %10.3f ms  %8.1f %%\n", ir_time * 1000, ir_time * 100 / last);
-			if (compiler_codegen_time >= 0)
-			{
-				if (compiler.build.build_threads > 1)
-				{
-					printf("Codegen took:        %10.3f ms  %8.1f %%  (%d threads)\n", codegen_time * 1000, codegen_time * 100 / last, compiler.build.build_threads);
-				}
-				else
-				{
-					printf("Codegen took:        %10.3f ms  %8.1f %%\n", codegen_time * 1000, codegen_time * 100 / last);
-				}
-			}
-			if (compiler_link_time >= 0)
-			{
-				printf("Linking took:        %10.3f ms  %8.1f %%\n", link_time * 1000, link_time * 100 / last);
-			}
-			printf("TOTAL:               %10.3f ms  %8.1f %%\n", (last - compiler_sema_time) * 1000, 100 - compiler_sema_time * 100 / last);
-		}
-		if (last)
-		{
-			puts("----------------------------------------------");
-			printf("TOTAL compile time: %.3f ms.\n", last * 1000);
-			puts("----------------------------------------------");
-		}
-	}
 }
 
 void delete_object_files(const char **files, size_t count)
@@ -447,7 +406,7 @@ void compiler_parse(void)
 		}
 		exit_compiler(EXIT_FAILURE);
 	}
-	compiler_parsing_time = bench_mark();
+	compiler.stats.parsing_time = bench_mark();
 }
 
 bool compiler_should_output_file(const char *file)
@@ -582,36 +541,54 @@ static bool compiler_link_exe(const char *output_exe, const char **obj_files, in
 			if (!system_linker_available)
 			{
 				cc = cc ? cc : find_c_compiler();
+#if LLVM_AVAILABLE
 				OUTF("C compiler '%s' not found or system linker is unsupported; using built-in linker instead.\n", cc);
 				compiler.build.linker_type = LINKER_TYPE_BUILTIN;
 				use_system_linker = false;
+#else
+				error_exit("C compiler '%s' not found or system linker is unsupported, and built-in linker is not available without LLVM.", cc);
+#endif
 				break;
 			}
 			use_system_linker = true;
 			break;
 		case LINKER_TYPE_BUILTIN:
+#if !LLVM_AVAILABLE
+			error_exit("Built-in linker is not available in C3C compiled without LLVM.");
+#endif
 			use_system_linker = false;
 			break;
 		default:
+#if !LLVM_AVAILABLE
+#if PLATFORM_WINDOWS
+			use_system_linker = false;
+#else
+			compiler.build.linker_type = LINKER_TYPE_CC;
+			use_system_linker = true;
+#endif
+#else
 			if (!use_system_linker && compiler.build.linker_type == LINKER_TYPE_NOT_SET)
 			{
 				compiler.build.linker_type = LINKER_TYPE_BUILTIN;
 			}
+#endif
 			break;
 		}
 	if (use_system_linker || compiler.build.linker_type == LINKER_TYPE_CC)
 	{
+		compiler.stats.linker = str_printf("system, using %s", cc ? cc : find_c_compiler());
 		platform_linker(output_exe, obj_files, output_file_count);
-		compiler_link_time = bench_mark();
+		compiler.stats.link_time = bench_mark();
 		return true;
 	}
+	compiler.stats.linker = "built-in (LLD)";
 	if (!obj_format_linking_supported(compiler.platform.object_format) || !linker(output_exe, obj_files, output_file_count))
 	{
 		eprintf("No linking is performed due to missing linker support.\n");
 		compiler.build.run_after_compile = false;
 		return false;
 	}
-	compiler_link_time = bench_mark();
+	compiler.stats.link_time = bench_mark();
 	return true;
 }
 
@@ -632,14 +609,15 @@ void compiler_compile(void)
 		eprintf("> ENDLSP-OK\n");
 		exit_compiler(COMPILER_SUCCESS_EXIT);
 	}
-	compiler_sema_time = bench_mark();
+	compiler.stats.sema_time = bench_mark();
+	if (compiler.build.collect_stats) stats_collect_after_sema();
 	Module **modules = compiler.context.module_list;
 	int module_count = vec_size(modules);
 	if (module_count > MAX_MODULES)
 	{
 		error_exit("Too many modules.");
 	}
-	if (module_count < 1 && !compiler.build.object_files)
+	if (module_count < 1 && !compiler.build.object_files && !compiler.build.llvm_ir_files)
 	{
 		error_exit("No module to compile.");
 	}
@@ -655,11 +633,12 @@ void compiler_compile(void)
 	if (compiler.build.check_only)
 	{
 		free_arenas();
+		compiler_print_stats();
 		return;
 	}
 
 	void **gen_contexts;
-	void (*task)(void *);
+	bool (*task)(void *);
 
 	if ((compiler.build.emit_llvm || compiler.build.test_output || compiler.build.lsp_output))
 	{
@@ -712,18 +691,14 @@ void compiler_compile(void)
 			error_exit("C3C compiled without LLVM!");
 #endif
 			break;
-		case BACKEND_TB:
-			gen_contexts = tilde_gen(modules, module_count);
-			task = &thread_compile_task_tb;
-			break;
 		default:
 			UNREACHABLE_VOID
 	}
-	compiler_ir_gen_time = bench_mark();
+	compiler.stats.ir_gen_time = bench_mark();
 	const char *output_exe = NULL;
 	const char *output_static = NULL;
 	const char *output_dynamic = NULL;
-	if (!compiler.build.test_output && !compiler.build.benchmark_output)
+	if (!compiler.build.test_output)
 	{
 		switch (compiler.build.type)
 		{
@@ -772,17 +747,23 @@ void compiler_compile(void)
 	{
 		OUTF("Asm files written to '%s'.\n", compiler.build.asm_file_dir);
 	}
+	if (compiler.build.backend == BACKEND_C && !compiler.build.emit_object_files)
+	{
+		const char *c_out_dir = compiler.build.object_file_dir ? compiler.build.object_file_dir : ".";
+		OUTF("C files written to '%s'.\n", c_out_dir);
+	}
 	free_arenas();
 
 	int output_file_count = vec_size(gen_contexts);
 	int external_objfile_count = vec_size(compiler.build.object_files);
 	int cfiles = vec_size(compiler.build.csources);
+	int irfiles = compiler.build.emit_object_files ? vec_size(compiler.build.llvm_ir_files) : 0;
 	int cfiles_library = 0;
 	FOREACH(LibraryTarget *, lib, compiler.build.ccompiling_libraries)
 	{
 		cfiles_library += vec_size(lib->csources);
 	}
-	int total_output = output_file_count + cfiles + cfiles_library + external_objfile_count;
+	int total_output = output_file_count + cfiles + irfiles + cfiles_library + external_objfile_count;
 
 	if (total_output > MAX_OUTPUT_FILES)
 	{
@@ -799,44 +780,94 @@ void compiler_compile(void)
 				   "and all the other code was optimized away.");
 	}
 
-	CompileData *compile_data = ccalloc(sizeof(CompileData), output_file_count);
+	int task_total = output_file_count + cfiles + irfiles + cfiles_library;
+	CompileData *compile_data = ccalloc(sizeof(CompileData), task_total);
 	const char **obj_files = cmalloc(sizeof(char*) * total_output);
 
-	if (cfiles)
+	Task **tasks = NULL;
+	int data_idx = 0;
+
+	const char *default_cc = (cfiles || cfiles_library) ? find_c_compiler() : NULL;
+	if (default_cc && !file_executable_in_path(default_cc))
 	{
-		int compiled = compile_cfiles(compiler.build.cc, compiler.build.csources,
-									  compiler.build.cflags, compiler.build.cinclude_dirs, &obj_files[output_file_count], "tmp_c_compile");
-		ASSERT((int)cfiles == compiled);
-		(void)compiled;
-	}
-	const char **obj_file_next = &obj_files[output_file_count + cfiles];
-	FOREACH(LibraryTarget *, lib, compiler.build.ccompiling_libraries)
-	{
-		obj_file_next += compile_cfiles(lib->cc ? lib->cc : compiler.build.cc, lib->csources,
-										lib->cflags, lib->cinclude_dirs, obj_file_next, lib->parent->provides);
-	}
-	for (int i = 0; i < external_objfile_count; i++)
-	{
-		obj_file_next[0] = compiler.build.object_files[i];
-		obj_file_next++;
+		error_exit("C compiler '%s' was not found.", default_cc);
 	}
 
-	Task **tasks = NULL;
 	for (int i = 0; i < output_file_count; i++)
 	{
-		compile_data[i] = (CompileData) { .context = gen_contexts[i] };
-		compile_data[i].task = (Task) { task, &compile_data[i] };
-		vec_add(tasks, &compile_data[i].task);
+		compile_data[data_idx] = (CompileData){ .context = gen_contexts[i] };
+		vec_add(tasks, compile_data_task(&compile_data[data_idx], task));
+		data_idx++;
 	}
+
+	FOREACH(LibraryTarget *, lib, compiler.build.ccompiling_libraries)
+	{
+		const char *lib_cc = lib->cc ? lib->cc : default_cc;
+		if (lib->cc && !file_executable_in_path(lib->cc))
+		{
+			error_exit("Library '%s' specifies C compiler '%s' which was not found.", lib->parent->provides, lib->cc);
+		}
+		FOREACH(const char *, lib_src, lib->csources)
+		{
+			compile_data[data_idx] = (CompileData){
+				.c_file        = lib_src,
+				.cc            = lib_cc,
+				.cflags        = lib->cflags,
+				.cinclude_dirs = lib->cinclude_dirs,
+				.output_subdir = lib->parent->provides,
+			};
+			vec_add(tasks, compile_data_task(&compile_data[data_idx], &thread_compile_c_source));
+			data_idx++;
+		}
+	}
+
+	FOREACH(const char *, c_src, compiler.build.csources)
+	{
+		compile_data[data_idx] = (CompileData){
+			.c_file        = c_src,
+			.cc            = default_cc,
+			.cflags        = compiler.build.cflags,
+			.cinclude_dirs = compiler.build.cinclude_dirs,
+			.output_subdir = "tmp_c_compile",
+		};
+		vec_add(tasks, compile_data_task(&compile_data[data_idx], &thread_compile_c_source));
+		data_idx++;
+	}
+
+#if LLVM_AVAILABLE
+	if (irfiles)
+	{
+		const char *ir_dir = file_append_path(compiler.build.object_file_dir, "tmp_ir_compile");
+		create_output_dir(ir_dir);
+		FOREACH_IDX(i, const char *, ir_src, compiler.build.llvm_ir_files)
+		{
+			char *filename = NULL;
+			if (!file_namesplit(ir_src, &filename, NULL)) error_exit("Cannot compile '%s'", ir_src);
+			// The index keeps the objects of files with the same name apart.
+			const char *object_name = file_append_path(ir_dir, str_printf("%d_%s%s", i, filename, get_object_extension()));
+			compile_data[data_idx] = (CompileData){ .context = llvm_load_ir_file(ir_src, object_name) };
+			vec_add(tasks, compile_data_task(&compile_data[data_idx], &thread_compile_task_llvm_ir));
+			data_idx++;
+		}
+	}
+#endif
+
+	output_file_count = task_total;
 
 #if USE_PTHREAD
 	INFO_LOG("Will use %d thread(s).\n", compiler.build.build_threads);
 #endif
-	int task_count = (int)vec_size(tasks);
+	int task_count = vec_size(tasks);
 	if (task_count > 0)
 	{
 		int threads = (int)(compiler.build.build_threads > task_count ? task_count : compiler.build.build_threads);
-		taskqueue_run(threads, tasks);
+		if (!taskqueue_run(threads, tasks))
+		{
+			exit_compiler(EXIT_FAILURE);
+		}
+		compiler.stats.codegen_threads = threads;
+		compiler.stats.codegen_tasks = task_count;
+		for (int i = 0; i < task_count; i++) compiler.stats.codegen_thread_time += compile_data[i].time;
 	}
 	if (compiler.build.print_output)
 	{
@@ -846,7 +877,7 @@ void compiler_compile(void)
 	for (int i = output_file_count; i > 0; i--)
 	{
 		const char *name = compile_data[i - 1].object_name;
-		if (!name) output_file_count--;
+		if (!name) continue;
 		obj_files[index++] = name;
 		if (compiler.build.print_output)
 		{
@@ -858,10 +889,21 @@ void compiler_compile(void)
 		puts("# output-files-end");
 	}
 
-	output_file_count += cfiles + cfiles_library + external_objfile_count;
-	int objfile_delete_count = output_file_count - external_objfile_count;
+	for (int i = 0; i < external_objfile_count; i++)
+	{
+		obj_files[index++] = compiler.build.object_files[i];
+	}
+	output_file_count = index;
+	int objfile_delete_count = index - external_objfile_count;
 	free(compile_data);
-	compiler_codegen_time = bench_mark();
+	compiler.stats.codegen_time = bench_mark();
+	if (compiler.build.collect_stats)
+	{
+		stats_collect_object_size(obj_files, objfile_delete_count);
+#if LLVM_AVAILABLE
+		if (compiler.build.backend == BACKEND_LLVM) llvm_collect_module_times();
+#endif
+	}
 
 	if ((output_static || output_dynamic || output_exe) && !output_file_count)
 	{
@@ -883,7 +925,7 @@ void compiler_compile(void)
 		should_delete_object_files = false;
 		if (compiler_link_exe(output_exe, obj_files, output_file_count))
 		{
-			compiler_print_bench();
+			compiler_print_stats();
 			delete_object_files(obj_files, objfile_delete_count);
 			if (compiler.build.run_after_compile)
 			{
@@ -893,7 +935,7 @@ void compiler_compile(void)
 		}
 		else
 		{
-			compiler_print_bench();
+			compiler_print_stats();
 		}
 		// Note that cleanup doesn't happen on failure to link.
 	}
@@ -905,8 +947,8 @@ void compiler_compile(void)
 			delete_object_files(obj_files, objfile_delete_count);
 			error_exit("Failed to produce static library '%s'.", output_static);
 		}
-		compiler_link_time = bench_mark();
-		compiler_print_bench();
+		compiler.stats.link_time = bench_mark();
+		compiler_print_stats();
 		OUTF("Static library '%s' created.\n", output_static);
 	}
 	else if (output_dynamic)
@@ -918,13 +960,13 @@ void compiler_compile(void)
 			error_exit("Failed to produce dynamic library '%s'.", output_dynamic);
 		}
 		OUTF("Dynamic library '%s' created.\n", output_dynamic);
-		compiler_link_time = bench_mark();
-		compiler_print_bench();
+		compiler.stats.link_time = bench_mark();
+		compiler_print_stats();
 	}
 	else
 	{
 		should_delete_object_files = false;
-		compiler_print_bench();
+		compiler_print_stats();
 	}
 	if (should_delete_object_files) delete_object_files(obj_files, objfile_delete_count);
 	free(obj_files);
@@ -934,7 +976,7 @@ INLINE void expand_csources(const char *base_dir, const char **source_dirs, cons
 	if (source_dirs)
 	{
 		static const char* c_suffix_list[3] = { ".c", ".m" };
-		*sources_ref = target_expand_source_names(base_dir, source_dirs, c_suffix_list, NULL, 2, false);
+		*sources_ref = target_expand_source_names(base_dir, source_dirs, c_suffix_list, NULL, NULL, 2, false);
 	}
 }
 
@@ -966,9 +1008,33 @@ void compile_clean(BuildOptions *options)
 	init_build_target(&compiler.build, options);
 	clean_obj_files();
 }
+
+// Build the 'depends-on' targets in order, each by a separate invocation of the compiler.
+static void build_dependency_targets(BuildOptions *options)
+{
+	if (!vec_size(compiler.build.depends_on)) return;
+	const char **args = options->dependency_args;
+	if (compiler.build.silent) vec_add(args, "-q");
+	vec_add(args, "--no-deps");
+	vec_add(args, "build");
+	FOREACH(const char *, dependency, compiler.build.depends_on)
+	{
+		OUTF("Building dependency target '%s'.\n", dependency);
+		vec_add(args, dependency);
+		// The output of the build should come after what has been printed so far.
+		fflush(stdout);
+		if (run_subprocess(find_executable_file(), args) != 0)
+		{
+			error_exit("Failed to build the dependency target '%s'.", dependency);
+		}
+		vec_pop(args);
+	}
+}
+
 void compile_file_list(BuildOptions *options)
 {
 	init_build_target(&compiler.build, options);
+	build_dependency_targets(options);
 	if (compiler.build.type == TARGET_TYPE_PREPARE)
 	{
 		if (options->command != COMMAND_BUILD)
@@ -1044,43 +1110,20 @@ bool use_ansi(void)
 #endif
 }
 
-
-const char * vendor_fetch_single(const char* lib, const char* path, bool progress) 
+// The registry: --fetch-url, else "fetch-url" of the project, else the default.
+const char *registry_url(BuildOptions *options)
 {
-	const char *resource = str_printf("/c3lang/vendor/releases/download/latest/%s.c3l", lib);
-	const char *destination = file_append_path(path, str_printf("%s.c3l", lib));
-	const char *error = download_file("https://github.com", resource, destination, progress);
-	return error;	
+	if (options->fetch_url) return options->fetch_url;
+	const char *project_url = project_fetch_url();
+	return project_url ? project_url : DEFAULT_FETCH_URL;
 }
-
 
 void vendor_fetch(BuildOptions *options)
 {
-	if (!download_available())
-	{
-		error_exit("The 'vendor-fetch' command requires libcurl to download libraries.\n"
-				   "Please ensure libcurl is installed on your system.");
-	}
-	bool ansi = use_ansi();
-
-	if (str_eq(options->path, DEFAULT_PATH))
-	{
-		// check if there is a project JSON file
-		if (file_exists(PROJECT_JSON5) || file_exists(PROJECT_JSON))
-		{
-			const char** deps_dirs =  get_project_dependency_directories();
-			int num_lib = (int)vec_size(deps_dirs);
-			if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
-		}
-	}
-
-	int count = 0;
-	const char** fetched_libraries = NULL;
-	int total_libraries = (int)vec_size(options->libraries_to_fetch);
-	
-	if (total_libraries == 0)
+	if (!vec_size(options->vendor_libraries_to_fetch))
 	{
 		const char *tmp_dir = dir_make_temp_dir();
+		if (!tmp_dir) error_exit("Failed to create temp directory");
 		const char *tmp_file = file_append_path(tmp_dir, "vendor_list.json");
 		const char *error = download_file("https://api.github.com", "/repos/c3lang/vendor/contents/libraries/", tmp_file, false);
 		if (error)
@@ -1117,48 +1160,220 @@ void vendor_fetch(BuildOptions *options)
 				}
 			}
 		}
-		file_delete_file(tmp_file);
-		file_delete_dir(tmp_dir);
 		return;
 	}
 
-	for (int i = 0; i < total_libraries; i++)
-	{
-		const char *lib = options->libraries_to_fetch[i];
-		printf("Fetching library '%s'...\n", lib);
-		(void)fflush(stdout);
-		const char *error = vendor_fetch_single(lib, options->vendor_download_path, ansi);
+	fetch_lib(options, true, options->vendor_libraries_to_fetch);
+}
 
-		if (!error)
+
+
+static void scratch_buffer_append_json_array(JSONObject **elements)
+{
+	FOREACH(JSONObject *, e, elements)
+	{
+		if (e->type != J_STRING) continue;
+		if (scratch_buffer_len()) scratch_buffer_append(", ");
+		scratch_buffer_append(e->str);
+	}
+}
+
+static const char *json_array_as_temp_string(JSONObject **elements)
+{
+	scratch_buffer_clear();
+	scratch_buffer_append_json_array(elements);
+	return scratch_buffer_to_string();
+}
+
+// Parse a summary entry from /index.json.
+static bool parse_library(JSONObject *obj, LibraryOverview *info)
+{
+	if (!obj || obj->type != J_OBJECT) return false;
+	if (!json_get_string_from_key(obj, "library", &info->name)) return false;
+	if (!json_get_string_from_key(obj, "description", &info->description)) return false;
+	if (!json_get_string_from_key(obj, "latest", &info->latest)) return false;
+	if (!json_get_string_from_key(obj, "updated", &info->updated)) return false;
+	JSONObject *tags = json_map_get(obj, "tags");
+	if (tags && tags->type != J_ARRAY) return false;
+	info->tags = tags ? tags->elements : NULL;
+	JSONObject *versions = json_map_get(obj, "versions");
+	if (versions && versions->type != J_ARRAY) return false;
+	info->versions = versions ? versions->elements : NULL;
+	return true;
+}
+
+static bool library_has_tag(LibraryOverview *info, const char *tag)
+{
+	if (!info->tags) return false;
+	FOREACH(JSONObject *, t, info->tags)
+	{
+		if (t->type == J_STRING && str_eq(t->str, tag)) return true;
+	}
+	return false;
+}
+
+// Load the "libraries" array of /index.json from the registry at `base`.
+static const char *load_registry_index(const char *base, JSONObject **libs_ref)
+{
+	const char *tmp_dir = dir_make_temp_dir();
+	if (!tmp_dir) return "Failed to create temp directory";
+	const char *tmp_file = file_append_path(tmp_dir, "index.json");
+	const char *error = download_file(base, "/index.json", tmp_file, false);
+	if (error) return error;
+	size_t size;
+	JsonParser parser;
+	json_init_string(&parser, file_read_all(tmp_file, &size));
+	JSONObject *obj = json_parse(&parser);
+	if (!obj || obj->type != J_OBJECT) return "failed to parse the library index";
+	JSONObject *libs = json_map_get(obj, "libraries");
+	if (!libs || libs->type != J_ARRAY) return "invalid library index (missing 'libraries')";
+	*libs_ref = libs;
+	return NULL;
+}
+
+// Find the "<namespace>/<name>" of the library `name` in the registry at `base`. It must be the only one.
+const char *registry_find_library(const char *base, const char *name, const char **id_ref)
+{
+	JSONObject *libs;
+	const char *error = load_registry_index(base, &libs);
+	if (error) return str_printf("failed to fetch the library list from '%s': %s", base, error);
+	const char **candidates = NULL;
+	FOREACH(JSONObject *, entry, libs->elements)
+	{
+		LibraryOverview info;
+		if (!parse_library(entry, &info)) return "malformed library index entry";
+		const char *slash = strrchr(info.name, '/');
+		if (slash && str_eq(slash + 1, name)) vec_add(candidates, info.name);
+	}
+	if (!vec_size(candidates)) return str_printf("there is no library '%s' in '%s'", name, base);
+	if (vec_size(candidates) > 1)
+	{
+		scratch_buffer_clear();
+		FOREACH_IDX(i, const char *, candidate, candidates)
 		{
-			vec_add(fetched_libraries, lib);
-			count++;
+			if (i) scratch_buffer_append(", ");
+			scratch_buffer_append(candidate);
+		}
+		return str_printf("'%s' is ambiguous in '%s', it could be any of: %s", name, base, scratch_buffer_to_string());
+	}
+	*id_ref = candidates[0];
+	return NULL;
+}
+
+void fetch(BuildOptions *options)
+{
+	fetch_lib(options, false, options->libraries_to_fetch);
+}
+
+void fetch_info(BuildOptions *options)
+{
+	if (!download_available())
+	{
+		error_exit("The 'fetch-info' command requires libcurl to download libraries.\n"
+				   "Please ensure libcurl is installed on your system.");
+	}
+
+	const char *name = options->search_name;
+	LibraryInfo info;
+	const char *error = load_fetch_info(registry_url(options), name, &info);
+	if (error) error_exit("Error loading info for '%s' (%s).", name, error);
+
+	printf("Library:     %s\n", info.library);
+	printf("Description: %s\n", info.description);
+	if (vec_size(info.tags))
+	{
+		printf("Tags:        %s\n", json_array_as_temp_string(info.tags));
+	}
+	printf("Latest:      %s\n", info.latest);
+	printf("Updated:     %s\n", info.updated);
+
+	if (vec_size(info.versions->members))
+	{
+		puts("\nVersions:");
+		FOREACH_IDX(vi, JSONObject *, v, info.versions->members)
+		{
+			if (!v || v->type != J_OBJECT) continue;
+			printf("  %s\n", info.versions->keys[vi]);
+			const char *s;
+			if (json_get_string_from_key(v, "description", &s)) printf("    Description: %s\n", s);
+			if (json_get_string_from_key(v, "maintainer", &s)) printf("    Maintainer:  %s\n", s);
+			if (json_get_string_from_key(v, "repository", &s)) printf("    Repository:  %s\n", s);
+			if (json_get_string_from_key(v, "license", &s)) printf("    License:     %s\n", s);
+			JSONObject *os_targets = json_map_get(v, "targets");
+			if (os_targets && os_targets->type == J_ARRAY && vec_size(os_targets->elements))
+			{
+				printf("    Targets:     %s\n", json_array_as_temp_string(os_targets->elements));
+			}
+			JSONObject *sz = json_map_get(v, "size");
+			if (sz && sz->type == J_NUMBER) printf("    Size:        %lld bytes\n", (long long)sz->f);
+			if (json_get_string_from_key(v, "checksum", &s)) printf("    Checksum:    %s\n", s);
+			if (json_get_string_from_key(v, "url", &s)) printf("    URL:         %s\n", s);
+			if (json_get_string_from_key(v, "published", &s)) printf("    Published:   %s\n", s);
+		}
+	}
+}
+
+void fetch_list(BuildOptions *options)
+{
+	if (!download_available())
+	{
+		error_exit("The 'fetch-list' command requires libcurl to download libraries.\n"
+				   "Please ensure libcurl is installed on your system.");
+	}
+	const char *base = registry_url(options);
+	const char *name_filter = options->search_name;
+	const char *tag_filter = options->search_tag;
+	JSONObject *libs;
+	const char *error = load_registry_index(base, &libs);
+	if (error) error_exit("Failed to fetch the library list from '%s': %s", base, error);
+
+	// Unfiltered: just the ns/name of every library.
+	if (!name_filter && !tag_filter)
+	{
+		if (!vec_size(libs->elements))
+		{
+			puts("No libraries available.");
 		}
 		else
 		{
-			if (ansi)
+			puts("Available libraries:");
+			FOREACH(JSONObject *, entry, libs->elements)
 			{
-				printf("\033[2K\033[31mFailed to fetch library '%s': %s\033[0m\n", lib, error);
+				LibraryOverview info;
+				if (!parse_library(entry, &info)) error_exit("Corrupt library index - unreadable entry.");
+				printf("  %s\n", info.name);
 			}
-			else
-			{
-				printf("Failed: '%s'\n", error);
-			}
-			(void)fflush(stdout);
 		}
+		return;
 	}
 
-	if (ansi && total_libraries > 1) printf("\033[2K");
-
-	// add fetched library to the dependency list
-	add_libraries_to_project_file(fetched_libraries, options->project_options.target_name);
-
-	if (count == 0)	error_exit("Error: Failed to download any libraries.");
-	if (count < vec_size(options->libraries_to_fetch)) error_exit("Error: Only some libraries were downloaded.");
-
-	if (ansi) printf("\033[32mFetching complete.\033[0m\t\t\n");
+	// Filtered: name search shows versions too; tag search is name + description.
+	const char *heading = tag_filter
+		? str_printf("Libraries tagged '%s':", tag_filter)
+		: str_printf("Libraries matching '%s':", name_filter);
+	const char *empty = tag_filter
+		? str_printf("No libraries tagged '%s'.", tag_filter)
+		: str_printf("No libraries matching '%s'.", name_filter);
+	int found = 0;
+	FOREACH(JSONObject *, entry, libs->elements)
+	{
+		LibraryOverview info;
+		if (!parse_library(entry, &info)) error_exit("Malformed library index entry.");
+		if (tag_filter && !library_has_tag(&info, tag_filter)) continue;
+		if (name_filter && !str_contains(info.name, name_filter)) continue;
+		if (found++ == 0) printf("%s\n\n", heading);
+		printf("%s\n", info.name);
+		printf("  Description: %s\n", info.description);
+		if (name_filter)
+		{
+			printf("  Latest:      %s\n", info.latest);
+			if (info.versions) printf("  Versions:    %s\n", json_array_as_temp_string(info.versions));
+			printf("  Updated:     %s\n", info.updated);
+		}
+		puts("");
+	}
+	if (!found) puts(empty);
 }
-
 
 void print_syntax(BuildOptions *options)
 {
@@ -1366,6 +1581,21 @@ void setup_exec_paths(const char **old_dir_ref, const char **script_dir_ref, con
 	}
 }
 
+static void set_env_var(const char *name, const char *value)
+{
+#if PLATFORM_WINDOWS
+	// An empty value removes the variable.
+	_putenv_s(name, value ? value : "");
+#else
+	if (!value)
+	{
+		unsetenv(name);
+		return;
+	}
+	setenv(name, value, 1);
+#endif
+}
+
 void execute_scripts(void)
 {
 	if (!vec_size(compiler.build.exec)) return;
@@ -1378,6 +1608,20 @@ void execute_scripts(void)
 	const char *old_dir;
 	setup_exec_paths(&old_dir, &script_dir, &exec_dir);
 	bool same_exec_as_script = str_eq(exec_dir, script_dir);
+
+	// Patch our env values
+	const char **env_names = NULL;
+	const char **env_old_values = NULL;
+	FOREACH(const char *, env, compiler.build.env)
+	{
+		const char *eq = strchr(env, '=');
+		const char *name = str_copy(env, eq - env);
+		const char *old_value = getenv(name);
+		vec_add(env_names, name);
+		vec_add(env_old_values, old_value ? str_dup(old_value) : NULL);
+		set_env_var(name, eq + 1);
+	}
+
 	double start = bench_mark();
 	FOREACH(const char *, exec, compiler.build.exec)
 	{
@@ -1411,6 +1655,15 @@ PRINT_SCRIPT:;
 		}
 	}
 	dir_change(old_path);
+
+	// Restore the env values in reverse order
+	// in case we have ABC=1, ABC=2 because otherwise
+	// setting it back would give ABC=1 as the final value.
+	for (int i = vec_size(env_names) - 1; i >= 0; i--)
+	{
+		set_env_var(env_names[i], env_old_values[i]);
+	}
+
 	compiler.script_time += bench_mark() - start;
 }
 
@@ -1728,16 +1981,21 @@ INLINE void update_feature_flags(void)
 	if (compiler.build.feature.sanitize_address) add_feat("ASAN");
 	if (compiler.build.feature.sanitize_memory) add_feat("MSAN");
 	if (compiler.build.feature.sanitize_thread) add_feat("TSAN");
-	if (compiler.build.feature.panic_level != PANIC_OFF) add_feat("PRINT_PANIC");
+	if (!no_panic()) add_feat("PRINT_PANIC");
 }
 
 void compile(void)
 {
+	if (compiler.build.type == TARGET_TYPE_SOURCE_LIB)
+	{
+		build_source_library(&compiler.build);
+		return;
+	}
 	symtab_init(compiler.build.symtab_size);
-	compiler.build.sources = target_expand_source_names(NULL, compiler.build.source_dirs, c3_suffix_list, &compiler.build.object_files, 3, true);
+	compiler.build.sources = target_expand_source_names(NULL, compiler.build.source_dirs, c3_suffix_list, &compiler.build.object_files, &compiler.build.llvm_ir_files, 3, true);
 	if (compiler.build.build_test && compiler.build.test_source_dirs)
 	{
-		const char **test_sources = target_expand_source_names(NULL, compiler.build.test_source_dirs, c3_suffix_list, &compiler.build.object_files, 3, true);
+		const char **test_sources = target_expand_source_names(NULL, compiler.build.test_source_dirs, c3_suffix_list, &compiler.build.object_files, &compiler.build.llvm_ir_files, 3, true);
 		FOREACH(const char *, file, test_sources) vec_add(compiler.build.sources, file);
 	}
 	expand_csources(NULL, compiler.build.csource_dirs, &compiler.build.csources);
@@ -1821,20 +2079,24 @@ void compile(void)
 	setup_define("AUTHOR_EMAILS", expr_emails);
 	setup_string_define("PROJECT_VERSION", compiler.build.version);
 	type_init_cint();
-	compiler_init_time = bench_mark();
+	compiler.stats.init_time = bench_mark();
 
-	if (!vec_size((compiler.build.object_files)) && !vec_size(compiler.build.sources) && !compiler.build.read_stdin) error_exit("No files to compile.");
+	if (!vec_size((compiler.build.object_files)) && !vec_size(compiler.build.llvm_ir_files) && !vec_size(compiler.build.sources) && !compiler.build.read_stdin) error_exit("No files to compile.");
+	if (vec_size(compiler.build.llvm_ir_files) && compiler.build.backend != BACKEND_LLVM)
+	{
+		error_exit("LLVM IR and bitcode files (.ll, .bc) can only be compiled with the LLVM backend, '%s' cannot be used.", compiler.build.llvm_ir_files[0]);
+	}
 
 	if (compiler.build.lex_only)
 	{
 		compiler_lex();
-		compiler_parsing_time = bench_mark();
+		compiler.stats.parsing_time = bench_mark();
 		return;
 	}
 	if (compiler.build.parse_only)
 	{
 		compiler_parse();
-		compiler_parsing_time = bench_mark();
+		compiler.stats.parsing_time = bench_mark();
 		emit_json();
 		exit_compiler(COMPILER_SUCCESS_EXIT);
 	}
@@ -1942,8 +2204,8 @@ const char *scratch_buffer_interned(void)
 
 const char *scratch_buffer_interned_as(TokenType* type)
 {
-	return symtab_add(scratch_buffer.str, scratch_buffer.len,
-					  fnv1a(scratch_buffer.str, scratch_buffer.len), type);
+	return symtab_add(sb_current->str, sb_current->len,
+					  fnv1a(sb_current->str, sb_current->len), type);
 }
 
 void scratch_buffer_append_native_safe_path(const char *data, int len)
@@ -2033,13 +2295,24 @@ File *compile_and_invoke(const char *file, const char *args, const char *stdin_d
 
 const char *find_c_compiler(void)
 {
-	if (compiler.build.cc) return compiler.build.cc;
+	if (compiler.build.cc)
+	{
+		if (!file_executable_in_path(compiler.build.cc))
+		{
+			error_exit("C compiler '%s' (set via --cc) was not found.", compiler.build.cc);
+		}
+		return compiler.build.cc;
+	}
 	static const char *cc = NULL;
 	if (cc) return cc;
 	const char *cc_env = getenv("C3C_CC");
 	if (cc_env && strlen(cc_env) > 0)
 	{
 		INFO_LOG("Setting CC to %s from environment variable 'C3C_CC'.", cc_env);
+		if (!file_executable_in_path(cc_env))
+		{
+			error_exit("C compiler '%s' (set via C3C_CC) was not found.", cc_env);
+		}
 		cc = strdup(cc_env);
 		return cc;
 	}

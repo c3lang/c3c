@@ -142,13 +142,34 @@ fn void swap_window_buffers(GfxWindow* win)
 	$endif
 }
 
-fn void set_swap_interval(GfxWindow* win, int swap_interval)
+fn void? set_swap_interval(GfxWindow* win, int swap_interval)
 {
 	$if $feat(WASM):
-		return;
+		return gfx::OPERATION_NOT_SUPPORTED~;
 	$else
-		if (!swap_interval_fn) return;
-		swap_interval_fn((EglDisplay)gfx::_gfx.egl.display, swap_interval);
+		if (!swap_interval_fn || !get_current_context_fn) return gfx::OPERATION_NOT_SUPPORTED~;
+		if (!win.src.ctx.egl)
+		{
+			log::warn("The swap interval can't be set, the window has no EGL context.", category: log::CATEGORY_VIDEO);
+			return gfx::GL_CONTEXT_NOT_ACTIVE~;
+		}
+		// The interval is set for the surface of the current context, which has to be the one of this window.
+		EglContext current = get_current_context_fn();
+		if (!current)
+		{
+			log::warn("The swap interval can't be set, no EGL context is current.", category: log::CATEGORY_VIDEO);
+			return gfx::GL_CONTEXT_NOT_FOUND~;
+		}
+		if (current != win.src.ctx.egl.ctx)
+		{
+			log::warn("The swap interval is set for the current context, which is not the one of the window.", category: log::CATEGORY_VIDEO);
+			return gfx::GL_CONTEXT_NOT_ACTIVE~;
+		}
+		if (!swap_interval_fn((EglDisplay)gfx::_gfx.egl.display, swap_interval))
+		{
+			log::warn("eglSwapInterval(%d) failed with EGL error 0x%x.", swap_interval, get_error_fn(), category: log::CATEGORY_VIDEO);
+			return gfx::GENERAL_ERROR~;
+		}
 	$endif
 }
 

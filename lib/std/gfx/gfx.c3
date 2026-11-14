@@ -43,6 +43,7 @@ excuse
 	CLIPBOARD_WRITE_FAILED,
 	FAILED_TO_CREATE_WGL_PIXEL_FORMAT,
 	FAILED_TO_SET_WGL_PIXEL_FORMAT,
+	FAILED_TO_CREATE_WGL_CONTEXT,
 	FAILED_TO_LOAD_SWAP_INTERVAL_FN,
 	MOUSE_NOT_SUPPORTED,
 	IMAGE_COULD_NOT_LOAD,
@@ -56,6 +57,10 @@ excuse
 	EGL_FAILED_TO_INIT_DISPLAY,
 	EGL_DISPLAY_NOT_FOUND,
 	EGL_CONFIG_NOT_FOUND,
+	GL_CONTEXT_NOT_ACTIVE,
+	GL_CONTEXT_NOT_FOUND,
+	OPERATION_NOT_SUPPORTED,
+	GENERAL_ERROR,
 }
 
 const Duration WAIT_FOREVER = Duration::max;
@@ -154,6 +159,7 @@ struct GfxWindowSrc @feat(MACOS)
 	ObjId             mouse;
 	ObjId             delegate;
 	ObjId             resize_timer;
+	ObjId             metal_layer;
 	GfxBackingContext ctx;
 	GfxBacking        backing;
 }
@@ -829,7 +835,7 @@ fn void copy_image_data(char* dst_data, int w, int h, GfxFormat dst_format, char
  @require !_gfx.initialized : "Already initialized"
  @require [class_name] class_name.len < 254 : "Class name is too long"
 *>
-fn void? init(String class_name, GfxInitOption options)
+fn void? init(String class_name, GfxInitOption options = {})
 {
 	class_name = class_name ?: "C3GFX";
 	_gfx = { .initialized = true };
@@ -875,8 +881,8 @@ fn void finalize()
 	free_monitors();
 	log::info("Global context destroyed", category: log::CATEGORY_VIDEO);
 	unload_egl();
-	unload_opengl();
 	_destroy_platform();
+	unload_opengl();
 	_gfx.root = null;
 	_gfx = {};
 }
@@ -950,7 +956,7 @@ fn void? GfxSurface.init(&self, void* data, int w, int h, GfxFormat format, GfxW
  @require [w] w >= 0 : "Width may not be negative"
  @require [h] h >= 0 : "height may not be negative"
 *>
-fn GfxWindow*? create_window(String name, int x, int y, int w, int h, GfxWindowFlags flags)
+fn GfxWindow*? create_window(String name, int x, int y, int w, int h, GfxWindowFlags flags = {})
 {
 	return _create_window(name, x, y, w, h, flags);
 }
@@ -1085,7 +1091,7 @@ fn String[] get_required_vulkan_extensions()
 
 fn bool get_vulkan_physical_device_presentation_support(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
 {
-	return get_vulkan_physical_device_presentation_support(instance, physical_device, queue_family_index);
+	return _get_vulkan_physical_device_presentation_support(instance, physical_device, queue_family_index);
 }
 
 <*
@@ -1100,25 +1106,54 @@ fn WGPUSurface? GfxWindow.create_wgpu_surface(&self, WGPUInstance instance)
 }
 
 <*
+ Create a Metal layer for the window, to render to with Metal.
+
+ The layer is a CAMetalLayer with the default Metal device (its `device`) and the BGRA8 pixel format. It is displayed, and the repaint
+ callback is run, inside the Core Animation transaction that resizes the window, so a frame drawn by the callback is shown together with
+ the new window size. The drawable size follows the size of the window in pixels. The layer presents with the transaction, so draw by:
+ commit the command buffer, waitUntilScheduled, then present the drawable.
+
+ It is only supported on MacOS.
+
+ @return "The CAMetalLayer"
+*>
+fn void*? GfxWindow.create_metal_layer(&self)
+{
+	return _window_create_metal_layer_native(self);
+}
+
+<*
  Set the OpenGL buffer swap interval for the window.
 
- Requires an OpenGL context to be current. Not every platform honours this.
+ Requires the window's OpenGL context to be current on the calling thread. X11 (except with
+ GLX_EXT_swap_control), Win32 and EGL check that and log a warning if it is not. Not every platform honours this,
+ and GLX_SGI_swap_control, which only an old X11 driver has alone, can't disable vsync.
 
  @param swap_interval : "0 to disable vsync, 1 to sync to the display refresh"
+ @return? gfx::GL_CONTEXT_NOT_ACTIVE : "If it requires an active context and this isn't active, or the window has none"
+ @return? gfx::GL_CONTEXT_NOT_FOUND : "No active context was found"
+ @return? gfx::OPERATION_NOT_SUPPORTED : "The operation was not supported"
+ @return? gfx::GENERAL_ERROR : "If the operation failed for some other reason"
 *>
-fn void GfxWindow.set_opengl_swap_interval(&self, int swap_interval)
+fn void? GfxWindow.set_opengl_swap_interval(&self, int swap_interval) @maydiscard
 {
-	_window_set_opengl_swap_interval(self, swap_interval);
+	return _window_set_opengl_swap_interval(self, swap_interval);
 }
 
 <*
  Set the EGL buffer swap interval for the window.
 
+ The window's EGL context has to be current on the calling thread, otherwise a warning is logged.
+
  @param swap_interval : "0 to disable vsync, 1 to sync to the display refresh"
+ @return? gfx::GL_CONTEXT_NOT_ACTIVE : "If it requires an active context and this isn't active, or the window has none"
+ @return? gfx::GL_CONTEXT_NOT_FOUND : "No active context was found"
+ @return? gfx::OPERATION_NOT_SUPPORTED : "The operation was not supported"
+ @return? gfx::GENERAL_ERROR : "If the operation failed for some other reason"
 *>
-fn void GfxWindow.set_egl_swap_interval(&self, int swap_interval)
+fn void? GfxWindow.set_egl_swap_interval(&self, int swap_interval) @maydiscard
 {
-	egl::set_swap_interval(self, swap_interval);
+	return egl::set_swap_interval(self, swap_interval);
 }
 
 <*
@@ -1792,9 +1827,9 @@ fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType type
  cannot interrupt that. To keep drawing during it, install a set_repaint_callback callback,
  which is invoked from inside the platform loop.
 
- If a window is given it instead picks next queued event for that window. Events belonging
- to other windows are kept, not discarded; they are rotated to the back of the
- queue and remain available to those windows.
+ If a window is given it instead picks the next queued event for that window, or one
+ that belongs to no window. Events belonging to other windows are not discarded: they stay
+ queued, in their original order, and remain available to those windows.
 
  @param [in] window : "Optionally only get events pertaining to a particular window"
  @return "The next event"
@@ -1818,9 +1853,9 @@ fn GfxEvent? poll(GfxWindow* window = null)
  Use this to drain what is already queued without giving the platform a chance to
  deliver more; poll() is the usual choice.
 
- If a window is given it instead picks next queued event for that window. Events belonging
- to other windows are kept, not discarded; they are rotated to the back of the
- queue and remain available to those windows.
+ If a window is given it instead picks the next queued event for that window, or one
+ that belongs to no window. Events belonging to other windows are not discarded: they stay
+ queued, in their original order, and remain available to those windows.
 
  @param [in] window : "Optionally the window to filter on"
  @return "The next event"
@@ -1857,8 +1892,10 @@ fn uint GfxKey.to_api(self)
 <*
  Translate a physical key into the key the current keyboard layout produces.
 
- On layouts such as AZERTY or Dvorak this differs from the physical key. Platforms
- without a layout API return the key unchanged.
+ On layouts such as AZERTY or Dvorak this differs from the physical key. The key is the one
+ for the active layout with no modifier applied, and only an ASCII character is mapped. A key
+ without one, such as an arrow, a function key or a letter outside ASCII, is returned unchanged,
+ and so is every key on platforms without a layout API. The keypad keys are never mapped.
 
  @return "The layout-mapped key"
 *>
@@ -2760,7 +2797,7 @@ fn void GfxWindow.set_dnd(&self, bool allow)
 <*
  Look up an OpenGL function by name.
 
- Requires OpenGL to have been loaded, normally via init() with .init_opengl set.
+ Requires OpenGL to have been loaded, by init() with .init_opengl set or by creating an OpenGL context.
 
  @param [in] s : "The function name"
  @return "The function pointer, or null if it is unavailable"

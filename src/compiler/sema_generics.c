@@ -1,4 +1,5 @@
 #include "sema_internal.h"
+#include "compiler_tests/benchmark.h"
 
 static inline void mangle_type_param(Type *type, bool mangled)
 {
@@ -69,7 +70,7 @@ static void sema_generate_parameter_suffix_to_scratch(Expr **params, bool mangle
 			}
 			else
 			{
-				char *maybe_neg = &scratch_buffer.str[scratch_buffer.len];
+				char *maybe_neg = scratch_buffer_end_ptr();
 				if (type->type_kind == TYPE_I128 || type->type_kind == TYPE_U128)
 				{
 					char *str = int_to_str(param->const_expr.ixx, 10, false);
@@ -105,7 +106,7 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 	{
 		SemaContext temp_context;
 		InliningSpan *old_span = c->inlined_at;
-		InliningSpan new_span = { .prev = old_span, .loc = invocation_loc };
+		InliningSpan new_span = { .prev = old_span, .loc = invocation_loc, .instance = instance };
 		SemaContext *new_context = context_transform_for_eval(c, &temp_context, module->units[0]);
 		Decl *old_generic_instance = new_context->generic_instance;
 		InliningSpan *old_inlined_at = new_context->inlined_at;
@@ -121,15 +122,16 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 			{
 				sema_error_at(c, param_loc,
 				              "Parameter(s) would violate constraint: %s.",
-				              contract->contract_expr.comment);
+				              contract_to_message(contract, false));
 			}
 			else
 			{
 				sema_error_at(c, param_loc, "Parameter(s) failed validation: %s",
-				              contract->contract_expr.expr_string);
+				              contract_to_message(contract, false));
 			}
 			FAIL:
 			new_context->inlined_at = old_inlined_at;
+			new_context->generic_instance = old_generic_instance;
 			sema_context_destroy(&temp_context);
 			return false;
 		}
@@ -140,8 +142,8 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 	return true;
 }
 
-Decl *sema_generate_parameterized_identifier(SemaContext *context, Decl *generic, Decl *alias, Expr **params, Decl **param_decls, const char *suffix, const char *csuffix, SourceLocId
-                                             invocation_loc, SourceLocId loc)
+static Decl *generate_parameterized_identifier(SemaContext *context, Decl *generic, Decl *alias, Expr **params, Decl **param_decls, const char *suffix, const char *csuffix, SourceLocId
+                                              invocation_loc, SourceLocId loc)
 {
 	Module *module = alias->unit->module;
 	Decl *instance = NULL;
@@ -348,7 +350,6 @@ FOUND:;
 			if (!sema_analyse_decl(context, symbol)) return poisoned_decl;
 		}
 	}
-	unit_register_external_symbol(context, symbol);
 	return symbol;
 
 }
@@ -415,7 +416,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_pat
 			}
 			if (!sema_analyse_ct_expr(context, param)) return poisoned_decl;
 			Type *type = param->type->canonical;
-			if (type->type_kind == TYPE_TYPEDEF || type->type_kind == TYPE_CONSTDEF) type = type_flatten(type);
+			if (type->type_kind == TYPE_TYPEDEF || type->type_kind == TYPE_CONSTSET) type = type_flatten(type);
 			if (IS_OPTIONAL(param))
 			{
 				RETURN_VAL_SEMA_ERROR(poisoned_decl, param, "The parameter may never be an optional value.");
@@ -430,11 +431,27 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_pat
 		}
 	}
 	sema_generate_parameter_suffix_to_scratch(params, true);
-	if (scratch_buffer.len > MAX_GENERIC_SUFFIX)
+	if (scratch_buffer_len() > MAX_GENERIC_SUFFIX)
 	{
 		sema_error_at(context, invocation_loc, "The generic declaration is too deeply nested and is possibly recursive.");
 		return poisoned_decl;
 	}
 	const char *suffix = scratch_buffer_interned();
 	return sema_generate_parameterized_identifier(context, generic, alias, params, NULL, NULL, suffix, invocation_loc, loc);
+}
+
+Decl *sema_generate_parameterized_identifier(SemaContext *context, Decl *generic, Decl *alias, Expr **params, Decl **param_decls, const char *suffix, const char *csuffix, SourceLocId
+                                             invocation_loc, SourceLocId loc)
+{
+	// Only time the outermost instantiation, the nested ones are part of it.
+	if (!compiler.build.collect_stats || compiler.stats.generic_depth)
+	{
+		return generate_parameterized_identifier(context, generic, alias, params, param_decls, suffix, csuffix, invocation_loc, loc);
+	}
+	compiler.stats.generic_depth++;
+	BenchTime start = benchstart();
+	Decl *decl = generate_parameterized_identifier(context, generic, alias, params, param_decls, suffix, csuffix, invocation_loc, loc);
+	compiler.stats.generic_time += benchmark(start);
+	compiler.stats.generic_depth--;
+	return decl;
 }

@@ -1,0 +1,13 @@
+{
+  "langrev": "1",
+  "version": "0.1.0",
+  "authors": [ "John Doe <john.doe@example.com>" ],
+  "sources": [ "./src/**" ],
+  "c-sources": [ "csource/*" ],
+  "c-include-dirs": [ "./csource/include" ],
+  "targets": {
+    "sourcelib": {
+      "type": "source-lib"
+    }
+  }
+}

@@ -10,6 +10,7 @@
 #define MB (KB * 1024ul)
 
 static int allocations_done;
+static int string_allocations_done;
 static Vmem arena;
 uintptr_t arena_zero;
 static Vmem char_arena;
@@ -23,6 +24,7 @@ void memory_init(size_t max_mem)
 	vmem_init(&arena, START_VMEM_SIZE);
 	vmem_init(&char_arena, START_VMEM_SIZE / 2);
 	allocations_done = 0;
+	string_allocations_done = 0;
 	arena_zero = (uintptr_t)arena.ptr;
 	vmem_alloc(&arena, 16);
 }
@@ -37,7 +39,7 @@ void memory_release(void)
 void *calloc_string(size_t len)
 {
 	ASSERT(len > 0);
-	allocations_done++;
+	string_allocations_done++;
 	return vmem_alloc(&char_arena, len);
 }
 
@@ -52,12 +54,12 @@ void *calloc_arena(size_t mem)
 	return vmem_alloc(&arena, mem);
 }
 
-void print_arena_status(void)
+void arena_stats(size_t *memory, int *allocations, size_t *string_memory, int *string_allocations)
 {
-	printf("-- ARENA INFO -- \n");
-	printf(" * Memory used:         %zu kb\n", arena.allocated / 1024);
-	printf(" * Allocations:         %d\n", allocations_done);
-	printf(" * String memory used:  %zu kb\n", char_arena.allocated / 1024);
+	*memory = arena.allocated;
+	*allocations = allocations_done;
+	*string_memory = char_arena.allocated;
+	*string_allocations = string_allocations_done;
 }
 
 void free_arena(void)

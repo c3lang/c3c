@@ -3,8 +3,7 @@ module std::container::faults;
 excuse KEY_NOT_FOUND;
 
 module std::container::map <Key, Type>;
-import std::core::builtin;
-import std::io;
+import std::io, std::math, std::container::faults;
 
 struct Entry
 {
@@ -17,20 +16,20 @@ struct Entry
 
 struct Map
 {
-    usz size;
+    sz count;
     Entry* map;
     uint mod;
 }
 
-/**
- * @require map != null
- **/
+<*
+ @require map != null
+*>
 fn void Map.init(Map *map, int capacity = 128)
 {
 	if (capacity < 16) capacity = 4;
 	capacity = math::next_power_of_2(capacity);
 	map.map = calloc(Entry::size * capacity);
-    map.mod = capacity - 1;
+    map.mod = (uint)capacity - 1;
 }
 
 fn Type? Map.valueForKey(Map *map, Key key)
@@ -67,6 +66,7 @@ fn Type? Map.set(Map *map, Key key, Type value) @maydiscard
             entry.value = value;
             entry.hash = hash;
             entry.key = key;
+            map.count++;
             return faults::KEY_NOT_FOUND~;
         }
         if (entry.hash == hash && entry.key == key)
@@ -87,11 +87,12 @@ fn Type? Map.set(Map *map, Key key, Type value) @maydiscard
         new.next = null;
         new.used = true;
         entry.next = new;
+        map.count++;
         return faults::KEY_NOT_FOUND~;
     }
 }
 
 fn sz Map.size(Map* map)
 {
-    return map.size;
+    return map.count;
 }

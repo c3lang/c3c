@@ -1,4 +1,4 @@
-module libc::termios @feat(LINUX, MACOS);
+module libc::termios @feat(LINUX, MACOS, OPENBSD);
 
 fn int send_break(Fd fd, int duration) => tcsendbreak(fd, duration);
 fn int drain(Fd fd) => tcdrain(fd);

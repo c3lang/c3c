@@ -329,7 +329,7 @@
 
 		.kind-variable,
 		.kind-const,
-		.kind-constdef {
+		.kind-constset {
 			background: var(--hl-const);
 			color: var(--hl-text);
 		}
@@ -341,7 +341,7 @@
 		.c3-typedef,
 		.c3-type_alias,
 		.c3-interface,
-		.c3-faultdef,
+		.c3-fault,
 		.c3-type {
 			color: var(--hl-type);
 		}
@@ -363,7 +363,7 @@
 
 		.c3-variable,
 		.c3-const,
-		.c3-constdef,
+		.c3-constset,
 		.c3-number {
 			color: var(--hl-const);
 		}
@@ -426,7 +426,7 @@
 
 		.item-kind-variable,
 		.item-kind-const,
-		.item-kind-constdef,
+		.item-kind-constset,
 		.item-kind-module {
 			background: var(--var-bg);
 		}
@@ -1043,13 +1043,13 @@
 			color: #ffa657;
 		}
 
-		.group-faultdef .module-group-title {
+		.group-fault .module-group-title {
 			color: #f48771;
 		}
 
 		.group-variable .module-group-title,
 		.group-const .module-group-title,
-		.group-constdef .module-group-title {
+		.group-constset .module-group-title {
 			color: var(--hl-const);
 		}
 
@@ -1294,12 +1294,19 @@
 				// Otherwise refresh the current view
 				const hash = decodeURIComponent(location.hash.slice(1));
 				if (hash) {
-					const target = allDecls.find(d => d.uid === hash);
+					const target = findDecl(hash);
 					if (target) renderDetails(target, true);
 				} else {
 					renderModuleOverview();
 				}
 			}
+		}
+
+		function findDecl(id) {
+			if (!id) return null;
+			let d = allDecls.find(x => x.uid === id);
+			if (!d) d = allDecls.find(x => x.uid === 'module:' + id);
+			return d;
 		}
 
 		function isSymbolVisible(d) {
@@ -1361,33 +1368,28 @@
 			'interface': 10,
 			'typedef': 11,
 			'variable': 12,
-			'constdef': 13
+			'constset': 13
 		};
 
 		function showTooltip(uid, event) {
-			const target = allDecls.find(d => d.uid === uid);
+			const target = findDecl(uid);
 			let docText = target && target.docs && target.docs.text ? target.docs.text : '';
 			if (!docText) return;
 
 			const tooltip = document.getElementById('module-tooltip');
 
-			// Position in opposite corner; edit: now on the upper opposite x axis
 			const x = event.clientX;
-			const y = event.clientY;
 			const vw = window.innerWidth;
-			const vh = window.innerHeight;
 
 			tooltip.className = 'module-tooltip';
 			if (x < vw / 2) {
-				// tooltip.classList.add(y < vh / 2 ? 'bottom-right' : 'top-right');
 				tooltip.classList.add('top-right');
 			} else {
-				// tooltip.classList.add(y < vh / 2 ? 'bottom-left' : 'top-left');
 				tooltip.classList.add('top-left');
 			}
 
 			tooltip.innerHTML = `
-				<div class="module-tooltip-title">${uid}</div>
+				<div class="module-tooltip-title">${target.name || uid}</div>
 				<div class="module-tooltip-content">${formatDocText(docText)}</div>
 			`;
 			tooltip.classList.add('show');
@@ -1402,7 +1404,7 @@
 				addOrMergeDeclaration({
 					name: moduleName,
 					kind: 'module',
-					uid: moduleName,
+					uid: 'module:' + moduleName,
 					visibility: 'public',
 					docs: mod.docs,
 					is_generic: mod.is_generic,
@@ -1465,7 +1467,7 @@
 			window.addEventListener('popstate', (e) => {
 				const uid = (e.state && e.state.uid) || decodeURIComponent(location.hash.slice(1));
 				if (uid) {
-					const target = allDecls.find(d => d.uid === uid);
+					const target = findDecl(uid);
 					if (target) renderDetails(target, true);
 					else renderModuleOverview();
 				} else {
@@ -1535,17 +1537,17 @@
 		}
 
 		function renderModules() {
-			const modules = allDecls.filter(d => d.kind === 'module').sort((a, b) => a.uid.localeCompare(b.uid));
+			const modules = allDecls.filter(d => d.kind === 'module').sort((a, b) => a.name.localeCompare(b.name));
 			const container = document.getElementById('module-list');
-			const realModules = new Set(modules.map(m => m.uid));
+			const realModules = new Set(modules.map(m => m.name));
 
 			const root = {};
 			modules.forEach(m => {
-				const parts = m.uid.split('::');
+				const parts = m.name.split('::');
 				let node = root;
 				for (let i = 0; i < parts.length; i++) {
 					const part = parts[i];
-					if (!node[part]) node[part] = { uid: parts.slice(0, i + 1).join('::'), children: {} };
+					if (!node[part]) node[part] = { name: parts.slice(0, i + 1).join('::'), children: {} };
 					node = node[part].children;
 				}
 			});
@@ -1554,13 +1556,13 @@
 				let html = '';
 				Object.entries(nodeMap).sort(([a], [b]) => a.localeCompare(b)).forEach(([name, node]) => {
 					const hasChildren = Object.keys(node.children).length > 0;
-					const isReal = realModules.has(node.uid);
+					const isReal = realModules.has(node.name);
 
 					if (isReal) {
 						const color = getSubtleColor(name);
-						const nameHtml = formatHierarchicalName(node.uid, '::');
-						html += `<li class="item module-list-item" data-mod="${node.uid}"
-							onclick="closeSearch(); navigateTo('${node.uid}', true)"
+						const nameHtml = formatHierarchicalName(node.name, '::');
+						html += `<li class="item module-list-item" data-mod="${node.name}"
+							onclick="closeSearch(); navigateTo('module:${node.name}', true)"
 							style="cursor: pointer;">
 							<span class="item-name c3-module" style="white-space:nowrap;">${nameHtml}</span>
 						</li>`;
@@ -1617,7 +1619,7 @@
 
 					html += `
 						<div class="module-row"
-							 onclick="hideTooltip(); navigateTo('${m}')"
+							 onclick="hideTooltip(); navigateTo('module:${m}')"
 							 onmouseenter="showTooltip('${m}', event)"
 							 onmouseleave="hideTooltip()">
 							<span class="module-row-name">${displayHtml}</span>
@@ -1660,9 +1662,10 @@
 			else if (d.kind === 'enum') kindClass += ' kind-enum';
 			const vis = d.visibility || 'public';
 			const visLabel = vis !== 'public' ? `<span class="item-visibility">[${vis}]</span>` : '';
+			const displayName = d.kind === 'module' ? d.name : d.uid;
 
 			li.innerHTML = `
-				<span class="item-name c3-${d.kind}">${d.uid} ${visLabel}</span>
+				<span class="item-name c3-${d.kind}">${displayName} ${visLabel}</span>
 				<span class="${kindClass}">${d.kind}</span>
 			`;
 			li.onclick = () => { closeSearch(); navigateTo(d.uid); };
@@ -1728,15 +1731,10 @@
 			return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 		}
 
-		// Temporary experimental keyword aliases (remove when deprecated from language)
-		const TEMP_EXPERIMENTAL_KEYWORDS = [
-			'attrgroup', 'attrmacro', 'cenum', 'constset', 'distinct', 'excuse', 'faultconst', 'faultset'
-		];
-
 		const C3_KEYWORDS = new Set([
-			'alias', 'asm', 'assert', 'attrdef', 'bitstruct', 'break', 'case',
-			'cast', 'catch', 'const', 'constdef', 'continue', 'default', 'defer',
-			'do', 'else', 'enum', 'extern', 'false', 'fault', 'faultdef', 'fn',
+			'alias', 'asm', 'assert', 'attrmacro', 'bitstruct', 'break', 'case',
+			'cast', 'catch', 'const', 'constset', 'continue', 'default', 'defer',
+			'do', 'else', 'enum', 'extern', 'false', 'fault', 'excuse', 'fn',
 			'for', 'foreach', 'foreach_r', 'if', 'import', 'inline', 'interface',
 			'lengthof', 'local', 'macro', 'module', 'next', 'nextcase', 'null', 'operator',
 			'private', 'public', 'return', 'static', 'struct', 'switch', 'tlocal', 'true',
@@ -1744,8 +1742,7 @@
 			'$assert', '$case', '$default', '$defined', '$echo', '$else', '$embed', '$endfor',
 			'$endforeach', '$endif', '$endswitch', '$eval', '$error', '$exec', '$expand', '$feat',
 			'$feature', '$for', '$foreach', '$if', '$include', '$reflect', '$stringify', '$switch',
-			'$Typefrom', '$Typeof', '$vaarg',
-			...TEMP_EXPERIMENTAL_KEYWORDS
+			'$Typefrom', '$Typeof', '$vaarg'
 		]);
 
 		const C3_TOKEN_TYPES = [
@@ -1919,9 +1916,9 @@
 				renderModuleOverview();
 				return;
 			}
-			const target = allDecls.find(d => d.uid === uid);
+			const target = findDecl(uid);
 			if (target) {
-				history.pushState({ uid: uid }, '', '#' + uid);
+				history.pushState({ uid: target.uid }, '', '#' + target.uid);
 				renderDetails(target, skipSidebarScroll);
 			}
 		}
@@ -1982,7 +1979,8 @@
 			const openInNewTab = (e) => {
 				const el = e.target.closest('[data-uid],[data-mod],[onclick]');
 				if (!el) return;
-				let uid = el.dataset.uid || el.dataset.mod;
+				let uid = el.dataset.uid;
+				if (!uid && el.dataset.mod) uid = 'module:' + el.dataset.mod;
 				if (!uid && el.hasAttribute('onclick')) {
 					const match = el.getAttribute('onclick').match(/navigateTo\('([^']+)'\)/);
 					if (match) uid = match[1];
@@ -2065,20 +2063,20 @@
 					'func':     ['function', 'method'],
 					'function': ['function', 'method'],
 					'macro':    ['macro', 'macro_method'],
-					'attrdef':  ['attribute'],
+					'attrmacro':['attribute'],
 					'attribute':['attribute'],
 					'attr':     ['attribute'],
 					'struct':   ['struct'],
 					'enum':     ['enum'],
 					'union':    ['union'],
-					'var':      ['variable', 'const', 'constdef'],
-					'const':    ['variable', 'const', 'constdef']
+					'var':      ['variable', 'const', 'constset'],
+					'const':    ['variable', 'const', 'constset']
 				};
 
 				const filtered = allDecls
 					.map(d => {
 						const nameLow = (d.name || '').toLowerCase();
-						const uidLow = d.uid.toLowerCase();
+						const uidLow = (d.kind === 'module' ? d.name : d.uid).toLowerCase();
 						let totalScore = 0, matchedAll = true, keywordMatch = false;
 
 						for (const w of words) {
@@ -2267,7 +2265,7 @@
 				return res;
 			}
 
-			if (d.kind === 'enum' || d.kind === 'struct' || d.kind === 'union' || d.kind === 'bitstruct' || d.kind === 'fault' || d.kind === 'constdef' || d.kind === 'interface') {
+			if (d.kind === 'enum' || d.kind === 'struct' || d.kind === 'union' || d.kind === 'bitstruct' || d.kind === 'fault' || d.kind === 'constset' || d.kind === 'interface') {
 				let res = `<span class="c3-keyword">${d.kind}</span> <span class="c3-type">${localName}</span>`;
 				if (d.base_type && d.base_type.name) {
 					res += ` : ${renderTypeName(d.base_type)}`;
@@ -2285,7 +2283,7 @@
 			if (d.kind === 'attribute') {
 				const params = (d.members && d.members.length > 0) ? `(${renderParams(d.members)})` : '';
 				const target = d.target ? ` = <span class="c3-attribute">${escapeHtml(d.target)}</span>` : '';
-				return `<span class="c3-keyword">attrdef</span> <span class="c3-macro">${localName}</span>${params}${target}`;
+				return `<span class="c3-keyword">attrmacro</span> <span class="c3-macro">${localName}</span>${params}${target}`;
 			}
 
 			return null;
@@ -2294,7 +2292,7 @@
 		function buildHeaderHtml(d, vd) {
 			let html = `<div class="header-container">`;
 			html += `<span class="module-breadcrumb">Module: `;
-			html += `<a href="#" onclick="navigateTo('${d.moduleName}'); return false;"
+			html += `<a href="#" onclick="navigateTo('module:${d.moduleName}'); return false;"
 						class="module-link"
 						title="Go to module ${d.moduleName}">${d.moduleName}</a>`;
 			if (d.generic_parameters && d.generic_parameters.length > 0) {
@@ -2311,7 +2309,7 @@
 				html += `<span class="visibility-badge ${visClass}">${vis}</span>`;
 			}
 
-			if (d.is_generic && d.kind !== 'variable' && d.kind !== 'constdef') {
+			if (d.is_generic && d.kind !== 'variable' && d.kind !== 'constset') {
 				html += `<span class="generic-badge">generic</span>`;
 			}
 
@@ -2535,7 +2533,7 @@
 					});
 					html += `</tbody></table>`;
 				}
-			} else if (vd.kind === 'constdef') {
+			} else if (vd.kind === 'constset') {
 				html += `<h3>Values</h3>`;
 				html += `<table class="contract-table">
 					<thead><tr>
@@ -2791,7 +2789,7 @@
 			document.getElementById('content').innerHTML = html;
 
 			// Sync left sidebar
-			const modName = d.kind === 'module' ? d.uid : d.moduleName;
+			const modName = d.moduleName;
 			document.querySelectorAll('.module-list-ul li').forEach(li => {
 				const isMatch = li.getAttribute('data-mod') === modName;
 				li.classList.toggle('selected', isMatch);

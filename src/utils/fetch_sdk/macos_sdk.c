@@ -253,7 +253,6 @@ void fetch_macsdk(BuildOptions *options)
 	const char *tmp_dir_base = dir_make_temp_dir();
 
 	if (!tmp_dir_base) error_exit("Failed to create temp directory");
-	if (verbose_level >= 1) printf("Temp dir: %s\n", tmp_dir_base);
 
 	sucatalog_out = file_append_path(tmp_dir_base, "sucatalog");
 	metadata_out = file_append_path(tmp_dir_base, BASE_PKM);

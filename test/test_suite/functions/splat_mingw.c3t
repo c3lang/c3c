@@ -36,7 +36,7 @@ entry:
   %"$$temp" = insertvalue %"int[]" %0, i64 3, 1
   store %"int[]" %"$$temp", ptr %indirectarg, align 8
   %1 = call i32 @sum_us(ptr align 8 %indirectarg)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x, ptr align 4 @.__const, i64 12, i1 false)
   %2 = insertvalue %"int[]" undef, ptr %x, 0
   %3 = insertvalue %"int[]" %2, i64 3, 1
   store %"int[]" %3, ptr %z, align 8
@@ -44,7 +44,7 @@ entry:
   %5 = insertvalue %"int[]" %4, i64 3, 1
   store %"int[]" %5, ptr %indirectarg2, align 8
   %6 = call i32 @sum_us(ptr align 8 %indirectarg2)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg3, ptr align 8 %z, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %indirectarg3, ptr align 8 %z, i64 16, i1 false)
   %7 = call i32 @sum_us(ptr align 8 %indirectarg3)
   store %"int[]" zeroinitializer, ptr %indirectarg4, align 8
   %8 = call i32 @sum_us(ptr align 8 %indirectarg4)

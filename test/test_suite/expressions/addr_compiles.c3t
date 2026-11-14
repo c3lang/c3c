@@ -100,11 +100,11 @@ entry:
   %d = alloca ptr, align 8
   %e = alloca ptr, align 8
   %taddr = alloca %"int[]", align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %h, ptr align 4 @.__const, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %h, ptr align 4 @.__const, i64 8, i1 false)
   store ptr %h, ptr %zx, align 8
   %ptradd = getelementptr inbounds i8, ptr %h, i64 4
   store ptr %ptradd, ptr %zy, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %arr, ptr align 4 @.__const.2, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %arr, ptr align 4 @.__const.2, i64 12, i1 false)
   %0 = load ptr, ptr %zx, align 8
   %1 = load ptr, ptr %zy, align 8
   %2 = load i32, ptr %0, align 4
