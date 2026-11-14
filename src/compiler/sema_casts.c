@@ -2623,6 +2623,14 @@ static void expr_rewrite_bytes_to_const_initializer(Expr *expr, Type *target_typ
 
 static void cast_slice_to_vec(Expr *expr, Type *to_type)
 {
+	Type *flat = type_flatten(to_type);
+	Type *base = type_get_indexed_type(expr->type);
+	if (type_flatten(base) != type_flatten(flat->array.base))
+	{
+		cast_slice_to_vec(expr, type_get_vector(base, flat->type_kind, flat->array.len));
+		cast_no_check(expr, to_type, false);
+		return;
+	}
 	if (!sema_cast_const(expr))
 	{
 		switch (expr->expr_kind)
