@@ -3869,7 +3869,7 @@ NO_MATCH:
 static inline bool sema_expr_analyse_typecall(SemaContext *context, Expr *expr)
 {
 	Expr *tag = exprptr(expr->call_expr.function);
-	expr->call_expr.arguments = sema_expand_vasplat_exprs(context, expr->call_expr.arguments, NULL);
+	if (!sema_expand_vasplat_exprs(context, &expr->call_expr.arguments, NULL)) return false;
 	Decl *decl = tag->type_call_expr.type;
 	if (decl && !sema_analyse_decl(context, decl)) return false;
 	switch (tag->type_call_expr.property)
@@ -7510,15 +7510,12 @@ static Expr **sema_vasplat_insert(SemaContext *context, Expr **init_expressions,
 			return NULL;
 		}
 		start_idx = start_index.i.low;
-		if (range->start_from_end)
-		{
-			start_idx = param_count - start_idx;
-		}
 		if (param_count < start_idx)
 		{
-			SEMA_ERROR(expr, "Start index exceeds the number of parameters (%d).", start_idx);
+			SEMA_ERROR(expr, "Start index exceeds the number of parameters (%d).", param_count);
 			return NULL;
 		}
+		if (range->start_from_end) start_idx = param_count - start_idx;
 	}
 	Expr *end = exprptrzero(range->end);
 	int end_idx = param_count;
@@ -7553,12 +7550,10 @@ static Expr **sema_vasplat_insert(SemaContext *context, Expr **init_expressions,
 		{
 			if (end_idx > param_count)
 			{
-				end_idx = 0;
+				SEMA_ERROR(expr, "End index exceeds the number of parameters (%d).", param_count);
+				return NULL;
 			}
-			else
-			{
-				end_idx = param_count - end_idx;
-			}
+			end_idx = param_count - end_idx;
 		}
 		if (range->is_len)
 		{
@@ -7568,9 +7563,14 @@ static Expr **sema_vasplat_insert(SemaContext *context, Expr **init_expressions,
 		{
 			end_idx++;
 		}
-		if (param_count <= end_idx)
+		if (param_count < end_idx)
 		{
 			SEMA_ERROR(expr, "End index would exceed the number of parameters.");
+			return NULL;
+		}
+		if (end_idx < start_idx)
+		{
+			SEMA_ERROR(expr, "The end index is before the start index.");
 			return NULL;
 		}
 	}
@@ -7592,10 +7592,11 @@ static Expr **sema_vasplat_insert(SemaContext *context, Expr **init_expressions,
 	return init_expressions;
 }
 
-Expr **sema_expand_vasplat_exprs(SemaContext *context, Expr **exprs, Decl ***macro_va_decl_ref)
+bool sema_expand_vasplat_exprs(SemaContext *context, Expr ***exprs_ptr, Decl ***macro_va_decl_ref)
 {
-	if (!context) return exprs;
+	if (!context) return true;
 	bool in_macro = context->current_macro;
+	Expr** exprs = *exprs_ptr;
 	int count = vec_size(exprs);
 	bool expand;
 	do
@@ -7609,7 +7610,7 @@ Expr **sema_expand_vasplat_exprs(SemaContext *context, Expr **exprs, Decl ***mac
 			{
 				exprs = sema_vasplat_insert(context, exprs, arg, i);
 				// If we have null back it failed.
-				if (!exprs) return NULL;
+				if (!exprs) return false;
 				count = vec_size(exprs);
 				expand = true;
 				break;
@@ -7632,21 +7633,18 @@ Expr **sema_expand_vasplat_exprs(SemaContext *context, Expr **exprs, Decl ***mac
 						new_args = sema_splat_struct_insert(context, exprs, inner, flat->decl, i);
 						goto SPLAT_DONE;
 					default:
-						SEMA_ERROR(arg, "An argument of type %s cannot be splatted.",
+						RETURN_SEMA_ERROR(arg, "An argument of type %s cannot be splatted.",
 						           type_quoted_error_string(inner->type));
-						return NULL;
 				}
 				ArrayIndex len = sema_len_from_expr(inner);
 				if (len == -1)
 				{
-					SEMA_ERROR(arg,
-					           "Splat may not be used with if the length is not known, but if you slice it to a constant length it will work (e.g '...val[:2]')");
-					return NULL;
+					RETURN_SEMA_ERROR(arg,
+						"Splat may not be used with if the length is not known, but if you slice it to a constant length it will work (e.g '...val[:2]')");
 				}
 				if (len == 0 && !expr_is_const(arg))
 				{
-					SEMA_ERROR(arg, "A non-constant zero size splat is not allowed.");
-					return NULL;
+					RETURN_SEMA_ERROR(arg, "A non-constant zero size splat is not allowed.");
 				}
 				new_args = sema_splat_arraylike_insert(context, exprs, inner, len, i, macro_va_decl_ref);
 SPLAT_DONE:
@@ -7658,7 +7656,8 @@ SPLAT_DONE:
 			}
 		}
 	} while (expand);
-	return exprs;
+	*exprs_ptr = exprs;
+	return true;
 }
 
 static inline bool sema_expr_analyse_expr_list(SemaContext *context, Expr *expr)

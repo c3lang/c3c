@@ -34,6 +34,7 @@
 - Fix error for `x <<= v`, with `v` a vector and `x` a scalar.
 - A range `case` in a `typeid` switch crashed the compiler; it is now an error.
 - `$defined` on an invalid `+++` with a string or bytes on the left, like `"a" +++ 1.0`, was an error instead of `false`.
+- `...$vaarg[a..b]` crashed the compiler when a `^` start exceeded the number of arguments, hung when the end was before the start, and rejected a range ending at the last argument.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.
