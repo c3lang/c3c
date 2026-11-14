@@ -615,6 +615,7 @@ BUILD:
 	OVERRIDE_IF_SET(no_compress);
 	OVERRIDE_IF_SET(panicfn);
 	OVERRIDE_IF_SET(testfn);
+	OVERRIDE_IF_SET(compiler_rt_module);
 	OVERRIDE_IF_SET(benchfn);
 	OVERRIDE_IF_SET(symtab_size);
 	OVERRIDE_IF_SET(max_vector_size);

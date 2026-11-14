@@ -331,6 +331,7 @@ typedef struct BuildOptions_
 	const char *panicfn;
 	const char *benchfn;
 	const char *testfn;
+	const char *compiler_rt_module;
 	const char *cc;
 	const char *cflags;
 	const char *build_dir;
@@ -532,6 +533,7 @@ typedef struct
 	const char *panicfn;
 	const char *benchfn;
 	const char *testfn;
+	const char *compiler_rt_module;
 	const char *cc;
 	const char *cflags;
 	const char **csource_dirs;

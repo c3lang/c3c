@@ -553,8 +553,6 @@ void sema_trace_liveness(void)
 	}
 	sema_trace_decl_liveness(NULL, compiler.context.panic_var);
 	bool keep_all = !strip_unused();
-	bool keep_tests = compiler.build.build_test;
-	bool keep_benchmarks = compiler.build.build_benchmark;
 	FOREACH(Decl *, function, compiler.context.method_extension_list)
 	{
 		if (function->decl_kind == DECL_MACRO) continue;
@@ -571,6 +569,7 @@ void sema_trace_liveness(void)
 				if (keep_all ||
 					function->is_export ||
 					function->no_strip ||
+					m->is_compiler_rt ||
 					function->func_decl.attr_finalizer ||
 					function->func_decl.attr_init ||
 					(function->func_decl.attr_test) ||
@@ -581,7 +580,7 @@ void sema_trace_liveness(void)
 			}
 			FOREACH(Decl *, method, unit->methods)
 			{
-				if (keep_all || method->is_export || method->no_strip) sema_trace_decl_liveness(m, method);
+				if (keep_all || method->is_export || method->no_strip || m->is_compiler_rt) sema_trace_decl_liveness(m, method);
 			}
 			FOREACH(Decl *, var, unit->vars)
 			{

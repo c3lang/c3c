@@ -109,8 +109,7 @@ void stats_list_add(StatsList *list, StatsEntry entry, bool in_top)
 
 StatsOrigin stats_module_origin(Module *module)
 {
-	const char *name = module->name->module;
-	if (strcmp(name, "compiler_rt") == 0 || strncmp(name, "compiler_rt::", 13) == 0) return STATS_ORIGIN_RUNTIME;
+	if (module->is_compiler_rt) return STATS_ORIGIN_RUNTIME;
 	return module_is_stdlib(module) ? STATS_ORIGIN_STDLIB : STATS_ORIGIN_USER;
 }
 

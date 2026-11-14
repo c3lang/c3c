@@ -201,6 +201,7 @@ static void usage(bool full)
 		print_opt("--panicfn <name>", "Override the panic function name.");
 		print_opt("--testfn <name>", "Override the test runner function name.");
 		print_opt("--benchfn <name>", "Override the benchmark runner function name.");
+		print_opt("--compiler-rt-module <name>", "Override the compiler runtime module (default: compiler_rt).");
 		PRINTF("");
 		print_opt("--reloc=<option>", "Relocation model: none, pic, PIC, pie, PIE.");
 		print_opt("--cpu-flags <string>", "Add/remove cpu flags from the default, e.g. '+a,-b'.");
@@ -1696,6 +1697,12 @@ static void parse_option(BuildOptions *options) // NOLINT
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --testfn needs a function name.");
 				options->testfn = next_arg();
+				return;
+			}
+			if (match_longopt("compiler-rt-module"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --compiler-rt-module needs a module name.");
+				options->compiler_rt_module = next_arg();
 				return;
 			}
 			if (match_longopt("benchfn"))

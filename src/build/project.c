@@ -17,6 +17,7 @@ const char *project_default_keys[][2] = {
 		{"c-sources", "Set the C sources to be compiled."},
 		{"cc", "Set C compiler."},
 		{"cflags", "C compiler flags."},
+		{"compiler-rt-module", "Override the compiler runtime module (default: compiler_rt)."},
 		{"compress", "Compress a 'source-lib' target into a single .c3l file, otherwise output an uncompressed directory (default: true)."},
 		{"cpu", "CPU name, used for optimizations in the compiler backend."},
 		{"cpu-flags", "Set the cpu flags to add or remove with the format '+avx,-sse'."},
@@ -113,6 +114,7 @@ const char* project_target_keys[][2] = {
 		{"cc", "Set C compiler."},
 		{"cflags", "Additional C compiler flags for the target."},
 		{"cflags-override", "C compiler flags for the target, overriding global settings."},
+		{"compiler-rt-module", "Override the compiler runtime module (default: compiler_rt)."},
 		{"compress", "Compress a 'source-lib' target into a single .c3l file, otherwise output an uncompressed directory (default: true)."},
 		{"cpu", "CPU name, used for optimizations in the compiler backend."},
 		{"cpu-flags", "Additional cpu flags to add or remove with the format '+avx,-sse'."},
@@ -606,6 +608,9 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 
 	// testfn
 	target->testfn = get_string(context, json, "testfn", target->testfn);
+
+	// compiler-rt-module
+	target->compiler_rt_module = get_string(context, json, "compiler-rt-module", target->compiler_rt_module);
 
 	// benchfn
 	target->benchfn = get_string(context, json, "benchfn", target->benchfn);

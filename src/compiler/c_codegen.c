@@ -335,7 +335,8 @@ void c_emit_string_literal(GenContext *c, const char *bytes, ArrayIndex len)
 void c_emit_panic(GenContext *c, const char *message, SourceLocId loc, Expr **args)
 {
 	Decl *panic_var = compiler.context.panic_var;
-	if (no_panic() || !panic_var)
+	Decl *func = c->cur_func_decl;
+	if (no_panic() || !panic_var || (func && func->unit && func->unit->module->is_compiler_rt))
 	{
 		PRINT("__c3_abort();\n");
 		return;

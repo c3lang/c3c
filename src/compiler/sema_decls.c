@@ -1060,6 +1060,8 @@ static bool sema_analyse_interface(SemaContext *context, Decl *decl, bool *erase
 	// If erased using @if, we exit.
 	if (*erase_decl) return true;
 
+	if (context->unit->module->is_compiler_rt) RETURN_SEMA_ERROR(decl, "Interfaces may not be used in compiler-rt.");
+
 	// Resolve the inherited interfaces deeply
 	if (!sema_resolve_implemented_interfaces(context, decl, true)) return false;
 
@@ -4665,6 +4667,12 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 	{
 		RETURN_SEMA_ERROR(decl, "Test and benchmark functions may not also be marked '@init' or '@finalizer'.");
 	}
+	if (context->unit->module->is_compiler_rt)
+	{
+		if (is_init_finalizer) RETURN_SEMA_ERROR(decl, "Functions with '@init' and '@finalizer' may not be used in compiler-rt.");
+		if (decl->func_decl.attr_dynamic) RETURN_SEMA_ERROR(decl, "'@dynamic' methods may not be used in compiler-rt.");
+		if (decl->is_extern) RETURN_SEMA_ERROR(decl, "Extern functions are not allowed in compiler-rt.");
+	}
 	if (is_test || is_benchmark || is_init_finalizer)
 	{
 		ASSERT(!is_interface_method);
@@ -5290,6 +5298,11 @@ static bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, 
 		decl->decl_kind = DECL_ERASED;
 		decl->resolve_status = RESOLVE_DONE;
 		return true;
+	}
+	if (context->unit->module->is_compiler_rt)
+	{
+		if (decl->var.is_threadlocal) RETURN_SEMA_ERROR(decl, "Thread locals may not be used in compiler-rt.");
+		if (decl->is_extern) RETURN_SEMA_ERROR(decl, "Extern globals are not allowed in compiler-rt.");
 	}
 
 	if (is_global)

@@ -160,17 +160,22 @@ static LLVMValueRef llvm_emit_macho_xtor(GenContext *c, LLVMValueRef *list, cons
 	return llvm_emit_macho_xtor_use(c, global, retain_name);
 }
 
+static void llvm_emit_used_list(GenContext *c, LLVMValueRef *values, const char *name)
+{
+	int count = vec_size(values);
+	if (!count) return;
+	LLVMValueRef array = LLVMConstArray(c->ptr_type, values, count);
+	LLVMValueRef global_used = LLVMAddGlobal(c->module, LLVMTypeOf(array), name);
+	LLVMSetLinkage(global_used, LLVMAppendingLinkage);
+	LLVMSetSection(global_used, "llvm.metadata");
+	LLVMSetInitializer(global_used, array);
+	LLVMSetNoSanitizeAddress(global_used);
+}
+
 void llvm_emit_constructors_and_destructors(GenContext *c)
 {
-	int no_strips = vec_size(c->no_strip);
-	if (no_strips > 0)
-	{
-		LLVMValueRef array = LLVMConstArray(c->ptr_type, c->no_strip, no_strips);
-		LLVMValueRef global_used = LLVMAddGlobal(c->module, LLVMTypeOf(array), "llvm.used");
-		LLVMSetLinkage(global_used, LLVMAppendingLinkage);
-		LLVMSetInitializer(global_used, array);
-		LLVMSetNoSanitizeAddress(global_used);
-	}
+	llvm_emit_used_list(c, c->no_strip, "llvm.used");
+	llvm_emit_used_list(c, c->compiler_used, "llvm.compiler.used");
 
 	if (compiler.platform.object_format == OBJ_FORMAT_MACHO)
 	{
@@ -516,10 +521,12 @@ void llvm_set_decl_linkage(GenContext *c, Decl *decl, bool store_nostrip)
 	// Static variables in a different modules should be copied to the current module.
 	bool same_module = is_static || decl->unit->module == c->code_module;
 
-	if (same_module && decl->no_strip && store_nostrip)
+	bool is_runtime = same_module && c->code_module->is_compiler_rt && decl->decl_kind == DECL_FUNC && decl_is_externally_visible(decl);
+	if (same_module && store_nostrip && (decl->no_strip || is_runtime))
 	{
-		vec_add(c->no_strip, ref);
-		if (opt_ref) vec_add(c->no_strip, opt_ref);
+		LLVMValueRef **list = decl->no_strip ? &c->no_strip : &c->compiler_used;
+		vec_add(*list, ref);
+		if (opt_ref) vec_add(*list, opt_ref);
 	}
 
 	if (decl->is_extern || !same_module)
@@ -544,9 +551,10 @@ void llvm_set_decl_linkage(GenContext *c, Decl *decl, bool store_nostrip)
 		{
 			llvm_set_weak(c, ref);
 			if (opt_ref) llvm_set_weak(c, opt_ref);
+			if (is_runtime) LLVMSetVisibility(ref, LLVMHiddenVisibility);
 			return;
 		}
-		LLVMSetVisibility(ref, LLVMDefaultVisibility);
+		LLVMSetVisibility(ref, is_runtime ? LLVMHiddenVisibility : LLVMDefaultVisibility);
 		if (opt_ref) LLVMSetVisibility(opt_ref, LLVMDefaultVisibility);
 		return;
 	}

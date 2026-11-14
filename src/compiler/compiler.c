@@ -365,6 +365,8 @@ void compiler_parse(void)
 {
 	// Cleanup any errors (could there really be one here?!)
 	global_context_clear_errors();
+	const char *rt = compiler.build.compiler_rt_module ? compiler.build.compiler_rt_module : "compiler_rt";
+	compiler.context.compiler_rt_path = (Path) { .module = rt, .len = (uint32_t)strlen(rt) };
 
 	// Add the standard library
 	if (compiler.context.lib_dir && !no_stdlib())
@@ -2168,6 +2170,9 @@ Module *compiler_find_or_create_module(Path *module_name)
 	module = CALLOCS(Module);
 	module->name = module_name;
 	module->inlined_at = (InliningSpan) { 0, NULL };
+	Path *rt = &compiler.context.compiler_rt_path;
+	module->is_compiler_rt = module_name->len >= rt->len && !memcmp(module_name->module, rt->module, rt->len)
+	                         && (module_name->len == rt->len || module_name->module[rt->len] == ':');
 	size_t first = 0;
 	for (size_t i = module_name->len; i > 0; i--)
 	{

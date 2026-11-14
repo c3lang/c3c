@@ -5,6 +5,9 @@
 ### Changes / improvements
 - A `case` after `default` is now an error in switches that are evaluated as an if-chain, since it cannot be reached.
 - `@const` macros may no longer return `void?`.
+- Unused compiler runtime functions are now removed by the linker, and executables linked with `cc` are dead stripped.
+- Compiler-rt may not contain thread locals, interfaces, `@dynamic` methods, `@init`/`@finalizer` functions or extern declarations. Its safety checks trap instead of calling the panic function.
+- Added `--compiler-rt-module` and the `compiler-rt-module` project option to override the compiler runtime module (default: `compiler_rt`).
 
 ### Fixes
 - `nextcase x` in a `@jump` switch read `x` after the defers of the case had run.

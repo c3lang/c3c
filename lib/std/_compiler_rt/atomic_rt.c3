@@ -16,7 +16,7 @@ constset AtomicOrderingRT : inline CInt
 
 // --- Runtime functions ---
 
-fn bool __atomic_is_lock_free(sz size, void*) @weak @nostrip @cname("__atomic_is_lock_free")
+fn bool __atomic_is_lock_free(sz size, void*) @weak @cname("__atomic_is_lock_free")
 {
 	switch (size)
 	{
@@ -28,7 +28,7 @@ fn bool __atomic_is_lock_free(sz size, void*) @weak @nostrip @cname("__atomic_is
 	}
 }
 
-fn void __atomic_load(sz size, void* src, void* dest, CInt model) @weak @nostrip @cname("__atomic_load")
+fn void __atomic_load(sz size, void* src, void* dest, CInt model) @weak @cname("__atomic_load")
 {
 	switch (size)
 	{
@@ -58,7 +58,7 @@ fn void __atomic_load(sz size, void* src, void* dest, CInt model) @weak @nostrip
 	}
 }
 
-fn void __atomic_store(sz size, void* dest, void* src, CInt model) @weak @nostrip @cname("__atomic_store")
+fn void __atomic_store(sz size, void* dest, void* src, CInt model) @weak @cname("__atomic_store")
 {
 	switch (size)
 	{
@@ -88,7 +88,7 @@ fn void __atomic_store(sz size, void* dest, void* src, CInt model) @weak @nostri
 	}
 }
 
-fn void __atomic_exchange(sz size, void* ptr, void* val, void* old, CInt model) @weak @nostrip @cname("__atomic_exchange")
+fn void __atomic_exchange(sz size, void* ptr, void* val, void* old, CInt model) @weak @cname("__atomic_exchange")
 {
 	switch (size)
 	{
@@ -123,7 +123,7 @@ fn void __atomic_exchange(sz size, void* ptr, void* val, void* old, CInt model) 
 	}
 }
 
-fn CInt __atomic_compare_exchange(sz size, void* ptr, void* expected, void* desired, CInt weak, CInt success, CInt failure) @weak @nostrip @cname("__atomic_compare_exchange")
+fn CInt __atomic_compare_exchange(sz size, void* ptr, void* expected, void* desired, CInt weak, CInt success, CInt failure) @weak @cname("__atomic_compare_exchange")
 {
 	switch (size)
 	{

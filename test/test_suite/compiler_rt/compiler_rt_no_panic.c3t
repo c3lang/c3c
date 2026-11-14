@@ -1,0 +1,19 @@
+// #safe: yes
+module compiler_rt::nopanic;
+
+fn int index(int[] a, int i) @weak @cname("__c3_test_index")
+{
+	return a[i];
+}
+
+module test;
+fn void main() {}
+
+/* #expect: compiler_rt.nopanic.ll
+
+@llvm.compiler.used = appending global [1 x ptr] [ptr @__c3_test_index], section "llvm.metadata", no_sanitize_address
+
+define weak hidden i32 @__c3_test_index(
+panic:
+  call void @llvm.trap()
+  unreachable

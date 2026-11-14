@@ -106,6 +106,7 @@ typedef struct GenContext_
 	LLVMValueRef *constructors;
 	LLVMValueRef *destructors;
 	LLVMValueRef *no_strip;
+	LLVMValueRef *compiler_used;
 	ReusableConstant *reusable_constants;
 	const char *ir_filename;
 	const char *object_filename;

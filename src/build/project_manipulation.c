@@ -248,6 +248,7 @@ static void view_target(BuildParseContext context, JSONObject *target, bool verb
 	TARGET_VIEW_SETTING("RISC-V CPU level", "riscv-cpu", riscv_cpu_set);
 	TARGET_VIEW_SETTING("RISC-V ABI", "riscv-abi", riscv_abi);
 	TARGET_VIEW_STRING("Test function override", "testfn");
+	TARGET_VIEW_STRING("Compiler runtime module", "compiler-rt-module");
 	TARGET_VIEW_BOOL("Integers panic on wrapping", "trap-on-wrap");
 	TARGET_VIEW_BOOL("Include standard library", "use-stdlib");
 	TARGET_VIEW_SETTING("Windows CRT linking", "wincrt", wincrt_linking);
@@ -749,6 +750,7 @@ void view_project(BuildOptions *build_options)
 	VIEW_SETTING("RISC-V CPU level", "riscv-cpu", riscv_cpu_set);
 	VIEW_SETTING("RISC-V ABI", "riscv-abi", riscv_abi);
 	VIEW_STRING("Test function override", "testfn");
+	VIEW_STRING("Compiler runtime module", "compiler-rt-module");
 	VIEW_BOOL("Integers panic on wrapping", "trap-on-wrap");
 	VIEW_BOOL("Include standard library", "use-stdlib");
 	VIEW_SETTING("Windows CRT linking", "wincrt", wincrt_linking);

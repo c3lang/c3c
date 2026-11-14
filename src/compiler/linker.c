@@ -323,6 +323,7 @@ static void linker_setup_darwin(const char ***args_ref, Linker linker_type)
 		add_plain_arg(compiler.platform.target_triple);
 		add_plain_arg("-isysroot");
 		add_plain_arg(compiler.platform.os == is_ios ? compiler.build.ios.sysroot : compiler.build.macos.sysroot);
+		if (strip_unused() && compiler.build.type == TARGET_TYPE_EXECUTABLE) add_plain_arg("-Wl,-dead_strip");
 		return;
 	}
 	add_plain_arg("-arch");
@@ -647,6 +648,7 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool 
 		{
 			add_plain_arg("-rdynamic");
 		}
+		if (strip_unused() && compiler.build.type == TARGET_TYPE_EXECUTABLE) add_plain_arg("-Wl,--gc-sections");
 		add_plain_arg("-pthread");
 		return;
 	}
@@ -814,6 +816,7 @@ static void linker_setup_bsd(const char ***args_ref, Linker linker_type, bool is
 		linking_add_link(&compiler.linking, "pthread");
 		linking_add_link(&compiler.linking, "execinfo");
 		if (compiler.build.debug_info == DEBUG_INFO_FULL) add_plain_arg("-rdynamic");
+		if (strip_unused() && compiler.build.type == TARGET_TYPE_EXECUTABLE) add_plain_arg("-Wl,--gc-sections");
 		return;
 	}
 	if (compiler.build.bsd_sysroot)

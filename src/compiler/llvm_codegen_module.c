@@ -67,7 +67,7 @@ void gencontext_begin_module(GenContext *c)
 
 	codegen_setup_object_names(c->code_module, &c->base_name, &c->ir_filename, &c->asm_filename, &c->object_filename);
 	DEBUG_LOG("Emit module %s.", c->code_module->name->module);
-	c->panic_var = compiler.context.panic_var;
+	c->panic_var = c->code_module->is_compiler_rt ? NULL : compiler.context.panic_var;
 	c->module = LLVMModuleCreateWithNameInContext(c->code_module->name->module, c->context);
 	c->machine = llvm_target_machine_create();
 

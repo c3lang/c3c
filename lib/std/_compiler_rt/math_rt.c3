@@ -12,7 +12,7 @@ macro force_eval_add(x, v)
 	@volatile_store(temp, x + v);
 }
 
-fn double __roundeven(double x) @cname("roundeven") @weak @nostrip
+fn double __roundeven(double x) @cname("roundeven") @weak
 {
 	ulong u = bitcast(x, ulong);
 	int e = (int)((u >> 52) & 0x7ff);
@@ -46,7 +46,7 @@ fn double __roundeven(double x) @cname("roundeven") @weak @nostrip
 	return y;
 }
 
-fn float __roundevenf(float x) @cname("roundevenf") @weak @nostrip
+fn float __roundevenf(float x) @cname("roundevenf") @weak
 {
 	uint u = bitcast(x, uint);
 	int e = (int)((u >> 23) & 0xff);
@@ -79,7 +79,7 @@ fn float __roundevenf(float x) @cname("roundevenf") @weak @nostrip
 	return y;
 }
 
-fn double __powidf2(double a, int b) @cname("__powidf2") @weak @nostrip
+fn double __powidf2(double a, int b) @cname("__powidf2") @weak
 {
 	bool recip = b < 0;
     double r = 1;
@@ -93,7 +93,7 @@ fn double __powidf2(double a, int b) @cname("__powidf2") @weak @nostrip
     return recip ? 1 / r : r;
 }
 
-fn float __powisf2(float a, int b) @cname("__powisf2") @weak @nostrip
+fn float __powisf2(float a, int b) @cname("__powisf2") @weak
 {
 	bool recip = b < 0;
     float r = 1;
