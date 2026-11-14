@@ -45,6 +45,7 @@
 - Slice to vector cast were broken when the element types were not the same.
 - Casting a vector, array or slice with typedef elements was handled incorrectly and could cause a crash. 
 - A constant bool vector cast to an unsigned or narrower integer vector stored an out-of-range value for `true`.
+- A constant vector cast to a vector of a typedef of `bool` stored integer elements, so `!X[0]` or `$if X[0]` on it failed.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.
