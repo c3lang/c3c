@@ -181,11 +181,11 @@ INLINE bool sema_analyse_func_macro(SemaContext *context, Decl *decl, AttributeD
 	return true;
 }
 
-INLINE bool sema_check_left_right_const(SemaContext *context, Expr *left, Expr *right)
+INLINE bool sema_check_left_right_const(SemaContext *context, Expr *left, Expr *right, bool *failed_ref)
 {
-	if (!sema_cast_const(left)) RETURN_SEMA_ERROR(left, "Expected this to evaluate to a constant value.");
-	if (!sema_cast_const(right)) RETURN_SEMA_ERROR(right, "Expected this to evaluate to a constant value.");
-	return true;
+	if (sema_cast_const(left) && sema_cast_const(right)) return true;
+	CHECK_ON_DEFINED(failed_ref);
+	RETURN_SEMA_ERROR(sema_cast_const(left) ? right : left, "Expected this to evaluate to a constant value.");
 }
 
 INLINE bool sema_set_alignment(SemaContext *context, Type *type, AlignSize *result, bool is_alloca)

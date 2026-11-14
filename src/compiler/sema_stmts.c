@@ -2441,6 +2441,10 @@ static inline bool sema_analyse_compound_statement_no_scope(SemaContext *context
 static inline bool sema_check_type_case(SemaContext *context, Ast *case_stmt, Ast **cases, int index)
 {
 	Expr *expr = exprptr(case_stmt->case_stmt.expr);
+	if (case_stmt->case_stmt.to_expr)
+	{
+		RETURN_SEMA_ERROR(exprptr(case_stmt->case_stmt.to_expr), "Case ranges are not allowed when switching on a typeid.");
+	}
 	if (!sema_analyse_expr_rhs(context, type_typeid, expr, false, NULL, false)) return false;
 
 	if (sema_cast_const(expr))

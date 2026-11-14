@@ -10641,8 +10641,8 @@ static bool sema_expr_analyse_ct_concat_assign(SemaContext *context, Expr *conca
 	Expr *left_copy = copy_expr_single(left);
 	if (!sema_analyse_expr_lvalue(context, left_copy, NULL)) return false;
 	if (!sema_analyse_expr_rvalue(context, left)) return false;
-	if (!sema_analyse_inferred_expr(context, left->type, right, NULL)) return false;
-	if (!sema_expr_analyse_ct_concat(context, concat_expr, left, right, NULL)) return false;
+	if (!sema_analyse_inferred_expr(context, left->type, right, failed_ref)) return false;
+	if (!sema_expr_analyse_ct_concat(context, concat_expr, left, right, failed_ref)) return false;
 	Expr *result_copy = copy_expr_single(concat_expr);
 	concat_expr->binary_expr.left = exprid(left_copy);
 	concat_expr->binary_expr.right = exprid(result_copy);

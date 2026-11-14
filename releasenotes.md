@@ -32,6 +32,8 @@
 - The address of a thread-local variable was incorrectly considered a compile time constant.
 - Indexing a constant byte array always gave a `char`, so an `ichar[*]` element could be 255 and a typedef element type was lost.
 - Fix error for `x <<= v`, with `v` a vector and `x` a scalar.
+- A range `case` in a `typeid` switch crashed the compiler; it is now an error.
+- `$defined` on an invalid `+++` with a string or bytes on the left, like `"a" +++ 1.0`, was an error instead of `false`.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.

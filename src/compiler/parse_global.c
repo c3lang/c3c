@@ -1667,20 +1667,17 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 			// In the future maybe this
 			if (!is_end_of_param_list(c) && !tok_is(c, TOKEN_COMMA))
 			{
-				PRINT_ERROR_HERE("Expected ')' here.");
-				return false;
+				RETURN_PRINT_ERROR_HERE("Expected ')' here.");
 			}
 			// Variadics might not be allowed
 			if (!variadic)
 			{
-				PRINT_ERROR_LAST("Variadic parameters are not allowed.");
-				return false;
+				RETURN_PRINT_ERROR_LAST("Variadic parameters are not allowed.");
 			}
 			// Check that we only have one variadic parameter.
 			if (var_arg_found)
 			{
-				PRINT_ERROR_LAST("Only a single variadic parameter is allowed.");
-				return false;
+				RETURN_PRINT_ERROR_LAST("Only a single variadic parameter is allowed.");
 			}
 			// Set the variadic type and insert a dummy argument.
 			*variadic = VARIADIC_RAW;
@@ -1727,8 +1724,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 			case TOKEN_CONST_IDENT:
 			case TOKEN_CT_CONST_IDENT:
 				// We reserve upper case constants for globals.
-				PRINT_ERROR_HERE("Parameter names may not be all uppercase.");
-				return false;
+				RETURN_PRINT_ERROR_HERE("Parameter names may not be all uppercase.");
 			case TOKEN_CT_IDENT:
 				// ct_var $foo
 				name = symstr(c);
@@ -1748,8 +1744,7 @@ CHECK_ELLIPSIS:
 					// Did we get Foo... foo...
 					if (ellipsis)
 					{
-						PRINT_ERROR_LAST("Unexpected '...' following a vararg declaration.");
-						return false;
+						RETURN_PRINT_ERROR_LAST("Unexpected '...' following a vararg declaration.");
 					}
 					ellipsis = true;
 					if (!variadic)
@@ -1761,13 +1756,11 @@ CHECK_ELLIPSIS:
 					// Did we get Foo foo...? If so then that's an error.
 					if (type)
 					{
-						PRINT_ERROR_LAST("For typed vaargs '...', needs to appear after the type.");
-						return false;
+						RETURN_PRINT_ERROR_LAST("For typed vaargs '...', needs to appear after the type.");
 					}
 					if (param_kind == VARDECL_PARAM_CT)
 					{
-						PRINT_ERROR_LAST("Untyped constant vaargs are not supported. Use raw macro vaargs instead.");
-						return false;
+						RETURN_PRINT_ERROR_LAST("Untyped constant vaargs are not supported. Use raw macro vaargs instead.");
 					}
 					if (var_arg_found)
 					{
@@ -1787,19 +1780,16 @@ CHECK_ELLIPSIS:
 				name = symstr(c);
 				if (!try_consume(c, TOKEN_IDENT))
 				{
-					PRINT_ERROR_HERE("A regular variable name, e.g. 'foo' was expected after the '&'.");
-					return false;
+					RETURN_PRINT_ERROR_HERE("A regular variable name, e.g. 'foo' was expected after the '&'.");
 				}
 				if (vec_size(params) > 0)
 				{
-					PRINT_ERROR_HERE("Only the first parameter may be a self parameter using '&'.");
-					return false;
+					RETURN_PRINT_ERROR_HERE("Only the first parameter may be a self parameter using '&'.");
 				}
 				// This will catch Type... &foo and &foo..., neither is allowed.
 				if (ellipsis || tok_is(c, TOKEN_ELLIPSIS))
 				{
-					PRINT_ERROR_LAST("'&foo' parameters may not be followed by '...’");
-					return false;
+					RETURN_PRINT_ERROR_LAST("'&foo' parameters may not be followed by '...’");
 				}
 
 				// Span includes the "&"
@@ -1813,8 +1803,7 @@ CHECK_ELLIPSIS:
 				advance_and_verify(c, TOKEN_HASH_IDENT);
 				if (ellipsis || tok_is(c, TOKEN_ELLIPSIS))
 				{
-					PRINT_ERROR_LAST("Expression parameters may not be vaargs, use untyped macro vaargs '...' instead.");
-					return false;
+					RETURN_PRINT_ERROR_LAST("Expression parameters may not be vaargs, use untyped macro vaargs '...' instead.");
 				}
 				param_kind = VARDECL_PARAM_EXPR;
 				break;
@@ -1824,8 +1813,7 @@ CHECK_ELLIPSIS:
 				advance_and_verify(c, TOKEN_CT_TYPE_IDENT);
 				if (ellipsis || tok_is(c, TOKEN_ELLIPSIS))
 				{
-					PRINT_ERROR_LAST("Expression parameters may not be vaargs, use untyped macro vaargs '...' instead.");
-					return false;
+					RETURN_PRINT_ERROR_LAST("Expression parameters may not be vaargs, use untyped macro vaargs '...' instead.");
 				}
 				param_kind = VARDECL_PARAM_CT_TYPE;
 				break;
@@ -1875,8 +1863,7 @@ CHECK_ELLIPSIS:
 				{
 					if (parse_kind != PARAM_PARSE_MACRO)
 					{
-						PRINT_ERROR_HERE("Optional arguments with '...' is only allowed as macro arguments.");
-						return poisoned_decl;
+						RETURN_PRINT_ERROR_HERE("Optional arguments with '...' is only allowed as macro arguments.");
 					}
 					param->var.no_init = true;
 				}
@@ -1897,8 +1884,7 @@ CHECK_ELLIPSIS:
 	}
 	if (tok_is(c, TOKEN_LBRACE) || tok_is(c, TOKEN_STAR) || tok_is(c, TOKEN_LBRACKET))
 	{
-		PRINT_ERROR_LAST("Expected the name of a type here. ('%s' in a parameter list must follow a type).", token_type_to_string(c->tok));
-		return false;
+		RETURN_PRINT_ERROR_LAST("Expected the name of a type here. ('%s' in a parameter list must follow a type).", token_type_to_string(c->tok));
 	}
 
 	*params_ref = params;
