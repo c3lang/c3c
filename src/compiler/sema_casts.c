@@ -1914,7 +1914,29 @@ static void cast_ptr_to_any(Expr *expr, Type *type)
 	expr->make_any_expr = (ExprMakeAny) { .inner = inner, .typeid = typeid };
 	expr->type = type;
 }
-static void cast_struct_to_inline(Expr *expr, Type *type) { expr_rewrite_addr_conversion(expr, type); }
+static void cast_struct_to_inline(Expr *expr, Type *type)
+{
+	ConstInitializer *init = sema_cast_const(expr) && expr_is_const_initializer(expr) ? expr->const_expr.initializer : NULL;
+	while (init && init->kind == CONST_INIT_STRUCT && type_flatten(init->type) != type_flatten(type)) init = init->init_struct[0];
+	if (!init)
+	{
+		expr_rewrite_addr_conversion(expr, type);
+		return;
+	}
+	switch (init->kind)
+	{
+		case CONST_INIT_ZERO:
+			expr_rewrite_to_const_zero(expr, type);
+			return;
+		case CONST_INIT_VALUE:
+			expr_replace(expr, init->init_value);
+			expr->type = type;
+			return;
+		default:
+			expr_rewrite_const_initializer(expr, type, init);
+			return;
+	}
+}
 static void cast_fault_to_ptr(Expr *expr, Type *type) { expr_rewrite_to_int_to_ptr(expr, type); }
 static void cast_typeid_to_int(Expr *expr, Type *type) { expr_rewrite_ext_trunc(expr, type, false); }
 static void cast_fault_to_int(Expr *expr, Type *type) { cast_typeid_to_int(expr, type); }

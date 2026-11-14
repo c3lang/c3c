@@ -47,6 +47,8 @@
 - A constant bool vector cast to an unsigned or narrower integer vector stored an out-of-range value for `true`.
 - A constant vector cast to a vector of a typedef of `bool` stored integer elements, so `!X[0]` or `$if X[0]` on it failed.
 - Modifying an ignored temp object like in `ra()[1] = 7` or `(c ? a : b)[0]++`, was accepted.
+- Converting a constant struct to its `inline` member in a global or constant initializer crashed the compiler.
+- Splatting a runtime struct or array into `#` parameters or raw varargs of a macro, like `@m(...p)`, crashed the compiler or produced wrong values.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.
