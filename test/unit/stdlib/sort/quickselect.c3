@@ -62,7 +62,7 @@ fn void quickselect()
 
     foreach (i, tc : tcases)
     {
-		int got = sort::quickselect(tc.list, tc.k);
+		int got = sort::select_nth(tc.list, tc.k);
 		assert(got == tc.want, "test %d: got %d, want %d", i, got, tc.want);
     }
 }
