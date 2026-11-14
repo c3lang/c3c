@@ -3324,23 +3324,38 @@ INLINE bool type_is_floatlike(Type *type)
 
 INLINE const char *type_invalid_storage_type_name(Type *type)
 {
-	switch (type->type_kind)
+	while (true)
 	{
-		case TYPE_REFLECTION:
-			return "a reflection reference";
-		case TYPE_MEMBER:
-			return "a member reference";
-		case TYPE_UNTYPEDLIST:
-			return "an untyped list";
-		case TYPE_TYPEINFO:
-			return "a typeinfo";
-		case TYPE_WILDCARD:
-			return "an empty value";
-		case TYPE_OPTIONAL:
-			return "an optional with a compile time type";
-		default:
-			UNREACHABLE;
+		type = type->canonical;
+		switch (type->type_kind)
+		{
+			case TYPE_REFLECTION:
+				return "a reflection reference";
+			case TYPE_MEMBER:
+				return "a member reference";
+			case TYPE_UNTYPEDLIST:
+				return "an untyped list";
+			case TYPE_FUNC_RAW:
+				return "a raw function type";
+			case TYPE_FLEXIBLE_ARRAY:
+				return "a flexible array";
+			case TYPE_TYPEINFO:
+				return "a typeinfo";
+			case TYPE_WILDCARD:
+				return "an empty value";
+			case TYPE_OPTIONAL:
+				return "an optional with a compile time type";
+			case TYPE_TYPEDEF:
+				type = type_flatten(type);
+				if (type == type_void) return "a type with unknown size";
+				break;
+			case TYPE_VOID:
+				return "'void'";
+			default:
+				UNREACHABLE;
+		}
 	}
+
 }
 
 INLINE Type *enum_inner_type(Type *enum_type)
