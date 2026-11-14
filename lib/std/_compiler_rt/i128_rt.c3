@@ -350,6 +350,12 @@ fn int128 __fixsfti(float a) @weak @cname("__fixsfti") @nostrip => fixint(a);
 
 macro float_from_i128($Type, int128 a) @private
 {
+	uint128 sign = (uint128)(a >> 127);
+	return float_from_u128($Type, ((uint128)a ^ sign) - sign, a < 0);
+}
+
+macro float_from_u128($Type, uint128 a, bool neg = false) @private
+{
 	var $Rep;
 	$switch $Type:
 		$case double:
@@ -366,63 +372,6 @@ macro float_from_i128($Type, int128 a) @private
 			const SIGNIFICANT_BITS = 23;
 			const MANTISSA_MASK = 0x7F_FFFFU;
 			const SIGN_BIT = 1U << 31;
-		$case float16:
-			$Rep = ushort;
-			const MANT_DIG = math::HALF_MANT_DIG;
-		$case float128:
-			$Rep = uint128;
-			const MANT_DIG = QUAD_MANT_DIG;
-	$endswitch
-	if (a == 0) return 0;
-	// Grab and remove sign.
-	int128 sign = a >> 127;
-	a = (a ^ sign) - sign;
-	int sd = 128 - (int)$$clz(a); // digits
-	int e = sd - 1; // exponent
-	if (sd > MANT_DIG)
-	{
-		switch (sd)
-		{
-			case MANT_DIG + 1:
-				a <<= 1;
-			case MANT_DIG + 2:
-				break;
-			default:
-				a = (a >> (sd - (MANT_DIG + 2)))
-					| (int128)(((uint128)a & ((uint128)(-1) >> ((128 + MANT_DIG + 2) - sd))) != 0);
-		}
-		a |= (int128)((a & 4) != 0);
-		a++;
-		a >>= 2;
-		if (a & (1LL << MANT_DIG))
-		{
-			a >>= 1;
-			e++;
-		}
-	}
-	else
-	{
-		a <<= (MANT_DIG - sd);
-	}
-	return bitcast((($Rep)sign & SIGN_BIT) | ((($Rep)e + ($Rep)EXP_BIAS) << SIGNIFICANT_BITS) | (($Rep)a & ($Rep)MANTISSA_MASK), $Type);
-}
-
-macro float_from_u128($Type, uint128 a) @private
-{
-	var $Rep;
-	$switch $Type:
-		$case double:
-			$Rep = ulong;
-			const MANT_DIG = DOUBLE_MANT_DIG;
-			const SIGNIFICANT_BITS = 52;
-			const EXP_BIAS = 1023;
-			const MANTISSA_MASK = 0xFFFFF_FFFF_FFFFUL;
-		$case float:
-			$Rep = uint;
-			const MANT_DIG = FLOAT_MANT_DIG;
-			const EXP_BIAS = 127;
-			const SIGNIFICANT_BITS = 23;
-			const MANTISSA_MASK = 0x7F_FFFFU;
 		$default:
 			$error "Unsupported type";
 	$endswitch
@@ -454,7 +403,7 @@ macro float_from_u128($Type, uint128 a) @private
 	{
 		a <<= (MANT_DIG - sd);
 	}
-	return bitcast(((($Rep)e + ($Rep)EXP_BIAS) << SIGNIFICANT_BITS) | (($Rep)a & ($Rep)MANTISSA_MASK), $Type);
+	return bitcast((neg ? SIGN_BIT : 0) | ((($Rep)e + ($Rep)EXP_BIAS) << SIGNIFICANT_BITS) | (($Rep)a & ($Rep)MANTISSA_MASK), $Type);
 }
 
 

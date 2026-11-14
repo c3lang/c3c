@@ -4826,6 +4826,7 @@ INLINE bool sema_analyse_macro_body(SemaContext *context, Decl **body_parameters
 		{
 			RETURN_SEMA_ERROR(param->var.init_expr, "Body parameters cannot use default values.");
 		}
+		if (param->var.self_addr) RETURN_SEMA_ERROR(param, "Body parameters cannot be '&' parameters.");
 		switch (kind)
 		{
 			case VARDECL_PARAM:

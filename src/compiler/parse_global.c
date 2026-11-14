@@ -1869,7 +1869,7 @@ CHECK_ELLIPSIS:
 				}
 				else
 				{
-					if (!parse_decl_initializer(c, param)) return poisoned_decl;
+					if (!parse_decl_initializer(c, param)) return false;
 				}
 			}
 		}
@@ -1952,7 +1952,7 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 	while (!tok_is(c, TOKEN_RBRACE))
 	{
 		ContractDescription contracts = EMPTY_CONTRACT;
-		if (!parse_element_contract(c, &contracts, "struct/union members")) return decl_poison(parent);
+		if (!parse_element_contract(c, &contracts, "struct/union members")) return false;
 		TokenType token_type = c->tok;
 		if (token_type == TOKEN_STRUCT || token_type == TOKEN_UNION || token_type == TOKEN_BITSTRUCT)
 		{
@@ -1965,7 +1965,6 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 				if (token_is_some_ident(c->tok))
 				{
 					RETURN_PRINT_ERROR_HERE("The name of an inner struct or union must be a name starting with a lowercase letter.");
-					return decl_poison(parent);
 				}
 			}
 			else
@@ -1990,10 +1989,10 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 			member->strukt.parent = declid(parent);
 			if (decl_kind == DECL_BITSTRUCT)
 			{
-				TRY_CONSUME_OR_RET(TOKEN_COLON, "':' followed by bitstruct type (e.g. 'int') was expected here.", poisoned_decl);
-				ASSIGN_TYPE_OR_RET(member->strukt.container_type, parse_optional_type_no_generic(c), poisoned_decl);
-				if (!parse_attributes_for_global(c, member)) return decl_poison(parent);
-				if (!parse_bitstruct_body(c, member)) return decl_poison(parent);
+				TRY_CONSUME_OR_RET(TOKEN_COLON, "':' followed by bitstruct type (e.g. 'int') was expected here.", false);
+				ASSIGN_TYPE_OR_RET(member->strukt.container_type, parse_optional_type_no_generic(c), false);
+				if (!parse_attributes_for_global(c, member)) return false;
+				if (!parse_bitstruct_body(c, member)) return false;
 			}
 			else
 			{
@@ -2001,7 +2000,7 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 				if (!parse_attributes(c, &member->attributes, NULL, NULL, &is_cond, "on struct and union fields", NULL, &is_feat_cond)) return false;
 				member->is_cond = is_cond;
 				member->is_feat_cond = is_feat_cond;
-				if (!parse_struct_body(c, member)) return decl_poison(parent);
+				if (!parse_struct_body(c, member)) return false;
 			}
 			member->docs = decl_from_contract_description(&contracts);
 			attach_deprecation_from_contract(c, &contracts, member);
