@@ -193,7 +193,7 @@ static inline bool sema_resolve_implemented_interfaces(SemaContext *context, Dec
 			}
 		}
 		// If this is a resolve_interfaces check, then we also resolve the interface itself (this would mean resolving function types)
-		if (resolve_interfaces && !sema_resolve_type_decl(context, inf_type)) return false;
+		if (resolve_interfaces && !sema_analyse_decl(context, inf_type->decl)) return false;
 	}
 	return true;
 }

@@ -41,6 +41,7 @@
 - Converting `int128::min` to `float` or `double` at runtime gave the wrong value.
 - Passing a struct by value on x64 crashed the compiler when its second eightbyte was only padding, e.g. a struct with `@align(16)` holding a single `float`.
 - Passing a union with a `float[<3>]` member by value on x64 hit an assert in codegen.
+- Recursive interface declarations were not detected. #3655
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.
