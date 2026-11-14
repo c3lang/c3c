@@ -97,7 +97,7 @@ macro bool accepts_null($Type) @const @private
 			return false;
 		$case $Type::kind == SLICE || $Type::kind == POINTER || is_string_map($Type):
 			return true;
-		$case $Type::kind == TYPEDEF:
+		$case $Type::kind == TYPEDEF || $Type::kind == CONSTDEF:
 			return accepts_null($Type::inner);
 		$default:
 			return false;
@@ -485,10 +485,7 @@ macro void? @write_array(OutStream stream, sz len, JsonIndent indent, int indent
 	stream.write_byte(']')!;
 }
 
-<*
- Writes the separator and key of an object entry. Keys from data are escaped; member names are written as they are.
-*>
-fn void? write_entry_prefix(OutStream stream, String key, JsonIndent indent, int indent_depth, bool first, bool escape_key = false) @private
+fn void? write_entry_prefix(OutStream stream, String key, JsonIndent indent, int indent_depth, bool first) @private
 {
 	bool pretty_print = indent != NONE;
 	switch
@@ -500,15 +497,8 @@ fn void? write_entry_prefix(OutStream stream, String key, JsonIndent indent, int
 			stream.write_byte('\n')!;
 	}
 	if (pretty_print) write_indent(stream, indent, indent_depth + 1)!;
-	if (escape_key)
-	{
-		serialize_string(stream, key)!;
-		stream.write(pretty_print ? ": " : ":")!;
-		return;
-	}
-	stream.write_byte('"')!;
-	stream.write(key)!;
-	stream.write(pretty_print ? `": ` : `":`)!;
+	serialize_string(stream, key)!;
+	stream.write(pretty_print ? ": " : ":")!;
 }
 
 fn void? write_map_suffix(OutStream stream, JsonIndent indent, int indent_depth, bool has_entries) @private
@@ -544,7 +534,7 @@ fn void? serialize_map(OutStream stream, StringMap value, JsonIndent indent, int
 	bool first = true;
 	value.@each(; key, element)
 	{
-		write_entry_prefix(stream, key, indent, indent_depth, first, escape_key: true)!;
+		write_entry_prefix(stream, key, indent, indent_depth, first)!;
 		serialize_value{$Typeof(element)}(stream, element, indent, indent_depth + 1)!;
 		first = false;
 	};
@@ -643,7 +633,7 @@ fn void? serialize_object(OutStream stream, Object* obj, JsonIndent indent, int 
 			bool first = true;
 			obj.@each_entry(; key, val)
 			{
-				write_entry_prefix(stream, key, indent, indent_depth, first, escape_key: true)!;
+				write_entry_prefix(stream, key, indent, indent_depth, first)!;
 				first = false;
 				serialize_object(stream, val, indent, indent_depth + 1)!;
 			};

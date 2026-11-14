@@ -1032,3 +1032,24 @@ fn void test_map_frees_on_error() @test
 	JsonTargets? value = json::unmarshal(mem, `{"targets": {"a": {"x": 1, "y": 2}, "b": {"x": "bad"}}}`, JsonTargets);
 	assert(@catch(value) == json::INVALID_NUMBER);
 }
+
+
+struct JsonQuotedKey
+{
+	int value @Json("q\"uote");
+}
+
+fn void test_json_tag_key_is_escaped() @test
+{
+	test::eq(json::marshal(tmem, (JsonQuotedKey){ 1 }), `{"q\"uote":1}`);
+	test::eq(json::marshal(tmem, (JsonQuotedKey){ 1 }, TAB), "{\n\t\"q\\\"uote\": 1\n}");
+	JsonQuotedKey back = json::unmarshal(tmem, `{"q\"uote": 2}`, JsonQuotedKey)!!;
+	test::eq(back.value, 2);
+}
+
+fn void test_unmarshal_null_into_string_constdef() @test
+{
+	JsonText text = json::unmarshal(tmem, `{"kind": null, "inline_kind": null, "value": "x"}`, JsonText)!!;
+	test::eq((String)text.kind, "");
+	test::eq((String)text.inline_kind, "");
+}
