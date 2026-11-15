@@ -8159,6 +8159,8 @@ INLINE bool sema_rewrite_op_assign(SemaContext *context, Expr *expr, Expr *left,
 	{
 		Expr *parent = exprptr(left->subscript_assign_expr.expr);
 		Type *parent_type = type_no_optional(parent->type)->canonical;
+		bool is_addr = parent_type->type_kind == TYPE_POINTER;
+		if (is_addr) parent_type = parent_type->pointer;
 		Decl *operator = sema_find_untyped_operator(parent_type, OVERLOAD_ELEMENT_REF, NULL);
 		Expr *index = exprptr(left->subscript_assign_expr.index);
 		if (operator)
@@ -8182,7 +8184,7 @@ INLINE bool sema_rewrite_op_assign(SemaContext *context, Expr *expr, Expr *left,
 		// First we want to create the indexed value and the index:
 		Decl *index_val = decl_new_generated_var(index->type, VARDECL_LOCAL, index->loc);
 		// We need to take the address of the parent here, otherwise this might fail,
-		expr_insert_addr(parent);
+		if (!is_addr) expr_insert_addr(parent);
 		Decl *parent_val = decl_new_generated_var(parent->type, VARDECL_LOCAL, parent->loc);
 		Expr **list = NULL;
 		// temp = parent, temp_2 = index
@@ -10379,7 +10381,9 @@ static inline bool sema_expr_analyse_ct_incdec(SemaContext *context, Expr *expr,
 static bool sema_analyse_assign_mutate_overloaded_subscript(SemaContext *context, Expr *main, Expr *subscript_expr, Type *type)
 {
 	Expr *increased = exprptr(subscript_expr->subscript_assign_expr.expr);
-	Type *type_check = increased->type->canonical;
+	Type *type_check = type_no_optional(increased->type)->canonical;
+	bool is_addr = type_check->type_kind == TYPE_POINTER;
+	if (is_addr) type_check = type_check->pointer;
 	Decl *operator = sema_find_untyped_operator(type_check, OVERLOAD_ELEMENT_REF, NULL);
 	Expr **args = NULL;
 	// The simple case: we have &[] so just replace it by that.
@@ -10404,7 +10408,7 @@ static bool sema_analyse_assign_mutate_overloaded_subscript(SemaContext *context
 	}
 	bool is_optional_result = type_is_optional(increased->type) || type_is_optional(return_type);
 	Type *result_type = type_add_optional(subscript_expr->type, is_optional_result);
-	expr_insert_addr(increased);
+	if (!is_addr) expr_insert_addr(increased);
 	Expr *index = exprptr(subscript_expr->subscript_assign_expr.index);
 	switch (sema_resolve_storage_type(context, index->type))
 	{
