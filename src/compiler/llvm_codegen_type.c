@@ -10,6 +10,50 @@ static inline LLVMTypeRef llvm_type_from_array(GenContext *context, Type *type);
 static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *type);
 static inline void add_func_type_param(GenContext *c, ABIArgInfo *arg_info, LLVMTypeRef **params);
 
+/**
+ * True if every byte of the type is data, i.e. there is no padding anywhere inside it.
+ */
+static bool type_is_dense(Type *type)
+{
+	type = type_lowering(type);
+	switch (type->type_kind)
+	{
+		case TYPE_ARRAY:
+			return type_is_dense(type->array.base);
+		case VECTORS:
+			return type_size(type) == type_size(type->array.base) * type->array.len && type_is_dense(type->array.base);
+		case TYPE_STRUCT:
+		{
+			TypeSize data_size = 0;
+			FOREACH(Decl *, member, type->decl->strukt.members)
+			{
+				if (!type_is_dense(member->type)) return false;
+				data_size += type_size(member->type);
+			}
+			// Any gap between or after members is padding.
+			return data_size == type_size(type);
+		}
+		case TYPE_UNION:
+		{
+			// The union lowering below guarantees a dense representation.
+			return true;
+		}
+		case TYPE_SLICE:
+		case TYPE_ANY:
+		case TYPE_INTERFACE:
+		case ALL_INTS:
+		case ALL_FLOATS:
+		case TYPE_BOOL:
+		case TYPE_POINTER:
+		case TYPE_FUNC_PTR:
+		case TYPE_TYPEID:
+		case TYPE_ANYFAULT:
+			return true;
+		default:
+			return false;
+	}
+}
+
 static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 {
 	switch (decl->decl_kind)
@@ -63,10 +107,25 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 
 				Decl *rep_type = members[decl->strukt.union_rep];
 				LLVMTypeRef type_ref[2] = {
-						llvm_get_type(c, lowered_member_type(rep_type)),
+						NULL,
 						NULL
 				};
-				int elements = 1;
+				int elements = 0;
+
+				// If the representative has padding, other members may store data in those bytes,
+				// and LLVM is free to drop padding on a by-value load / store. Use a dense
+				// integer array covering the whole union instead.
+				if (!type_is_dense(rep_type->type))
+				{
+					TypeSize size = type_size(decl->type);
+					AlignSize elem = decl->strukt.is_packed ? 1 : type_abi_alignment(decl->type);
+					if (elem > 8 || size % elem) elem = 1;
+					type_ref[elements++] = LLVMArrayType(LLVMIntTypeInContext(c->context, elem * 8), size / elem);
+					LLVMStructSetBody(type, type_ref, 1, decl->strukt.is_packed);
+					return type;
+				}
+				
+				type_ref[elements++] = llvm_get_type(c, lowered_member_type(rep_type));
 				if (decl->strukt.padding)
 				{
 					type_ref[elements++] = llvm_const_padding_type(c, decl->strukt.padding);
