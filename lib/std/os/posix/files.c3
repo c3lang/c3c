@@ -28,6 +28,8 @@ struct Posix_dirent
 extern fn int rmdir(ZString);
 extern fn int mkdir(ZString, ushort mode_t);
 extern fn int chdir(ZString);
+extern fn CInt symlink(ZString target, ZString linkpath);
+extern fn sz readlink(ZString path, char* buf, usz bufsize);
 extern fn ZString getcwd(char* pwd, usz len);
 extern fn CInt pipe(CInt[2]* pipes);
 extern fn CFile fdopen(CInt fd, ZString mode);

@@ -82,6 +82,51 @@ extern fn Win32_HANDLE createFileA(
 	Win32_DWORD dwFlagsAndAttributes,
 	Win32_HANDLE hTemplateFile
 ) @cname("CreateFileA");
+extern fn Win32_HANDLE createFileW(
+	Win32_LPCWSTR lpFileName,
+	Win32_DWORD dwDesiredAccess,
+	Win32_DWORD dwShareMode,
+	Win32_LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+	Win32_DWORD dwCreationDisposition,
+	Win32_DWORD dwFlagsAndAttributes,
+	Win32_HANDLE hTemplateFile
+) @cname("CreateFileW");
+extern fn Win32_BOOL deviceIoControl(
+	Win32_HANDLE hDevice,
+	Win32_DWORD dwIoControlCode,
+	Win32_LPVOID lpInBuffer,
+	Win32_DWORD nInBufferSize,
+	Win32_LPVOID lpOutBuffer,
+	Win32_DWORD nOutBufferSize,
+	Win32_LPDWORD lpBytesReturned,
+	Win32_LPOVERLAPPED lpOverlapped
+) @cname("DeviceIoControl");
+extern fn Win32_BOOLEAN createSymbolicLinkW(Win32_LPCWSTR lpSymlinkFileName, Win32_LPCWSTR lpTargetFileName, Win32_DWORD dwFlags) @cname("CreateSymbolicLinkW");
+
+const Win32_DWORD FILE_SHARE_READ = 0x1;
+const Win32_DWORD FILE_SHARE_WRITE = 0x2;
+const Win32_DWORD FILE_SHARE_DELETE = 0x4;
+const Win32_DWORD FILE_FLAG_OPEN_REPARSE_POINT = 0x00200000;
+const Win32_DWORD FILE_FLAG_BACKUP_SEMANTICS = 0x02000000;
+const Win32_DWORD FSCTL_GET_REPARSE_POINT = 0x000900A8;
+const Win32_DWORD IO_REPARSE_TAG_SYMLINK = 0xA000000C;
+const Win32_DWORD SYMBOLIC_LINK_FLAG_DIRECTORY = 0x1;
+const Win32_DWORD SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE = 0x2;
+const MAXIMUM_REPARSE_DATA_BUFFER_SIZE = 16 * 1024;
+
+struct Win32_REPARSE_SYMLINK_BUFFER
+{
+	Win32_DWORD reparseTag;
+	Win32_WORD  reparseDataLength;
+	Win32_WORD  reserved;
+	Win32_WORD  substituteNameOffset;
+	Win32_WORD  substituteNameLength;
+	Win32_WORD  printNameOffset;
+	Win32_WORD  printNameLength;
+	Win32_DWORD flags;
+	Win32_WCHAR[*] pathBuffer;
+}
+
 extern fn Win32_BOOL readFile(Win32_HANDLE hFile, Win32_LPVOID lpBuffer, Win32_DWORD nNumberOfBytesToRead,
   Win32_LPDWORD lpNumberOfBytesRead, Win32_LPOVERLAPPED lpOverlapped
 ) @cname("ReadFile");
@@ -114,7 +159,6 @@ extern fn Win32_BOOL peekNamedPipe(
 
 /*
 extern ulong _win32_GetCurrentDirectoryW(ulong, Char16* buffer) @cname("GetCurrentDirectoryW");
-extern bool _win32_CreateSymbolicLinkW(WString symlink_file, WString target_file, ulong flags) @cname("CreateSymbolicLinkW");
 extern bool _win32_CopyFileW(WString from_file, WString to_file, bool no_overwrite) @cname("CopyFileW");
 extern ulong _win32_GetFullPathNameW(WString file_name, ulong buffer_len, Char16* buffer, WString* file_part) @cname("GetFullPathNameW");
 */
