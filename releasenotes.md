@@ -62,6 +62,7 @@
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.
 - `quickselect` deprecated in favour of `sort::select_nth` which does not return an optional result.
+- Add `std::compression::zlib` (RFC 1950): `compress`, `compress_stream`, `uncompress`, `uncompress_stream`, `ZlibWriter` and `ZlibReader`. Streams with a preset dictionary are not supported.
 
 ## 0.8.6 Change list
 
