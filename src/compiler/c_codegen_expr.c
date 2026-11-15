@@ -700,6 +700,50 @@ static void c_emit_shift_check(GenContext *c, Type *shifted_t, CValue *amount, T
 	c_emit_panic_if(c, str_printf("%s >= %u", max_expr, (unsigned)bits), PANIC_FN_SHIFT, loc, NULL, &max_value, NULL);
 }
 
+// Store `val` at `path[p..]` below the C lvalue `ref` of type `type`. A range stores every element, as LLVM.
+static void c_emit_designated_store(GenContext *c, const char *ref, Type *type, DesignatorElement **path, int p, CValue *val)
+{
+	if (p == vec_size(path))
+	{
+		c_emit_store(c, ref, c_safe_type_lower(type), val);
+		return;
+	}
+	DesignatorElement *de = path[p];
+	Type *flat            = type_flatten(type);
+	switch (flat->type_kind)
+	{
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		{
+			Decl *member = flat->decl->strukt.members[de->index];
+			c_emit_designated_store(c, str_printf("%s.m%d", ref, (int)de->index), member->type, path, p + 1, val);
+			return;
+		}
+		case TYPE_BITSTRUCT:
+		{
+			// Bitstruct fields are leaves, set through the accessor.
+			ASSERT(p + 1 == vec_size(path));
+			Decl *field = flat->decl->strukt.members[de->index];
+			c_declare_bitstruct_accessors(c, flat->decl);
+			PRINTF("%s_set_%s((void*)&%s, ___var_%d);\n", c_get_decl_name(flat->decl), field->name ? field->name : "_anon", ref, val->var);
+			return;
+		}
+		case TYPE_ARRAY:
+		case TYPE_VECTOR:
+		case TYPE_SIMD_VECTOR:
+		{
+			ArrayIndex end = de->kind == DESIGNATOR_RANGE ? de->index_end : de->index;
+			for (ArrayIndex i = de->index; i <= end; i++)
+			{
+				c_emit_designated_store(c, str_printf("%s.ptr[%d]", ref, (int)i), flat->array.base, path, p + 1, val);
+			}
+			return;
+		}
+		default:
+			UNREACHABLE_VOID
+	}
+}
+
 // Emit `left op right` for already evaluated operands. Shared by binary and compound assign.
 void c_emit_binary_op(GenContext *c, CValue *value, BinaryOp op, Type *expr_type, CValue left_value, CValue right_value, SourceLocId loc)
 {
@@ -2099,73 +2143,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 					c_emit_expr(c, &dval, des->designator_expr.value);
 					c_value_rvalue(c, &dval);
 					c_ensure_cvalue_var(c, &dval, des->designator_expr.value->type);
-					int path_len           = vec_size(des->designator_expr.path);
-					Type *curr_type        = target_type;
-					bool is_bitfield       = false;
-					Decl *bitstruct_decl   = NULL;
-					Decl *bitstruct_member = NULL;
-
-					char path_buf[256];
-					path_buf[0] = '\0';
-					for (int p = 0; p < path_len; p++)
-					{
-						DesignatorElement *de = des->designator_expr.path[p];
-						if (curr_type->type_kind == TYPE_STRUCT || curr_type->type_kind == TYPE_UNION)
-						{
-							Decl *d = curr_type->decl;
-							Decl *m = (d && d->strukt.members && de->index < vec_size(d->strukt.members)) ? d->strukt.members[de->index] : NULL;
-							char seg[32];
-							snprintf(seg, sizeof(seg), ".m%d", (int)de->index);
-							strncat(path_buf, seg, sizeof(path_buf) - strlen(path_buf) - 1);
-							if (m)
-							{
-								Type *raw_m = type_flatten(m->type);
-								if (raw_m && raw_m->type_kind == TYPE_BITSTRUCT && p + 1 < path_len)
-								{
-									DesignatorElement *next_de = des->designator_expr.path[p + 1];
-									if (raw_m->decl && raw_m->decl->strukt.members && next_de->index < vec_size(raw_m->decl->strukt.members))
-									{
-										Decl *bm         = raw_m->decl->strukt.members[next_de->index];
-										bitstruct_decl   = raw_m->decl;
-										bitstruct_member = bm;
-										is_bitfield      = true;
-										p++;
-									}
-									curr_type = c_safe_type_lower(m->type);
-									break;
-								}
-								curr_type = c_safe_type_lower(m->type);
-							}
-							else
-							{
-								curr_type = type_void;
-							}
-						}
-						else if (curr_type->type_kind == TYPE_ARRAY || curr_type->type_kind == TYPE_VECTOR || curr_type->type_kind == TYPE_SIMD_VECTOR)
-						{
-							char seg[32];
-							snprintf(seg, sizeof(seg), ".ptr[%d]", (int)de->index);
-							strncat(path_buf, seg, sizeof(path_buf) - strlen(path_buf) - 1);
-							curr_type = curr_type->array.base ? c_safe_type_lower(curr_type->array.base) : type_void;
-						}
-						else
-						{
-							break;
-						}
-					}
-
-					if (is_bitfield && bitstruct_decl && bitstruct_member)
-					{
-						const char *bs_name = c_get_decl_name(bitstruct_decl);
-						c_declare_bitstruct_accessors(c, bitstruct_decl);
-						const char *m_name  = bitstruct_member->name ? bitstruct_member->name : "_anon";
-						PRINTF("%s_set_%s((void*)&___var_%d%s, ___var_%d);\n",
-						       bs_name, m_name, temp, path_buf, dval.var);
-					}
-					else
-					{
-						c_emit_store(c, str_printf("___var_%d%s", temp, path_buf), curr_type, &dval);
-					}
+					c_emit_designated_store(c, str_printf("___var_%d", temp), target_type, des->designator_expr.path, 0, &dval);
 				}
 			}
 			return;
