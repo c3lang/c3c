@@ -39,7 +39,7 @@ entry:
 }
 
 ; Function Attrs:
-define %Vector2 @vector2_add([2 x float] %0, [2 x float] %1) #0 {
+define %Vector2 @vector2_add([2 x float] alignstack(8) %0, [2 x float] alignstack(8) %1) #0 {
 entry:
   %v1 = alloca %Vector2, align 4
   %v2 = alloca %Vector2, align 4
@@ -54,7 +54,7 @@ entry:
 }
 
 ; Function Attrs:
-define %Vector2 @vector2_add_value([2 x float] %0, float %1) #0 {
+define %Vector2 @vector2_add_value([2 x float] alignstack(8) %0, float %1) #0 {
 entry:
   %v = alloca %Vector2, align 4
   %literal = alloca %Vector2, align 4
@@ -67,7 +67,7 @@ entry:
 }
 
 ; Function Attrs:
-define %Vector2 @vector2_subtract([2 x float] %0, [2 x float] %1) #0 {
+define %Vector2 @vector2_subtract([2 x float] alignstack(8) %0, [2 x float] alignstack(8) %1) #0 {
 entry:
   %v1 = alloca %Vector2, align 4
   %v2 = alloca %Vector2, align 4
@@ -82,7 +82,7 @@ entry:
 }
 
 ; Function Attrs:
-define %Vector2 @vector2_subtract_value([2 x float] %0, float %1) #0 {
+define %Vector2 @vector2_subtract_value([2 x float] alignstack(8) %0, float %1) #0 {
 entry:
   %v = alloca %Vector2, align 4
   %literal = alloca %Vector2, align 4

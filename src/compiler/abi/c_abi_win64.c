@@ -38,6 +38,11 @@ ABIArgInfo *win64_classify(Regs *regs, ParamInfo param, bool is_return, bool is_
 	}
 	ByteSize size = type_size(type);
 	bool type_is_vector_to_pass_as_array = compiler.build.feature.pass_win64_simd_as_arrays && type->type_kind == TYPE_SIMD_VECTOR;
+	// Vectors are returned in XMM0 (YMM0 / ZMM0 for wider ones).
+	if (is_return && type->type_kind == TYPE_SIMD_VECTOR && !type_is_vector_to_pass_as_array)
+	{
+		return abi_arg_new_direct(param);
+	}
 	if (type_is_vector_to_pass_as_array || type_is_abi_aggregate(type))
 	{
 		// Not 1, 2, 4, 8? Pass indirect.

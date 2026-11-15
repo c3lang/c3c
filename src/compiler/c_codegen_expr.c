@@ -23,6 +23,36 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 	const char *tname = c_type_name(c, t);
 	int temp          = c_emit_temp_var(c, value, t);
 
+	if (t->type_kind == TYPE_SLICE && expr->const_expr.const_kind == CONST_SLICE)
+	{
+		ConstInitializer *init = expr->const_expr.slice_init;
+		if (!init || init->kind == CONST_INIT_ZERO)
+		{
+			PRINTF("%s ___var_%d = (%s){ .ptr = NULL, .len = 0 };\n", tname, temp, tname);
+			return;
+		}
+		Type *elem_t = (init->type && init->type->type_kind == TYPE_ARRAY && init->type->array.base) ? c_safe_type_lower(init->type->array.base) : (t->array.base ? c_safe_type_lower(t->array.base) : type_void);
+		int count = (init->type && init->type->type_kind == TYPE_ARRAY) ? (int)init->type->array.len : 0;
+		VariableId arr_var = c_emit_alloca_array(c, elem_t, count > 0 ? count : 1);
+		ConstInitializer **elements = init->kind == CONST_INIT_ARRAY_FULL ? init->init_array_full : (init->kind == CONST_INIT_ARRAY ? init->init_array.elements : NULL);
+		int el_count = (init->kind == CONST_INIT_ARRAY_FULL) ? count : (elements ? vec_size(elements) : 0);
+		for (int i = 0; i < el_count; i++)
+		{
+			int index = i;
+			ConstInitializer *el = elements[i];
+			if (init->kind == CONST_INIT_ARRAY && el->kind == CONST_INIT_ARRAY_VALUE)
+			{
+				index = el->init_array_value.index;
+				el = el->init_array_value.element;
+			}
+			PRINTF("___var_%d[%d] = (%s)", arr_var, index, c_type_name(c, elem_t));
+			c_emit_const_initializer_rec(c, el);
+			PRINT(";\n");
+		}
+		PRINTF("%s ___var_%d = (%s){ .ptr = ___var_%d, .len = %d };\n", tname, temp, tname, arr_var, count);
+		return;
+	}
+
 	if ((expr->const_expr.const_kind == CONST_BYTES || expr->const_expr.const_kind == CONST_STRING) &&
 	    expr->const_expr.bytes.len > 4000)
 	{
@@ -146,7 +176,7 @@ static void c_emit_identifier_expr(GenContext *c, CValue *value, Expr *expr)
 		{
 			int fault_temp = c_emit_temp_var(c, NULL, type_fault);
 			PRINTF("c3fault_t ___var_%d = %s__f;\n", fault_temp, gname);
-			PRINTF("__c3_current_fault = ___var_%d;\n", fault_temp);
+			PRINTF("if (___var_%d != NULL && __c3_current_fault == NULL) { __c3_current_fault = ___var_%d; }\n", fault_temp, fault_temp);
 			value->optional = fault_temp;
 		}
 		if (c_type_is_vec_or_arr(t))
@@ -174,7 +204,7 @@ static void c_emit_identifier_expr(GenContext *c, CValue *value, Expr *expr)
 		if (fvid != 0)
 		{
 			value->optional = fvid;
-			PRINTF("__c3_current_fault = ___var_%d;\n", fvid);
+			PRINTF("if (___var_%d != NULL && __c3_current_fault == NULL) { __c3_current_fault = ___var_%d; }\n", fvid, fvid);
 		}
 		if (c_type_is_vec_or_arr(t))
 		{
@@ -375,7 +405,7 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 				if (num_varargs == 0)
 				{
 					int slice_var = c_emit_temp_var(c, &c_args[arg_idx++], slice_type);
-					PRINTF("___var_%d = (%s){ .ptr = NULL, .len = 0 };\n", slice_var, slice_tname);
+					PRINTF("%s ___var_%d = (%s){ .ptr = NULL, .len = 0 };\n", slice_tname, slice_var, slice_tname);
 				}
 				else
 				{
@@ -386,8 +416,7 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 						c_emit_expr(c, &vvals[j], varargs[j]);
 						c_value_rvalue(c, &vvals[j]);
 					}
-					int arr_var = c_create_variable(c);
-					PRINTF("%s ___var_%d[%d];\n", elem_tname, arr_var, num_varargs);
+					VariableId arr_var = c_emit_alloca_array(c, elem_type, num_varargs);
 					bool elem_is_any = (elem_type->type_kind == TYPE_ANY || elem_type->type_kind == TYPE_INTERFACE || strcmp(elem_tname, "__c3_any__") == 0);
 					for (int j = 0; j < num_varargs; j++)
 					{
@@ -426,7 +455,7 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 						}
 					}
 					int slice_var = c_emit_temp_var(c, &c_args[arg_idx++], slice_type);
-					PRINTF("___var_%d = (%s){ .ptr = ___var_%d, .len = %d };\n", slice_var, slice_tname, arr_var, num_varargs);
+					PRINTF("%s ___var_%d = (%s){ .ptr = ___var_%d, .len = %d };\n", slice_tname, slice_var, slice_tname, arr_var, num_varargs);
 					free(vvals);
 				}
 			}
@@ -847,8 +876,24 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 
 	if (op >= BINARYOP_ASSIGN)
 	{
-		Expr *left       = exprptr(binary->left);
-		Expr *right      = exprptr(binary->right);
+		Expr *left      = exprptr(binary->left);
+		Expr *right     = exprptr(binary->right);
+		CValue addr_val = {0};
+
+		if (op > BINARYOP_ASSIGN)
+		{
+			Expr *target = (left->expr_kind == EXPR_SWIZZLE) ? exprptr(left->swizzle_expr.parent) : left;
+			while (target && (target->expr_kind == EXPR_RECAST || target->expr_kind == EXPR_ADDR_CONVERSION || target->expr_kind == EXPR_RVALUE))
+			{
+				target = target->inner_expr;
+			}
+			if (target->expr_kind != EXPR_IDENTIFIER && target->expr_kind != EXPR_DECL)
+			{
+				c_emit_lvalue_addr(c, target, &addr_val, type_get_ptr(c_expr_type(target)));
+				c_emit_null_deref_check(c, target, addr_val.var);
+			}
+		}
+
 		CValue right_val = {0};
 		c_emit_expr(c, &right_val, right);
 		c_value_rvalue(c, &right_val);
@@ -873,42 +918,39 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 				}
 			}
 		}
-		else if (compiler.build.feature.trap_on_wrap && type_is_signed(target_t) && !c_type_is_aggregate(target_t) &&
+		else if (compiler.build.feature.trap_on_wrap && type_is_integer(target_t) && !c_type_is_aggregate(target_t) &&
 		         (op == BINARYOP_ADD_ASSIGN || op == BINARYOP_SUB_ASSIGN || op == BINARYOP_MULT_ASSIGN))
 		{
 			CValue current_left = {0};
 			bool is_ident       = (left->expr_kind == EXPR_IDENTIFIER || left->expr_kind == EXPR_DECL);
-			CValue addr_val     = {0};
 			if (is_ident)
 			{
 				c_emit_lvalue_read(c, left, &current_left, target_t);
 			}
 			else
 			{
-				c_emit_lvalue_addr(c, left, &addr_val, type_get_ptr(target_t));
+				if (!addr_val.var)
+				{
+					c_emit_lvalue_addr(c, left, &addr_val, type_get_ptr(target_t));
+					c_emit_null_deref_check(c, left, addr_val.var);
+				}
 				int cur_temp = c_emit_temp_var(c, &current_left, target_t);
 				PRINTF("%s ___var_%d = *(%s*)___var_%d;\n", target_tname, cur_temp, target_tname, addr_val.var);
 			}
 			int res_temp      = c_emit_temp_var(c, NULL, target_t);
+			PRINTF("%s ___var_%d;\n", target_tname, res_temp);
 			const char *bname = (op == BINARYOP_ADD_ASSIGN) ? "__builtin_add_overflow" : (op == BINARYOP_SUB_ASSIGN) ? "__builtin_sub_overflow"
 			                                                                                                         : "__builtin_mul_overflow";
 			PRINTF("if (%s(___var_%d, ___var_%d, &___var_%d)) { __c3_abort(); }\n",
 			       bname, current_left.var, right_val.var, res_temp);
 			CValue res_val = {.var = res_temp, .type = target_t, .kind = CV_VALUE};
-			if (is_ident)
-			{
-				c_emit_lvalue_assign(c, left, &res_val, "=", NULL);
-			}
-			else
-			{
-				PRINTF("*(%s*)___var_%d = ___var_%d;\n", target_tname, addr_val.var, res_temp);
-			}
-			*value = res_val;
+			c_emit_lvalue_assign(c, left, addr_val.var ? &addr_val : NULL, &res_val, "=", NULL);
+			if (value) *value = res_val;
 			return;
 		}
 
 		const char *assign_op = c_assign_op_str(op);
-		c_emit_lvalue_assign(c, left, &right_val, assign_op, value);
+		c_emit_lvalue_assign(c, left, addr_val.var ? &addr_val : NULL, &right_val, assign_op, value);
 		return;
 	}
 
@@ -920,6 +962,7 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 			res_type = type_int;
 		}
 		int temp        = c_emit_temp_var(c, value, res_type);
+		PRINTF("%s ___var_%d;\n", c_type_name(c, res_type), temp);
 		CValue left_val = {0};
 		c_emit_expr(c, &left_val, exprptr(binary->left));
 		c_value_rvalue(c, &left_val);
@@ -1029,35 +1072,28 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 		{
 			PRINTF("%s ___var_%d = ((size_t)___var_%d >= sizeof(%s)*8) ? 0 : (___var_%d %s ___var_%d);\n",
 			       type_string, value->var, right_value.var, type_string, left_value.var, is_shl ? "<<" : ">>", right_value.var);
-			return;
+			goto done;
 		}
 		else
 		{
 			PRINTF("%s ___var_%d = ___var_%d %s ___var_%d;\n",
 			       type_string, value->var, left_value.var, is_shl ? "<<" : ">>", right_value.var);
-			return;
+			goto done;
 		}
 	}
 
-	if (compiler.build.feature.trap_on_wrap && type_is_signed(expr_type) && !c_type_is_aggregate(expr_type) &&
-	    (op == BINARYOP_ADD || op == BINARYOP_SUB || op == BINARYOP_MULT))
+	if (compiler.build.feature.trap_on_wrap && left_t && right_t && type_is_integer(left_t) && type_is_integer(right_t) &&
+	    !c_type_is_aggregate(expr_type) && (op == BINARYOP_ADD || op == BINARYOP_SUB || op == BINARYOP_MULT))
 	{
 		const char *bname = (op == BINARYOP_ADD) ? "__builtin_add_overflow" : (op == BINARYOP_SUB ? "__builtin_sub_overflow" : "__builtin_mul_overflow");
+		PRINTF("%s ___var_%d;\n", type_string, value->var);
 		PRINTF("if (%s(___var_%d, ___var_%d, &___var_%d)) { __c3_abort(); }\n", bname, left_value.var, right_value.var, value->var);
-		return;
-	}
-
-	if (compiler.build.feature.trap_on_wrap && type_is_signed(expr_type) && !c_type_is_aggregate(expr_type) &&
-	    (op == BINARYOP_ADD || op == BINARYOP_SUB || op == BINARYOP_MULT))
-	{
-		const char *bname = (op == BINARYOP_ADD) ? "__builtin_add_overflow" : (op == BINARYOP_SUB ? "__builtin_sub_overflow" : "__builtin_mul_overflow");
-		PRINTF("if (%s(___var_%d, ___var_%d, &___var_%d)) { __c3_abort(); }\n", bname, left_value.var, right_value.var, value->var);
-		return;
+		goto done;
 	}
 	if (op == BINARYOP_MOD && type_is_float(expr_type))
 	{
 		PRINTF("%s ___var_%d = __c3_fmod(___var_%d, ___var_%d);\n", type_string, value->var, left_value.var, right_value.var);
-		return;
+		goto done;
 	}
 
 	const char *operator_string = c_binary_op_str(op);
@@ -1080,7 +1116,7 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 				PRINTF("%s ___var_%d = ((%s*)___var_%d) - ((%s*)___var_%d);\n",
 				       type_string, value->var, btn, left_value.var, btn, right_value.var);
 			}
-			return;
+			goto done;
 		}
 		if (left_is_ptr && type_is_integer(right_t) && (op == BINARYOP_ADD || op == BINARYOP_SUB))
 		{
@@ -1088,7 +1124,7 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 			{
 				PRINTF("%s ___var_%d = (void*)(((char*)___var_%d) %s ___var_%d);\n",
 				       type_string, value->var, left_value.var, operator_string, right_value.var);
-				return;
+				goto done;
 			}
 		}
 	}
@@ -1105,11 +1141,11 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 			{
 				c_emit_slice_elem_eq_loop(c, value->var, left_value.var, right_value.var,
 				                          str_printf("___var_%d.len", right_value.var), elem_is_slice, is_eq);
-				return;
+				goto done;
 			}
 			PRINTF("bool ___var_%d = %s(___var_%d, ___var_%d);\n",
 			       value->var, is_eq ? "__C3_SLICE_EQ" : "__C3_SLICE_NE", left_value.var, right_value.var);
-			return;
+			goto done;
 		}
 		if ((left_t->type_kind == TYPE_SLICE && right_t->type_kind == TYPE_ARRAY) ||
 		    (left_t->type_kind == TYPE_ARRAY && right_t->type_kind == TYPE_SLICE))
@@ -1121,40 +1157,40 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 			unsigned long long arr_len = (unsigned long long)arr_t->array.len;
 			bool is_eq                 = (op == BINARYOP_EQ || op == BINARYOP_VEC_EQ);
 			Type *elem_t               = arr_t->array.base ? type_flatten(arr_t->array.base) : NULL;
-			if (elem_t && type_is_float(elem_t))
+			if (elem_t && (type_is_float(elem_t) || elem_t->type_kind == TYPE_SLICE))
 			{
 				c_emit_slice_elem_eq_loop(c, value->var, s_var, a_var,
-				                          str_printf("%llu", arr_len), false, is_eq);
-				return;
+				                          str_printf("%llu", arr_len), elem_t->type_kind == TYPE_SLICE, is_eq);
+				goto done;
 			}
 			const char *cmp_op   = is_eq ? "==" : "!=";
 			const char *logic_op = is_eq ? "&&" : "||";
 			PRINTF("bool ___var_%d = (___var_%d.len %s %llu %s (___var_%d.len == 0 || __c3_memcmp(___var_%d.ptr, ___var_%d.ptr, ___var_%d.len * sizeof(*___var_%d.ptr)) %s 0));\n",
 			       value->var, s_var, cmp_op, arr_len, logic_op, s_var, s_var, a_var, s_var, s_var, cmp_op);
-			return;
+			goto done;
 		}
 		if ((c_type_is_any(left_t) || left_t->type_kind == TYPE_SLICE) && right_is_ptr)
 		{
 			PRINTF("bool ___var_%d = (___var_%d.ptr %s (void*)___var_%d);\n",
 			       value->var, left_value.var, (op == BINARYOP_EQ || op == BINARYOP_VEC_EQ) ? "==" : "!=", right_value.var);
-			return;
+			goto done;
 		}
 		if (left_is_ptr && (c_type_is_any(right_t) || right_t->type_kind == TYPE_SLICE))
 		{
 			PRINTF("bool ___var_%d = ((void*)___var_%d %s ___var_%d.ptr);\n",
 			       value->var, left_value.var, (op == BINARYOP_EQ || op == BINARYOP_VEC_EQ) ? "==" : "!=", right_value.var);
-			return;
+			goto done;
 		}
 		if (left_is_ptr && right_is_ptr)
 		{
 			PRINTF("bool ___var_%d = ((uintptr_t)___var_%d %s (uintptr_t)___var_%d);\n",
 			       value->var, left_value.var, operator_string, right_value.var);
-			return;
+			goto done;
 		}
 		if ((left_is_ptr && type_is_integer(right_t)) || (type_is_integer(left_t) && right_is_ptr))
 		{
 			PRINTF("bool ___var_%d = ((uintptr_t)___var_%d %s (uintptr_t)___var_%d);\n", value->var, left_value.var, operator_string, right_value.var);
-			return;
+			goto done;
 		}
 		if (c_type_is_aggregate(left_t) || c_type_is_aggregate(right_t))
 		{
@@ -1165,12 +1201,18 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 				{
 					base_t = type_flatten(base_t);
 				}
-				if (base_t && type_is_float(base_t))
+				if (base_t && (type_is_float(base_t) || base_t->type_kind == TYPE_SLICE))
 				{
 					int len              = c_type_aggregate_len(left_t);
 					bool is_eq           = (op == BINARYOP_EQ || op == BINARYOP_VEC_EQ);
+					bool elem_is_slice   = (base_t->type_kind == TYPE_SLICE);
 					const char *logic_op = is_eq ? "&&" : "||";
 					const char *cmp_op   = is_eq ? "==" : "!=";
+					if (len == 0)
+					{
+						PRINTF("bool ___var_%d = %s;\n", value->var, is_eq ? "true" : "false");
+						goto done;
+					}
 					PRINTF("bool ___var_%d = (", value->var);
 					for (int k = 0; k < len; k++)
 					{
@@ -1178,16 +1220,25 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 						{
 							PRINTF(" %s ", logic_op);
 						}
-						PRINTF("(___var_%d.ptr[%d] %s ___var_%d.ptr[%d])",
-						       left_value.var, k, cmp_op, right_value.var, k);
+						if (elem_is_slice)
+						{
+							PRINTF("%s(___var_%d.ptr[%d], ___var_%d.ptr[%d])",
+							       is_eq ? "__C3_SLICE_EQ" : "__C3_SLICE_NE",
+							       left_value.var, k, right_value.var, k);
+						}
+						else
+						{
+							PRINTF("(___var_%d.ptr[%d] %s ___var_%d.ptr[%d])",
+							       left_value.var, k, cmp_op, right_value.var, k);
+						}
 					}
 					PRINT(");\n");
-					return;
+					goto done;
 				}
 				PRINTF("bool ___var_%d = (__c3_memcmp(&___var_%d, &___var_%d, sizeof(%s)) %s 0);\n",
 				       value->var, left_value.var, right_value.var, c_type_name(c, left_t),
 				       (op == BINARYOP_EQ || op == BINARYOP_VEC_EQ) ? "==" : "!=");
-				return;
+				goto done;
 			}
 			int len = c_type_aggregate_len(expr_type);
 			PRINTF("%s ___var_%d;\n", type_string, value->var);
@@ -1196,7 +1247,7 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 				PRINTF("___var_%d.ptr[%d] = (___var_%d.ptr[%d] %s ___var_%d.ptr[%d]) ? -1 : 0;\n",
 				       value->var, k, left_value.var, k, operator_string, right_value.var, k);
 			}
-			return;
+			goto done;
 		}
 	}
 
@@ -1227,10 +1278,11 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 				PRINTF("___var_%d;\n", right_value.var);
 			}
 		}
-		return;
+		goto done;
 	}
 
 	PRINTF("%s ___var_%d = ___var_%d %s ___var_%d;\n", type_string, value->var, left_value.var, operator_string, right_value.var);
+done:
 	if (is_opt)
 	{
 		c_emit_label(c, opt_skip_label);
@@ -1340,7 +1392,7 @@ static void c_emit_bitstruct_write_container(GenContext *c, Expr *parent_expr, D
 		bit_size = 1;
 	}
 	uint64_t mask         = (bit_size >= 64) ? ~0ULL : (((uint64_t)1 << bit_size) - 1);
-	uint64_t shifted_mask = (bit_size + start_bit >= 64) ? ~0ULL : (mask << start_bit);
+	uint64_t shifted_mask = (bit_size >= 64) ? ~0ULL : (mask << start_bit);
 
 	bool is_arr = false;
 	if (bitstruct_decl)
@@ -1432,8 +1484,9 @@ void c_emit_inc_dec(GenContext *c, CValue *value, Expr *expr, bool is_post)
 		c_emit_bitstruct_read_container(c, &cur_val, parent_expr, bitstruct_decl, member, member_type, container_ptr_var, c_tname);
 
 		int new_temp = c_emit_temp_var(c, NULL, member_type);
-		if (compiler.build.feature.trap_on_wrap && type_is_signed(member_type))
+		if (compiler.build.feature.trap_on_wrap && type_is_integer(member_type))
 		{
+			PRINTF("%s ___var_%d;\n", mname, new_temp);
 			PRINTF("if (%s(___var_%d, 1, &___var_%d)) { __c3_abort(); }\n", bname, cur_val.var, new_temp);
 		}
 		else
@@ -1467,6 +1520,7 @@ void c_emit_inc_dec(GenContext *c, CValue *value, Expr *expr, bool is_post)
 	else
 	{
 		c_emit_lvalue_addr(c, inner, &addr_val, type_get_ptr(target_type));
+		c_emit_null_deref_check(c, inner, addr_val.var);
 		int cur_temp = c_emit_temp_var(c, &old_val, target_type);
 		PRINTF("%s ___var_%d = *(%s*)___var_%d;\n", tname, cur_temp, tname, addr_val.var);
 	}
@@ -1485,8 +1539,9 @@ void c_emit_inc_dec(GenContext *c, CValue *value, Expr *expr, bool is_post)
 			PRINTF("___var_%d.ptr[%d] = ___var_%d.ptr[%d] %s 1;\n", new_temp, k, old_val.var, k, op_str);
 		}
 	}
-	else if (compiler.build.feature.trap_on_wrap && type_is_signed(target_type))
+	else if (compiler.build.feature.trap_on_wrap && type_is_integer(target_type))
 	{
+		PRINTF("%s ___var_%d;\n", tname, new_temp);
 		PRINTF("if (%s(___var_%d, 1, &___var_%d)) { __c3_abort(); }\n", bname, old_val.var, new_temp);
 	}
 	else
@@ -1496,7 +1551,7 @@ void c_emit_inc_dec(GenContext *c, CValue *value, Expr *expr, bool is_post)
 	CValue new_val = {.var = new_temp, .type = target_type, .kind = CV_VALUE};
 	if (is_ident)
 	{
-		c_emit_lvalue_assign(c, inner, &new_val, "=", NULL);
+		c_emit_lvalue_assign(c, inner, NULL, &new_val, "=", NULL);
 	}
 	else if (c_type_is_aggregate(target_type))
 	{
@@ -1593,10 +1648,10 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_SLICE_ASSIGN:
 		{
 			CValue dst_val = {0}, src_val = {0};
-			c_emit_expr(c, &dst_val, exprptr(expr->slice_assign_expr.left));
 			c_emit_expr(c, &src_val, exprptr(expr->slice_assign_expr.right));
 			c_value_rvalue(c, &src_val);
 			c_ensure_cvalue_var(c, &src_val, NULL);
+			c_emit_expr(c, &dst_val, exprptr(expr->slice_assign_expr.left));
 			if (dst_val.var != 0)
 			{
 				int loop_i = c_create_variable(c);
@@ -1678,6 +1733,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 
 			if (uop == UNARYOP_NEG && compiler.build.feature.trap_on_wrap && type_is_signed(target_type) && !c_type_is_aggregate(target_type))
 			{
+				PRINTF("%s ___var_%d;\n", tname, temp);
 				PRINTF("if (__builtin_sub_overflow(0, ___var_%d, &___var_%d)) { __c3_abort(); }\n",
 				       inner_val.var, temp);
 				return;
@@ -1747,11 +1803,17 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			}
 			const char *mname = c_type_name(c, member_type);
 
+			CValue result_val = {0};
+			if (op == BINARYOP_ASSIGN)
+			{
+				c_emit_expr(c, &result_val, right);
+				c_value_rvalue(c, &result_val);
+			}
+
 			int container_ptr_var = 0;
 			Decl *bitstruct_decl  = NULL;
 			const char *c_tname   = c_emit_bitstruct_container(c, left->access_resolved_expr.parent, member, &container_ptr_var, &bitstruct_decl);
 
-			CValue result_val = {0};
 			if (op != BINARYOP_ASSIGN)
 			{
 				CValue cur_val = {0};
@@ -1797,11 +1859,12 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 				}
 
 				int res_temp = c_emit_temp_var(c, &result_val, member_type);
-				if (compiler.build.feature.trap_on_wrap && type_is_signed(member_type) &&
+				if (compiler.build.feature.trap_on_wrap && type_is_integer(member_type) &&
 				    (base_op == BINARYOP_ADD || base_op == BINARYOP_SUB || base_op == BINARYOP_MULT))
 				{
 					const char *bname = (base_op == BINARYOP_ADD) ? "__builtin_add_overflow" : (base_op == BINARYOP_SUB) ? "__builtin_sub_overflow"
 					                                                                                                     : "__builtin_mul_overflow";
+					PRINTF("%s ___var_%d;\n", mname, res_temp);
 					PRINTF("if (%s(___var_%d, ___var_%d, &___var_%d)) { __c3_abort(); }\n",
 					       bname, cur_val.var, right_val.var, res_temp);
 				}
@@ -1810,11 +1873,6 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 					PRINTF("%s ___var_%d = (%s)(___var_%d %s ___var_%d);\n",
 					       mname, res_temp, mname, cur_val.var, op_str, right_val.var);
 				}
-			}
-			else
-			{
-				c_emit_expr(c, &result_val, right);
-				c_value_rvalue(c, &result_val);
 			}
 
 			c_emit_bitstruct_write_container(c, left->access_resolved_expr.parent, bitstruct_decl, member, container_ptr_var, c_tname, &result_val);
@@ -2105,6 +2163,14 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			c_emit_expr(c, &inner_val, expr->inner_expr);
 			c_value_rvalue(c, &inner_val);
 			Type *target_type = c_expr_type_or(expr, type_int);
+
+			if (inner_val.var != 0 && !c_type_is_aggregate(target_type) && inner_val.type &&
+			    (target_type == inner_val.type || strcmp(c_type_name(c, target_type), c_type_name(c, inner_val.type)) == 0))
+			{
+				*value = inner_val;
+				return;
+			}
+
 			int temp          = c_emit_temp_var(c, value, target_type);
 			const char *tname = c_type_name(c, target_type);
 
@@ -2120,6 +2186,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 				return;
 			}
 
+			PRINTF("%s ___var_%d;\n", tname, temp);
 			c_emit_assign_var(c, temp, target_type, &inner_val);
 			return;
 		}
@@ -2289,9 +2356,8 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			else if (target_type->type_kind == TYPE_SLICE)
 			{
 				Type *base_type        = (target_type->array.base && is_valid_type_ptr(target_type->array.base)) ? c_safe_type_lower(target_type->array.base) : type_void;
-				const char *base_tname = c_type_name(c, base_type);
-				int arr_var            = c_create_variable(c);
-				PRINTF("%s ___var_%d[%d];\n", base_tname, arr_var, count > 0 ? count : 1);
+				int arr_len            = count > 0 ? count : 1;
+				VariableId arr_var     = c_emit_alloca_array(c, base_type, arr_len);
 				for (int i = 0; i < count; i++)
 				{
 					CValue el_val = {0};
@@ -2300,7 +2366,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 					c_ensure_cvalue_var(c, &el_val, base_type);
 					if (c_type_is_aggregate(el_val.type))
 					{
-						PRINTF("__c3_memcpy(&___var_%d[%d], &___var_%d, sizeof(%s));\n", arr_var, i, el_val.var, base_tname);
+						PRINTF("__c3_memcpy(&___var_%d[%d], &___var_%d, sizeof(%s));\n", arr_var, i, el_val.var, c_type_name(c, el_val.type));
 					}
 					else
 					{
@@ -2348,6 +2414,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			const char *tname = c_type_name(c, target_type);
 			if (expr->designated_init.splat)
 			{
+				PRINTF("%s ___var_%d;\n", tname, temp);
 				CValue splat_val = {0};
 				c_emit_expr(c, &splat_val, expr->designated_init.splat);
 				c_value_rvalue(c, &splat_val);
@@ -3007,31 +3074,50 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 		}
 		case EXPR_TRY:
 		{
-			CValue opt_val = {0};
-			if (expr->try_expr.optional)
-			{
-				c_emit_expr(c, &opt_val, expr->try_expr.optional);
-				c_value_rvalue(c, &opt_val);
-				if (expr->try_expr.assign_existing && expr->try_expr.lhs)
-				{
-					c_emit_lvalue_assign(c, expr->try_expr.lhs, &opt_val, "=", NULL);
-				}
-				else if (expr->try_expr.decl)
-				{
-					Type *dt = c_decl_type(expr->try_expr.decl);
-					if (dt->type_kind == TYPE_VOID && opt_val.type && opt_val.type->type_kind != TYPE_VOID)
-					{
-						dt                        = c_safe_type_lower(opt_val.type);
-						expr->try_expr.decl->type = dt;
-					}
-					VariableId vid = c_get_or_create_decl_var(c, expr->try_expr.decl);
-					c_emit_assign_var(c, vid, dt, &opt_val);
-				}
-			}
 			value->var  = c_create_variable(c);
 			value->type = type_bool;
 			value->kind = CV_VALUE;
-			PRINTF("bool ___var_%d = (__c3_current_fault == NULL);\n", value->var);
+			if (!expr->try_expr.optional)
+			{
+				VariableId fvid = c_get_decl_fault_var(c, expr->try_expr.decl);
+				if (fvid != 0)
+				{
+					PRINTF("bool ___var_%d = (___var_%d == NULL);\n", value->var, fvid);
+				}
+				else
+				{
+					PRINTF("bool ___var_%d = true;\n", value->var);
+				}
+				return;
+			}
+			CValue opt_val = {0};
+			c_emit_expr(c, &opt_val, expr->try_expr.optional);
+			c_value_rvalue(c, &opt_val);
+			if (opt_val.optional != 0)
+			{
+				PRINTF("bool ___var_%d = (__c3_current_fault == NULL && ___var_%d == NULL);\n", value->var, opt_val.optional);
+			}
+			else
+			{
+				PRINTF("bool ___var_%d = (__c3_current_fault == NULL);\n", value->var);
+			}
+			PRINTF("if (___var_%d) {\n", value->var);
+			if (expr->try_expr.assign_existing && expr->try_expr.lhs)
+			{
+				c_emit_lvalue_assign(c, expr->try_expr.lhs, NULL, &opt_val, "=", NULL);
+			}
+			else if (expr->try_expr.decl)
+			{
+				Type *dt = c_decl_type(expr->try_expr.decl);
+				if (dt->type_kind == TYPE_VOID && opt_val.type && opt_val.type->type_kind != TYPE_VOID)
+				{
+					dt                        = c_safe_type_lower(opt_val.type);
+					expr->try_expr.decl->type = dt;
+				}
+				VariableId vid = c_get_or_create_decl_var(c, expr->try_expr.decl);
+				c_emit_assign_var(c, vid, dt, &opt_val);
+			}
+			PRINT("}\n");
 			PRINT("__c3_current_fault = NULL;\n");
 			return;
 		}

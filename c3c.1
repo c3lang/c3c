@@ -110,6 +110,12 @@ Compile files without a project into a static library.
 Compile files without a project into a dynamic library.
 .RE
 .PP
+.B c3c source-lib
+\fIfile1\fR [\fIfile2\fR ...]
+.RS
+Pack files without a project into a source library (.c3l), use -o to set the library name.
+.RE
+.PP
 .B c3c vendor-fetch
 \fIlibrary\fR ...
 .RS
@@ -154,6 +160,29 @@ Silence unnecessary output.
 .B -v, -vv, -vvv
 .RS
 Verbose output. -v for default, -vv and -vvv gives more information.
+.RE
+.PP
+.B --stats=<none|summary|full|json>
+.RS
+Print compiler statistics after the compilation.
+.I summary
+shows the build and host information, phase timings, code by origin, memory use and output counts.
+.I full
+also lists the most instantiated generics and the largest functions and modules.
+.I json
+writes everything as JSON to
+.I stats-<date>-<time>.json
+in the current directory, adding a number if that file exists.
+-vv implies
+.IR summary ,
+use
+.I none
+to turn it off. Statistics are not produced for -E and -P.
+.RE
+.PP
+.B --stats-file=<path>
+.RS
+Write the JSON statistics to the given file. Implies --stats=json.
 .RE
 .PP
 .B -E
@@ -399,6 +428,11 @@ Do not output object files; this is only valid for `compile-only`.
 Do not generate C headers when building a library.
 .RE
 .PP
+.B --no-compress
+.RS
+Output a source library as an uncompressed directory instead of a compressed .c3l file.
+.RE
+.PP
 .B --target
 \fItarget\fR
 .RS
@@ -486,11 +520,6 @@ Show detailed backtrace on segfaults.
 .B --lsp
 .RS
 Emit data about errors suitable for a LSP.
-.RE
-.PP
-.B --print-large-functions
-.RS
-Print functions with large compile size.
 .RE
 .PP
 .B --warn-deadcode=

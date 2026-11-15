@@ -1,0 +1,66 @@
+// #target: macos-aarch64
+module foo;
+
+int home_only @private = 1;
+int late_ptr @private = 2;
+int late_typedef @private = 3;
+int late_substruct @private = 4;
+
+enum Home : int (int* ptr)
+{
+	RED { &home_only }
+}
+
+enum LatePtr : int (int* ptr)
+{
+	RED { &late_ptr }
+}
+
+enum LateTypedef : int (int* ptr)
+{
+	RED { &late_typedef }
+}
+
+enum LateSubstruct : int (int* ptr)
+{
+	RED { &late_substruct }
+}
+
+typedef Wrapped = inline LateTypedef;
+
+struct Sub
+{
+	inline LateSubstruct c;
+}
+
+fn int read_all()
+{
+	Home home = RED;
+	LatePtr late = RED;
+	LatePtr* late_p = &late;
+	Wrapped wrapped = (Wrapped)LateTypedef.RED;
+	Sub sub = { .c = RED };
+	return *home.ptr + *late_p.ptr + *wrapped.ptr + *sub.c.ptr;
+}
+
+module test;
+import foo;
+
+fn int main()
+{
+	int x = foo::read_all();
+	foo::LatePtr* p = null;
+	any a = p;
+	foo::Wrapped* w = null;
+	any b = w;
+	foo::Sub* s = null;
+	any c = s;
+	return x + (a.ptr ? 1 : 0) + (b.ptr ? 1 : 0) + (c.ptr ? 1 : 0);
+}
+
+/* #expect: foo.ll
+
+@foo.home_only = internal global i32 1, align 4
+@foo.late_ptr = global i32 2, align 4
+@foo.late_typedef = global i32 3, align 4
+@foo.late_substruct = global i32 4, align 4

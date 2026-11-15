@@ -29,6 +29,7 @@ static const char *llvm_arch_name(ArchType ty)
         case ARCH_TYPE_PPC64LE: return "ppc64le";
         case ARCH_TYPE_RISCV32: return "riscv32";
         case ARCH_TYPE_RISCV64: return "riscv64";
+        case ARCH_TYPE_AVR: return "avr";
 		case ARCH_UNSUPPORTED:
         case ARCH_TYPE_UNKNOWN: return "unknown";
     }

@@ -78,7 +78,7 @@ fn void LibcAllocator.release(&self, void* old_ptr, bool aligned) @dynamic
 	libc::free(old_ptr);
 }
 
-module std::core::mem::allocator @feat(WIN32);
+module std::core::mem::allocators @feat(WIN32);
 import std::os::win32;
 import libc;
 
@@ -119,7 +119,7 @@ fn void LibcAllocator.release(&self, void* old_ptr, bool aligned) @dynamic
 	libc::free(old_ptr);
 }
 
-module std::core::mem::allocator @feat(LIBC) @feat(!WIN32) @feat(!POSIX);
+module std::core::mem::allocators @feat(LIBC) @feat(!WIN32) @feat(!POSIX);
 import libc;
 
 fn void* coerced_malloc(sz bytes) @local @inline => libc::malloc((usz)bytes);

@@ -25,7 +25,7 @@ fn int main()
 define i32 @main() #0 {
 entry:
   %b = alloca %Bar, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %b, ptr align 8 @.__const, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %b, ptr align 8 @.__const, i64 8, i1 false)
   call void @test.Baz.foo(ptr %b)
   ret i32 0
 }

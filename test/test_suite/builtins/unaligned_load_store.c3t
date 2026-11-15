@@ -48,8 +48,8 @@ entry:
   store i32 %0, ptr %z, align 4
   %1 = load volatile [100 x i32], ptr %g, align 4
   store [100 x i32] %1, ptr %gg, align 16
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %value, ptr align 16 %gg, i32 400, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %g, ptr align 16 %value, i32 400, i1 true)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %value, ptr align 16 %gg, i64 400, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %g, ptr align 16 %value, i64 400, i1 true)
   ret void
 }
 

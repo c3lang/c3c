@@ -8,6 +8,7 @@ const double LOG_L3 = 2.857142874366239149e-01;
 const double LOG_L4 = 2.222219843214978396e-01;
 const double LOG_L5 = 1.818357216161805012e-01;
 const double LOG_L6 = 1.531383769920937332e-01;
+const double LOG_L7 = 1.479819860511658591e-01;
 /*--------------------------------------------*/
 const float LOGF_LN2_HI = 6.9313812256e-01f;
 const float LOGF_LN2_LO = 9.0580006145e-06f;
@@ -40,9 +41,10 @@ fn double log(double x) @cname("log") @nostrip @weak
     double z = s * s;
     double w = z * z;
 
-    // even-part polynomial terms (t1) and odd-part polynomial terms (t2)
-    double t1 = w * (LOG_L1 + w * (LOG_L3 + w * LOG_L5));
-    double t2 = z * (LOG_L2 + w * (LOG_L4 + w * LOG_L6));
+    // R(z) = L1 z + L2 z^2 + ... + L7 z^7, split as in FreeBSD's e_log.c: t1 holds the even powers of z
+    // (L2, L4, L6) and t2 the odd ones (L1, L3, L5, L7)
+    double t1 = w * (LOG_L2 + w * (LOG_L4 + w * LOG_L6));
+    double t2 = z * (LOG_L1 + w * (LOG_L3 + w * (LOG_L5 + w * LOG_L7)));
     double r = t1 + t2;
 
     double hfsq = 0.5 * f * f;
@@ -77,8 +79,8 @@ fn float logf(float x) @cname("logf") @nostrip @weak
         single-precision floating point doesn't benefit from the additional terms.
         LOGF_L1, ... ,LOGF_L4 provide sufficient accuracy for 32-bit float calculations.
     */
-    float t1 = w * (LOGF_L1 + w * LOGF_L3);
-    float t2 = z * (LOGF_L2 + w * LOGF_L4);
+    float t1 = w * (LOGF_L2 + w * LOGF_L4);
+    float t2 = z * (LOGF_L1 + w * LOGF_L3);
     float r = t1 + t2;
 
     float hfsq = 0.5f * f * f;

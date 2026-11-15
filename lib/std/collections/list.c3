@@ -8,6 +8,7 @@ alias ElementPredicate = fn bool(Type *type);
 alias ElementTest = fn bool(Type *type, any context);
 const ELEMENT_IS_EQUATABLE = types::is_equatable_type(Type);
 const ELEMENT_IS_POINTER = Type::kind == POINTER;
+const ELEMENT_SIZE = Type::size;
 
 const Allocator LIST_HEAP_ALLOCATOR = (Allocator)&dummy;
 
@@ -82,47 +83,33 @@ fn void List.init_wrapping_array(&self, Allocator allocator, Type[] types)
 	self.allocator = allocator;
 	self.capacity = types.len;
 	self.entries = types.ptr;
-	list_set_size(self, types.len);
+	@list_set_size(self, types.len);
 }
 
 fn bool List.is_initialized(&self) @inline => self.allocator != null && self.allocator != (Allocator)&dummy;
 
+
 fn sz? List.to_format(&self, Formatter* formatter) @dynamic
 {
-	switch (self.size)
-	{
-		case 0:
-			return formatter.print("[]")!;
-		case 1:
-			return formatter.printf("[%s]", self.entries[0])!;
-		default:
-			sz n = formatter.print("[")!;
-			foreach (i, element : self.entries[:self.size])
-			{
-				if (i != 0) n += formatter.print(", ")!;
-				n += formatter.printf("%s", element)!;
-			}
-			n += formatter.print("]")!;
-			return n;
-	}
+	return formatter.printf("%s", self.entries[:self.size]);
 }
 
 fn void List.push(&self, Type element) @inline
 {
-	self.reserve(1);
-	self.entries[list_set_size(self, self.size + 1)] = element;
+	if (self.size >= self.capacity) self.reserve(1);
+	self.entries[@list_set_size(self, self.size + 1)] = element;
 }
 
 fn Type? List.pop(&self)
 {
 	if (!self.size) return NO_MORE_ELEMENT~;
-	defer list_set_size(self, self.size - 1);
+	defer @list_set_size(self, self.size - 1);
 	return self.entries[self.size - 1];
 }
 
 fn void List.clear(&self)
 {
-	list_set_size(self, 0);
+	@list_set_size(self, 0);
 }
 
 fn Type? List.pop_first(&self)
@@ -135,12 +122,9 @@ fn Type? List.pop_first(&self)
 <*
  @require index < self.size && index >= 0 : "Index out of bounds"
 *>
-fn void List.remove_at(&self, sz index)
+fn void List.remove_at(&self, sz index) @inline
 {
-	sz new_size = self.size - 1;
-	defer list_set_size(self, new_size);
-	if (!new_size || index == new_size) return;
-	self.entries[index .. new_size - 1] = self.entries[index + 1 .. new_size];
+	list_remove_at{Type::alignment}((ListPrivate*)self, index, ELEMENT_SIZE);
 }
 
 <*
@@ -152,7 +136,7 @@ fn void List.remove_at(&self, sz index)
 fn void List.remove_unordered_at(&self, sz index)
 {
 	sz new_size = self.size - 1;
-	defer list_set_size(self, new_size);
+	defer @list_set_size(self, new_size);
 	if (!new_size || index == new_size) return;
 	self.entries[index] = self.entries[new_size];
 }
@@ -161,7 +145,7 @@ fn void List.add_all(&self, List* other_list)
 {
 	if (!other_list.size) return;
 	self.reserve(other_list.size);
-	sz index = list_set_size(self, self.size + other_list.size);
+	sz index = @list_set_size(self, self.size + other_list.size);
 	foreach (&value : other_list)
 	{
 		self.entries[index++] = *value;
@@ -187,11 +171,7 @@ macro Type[] List.to_array(&self, Allocator allocator)
 
 fn Type[] List.to_tarray(&self)
 {
-	$if type_is_overaligned():
-	return self.to_aligned_array(tmem);
-	$else
-	return self.to_array(tmem);
-	$endif;
+	return type_is_overaligned() ??? self.to_aligned_array(tmem) : self.to_array(tmem);
 }
 
 <*
@@ -218,7 +198,7 @@ fn void List.push_all(&self, Type[] array)
 {
 	if (!array.len) return;
 	self.reserve(array.len);
-	sz index = list_set_size(self, self.size + array.len);
+	sz index = @list_set_size(self, self.size + array.len);
 	self.entries[index : array.len] = array[..];
 }
 
@@ -233,11 +213,8 @@ fn void List.push_front(&self, Type type) @inline
 fn void List.insert_at(&self, sz index, Type type)
 {
 	self.reserve(1);
-	list_set_size(self, self.size + 1);
-	for (sz i = self.size - 1; i > index; i--)
-	{
-		self.entries[i] = self.entries[i - 1];
-	}
+	sz old_size = @list_set_size(self, self.size + 1);
+	mem::move(&self.entries[index + 1], &self.entries[index], (old_size - index) * Type::size);
 	self.entries[index] = type;
 }
 
@@ -252,7 +229,7 @@ fn void List.set_at(&self, sz index, Type type)
 fn void? List.remove_last(&self) @maydiscard
 {
 	if (!self.size) return NO_MORE_ELEMENT~;
-	list_set_size(self, self.size - 1);
+	@list_set_size(self, self.size - 1);
 }
 
 fn void? List.remove_first(&self) @maydiscard
@@ -280,7 +257,7 @@ fn bool List.is_empty(&self) @inline
 
 fn sz List.byte_size(&self) @inline
 {
-	return Type::size * self.size;
+	return ELEMENT_SIZE * self.size;
 }
 
 fn sz List.len(&self) @operator(len) @inline
@@ -298,18 +275,7 @@ fn Type List.get(&self, sz index) @inline
 
 fn void List.free(&self)
 {
-	if (!self.allocator || self.allocator.ptr == &dummy || !self.capacity) return;
-
-	list_pre_free(self); // Remove sanitizer annotation
-
-	$if type_is_overaligned():
-		alloc::free_aligned(self.allocator, self.entries);
-	$else
-		alloc::free(self.allocator, self.entries);
-	$endif;
-	self.capacity = 0;
-	self.size = 0;
-	self.entries = null;
+	list_free((ListPrivate*)self, ELEMENT_SIZE, Type::alignment);
 }
 
 <*
@@ -327,7 +293,7 @@ fn void List.swap(&self, sz i, sz j)
 fn sz List.remove_if(&self, ElementPredicate filter)
 {
 	sz old_size = self.size;
-	defer if (old_size != self.size) list_update_size_change(self, old_size, self.size);
+	defer @list_update_size_change(self, old_size, self.size);
 	return list_common::list_remove_if(self, filter, false);
 }
 
@@ -338,58 +304,22 @@ fn sz List.remove_if(&self, ElementPredicate filter)
 fn sz List.retain_if(&self, ElementPredicate selection)
 {
 	sz old_size = self.size;
-	defer if (old_size != self.size) list_update_size_change(self, old_size, self.size);
+	defer @list_update_size_change(self, old_size, self.size);
 	return list_common::list_remove_if(self, selection, true);
 }
 
 fn sz List.remove_using_test(&self, ElementTest filter, any context)
 {
 	sz old_size = self.size;
-	defer
-	{
-		if (old_size != self.size) list_update_size_change(self, old_size, self.size);
-	}
+	defer @list_update_size_change(self, old_size, self.size);
 	return list_common::list_remove_using_test(self, filter, false, context);
 }
-
-
 
 fn sz List.retain_using_test(&self, ElementTest filter, any context)
 {
 	sz old_size = self.size;
-	defer {
-		if (old_size != self.size) list_update_size_change(self, old_size, self.size);
-	}
+	defer @list_update_size_change(self, old_size, self.size);
 	return list_common::list_remove_using_test(self, filter, true, context);
-}
-
-fn void list_ensure_capacity(List* self, sz min_capacity) @local
-{
-	if (!min_capacity) return;
-	if (self.capacity >= min_capacity) return;
-
-	// Get a proper allocator
-	switch (self.allocator.ptr)
-	{
-		case &dummy:
-			self.allocator = mem;
-		case null:
-			self.allocator = tmem;
-		default:
-			break;
-	}
-
-	list_pre_free(self); // Remove sanitizer annotation
-
-	min_capacity = math::next_power_of_2(min_capacity);
-	$if type_is_overaligned():
-		self.entries = alloc::realloc_aligned(self.allocator, self.entries, Type::size * min_capacity, alignment: Type[1]::alignment)!!;
-	$else
-		self.entries = alloc::realloc(self.allocator, self.entries, Type::size * min_capacity);
-	$endif;
-	self.capacity = min_capacity;
-
-	list_post_alloc(self); // Add sanitizer annotation
 }
 
 <*
@@ -418,55 +348,11 @@ fn void List.set(&self, sz index, Type value) @operator([]=)
 
 fn void List.reserve(&self, sz added)
 {
-	sz new_size = self.size + added;
-	if (self.capacity >= new_size) return;
-
-	assert(new_size < sz::max / 2);
-	sz new_capacity = self.capacity ? 2 * self.capacity : 16;
-	while (new_capacity < new_size) new_capacity *= 2;
-	list_ensure_capacity(self, new_capacity);
+	list_reserve((ListPrivate*)self, added, ELEMENT_SIZE, Type::alignment);
 }
 
-fn void list_update_size_change(List* self, sz old_size, sz new_size) @private
-{
-	if (old_size == new_size) return;
-	$if $feat(ASAN):
-		if (self.allocator.ptr != &allocators::LIBC_ALLOCATOR) return;
-		sanitizer::annotate_contiguous_container(self.entries,
-	                                         &self.entries[self.capacity],
-	                                         &self.entries[old_size],
-	                                         &self.entries[new_size]);
-	$endif
-}
-<*
- @require new_size >= 0 : "The new size cannot be negative"
- @require new_size == 0 || self.capacity > 0
-*>
-fn sz list_set_size(List* self, sz new_size) @inline @private
-{
-	sz old_size = self.size;
-	list_update_size_change(self, old_size, new_size);
-	self.size = new_size;
-	return old_size;
-}
-
-macro void list_pre_free(List* self) @private
-{
-	if (!self.capacity) return;
-	list_update_size_change(self, self.size, self.capacity);
-}
-
-<*
- @require self.capacity > 0
-*>
-macro void list_post_alloc(List* self) @private
-{
-	list_update_size_change(self, self.capacity, self.size);
-}
 
 // Functions for equatable types
-
-
 fn sz? List.index_of(&self, Type type) @if (ELEMENT_IS_EQUATABLE)
 {
 	foreach (i, v : self)
@@ -514,21 +400,23 @@ fn bool List.contains(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 <*
  @param [&inout] self : "The list to remove elements from"
  @param value : "The value to remove"
+ @param unordered : "Do not preserve ordering"
  @return "true if the value was found"
 *>
-fn bool List.remove_last_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
+fn bool List.remove_last_item(&self, Type value, bool unordered = false) @if(ELEMENT_IS_EQUATABLE)
 {
-	return @ok(self.remove_at(self.rindex_of(value)));
+	return @ok(unordered ? self.remove_unordered_at(self.rindex_of(value)) : self.remove_at(self.rindex_of(value)));
 }
 
 <*
  @param [&inout] self : "The list to remove elements from"
  @param value : "The value to remove"
+ @param unordered : "Do not preserve ordering"
  @return "true if the value was found"
 *>
-fn bool List.remove_first_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
+fn bool List.remove_first_item(&self, Type value, bool unordered = false) @if(ELEMENT_IS_EQUATABLE)
 {
-	return @ok(self.remove_at(self.index_of(value)));
+	return @ok(unordered ? self.remove_unordered_at(self.index_of(value)) : self.remove_at(self.index_of(value)));
 }
 <*
  @param [&inout] self : "The list to remove elements from"
@@ -538,17 +426,15 @@ fn bool List.remove_first_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 fn sz List.remove_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 {
 	sz old_size = self.size;
-	defer if (old_size != self.size) list_update_size_change(self, old_size, self.size);
+	defer @list_update_size_change(self, old_size, self.size);
 	return list_common::list_remove_item(self, value);
 }
-
-
 
 fn void List.remove_all_from(&self, List* other_list) @if(ELEMENT_IS_EQUATABLE)
 {
 	if (!other_list.size) return;
 	sz old_size = self.size;
-	defer if (old_size != self.size) list_update_size_change(self, old_size, self.size);
+	defer @list_update_size_change(self, old_size, self.size);
 	foreach (v : other_list) self.remove_item(v);
 }
 
@@ -566,8 +452,135 @@ fn sz List.compact_count(&self) @if(ELEMENT_IS_POINTER)
 fn sz List.compact(&self) @if(ELEMENT_IS_POINTER)
 {
 	sz old_size = self.size;
-	defer if (old_size != self.size) list_update_size_change(self, old_size, self.size);
+	defer @list_update_size_change(self, old_size, self.size);
 	return list_common::list_compact(self);
 }
 
-int dummy @local;
+macro void @list_update_size_change(List* self, sz old_size, sz new_size) @private
+{
+	$if $feat(ASAN):
+		if (old_size == new_size) return;
+		list_asan_update_size_change((ListPrivate*)self, old_size, new_size, ELEMENT_SIZE);
+	$endif
+}
+
+macro sz @list_set_size(List* self, sz size) @private
+{
+	return list_set_size((ListPrivate*)self, size, ELEMENT_SIZE);
+}
+
+module std::collections::list @private;
+import std::math;
+
+int dummy;
+
+struct ListPrivate
+{
+	sz size;
+	sz capacity;
+	Allocator allocator;
+	void *entries;
+}
+
+fn void list_asan_update_size_change(ListPrivate* self, sz old_size, sz new_size, sz element_size) @feat(ASAN)
+{
+	if (self.allocator.ptr != &allocators::LIBC_ALLOCATOR) return;
+	sanitizer::annotate_contiguous_container(self.entries, self.entries + self.capacity * element_size,
+		self.entries + old_size * element_size, self.entries + new_size * element_size);
+}
+
+macro void list_pre_free(ListPrivate* self, sz element_size)
+{
+	$if $feat(ASAN):
+		if (!self.capacity) return;
+		if (self.size == self.capacity) return;
+		list_asan_update_size_change(self, self.size, self.capacity, element_size);
+	$endif
+}
+
+fn void list_ensure_capacity(ListPrivate* self, sz min_capacity, sz element_size, sz alignment)
+{
+	if (!min_capacity) return;
+	if (self.capacity >= min_capacity) return;
+
+	// Get a proper allocator
+	switch (self.allocator.ptr)
+	{
+		case &dummy:
+			self.allocator = mem;
+		case null:
+			self.allocator = tmem;
+		default:
+			break;
+	}
+
+	list_pre_free(self, element_size); // Remove sanitizer annotation
+
+	min_capacity = math::next_power_of_2(min_capacity);
+	if (alignment > mem::DEFAULT_MEM_ALIGNMENT)
+	{
+		self.entries = alloc::realloc_aligned(self.allocator, self.entries, element_size * min_capacity, alignment: alignment)!!;
+	}
+	else
+	{
+		self.entries = alloc::realloc(self.allocator, self.entries, element_size * min_capacity);
+	}
+	self.capacity = min_capacity;
+	$if $feat(ASAN):
+		list_asan_update_size_change(self, self.capacity, self.size, element_size);
+	$endif
+}
+
+fn void list_reserve(ListPrivate* self, sz added, sz element_size, sz alignment)
+{
+	sz new_size = self.size + added;
+	if (self.capacity >= new_size) return;
+
+	assert(new_size < sz::max / 2);
+	sz new_capacity = self.capacity ? 2 * self.capacity : 16;
+	while (new_capacity < new_size) new_capacity *= 2;
+	list_ensure_capacity(self, new_capacity, element_size, alignment);
+}
+
+<*
+ @require new_size >= 0 : "The new size cannot be negative"
+ @require new_size == 0 || self.capacity > 0
+*>
+fn sz list_set_size(ListPrivate* self, sz new_size, sz element_size)
+{
+	sz old_size = self.size;
+	$if $feat(ASAN):
+		if (old_size != new_size) list_asan_update_size_change(self, old_size, new_size, element_size);
+	$endif
+	self.size = new_size;
+	return old_size;
+}
+
+fn void list_free(ListPrivate* self, sz element_size, sz alignment)
+{
+	if (!self.allocator || self.allocator.ptr == &dummy || !self.capacity) return;
+
+	list_pre_free(self, element_size); // Remove sanitizer annotation
+
+	if (alignment > mem::DEFAULT_MEM_ALIGNMENT)
+	{
+		alloc::free_aligned(self.allocator, self.entries);
+	}
+	else
+	{
+		alloc::free(self.allocator, self.entries);
+	}
+	self.capacity = 0;
+	self.size = 0;
+	self.entries = null;
+}
+
+fn void list_remove_at(ListPrivate* self, sz index, sz element_size) <ALIGNMENT>
+{
+	sz new_size = self.size - 1;
+	defer list_set_size(self, new_size, element_size);
+	if (!new_size || index == new_size) return;
+	void* start = self.entries + index * element_size;
+	sz tail_size = new_size - index;
+	mem::move(start, start + element_size, tail_size * element_size, ALIGNMENT, ALIGNMENT);
+}

@@ -15,6 +15,11 @@
 const char *download_file(const char *url, const char *resource, const char *file_path, bool show_progress);
 bool download_available(void);
 
+// SHA-256 as 64 lowercase hex characters. The file version returns NULL if the file can't be read.
+const char *sha256_hex(const void *data, size_t len);
+const char *sha256_file_hex(const char *path);
+bool hex_equals(const char *a, const char *b);
+
 #define ELEMENTLEN(x) (sizeof(x) / sizeof(x[0]))
 extern const char *compiler_exe_name;
 
@@ -52,14 +57,16 @@ extern jmp_buf on_err_jump;
 extern bool debug_log;
 
 extern uintptr_t arena_zero;
-struct ScratchBuf { char str[MAX_STRING_BUFFER]; uint32_t len; };
-extern struct ScratchBuf scratch_buffer;
+struct ScratchBuf { char str[MAX_STRING_BUFFER]; int len; };
+extern struct ScratchBuf *sb_current;
 
 
 typedef struct Task_
 {
-	void (*task)(void *arg);
+	bool (*task)(void *arg);
 	void *arg;
+	// Estimated work; costlier tasks start first to shorten the tail.
+	size_t cost;
 } Task;
 
 uint16_t *win_utf8to16(const char *name);
@@ -68,6 +75,11 @@ char *win_utf16to8(const uint16_t *name);
 bool dir_make(const char *path);
 bool dir_make_recursive(char *path);
 const char *dir_make_temp_dir(void);
+// Same, but creates the directory inside `base`.
+const char *dir_make_temp_dir_in(const char *base);
+// Delete the directory (recursively) in dir_delete_registered(), which runs on every exit path.
+void dir_delete_on_cleanup(const char *path);
+void dir_delete_registered(void);
 // Use as if it was chdir(...) == 0
 bool dir_change(const char *path);
 const char *filename(const char *path);
@@ -80,6 +92,7 @@ void file_copy_file(const char *src_path, const char *dst_path, bool overwrite);
 void file_copy_dir(const char *src_path, const char *dst_path);
 void file_delete_all_files_in_dir_with_suffix(const char *dir, const char *suffix);
 bool file_delete_file(const char *path);
+bool file_replace(const char *src_path, const char *dst_path);
 void file_delete_dir(const char *path);
 bool file_is_dir(const char *file);
 bool file_exists(const char *path);
@@ -100,7 +113,7 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 char *file_append_path(const char *path, const char *name);
 const char *file_append_path_temp(const char *path, const char *name);
 
-const char **target_expand_source_names(const char *base_dir, const char** dirs, const char **suffix_list, const char ***object_list_ref, int suffix_count, bool error_on_mismatch);
+const char **target_expand_source_names(const char *base_dir, const char** dirs, const char **suffix_list, const char ***object_list_ref, const char ***llvm_ir_list_ref, int suffix_count, bool error_on_mismatch);
 
 char * execute_cmd(const char *cmd, bool ignore_failure, const char *stdin_string, size_t limit);
 
@@ -109,6 +122,8 @@ void *cmalloc(size_t size);
 void *ccalloc(size_t size, size_t elements);
 void memory_init(size_t max_mem);
 void memory_release(void);
+
+
 
 #define ptrid(ptr_) ((((uintptr_t)(ptr_)) - arena_zero) / 16)
 #define idptr(id_) ((void*)(((uintptr_t)id_) * 16 + arena_zero))
@@ -132,10 +147,15 @@ static inline void *malloc_arena(size_t len)
 }
 #endif
 void free_arena(void);
-void print_arena_status(void);
+void arena_stats(size_t *memory, int *allocations, size_t *string_memory, int *string_allocations);
 void run_arena_allocator_tests(void);
-void taskqueue_run(int threads, Task **task_list);
+bool taskqueue_run(int threads, Task **task_list);
+void lock_acquire(void);
+void lock_release(void);
 int cpus(void);
+const char *host_os_name(void);
+const char *host_cpu_name(void);
+int64_t host_memory(void);
 const char *date_get(void);
 const char *time_get(void);
 
@@ -150,6 +170,7 @@ char *str_cat(const char *a, const char *b);
 char *str_cat_len(const char *a, size_t a_len, const char *b, size_t b_len);
 // Search a list of strings and return the matching element or -1 if none found.
 int str_findlist(const char *value, int count, const char** elements);
+void str_list_add_all_unique(const char ***list, const char **items);
 // Sprintf style, saved to an arena allocated string
 char *str_printf(const char *var, ...) __printflike(1, 2);
 char *str_vprintf(const char *var, va_list list);
@@ -167,16 +188,21 @@ bool str_has_no_uppercase(const char *string);
 bool str_is_valid_module_name(const char *name);
 char *str_copy(const char *start, size_t str_len);
 char *str_dup(const char *str);
+void stable_identifier_hash(const char *name, uint64_t output[2]);
 
+const char *slice_copy(StringSlice slice);
 StringSlice slice_next_token(StringSlice *slice, char separator);
 static inline bool slice_strcmp(StringSlice slice, const char *other);
 static inline StringSlice slice_from_string(const char *data);
 void slice_trim(StringSlice *slice);
 
+void scratch_buffer_push(void);
+void scratch_buffer_pop(void);
 void scratch_buffer_clear(void);
 void scratch_buffer_delete(size_t len);
 void scratch_buffer_append(const char *string);
 void scratch_buffer_append_len(const char *string, size_t len);
+void scratch_buffer_append_slice(StringSlice slice);
 bool scratch_buffer_may_append(size_t len);
 void scratch_buffer_append_char(char c);
 void scratch_buffer_append_in_quote(const char *string);
@@ -190,6 +216,10 @@ UNUSED void scratch_buffer_append_unsigned_int(uint64_t i);
 void scratch_buffer_printf(const char *format, ...);
 char *scratch_buffer_to_string(void);
 char *scratch_buffer_copy(void);
+char *scratch_buffer_end_ptr(void);
+int scratch_buffer_len(void);
+const char *scratch_buffer_ptr(void);
+void scratch_buffer_set_len(int len);
 
 static inline bool is_power_of_two(uint64_t x);
 static inline uint32_t next_highest_power_of_2(uint32_t v);
@@ -800,3 +830,14 @@ const char *zip_dir_iterator(FILE *zip, ZipDirIterator *iterator);
 const char *zip_dir_iterator_next(ZipDirIterator *iterator, ZipFile *file);
 const char *zip_file_read(FILE *zip, ZipFile *file, void **buffer_ptr);
 const char *zip_file_write(FILE *zip, ZipFile *file, const char *dir, bool overwrite);
+
+typedef struct
+{
+	const char *name;
+	// Read the contents from this file, otherwise use 'data' and 'size'.
+	const char *file_path;
+	const char *data;
+	size_t size;
+} ZipEntry;
+
+const char *zip_create(const char *zip_path, const ZipEntry *entries, size_t count);

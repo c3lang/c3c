@@ -30,6 +30,7 @@ EglDestroySurfaceProc      destroy_surface_fn;
 EglMakeCurrentProc         make_current_fn;
 EglSwapBuffersProc         swap_buffers_fn;
 EglSwapIntervalProc        swap_interval_fn;
+EglGetErrorProc            get_error_fn;
 EglGetCurrentContextProc   get_current_context_fn;
 EglQueryStringProc         query_string_fn;
 EglGetConfigAttribProc     get_config_attrib_fn;
@@ -56,6 +57,7 @@ alias EglMakeCurrentProc = fn EglBoolean(EglDisplay display, EglSurface draw, Eg
 alias EglSwapBuffersProc = fn EglBoolean(EglDisplay display, EglSurface surface);
 alias EglSwapIntervalProc = fn EglBoolean(EglDisplay display, EglInt interval);
 alias EglGetCurrentContextProc = fn EglContext();
+alias EglGetErrorProc = fn EglInt();
 alias EglQueryStringProc = fn ZString(EglDisplay display, EglInt name);
 alias EglGetConfigAttribProc = fn EglBoolean(EglDisplay display, EglConfig config, EglInt attribute, EglInt* value);
 alias EglReleaseThreadProc = fn EglBoolean();
@@ -74,6 +76,7 @@ fn void? bind_egl()
 	make_current_fn          = find_proc("eglMakeCurrent")!;
 	swap_buffers_fn          = find_proc("eglSwapBuffers")!;
 	swap_interval_fn         = find_proc("eglSwapInterval")!;
+	get_error_fn             = find_proc("eglGetError")!;
 	get_current_context_fn   = find_proc("eglGetCurrentContext")!;
 	query_string_fn          = find_proc("eglQueryString")!;
 	get_config_attrib_fn     = find_proc("eglGetConfigAttrib")!;

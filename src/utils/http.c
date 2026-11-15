@@ -22,17 +22,22 @@ const char *download_file(const char *url, const char *resource, const char *fil
 	(void)show_progress;
 	HINTERNET hSession = NULL, hConnect = NULL, hRequest = NULL;
 
-	bool is_https = memcmp("https://", url, 8) == 0;
-	const char *hostname_and_path = url + (is_https ? 8 : 7);
-	const char *slash = strchr(hostname_and_path, '/');
-	const char *hostname = hostname_and_path;
-	const char *url_path = "";
-
-	if (slash)
+	// Let WinHTTP split the URL, so that a port like "http://localhost:8080" is handled.
+	wchar_t *wurl = char_to_wchar(str_cat(url, resource));
+	URL_COMPONENTS components = {
+		.dwStructSize = sizeof(URL_COMPONENTS),
+		.dwHostNameLength = (DWORD)-1,
+		.dwUrlPathLength = (DWORD)-1,
+	};
+	if (!WinHttpCrackUrl(wurl, 0, 0, &components))
 	{
-		hostname = str_copy(hostname_and_path, slash - hostname_and_path);
-		url_path = slash;
+		free(wurl);
+		return str_printf("Invalid URL '%s%s'.", url, resource);
 	}
+	bool is_https = components.nScheme == INTERNET_SCHEME_HTTPS;
+	// The host name isn't zero terminated, the path runs to the end of the URL.
+	wchar_t *whost = calloc(components.dwHostNameLength + 1, sizeof(wchar_t));
+	memcpy(whost, components.lpszHostName, components.dwHostNameLength * sizeof(wchar_t));
 
 	// Use WinHttpOpen to obtain a session handle.
 	hSession = WinHttpOpen(L"C3C/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
@@ -44,22 +49,17 @@ const char *download_file(const char *url, const char *resource, const char *fil
 	WinHttpSetOption(hSession, WINHTTP_OPTION_REDIRECT_POLICY, &redirect_policy,
 					 sizeof(redirect_policy));
 
-	wchar_t *wurl = char_to_wchar(hostname);
-	hConnect = WinHttpConnect(
-		hSession, wurl,
-		is_https ? INTERNET_DEFAULT_HTTPS_PORT : INTERNET_DEFAULT_HTTP_PORT, 0);
+	hConnect = WinHttpConnect(hSession, whost, components.nPort, 0);
 	if (!hConnect) error_exit("Failed to connect to '%s'", url);
-	free(wurl);
+	free(whost);
 
 	// Create an HTTP request handle.
-	char *full_resource = str_cat(url_path, resource);
-	wchar_t *wresource = char_to_wchar(full_resource);
-	hRequest = WinHttpOpenRequest(hConnect, L"GET", wresource, NULL,
+	hRequest = WinHttpOpenRequest(hConnect, L"GET", components.dwUrlPathLength ? components.lpszUrlPath : NULL, NULL,
                                   WINHTTP_NO_REFERER,
                                   WINHTTP_DEFAULT_ACCEPT_TYPES, is_https ? WINHTTP_FLAG_SECURE : 0);
 
 	if (!hRequest) error_exit("Failed to create request for '%s'.", url);
-	free(wresource);
+	free(wurl);
 
 	FILE *file = fopen(file_path, "w+b");
 	if (!file) return str_printf("Failed to open file '%s' for output", file_path);

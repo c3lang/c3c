@@ -1,0 +1,89 @@
+// #target: macos-x64
+module gen <Type>;
+struct Foo
+{
+	union { Type a; }
+}
+
+module ex <Type> @export;
+struct Bar
+{
+	union { Type a; }
+}
+
+module test;
+import gen, ex;
+
+fn usz size_of(Type* p) <Type> => Type::size;
+
+struct Item
+{
+	union { int i; }
+	struct { long j; }
+}
+
+alias FooInt = Foo{int};
+alias BarInt = Bar{int};
+typeid[*] ids = { Foo{int}::members[0].type, Foo{long}::members[0].type, BarInt::members[0].type };
+
+fn usz test()
+{
+	usz total = size_of{Item::members[0].type}(null);
+	$foreach $m : Item::members:
+		total += size_of{$m.type}(null);
+	$endforeach
+	total += size_of{FooInt::members[0].type}(null);
+	total += size_of{BarInt::members[0].type}(null);
+	return total;
+}
+
+/* #expect: test.ll
+
+@"$ct.gen.Foo$int$.0" = linkonce global %.introspect { i8 11, i64 0, ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@"$ct.gen.Foo$long$.0" = linkonce global %.introspect { i8 11, i64 0, ptr null, i64 8, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@"$ct.ex__Bar$int$__0" = linkonce global %.introspect { i8 11, i64 0, ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+
+define i64 @test.test() #0 {
+entry:
+  %total = alloca i64, align 8
+  %0 = call i64 @"test.size_of$test.Item.0$"(ptr null)
+  store i64 %0, ptr %total, align 8
+  %1 = load i64, ptr %total, align 8
+  %2 = call i64 @"test.size_of$test.Item.0$"(ptr null)
+  %add = add i64 %1, %2
+  store i64 %add, ptr %total, align 8
+  %3 = load i64, ptr %total, align 8
+  %4 = call i64 @"test.size_of$test.Item.1$"(ptr null)
+  %add1 = add i64 %3, %4
+  store i64 %add1, ptr %total, align 8
+  %5 = load i64, ptr %total, align 8
+  %6 = call i64 @"test.size_of$gen.Foo$int$.0$"(ptr null)
+  %add2 = add i64 %5, %6
+  store i64 %add2, ptr %total, align 8
+  %7 = load i64, ptr %total, align 8
+  %8 = call i64 @"test.size_of$ex__Bar$int$__0$"(ptr null)
+  %add3 = add i64 %7, %8
+  store i64 %add3, ptr %total, align 8
+  %9 = load i64, ptr %total, align 8
+  ret i64 %9
+}
+
+define weak i64 @"test.size_of$test.Item.0$"(ptr %0) #0 {
+entry:
+  ret i64 4
+}
+
+define weak i64 @"test.size_of$test.Item.1$"(ptr %0) #0 {
+entry:
+  ret i64 8
+}
+
+define weak i64 @"test.size_of$gen.Foo$int$.0$"(ptr %0) #0 {
+entry:
+  ret i64 4
+}
+
+define weak i64 @"test.size_of$ex__Bar$int$__0$"(ptr %0) #0 {
+entry:
+  ret i64 4
+}

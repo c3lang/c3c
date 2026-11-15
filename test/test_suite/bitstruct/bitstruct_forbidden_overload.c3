@@ -3,7 +3,7 @@ bitstruct Foo : uint
 	bool test : 2;
 }
 
-fn bool Foo.test(self, Foo other) @operator(==) => true;
+fn bool Foo.tested(self, Foo other) @operator(==) => true;
 
 fn Foo Foo.and(self, uint other) @operator(&) => (Foo)(((uint)self) & other); // #error: Bitstructs do not support
 fn Foo Foo.or(self, uint other) @operator(|) => (Foo)(((uint)self) | other); // #error: Bitstructs do not support

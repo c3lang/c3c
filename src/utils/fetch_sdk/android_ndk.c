@@ -77,8 +77,8 @@ char *fetch_android_ndk(BuildOptions *options)
 	}
 
 	const char *tmp_dir_base = dir_make_temp_dir();
-	dir_make_recursive((char *)tmp_dir_base);
 	if (!tmp_dir_base) error_exit("Failed to create temp directory");
+	dir_make_recursive((char *)tmp_dir_base);
 
 	char *zpath = (char *)file_append_path(tmp_dir_base, "android_ndk.zip");
 

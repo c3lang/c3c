@@ -1,0 +1,24 @@
+// #target: macos-aarch64
+module test;
+
+// The Darwin ABI makes the caller zero/sign-extend arguments (and the callee return values) below 32 bits.
+extern fn void set_color(char r, ushort g, bool b, short c, int d);
+extern fn char get_char();
+fn char native_char(char a, short b) { return a + (char)b; }
+
+fn void main()
+{
+	set_color(1, 2, true, 3, 4);
+	get_char();
+	native_char(1, 2);
+}
+
+/* #expect: test.ll
+
+declare void @set_color(i8 zeroext, i16 zeroext, i8 zeroext, i16 signext, i32)
+declare zeroext i8 @get_char()
+define zeroext i8 @test.native_char(i8 zeroext %0, i16 signext %1)
+
+define void @test.main()
+call void @set_color(i8 zeroext 1, i16 zeroext 2, i8 zeroext 1, i16 signext 3, i32 4)
+call i8 @test.native_char(i8 zeroext 1, i16 signext 2)

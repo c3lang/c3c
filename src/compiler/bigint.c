@@ -808,7 +808,7 @@ Int int_div(Int op1, Int op2)
 	{
 		res = i128_udiv(op1.i, op2.i);
 	}
-	return (Int){ res, op1.type };
+	return (Int){ i128_extend(res, op1.type), op1.type };
 }
 
 Int int_rem(Int op1, Int op2)

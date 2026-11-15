@@ -3,7 +3,7 @@ module test;
 fn void main()
 {
 	uint[2] v;
-	foo(v);
+	foo((int[2])v);
 }
 
 fn void foo(int[2] v) {}

@@ -21,11 +21,11 @@ entry:
   %literal = alloca [8 x %"char[]"], align 8
   %args1 = alloca %"char[][]", align 8
   %literal2 = alloca [9 x %"char[]"], align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const, i32 128, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %literal, ptr align 8 @.__const, i64 128, i1 false)
   %0 = insertvalue %"char[][]" undef, ptr %literal, 0
   %1 = insertvalue %"char[][]" %0, i64 8, 1
   store %"char[][]" %1, ptr %args, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal2, ptr align 8 @.__const.17, i32 144, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %literal2, ptr align 8 @.__const.17, i64 144, i1 false)
   %2 = insertvalue %"char[][]" undef, ptr %literal2, 0
   %3 = insertvalue %"char[][]" %2, i64 9, 1
   store %"char[][]" %3, ptr %args1, align 8

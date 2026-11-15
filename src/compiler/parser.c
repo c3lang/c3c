@@ -170,6 +170,7 @@ bool parse_stdin(void)
 	stdin_file = (File){
 			.name = "stdin",
 			.file_id = STDIN_FILE_ID,
+			.kind = FILE_KIND_STDIN,
 			.full_path = "<stdin>",
 			.dir_path = "",
 	};
@@ -204,6 +205,7 @@ bool parse_stdin(void)
 	memcpy(stdin_data, data, len + 1);
 	if (data != buffer) free(data);
 	stdin_file.contents = stdin_data;
+	stdin_file.content_len = len;
 	CompilationUnit *unit = unit_create(&stdin_file);
 	ParseContext parse_context = { .unit = unit };
 	parse_context.lexer = (Lexer) { .file = &stdin_file, .context =  &parse_context };

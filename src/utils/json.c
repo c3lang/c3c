@@ -506,6 +506,14 @@ static inline void print_json(JSONObject *obj, int indent_level, FILE *file)
 	}
 }
 
+bool json_get_string_from_key(JSONObject *obj, const char *key, const char **result)
+{
+	JSONObject *val = json_map_get(obj, key);
+	if (!val || val->type != J_STRING) return false;
+	*result = val->str;
+	return true;
+}
+
 void print_json_to_file(JSONObject *obj, FILE *file)
 {
 	print_json(obj, 0, file);

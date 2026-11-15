@@ -379,6 +379,7 @@ const WM_CAPTURECHANGED              = 0x0215;
 const WM_CHAR                        = 0x0102;
 const WM_CLOSE                       = 0x0010;
 const WM_CREATE                      = 0x0001;
+const WM_INPUTLANGCHANGE             = 0x0051;
 const WM_DISPLAYCHANGE               = 0x007E;
 const WM_DPICHANGED                  = 0x02E0;
 const WM_DROPFILES                   = 0x0233;

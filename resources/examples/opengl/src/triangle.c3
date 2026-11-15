@@ -12,8 +12,8 @@ fn void main()
 
     while (!window.shouldClose())
     {
-        gl::clear(BufferBit.COLOR.value);
-        gl::begin(Primitive.TRIANGLES.value);
+        gl::clear(COLOR);
+        gl::begin(TRIANGLES);
             gl::color3f(1, 0, 0); gl::vertex3f(-0.6, -0.75, 0.5);
             gl::color3f(0, 1, 0); gl::vertex3f(0.6, -0.75, 0);
             gl::color3f(0, 0, 1); gl::vertex3f(0, 0.75, 0);

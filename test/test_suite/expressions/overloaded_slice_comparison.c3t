@@ -53,17 +53,17 @@ entry:
   %.anon22 = alloca [2 x %Foo], align 4
   %result = alloca [2 x %Foo], align 4
   %.anon23 = alloca i64, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %f, ptr align 4 @.__const.1, i32 4, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %h, ptr align 4 @.__const.2, i32 4, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 %f, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %f, ptr align 4 @.__const.1, i64 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %h, ptr align 4 @.__const.2, i64 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %literal, ptr align 4 %f, i64 4, i1 false)
   %ptradd = getelementptr inbounds i8, ptr %literal, i64 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %ptradd, ptr align 4 %h, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %ptradd, ptr align 4 %h, i64 4, i1 false)
   %0 = insertvalue %"Foo[]" undef, ptr %literal, 0
   %1 = insertvalue %"Foo[]" %0, i64 2, 1
   store %"Foo[]" %1, ptr %g, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal1, ptr align 4 %f, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %literal1, ptr align 4 %f, i64 4, i1 false)
   %ptradd2 = getelementptr inbounds i8, ptr %literal1, i64 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %ptradd2, ptr align 4 %f, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %ptradd2, ptr align 4 %f, i64 4, i1 false)
   %2 = insertvalue %"Foo[]" undef, ptr %literal1, 0
   %3 = insertvalue %"Foo[]" %2, i64 2, 1
   store %"Foo[]" %3, ptr %z, align 8
@@ -117,12 +117,12 @@ loop.exit:                                        ; preds = %loop.cond
 expr_block.exit:                                  ; preds = %loop.exit, %if.else, %if.then
   %16 = load i8, ptr %blockret, align 1
   store i8 %16, ptr %test, align 1
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %g2, ptr align 4 %f, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %g2, ptr align 4 %f, i64 4, i1 false)
   %ptradd7 = getelementptr inbounds i8, ptr %g2, i64 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %ptradd7, ptr align 4 %h, i32 4, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %z2, ptr align 4 %f, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %ptradd7, ptr align 4 %h, i64 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %z2, ptr align 4 %f, i64 4, i1 false)
   %ptradd8 = getelementptr inbounds i8, ptr %z2, i64 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %ptradd8, ptr align 4 %f, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %ptradd8, ptr align 4 %f, i64 4, i1 false)
   store i64 0, ptr %.anon10, align 8
   br label %loop.cond11
 
@@ -161,7 +161,7 @@ expr_block.exit20:                                ; preds = %loop.exit19, %if.el
   store i8 %25, ptr %test2, align 1
   %26 = call i64 @test.get()
   store i64 %26, ptr %result, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %.anon22, ptr align 4 %result, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %.anon22, ptr align 4 %result, i64 8, i1 false)
   store i64 0, ptr %.anon23, align 8
   br label %loop.cond24
 

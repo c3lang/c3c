@@ -1,0 +1,21 @@
+// #target: macos-x64
+module test;
+
+enum Foo { A, B, C }
+alias Bar = Foo;
+alias Baz = Bar;
+
+// The alias gets the same ordinal as the enum it names.
+fn int main()
+{
+	Foo f = (Foo)1;
+	Bar b = (Bar)1;
+	Baz z = (Baz)2;
+	return 0;
+}
+
+/* #expect: test.ll
+
+  store i32 1, ptr %f, align 4
+  store i32 1, ptr %b, align 4
+  store i32 2, ptr %z, align 4

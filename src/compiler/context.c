@@ -66,8 +66,8 @@ static bool filename_to_module_in_buffer(const char *path)
 		}
 		scratch_buffer_append_char(c);
 	}
-	if (last_was_underscore && scratch_buffer.len) scratch_buffer_delete(1);
-	if (!scratch_buffer.len) return false;
+	if (last_was_underscore && scratch_buffer_len()) scratch_buffer_delete(1);
+	if (!scratch_buffer_len()) return false;
 	return true;
 }
 
@@ -88,7 +88,7 @@ bool context_set_module_from_filename(ParseContext *context)
 	Path *path = CALLOCS(Path);
 	path->loc = make_loc(context->span);
 	path->module = module_name;
-	path->len = scratch_buffer.len;
+	path->len = scratch_buffer_len();
 	return create_module_or_check_name(context->unit, path);
 }
 
@@ -103,15 +103,6 @@ bool context_is_macro(SemaContext *context)
 {
 	if (context->current_macro != NULL) return true;
 	return context->call_env.current_function && context->call_env.current_function->func_decl.in_macro; // NOLINT
-}
-
-void unit_register_external_symbol(SemaContext *context, Decl *decl)
-{
-	decl = decl_flatten(decl);
-	if (decl->is_external_visible) return;
-	Module *active_module = context->current_macro ? context->original_module : context->compilation_unit->module;
-	if (decl->unit->module == active_module) return;
-	decl->is_external_visible = true;
 }
 
 INLINE void weak_visibility_mismatch(Decl *weak_symbol, Decl *other_symbol)
@@ -268,7 +259,7 @@ WEAK_MODULE:
 			case DECL_BITSTRUCT:
 			case DECL_TYPEDEF:
 			case DECL_ENUM:
-			case DECL_CONSTDEF:
+			case DECL_CONSTSET:
 			case DECL_STRUCT:
 			case DECL_TYPE_ALIAS:
 			case DECL_UNION:
@@ -362,7 +353,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			vec_add(unit->aliases, decl);
 			decl_register(unit, decl);
 			return;
-		case DECL_CONSTDEF:
+		case DECL_CONSTSET:
 		case DECL_ENUM:
 			ASSERT(decl->name);
 			vec_add(unit->enums, decl);

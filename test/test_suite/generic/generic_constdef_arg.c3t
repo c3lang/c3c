@@ -1,7 +1,7 @@
 module repro;
 import std;
 
-constdef Simple : inline uint
+constset Simple : inline uint
 {
 	FIRST,
 	SECOND,

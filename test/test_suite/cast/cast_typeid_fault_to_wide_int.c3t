@@ -1,0 +1,31 @@
+// #target: macos-x64
+module test;
+
+// typeid and fault values are unsigned, so they are zero extended whatever the sign of the target.
+// An integer source keeps extending by its own sign.
+fn int128 typeid_to_i128(typeid t) @export("typeid_to_i128") => (int128)t;
+fn uint128 typeid_to_u128(typeid t) @export("typeid_to_u128") => (uint128)t;
+fn int128 fault_to_i128(fault f) @export("fault_to_i128") => (int128)f;
+fn uint128 fault_to_u128(fault f) @export("fault_to_u128") => (uint128)f;
+fn int128 uint_to_i128(uint v) @export("uint_to_i128") => (int128)v;
+fn int128 int_to_i128(int v) @export("int_to_i128") => (int128)v;
+
+fn int main()
+{
+	return 0;
+}
+
+/* #expect: test.ll
+
+@typeid_to_i128
+  %zext = zext i64 %0 to i128
+@typeid_to_u128
+  %zext = zext i64 %0 to i128
+@fault_to_i128
+  %zext = zext i64 %0 to i128
+@fault_to_u128
+  %zext = zext i64 %0 to i128
+@uint_to_i128
+  %zext = zext i32 %0 to i128
+@int_to_i128
+  %sext = sext i32 %0 to i128

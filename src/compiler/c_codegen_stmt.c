@@ -1040,9 +1040,13 @@ void c_emit_asm_block_stmt(GenContext *c, Ast *stmt)
 	{
 		Expr *str_expr   = exprptr(stmt->asm_block_stmt.asm_string);
 		const char *data = str_expr->const_expr.bytes.ptr;
+		PRINT("#if defined(_MSC_VER) && !defined(__clang__)\n");
+		PRINT("#error \"Inline assembly is not supported when compiling with MSVC (cl.exe). Use clang-cl, clang, gcc, or the LLVM backend instead.\"\n");
+		PRINT("#else\n");
 		PRINT("\t__asm__ __volatile__ (");
 		c_emit_string_literal(c, data, (ArrayIndex)strlen(data));
 		PRINT(");\n");
+		PRINT("#endif\n");
 		return;
 	}
 
@@ -1172,6 +1176,9 @@ void c_emit_asm_block_stmt(GenContext *c, Ast *stmt)
 		}
 	}
 
+	PRINT("#if defined(_MSC_VER) && !defined(__clang__)\n");
+	PRINT("#error \"Inline assembly is not supported when compiling with MSVC (cl.exe). Use clang-cl, clang, gcc, or the LLVM backend instead.\"\n");
+	PRINT("#else\n");
 	PRINT("\t__asm__ __volatile__ (\n\t\t");
 	c_emit_string_literal(c, gnu_asm, (ArrayIndex)strlen(gnu_asm));
 
@@ -1212,6 +1219,7 @@ void c_emit_asm_block_stmt(GenContext *c, Ast *stmt)
 	}
 
 	PRINT("\n\t);\n");
+	PRINT("#endif\n");
 }
 
 void c_emit_stmt(GenContext *c, Ast *stmt)
@@ -1434,12 +1442,22 @@ void c_emit_stmt(GenContext *c, Ast *stmt)
 			if (compile_asserts())
 			{
 				CValue cval = {0};
-				c_emit_expr(c, &cval, exprptr(stmt->assert_stmt.expr));
+				Expr *assert_expr = exprptr(stmt->assert_stmt.expr);
+				c_emit_expr(c, &cval, assert_expr);
+				if (!c->current_block_live) return;
 				c_value_rvalue(c, &cval);
-				if (cval.var != 0)
+				c_ensure_cvalue_var(c, &cval, type_bool);
+				PRINTF("if (!___var_%d) {\n", cval.var);
+				const char *message = "Assert violation";
+				Expr *message_expr = exprptrzero(stmt->assert_stmt.message);
+				if (message_expr && message_expr->expr_kind == EXPR_CONST &&
+				    (message_expr->const_expr.const_kind == CONST_STRING ||
+				     message_expr->const_expr.const_kind == CONST_BYTES))
 				{
-					PRINTF("if (!___var_%d) { __c3_abort(); }\n", cval.var);
+					message = message_expr->const_expr.bytes.ptr;
 				}
+				c_emit_panic(c, message, assert_expr ? assert_expr->loc : stmt->loc, stmt->assert_stmt.args);
+				PRINT("}\n");
 			}
 			return;
 		case AST_ASM_BLOCK_STMT:

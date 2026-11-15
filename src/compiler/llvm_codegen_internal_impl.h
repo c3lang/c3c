@@ -167,9 +167,14 @@ INLINE LLVMValueRef llvm_emit_extract_value(GenContext *c, LLVMValueRef agg, int
 	}
 }
 
+INLINE bool llvm_use_debug_variables(GenContext *context)
+{
+	return context->debug.builder && compiler.build.debug_info == DEBUG_INFO_FULL;
+}
+
 INLINE bool llvm_use_accurate_debug_info(GenContext *context)
 {
-	return context->debug.builder && compiler.build.optlevel <= OPTIMIZATION_NONE;
+	return llvm_use_debug_variables(context) && compiler.build.optlevel <= OPTIMIZATION_NONE;
 }
 
 INLINE bool llvm_use_debug(GenContext *context) { return context->debug.builder != NULL; }

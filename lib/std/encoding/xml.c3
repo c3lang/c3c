@@ -488,14 +488,14 @@ fn XmlEvent? XmlReader.next_event(&self)
 			case ATTRSTART:
 				String name = self.parser.attr_view();
 				self.buffer.clear();
-				while (true)
+				while OUTER: (true)
 				{
-					Ret next_res = self.low_level_next()!;
-					if (next_res == ATTRVAL)
+					switch (self.low_level_next()!)
 					{
-						self.buffer.append(self.parser.data_view());
+						case ATTRVAL: self.buffer.append(self.parser.data_view());
+						case ATTREND: break OUTER;
+						default:      break;
 					}
-					else if (next_res == ATTREND) break;
 				}
 				return { .kind = ATTRIBUTE, .name = name, .value = self.buffer.str_view() };
 			case CONTENT:
@@ -524,14 +524,14 @@ fn XmlEvent? XmlReader.next_event(&self)
 			case PISTART:
 				String name = self.parser.pi_view();
 				self.buffer.clear();
-				while (true)
+				while OUTER: (true)
 				{
-					Ret next_res = self.low_level_next()!;
-					if (next_res == PICONTENT)
+					switch (self.low_level_next()!)
 					{
-						self.buffer.append(self.parser.data_view());
+						case PICONTENT: self.buffer.append(self.parser.data_view());
+						case PIEND:     break OUTER;
+						default:        break;
 					}
-					else if (next_res == PIEND) break;
 				}
 				return { .kind = PI, .name = name, .value = self.buffer.str_view() };
 			default:
@@ -575,7 +575,7 @@ fn void? XmlSerializer.start_doc(&self, String version = "1.0", String encoding 
 	self.write_fn(self.stream.ptr, version)!;
 	self.write_fn(self.stream.ptr, `" encoding="`)!;
 	self.write_fn(self.stream.ptr, encoding)!;
-	self.write_fn(self.stream.ptr, `?>` "\n")!;
+	self.write_fn(self.stream.ptr, `"?>` "\n")!;
 }
 
 fn void? XmlSerializer.end_doc(&self)
@@ -655,12 +655,18 @@ fn void? XmlSerializer.add_content_escaped(&self, String s)
 
 fn void? XmlSerializer.add_content(&self, char[] bytes)
 {
+	self.add_raw("")!;
+	self.add_content_escaped((String)bytes)!;
+}
+
+fn void? XmlSerializer.add_raw(&self, String s)
+{
 	if (self.in_tag)
 	{
 		self.write_fn(self.stream.ptr, ">")!;
 		self.in_tag = false;
 	}
-	self.add_content_escaped((String)bytes)!;
+	self.write_fn(self.stream.ptr, s)!;
 }
 
 /**
@@ -684,15 +690,15 @@ fn void? XmlSerializer.serialize_node(&self, XmlNode* node)
 		case TEXT:
 			self.add_content(node.value)!;
 		case PI:
-			self.add_content("<?")!;
-			self.add_content(node.name)!;
-			self.add_content(" ")!;
-			self.add_content(node.value)!;
-			self.add_content("?>")!;
+			self.add_raw("<?")!;
+			self.add_raw(node.name)!;
+			self.add_raw(" ")!;
+			self.add_raw(node.value)!;
+			self.add_raw("?>")!;
 		case COMMENT:
-			self.add_content("<!--")!;
-			self.add_content(node.value)!;
-			self.add_content("-->")!;
+			self.add_raw("<!--")!;
+			self.add_raw(node.value)!;
+			self.add_raw("-->")!;
 		default:
 			break;
 	}

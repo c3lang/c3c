@@ -144,6 +144,85 @@ fn void compact()
 	assert(test.compact() == 0);
 }
 
+fn void compact_runs()
+{
+	PtrList test;
+	int a;
+	int b;
+	int c;
+	test.push_all({ null, null, &a, null, null, &b, &c, null });
+	assert(test.compact() == 5);
+	assert(test.len() == 3);
+	assert(test[0] == &a);
+	assert(test[1] == &b);
+	assert(test[2] == &c);
+	assert(test.compact() == 0);
+	test.clear();
+	test.push_all({ null, null, null });
+	assert(test.compact() == 3);
+	assert(test.len() == 0);
+}
+
+fn void remove_item_many()
+{
+	IntList test;
+	test.push_all({ 1, 2, 2, 3, 2, 2, 2, 4, 2 });
+	assert(test.remove_item(2) == 6);
+	assert(test.array_view() == { 1, 3, 4 });
+	assert(test.remove_item(2) == 0);
+	assert(test.array_view() == { 1, 3, 4 });
+	test.clear();
+	test.push_all({ 5, 5, 5 });
+	assert(test.remove_item(5) == 3);
+	assert(test.len() == 0);
+	assert(test.remove_item(5) == 0);
+	test.push_all({ 7, 5, 5, 8, 5 });
+	assert(test.remove_item(5) == 3);
+	assert(test.array_view() == { 7, 8 });
+}
+
+fn void insert_at_positions()
+{
+	IntList test;
+	test.insert_at(0, 3);
+	test.insert_at(0, 1);
+	test.insert_at(1, 2);
+	test.insert_at(3, 4);
+	assert(test.array_view() == { 1, 2, 3, 4 });
+
+	// Insert in the middle across several capacity growths, compare with a plain array.
+	test.clear();
+	int[300] expected;
+	for (int i = 0; i < 300; i++)
+	{
+		sz index = test.len() / 2;
+		test.insert_at(index, i);
+		for (sz j = i; j > index; j--) expected[j] = expected[j - 1];
+		expected[index] = i;
+	}
+	assert(test.len() == 300);
+	for (sz i = 0; i < 300; i++) assert(test[i] == expected[i]);
+}
+
+fn void insert_at_overaligned()
+{
+	List{Overalign} test;
+	test.push_front({ { 3, 3, 3, 3 } });
+	test.push_front({ { 1, 1, 1, 1 } });
+	test.insert_at(1, { { 2, 2, 2, 2 } });
+	test.insert_at(3, { { 4, 4, 4, 4 } });
+	assert(test.len() == 4);
+	for (sz i = 0; i < 4; i++) assert(test[i].x[0] == (float)(i + 1));
+}
+
+fn void push_growth()
+{
+	IntList test;
+	for (int i = 0; i < 1000; i++) test.push(i);
+	assert(test.len() == 1000);
+	for (int i = 0; i < 1000; i++) assert(test[i] == i);
+}
+
 fn void reverse()
 {
 	IntList test;

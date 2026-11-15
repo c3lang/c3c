@@ -49,7 +49,7 @@ entry:
   store i32 1, ptr %tag, align 4
   %0 = load i32, ptr %tag, align 4
   %ptroffset = getelementptr inbounds [16 x i8], ptr @"test.SeverityTag$fg", i32 %0
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %a, ptr align 8 %ptroffset, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %a, ptr align 8 %ptroffset, i64 16, i1 false)
   ret void
 }
 

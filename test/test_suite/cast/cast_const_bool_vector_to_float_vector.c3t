@@ -1,0 +1,18 @@
+// #target: macos-x64
+module test;
+
+const bool[<2>] B = { true, false };
+
+// The int vector gets all bits set (that already works). The float vector used to crash the
+// backend; it must give the same values as the runtime conversion (uitofp) and as `(float)true`.
+fn int main()
+{
+	int[<2>] i = B;
+	float[<2>] f = (float[<2>])B;
+	return 0;
+}
+
+/* #expect: test.ll
+
+  store <2 x i32> <i32 -1, i32 0>, ptr %i, align 8
+  store <2 x float> <float 1.000000e+00, float 0.000000e+00>, ptr %f, align 8

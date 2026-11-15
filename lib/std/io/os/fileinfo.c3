@@ -149,7 +149,7 @@ fn Time_t? native_get_modified_time(String path) => @pool()
 }
 
 
-macro fault file_attr_errno() @local @feat(WIN32)
+macro fault file_attr_errno() @private @feat(WIN32)
 {
 	switch (win32::getLastError())
 	{

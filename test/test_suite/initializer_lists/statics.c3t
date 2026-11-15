@@ -47,7 +47,7 @@ define void @statics.test() #0 {
 entry:
   %b = alloca %"Bar[]", align 8
   %literal = alloca [1 x %Bar], align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %literal, ptr align 4 @.__const, i64 8, i1 false)
   %0 = insertvalue %"Bar[]" undef, ptr %literal, 0
   %1 = insertvalue %"Bar[]" %0, i64 1, 1
   store %"Bar[]" %1, ptr %b, align 8

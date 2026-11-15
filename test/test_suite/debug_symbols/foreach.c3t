@@ -35,7 +35,7 @@ loop.body:                                        ; preds = %loop.cond
   %4 = load ptr, ptr %args, align 8, !dbg !34
   %5 = load i64, ptr %.anon, align 8, !dbg !34
   %ptroffset = getelementptr inbounds [16 x i8], ptr %4, i64 %5, !dbg !34
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %a, ptr align 8 %ptroffset, i32 16, i1 false), !dbg !34
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %a, ptr align 8 %ptroffset, i64 16, i1 false), !dbg !34
   %ptradd2 = getelementptr inbounds i8, ptr %a, i64 8, !dbg !39
   %6 = load i64, ptr %ptradd2, align 8, !dbg !39
   %trunc = trunc i64 %6 to i32, !dbg !39

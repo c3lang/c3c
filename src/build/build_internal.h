@@ -75,6 +75,13 @@ static const char *linker_kind[3] = {
 	[LINKER_TYPE_CUSTOM] = "custom"
 };
 
+static const char *stats_modes[4] = {
+	[STATS_NONE] = "none",
+	[STATS_SUMMARY] = "summary",
+	[STATS_FULL] = "full",
+	[STATS_JSON] = "json",
+};
+
 static const char *on_off[2] = {
 	[0] = "no",
 	[1] = "yes",
@@ -148,9 +155,8 @@ static const char *test_log_levels[6] = {
 	[TESTLOGLEVEL_CRITICAL] = "critical",
 };
 
-static const char *backends[3] = {
+static const char *backends[] = {
 		[BACKEND_LLVM] = "llvm",
-		[BACKEND_TB] = "tb",
 		[BACKEND_C] = "c",
 };
 
@@ -191,7 +197,9 @@ static const char *sanitize_modes[4] = {
 JSONObject *project_json_load(const char **filename_ref);
 Project *project_load(const char **filename_ref);
 BuildTarget *project_select_target(const char *filename, Project *project, const char *optional_target, CompilerCommand compiler_command);
+const char **project_dependency_order(const char *filename, Project *project, BuildTarget *target);
 JSONObject *read_library_manifest_for_path(const char *lib_path, const char **manifest_path_ref);
+JSONObject *load_library_manifest(const char *lib_path, const char **error_ref, const char **manifest_path_ref);
 
 const char *get_string(BuildParseContext context, JSONObject *table, const char *key, const char *default_value);
 int get_valid_bool(BuildParseContext context, JSONObject *json, const char *key, int default_val);

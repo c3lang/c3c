@@ -1,0 +1,35 @@
+// #target: macos-x64
+module test;
+
+// There is no direct conversion between float16 and bfloat in the backend, so an explicit cast
+// has to go through float. This must compile (it used to abort in the backend).
+fn bfloat to_bfloat(float16 h) => (bfloat)h;
+fn float16 to_float16(bfloat b) => (float16)b;
+fn bfloat[<4>] to_bfloat_vector(float16[<4>] h) => (bfloat[<4>])h;
+fn float16[<4>] to_float16_vector(bfloat[<4>] b) => (float16[<4>])b;
+
+fn int main()
+{
+	float16 h = 1.5;
+	bfloat b = to_bfloat(h);
+	float16 h2 = to_float16(b);
+	float16[<4>] hv = { 1, 2, 3, 4 };
+	bfloat[<4>] bv = to_bfloat_vector(hv);
+	float16[<4>] hv2 = to_float16_vector(bv);
+	return (int)h2 + (int)hv2[3];
+}
+
+/* #expect: test.ll
+
+define bfloat @test.to_bfloat(half %0)
+fpext half
+%fpfptrunc = fptrunc float %fpfpext to bfloat
+define half @test.to_float16(bfloat %0)
+fpext bfloat
+%fpfptrunc = fptrunc float %fpfpext to half
+define <4 x bfloat> @test.to_bfloat_vector(<4 x half> %0)
+fpext <4 x half>
+%fpfptrunc = fptrunc <4 x float> %fpfpext to <4 x bfloat>
+define <4 x half> @test.to_float16_vector(<4 x bfloat> %0)
+fpext <4 x bfloat>
+%fpfptrunc = fptrunc <4 x float> %fpfpext to <4 x half>

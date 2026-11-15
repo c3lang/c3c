@@ -1,0 +1,9 @@
+fn int a() @asmname("") => 3; // #error: '@asmname' requires a non-empty name.
+fn int b() @cname("") => 3; // #error: '@cname' requires a non-empty name.
+int c @asmname("") = 1; // #error: '@asmname' requires a non-empty name.
+fn int d() @asmname("x1") @cname("y1") => 3; // #error: An external name is already defined, so '@cname' cannot be used.
+fn int e() @cname("x2") @asmname("y2") => 3; // #error: An external name is already defined, so '@asmname' cannot be used.
+int f @cname("x3") @asmname("y3") = 1; // #error: An external name is already defined, so '@asmname' cannot be used.
+fn int g() @export("x4") @asmname("y4") => 3; // #error: An external name is already defined, so '@asmname' cannot be used.
+fn int h() @cname("ok1") => 3;
+fn int i() @asmname("ok2") => 3;

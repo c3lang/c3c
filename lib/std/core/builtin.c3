@@ -240,7 +240,7 @@ macro any.as_inner(self)
  @param $Type : "the type to cast to"
 
  @require @sizeof(expr) == $Type::size  : "Cannot bitcast between types of different size."
- @ensure $Typeof(return) == $Type*
+ @ensure $Typeof(return) == $Type
 *>
 macro bitcast(expr, $Type) @builtin
 {

@@ -27,7 +27,7 @@ declare i32 @sum_us(ptr, i64) #0
   %ptradd1 = getelementptr inbounds i8, ptr %varargslots, i64 8
   store i32 3, ptr %ptradd1, align 4
   %0 = call i32 @sum_us(ptr %varargslots, i64 3)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x, ptr align 4 @.__const, i64 12, i1 false)
   %1 = insertvalue %"int[]" undef, ptr %x, 0
   %2 = insertvalue %"int[]" %1, i64 3, 1
   store %"int[]" %2, ptr %z, align 8

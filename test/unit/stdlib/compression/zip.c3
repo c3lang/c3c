@@ -2,6 +2,7 @@ module zip_test @test;
 
 import std::io;
 import std::compression::zip;
+import std::compression::deflate;
 import std::math;
 
 fn void test_zip_store()
@@ -966,5 +967,315 @@ fn void test_zip_unsupported_algorithm()
 
 		fault res = @catch(recovered.read_file_all(mem, "a"));
 		assert(res == zip::UNSUPPORTED_METHOD, "Expected UNSUPPORTED_METHOD error");
+	};
+}
+
+macro char[] make_level_payload(Allocator allocator, sz len)
+{
+	String[8] words = { "alpha ", "beta ", "gamma ", "delta ", "epsilon ", "zeta ", "eta ", "theta " };
+	char[] data = alloc::alloc_array(allocator, char, len);
+	uint state = 12345;
+	sz pos = 0;
+	while (pos < len)
+	{
+		state = state * 1103515245 + 12345;
+		String w = words[(state >> 16) & 7];
+		sz n = math::min((sz)w.len, len - pos);
+		data[pos:n] = w[:n];
+		pos += n;
+	}
+	return data;
+}
+
+fn void test_zip_levels()
+{
+	@pool()
+	{
+		String path = "unittest_levels.zip";
+		char[] payload = make_level_payload(tmem, 100000);
+
+		ZipArchive zip = zip::open(mem, path, "w")!!;
+		for (int level = deflate::MIN_LEVEL; level <= deflate::MAX_LEVEL; level++)
+		{
+			String name = string::tformat("l%d.bin", level);
+			if (level % 2 == 0)
+			{
+				zip.write_file(name, payload, DEFLATE, level)!!;
+			}
+			else
+			{
+				ZipEntryWriter writer = zip.open_writer(name, DEFLATE, level)!!;
+				// Chunked writes exercise the streaming path.
+				sz pos = 0;
+				while (pos < payload.len)
+				{
+					sz n = math::min((sz)777, payload.len - pos);
+					writer.write(payload[pos:n])!!;
+					pos += n;
+				}
+				writer.close()!!;
+			}
+		}
+		zip.write_file("default.bin", payload)!!;
+		zip.write_file("stored.bin", payload, STORE, 0)!!;
+		(void)zip.close();
+		defer (void)file::delete(path);
+
+		ZipArchive read_zip = zip::open(mem, path, "r")!!;
+		defer (void)read_zip.close();
+		assert(read_zip.count() == deflate::MAX_LEVEL + 2, "Unexpected entry count");
+
+		long first_size = 0;
+		long last_size = 0;
+		for (int level = deflate::MIN_LEVEL; level <= deflate::MAX_LEVEL; level++)
+		{
+			String name = string::tformat("l%d.bin", level);
+			ZipEntry entry = read_zip.stat(name)!!;
+			assert(entry.method == DEFLATE, "Expected DEFLATE method");
+			assert(entry.uncompressed_size == payload.len, "Size mismatch");
+			assert(entry.compressed_size < payload.len / 2, "Expected compression");
+			if (level == deflate::MIN_LEVEL) first_size = entry.compressed_size;
+			if (level == deflate::MAX_LEVEL) last_size = entry.compressed_size;
+
+			char[] got = read_zip.read_file_all(tmem, name)!!;
+			assert(got == payload, "Round trip mismatch");
+		}
+		assert(last_size <= first_size, "Highest level must not be larger than the lowest");
+
+		ZipEntry def = read_zip.stat("default.bin")!!;
+		ZipEntry explicit = read_zip.stat(string::tformat("l%d.bin", deflate::DEFAULT_LEVEL))!!;
+		assert(def.compressed_size == explicit.compressed_size, "Default level must be DEFAULT_LEVEL");
+		assert(read_zip.read_file_all(tmem, "default.bin")!! == payload, "Default round trip mismatch");
+
+		ZipEntry stored = read_zip.stat("stored.bin")!!;
+		assert(stored.method == STORE, "Expected STORE method");
+		assert(stored.compressed_size == payload.len, "STORE must not compress");
+	};
+}
+
+macro void @expect_fault(#expr, expected)
+{
+	if (catch err = #expr)
+	{
+		test::eq(err, expected);
+		return;
+	}
+	assert(false, "expected a fault");
+}
+
+// Writes a small archive with one STORE and one DEFLATE entry and returns its bytes.
+macro char[] zip_make_small(String path)
+{
+	ZipArchive zip = zip::open(mem, path, "w")!!;
+	zip.write_file("a.txt", "hello hello hello", STORE)!!;
+	zip.write_file("b.txt", "some deflated text some deflated text", DEFLATE)!!;
+	(void)zip.close();
+	return file::load(tmem, path)!!;
+}
+
+macro sz zip_find_signature(char[] data, uint sig)
+{
+	for (sz i = 0; i + 4 <= data.len; i++)
+	{
+		if (data[i] == (char)sig && data[i + 1] == (char)(sig >> 8) && data[i + 2] == (char)(sig >> 16) && data[i + 3] == (char)(sig >> 24)) return i;
+	}
+	return -1;
+}
+
+// Hand built: STORE entry "a.txt", ZIP64 end records and an end record with saturated fields and a comment.
+fn void test_zip_open_zip64_with_comment()
+{
+	@pool()
+	{
+		String path = "unittest_zip64_comment.zip";
+		char[*] bytes = x"504b03041400000800000000210086a61036050000000500000005000000612e74787468656c6c6f504b01022d001400000800000000210086a610360500000005000000050000000000000000000000000000000000612e747874504b06062c000000000000002d002d0000000000000000000100000000000000010000000000000033000000000000002800000000000000504b0607000000005b0000000000000001000000504b0506ffffffffffffffffffffffffffffffff0d007a6970363420636f6d6d656e74";
+		file::save(path, &bytes)!!;
+		defer (void)file::delete(path);
+
+		ZipArchive zip = zip::open(mem, path)!!;
+		defer (void)zip.close();
+		assert(zip.count() == 1);
+		assert(zip.comment == "zip64 comment");
+		assert((String)zip.read_file_all(tmem, "a.txt")!! == "hello");
+	};
+}
+
+// Written by Python's zipfile with force_zip64: the local headers hold 0xFFFFFFFF sizes and a ZIP64 extra field.
+fn void test_zip_recover_zip64_local_header()
+{
+	@pool()
+	{
+		String path = "unittest_recover64.zip";
+		char[*] bytes = x"504b03042d000000000000002100bc4bfcb1ffffffffffffffff070014006269672e747874010010006400000000000000640000000000000030313233343536373839303132333435363738393031323334353637383930313233343536373839303132333435363738393031323334353637383930313233343536373839303132333435363738393031323334353637383930313233343536373839504b0304140000000000d1a0645da290288f050000000500000005000000732e74787473686f7274504b01022d032d000000000000002100bc4bfcb164000000640000000700000000000000000000008001000000006269672e747874504b01021403140000000000d1a0645da290288f050000000500000005000000000000000000000080019d000000732e747874504b0506000000000200020068000000c50000000000";
+		file::save(path, &bytes)!!;
+		defer (void)file::delete(path);
+
+		ZipArchive zip = zip::recover(mem, path)!!;
+		defer (void)zip.close();
+		assert(zip.count() == 2, "both entries must be found");
+		ZipEntry big = zip.stat("big.txt")!!;
+		assert(big.uncompressed_size == 100 && big.compressed_size == 100);
+		assert(zip.stat("s.txt")!!.uncompressed_size == 5);
+		assert(zip.read_file_all(tmem, "big.txt")!!.len == 100);
+	};
+}
+
+// 0xFFFF entries are valid without ZIP64 records.
+fn void test_zip_open_65535_entries_without_zip64()
+{
+	@pool()
+	{
+		String path = "unittest_65535.zip";
+		ByteWriter bw;
+		bw.tinit();
+		char[46] cdh;
+		cdh[0:4] = x"504B0102"[..];
+		cdh[28] = 1; // name length
+		for (int i = 0; i < 65535; i++)
+		{
+			bw.write(&cdh)!!;
+			bw.write_byte('a')!!;
+		}
+		sz cd_size = bw.array_view().len;
+		char[22] eocd;
+		eocd[0:4] = x"504B0506"[..];
+		eocd[8] = 0xFF;
+		eocd[9] = 0xFF;
+		eocd[10] = 0xFF;
+		eocd[11] = 0xFF;
+		eocd[12] = (char)cd_size;
+		eocd[13] = (char)(cd_size >> 8);
+		eocd[14] = (char)(cd_size >> 16);
+		eocd[15] = (char)(cd_size >> 24);
+		bw.write(&eocd)!!;
+		file::save(path, bw.array_view())!!;
+		defer (void)file::delete(path);
+
+		ZipArchive zip = zip::open(mem, path)!!;
+		defer (void)zip.close();
+		assert(zip.count() == 65535);
+		assert(zip.stat_at(65534)!!.name == "a");
+	};
+}
+
+fn void test_zip_open_with_trailing_data()
+{
+	@pool()
+	{
+		String path = "unittest_trailing.zip";
+		char[] bytes = zip_make_small(path);
+		char[] padded = alloc::alloc_array(tmem, char, bytes.len + 9);
+		padded[:bytes.len] = bytes[..];
+		padded[bytes.len:9] = "TRAILDATA"[..];
+		file::save(path, padded)!!;
+		defer (void)file::delete(path);
+
+		ZipArchive zip = zip::open(mem, path)!!;
+		defer (void)zip.close();
+		assert(zip.count() == 2);
+		assert((String)zip.read_file_all(tmem, "a.txt")!! == "hello hello hello");
+	};
+}
+
+fn void test_zip_open_corrupt_central_directory()
+{
+	@pool()
+	{
+		String path = "unittest_badcd.zip";
+		char[] bytes = zip_make_small(path);
+		defer (void)file::delete(path);
+
+		// A broken central directory header is an error, not a shorter listing.
+		char[] bad = alloc::clone_slice(tmem, bytes);
+		sz second = zip_find_signature(bad[zip_find_signature(bad, 0x02014B50) + 4..], 0x02014B50);
+		assert(second >= 0);
+		bad[zip_find_signature(bad, 0x02014B50) + 4 + second + 1] ^= 0xFF;
+		file::save(path, bad)!!;
+		@expect_fault(zip::open(mem, path), zip::CORRUPTED_DATA);
+
+		// More entries claimed than the directory holds.
+		bad = alloc::clone_slice(tmem, bytes);
+		sz eocd = zip_find_signature(bad, 0x06054B50);
+		bad[eocd + 8] = 9;
+		bad[eocd + 10] = 9;
+		file::save(path, bad)!!;
+		@expect_fault(zip::open(mem, path), zip::CORRUPTED_DATA);
+
+		// The offset of the directory points past the end record.
+		bad = alloc::clone_slice(tmem, bytes);
+		bad[eocd + 19] = 0x7F;
+		file::save(path, bad)!!;
+		@expect_fault(zip::open(mem, path), zip::CORRUPTED_DATA);
+	};
+}
+
+fn void test_zip_extract_detects_corrupt_data()
+{
+	@pool()
+	{
+		String path = "unittest_badcrc.zip";
+		String out_dir = "unittest_badcrc_out";
+		char[] bytes = zip_make_small(path);
+		defer {
+			(void)file::delete(path);
+			if (file::exists(out_dir)) (void)path::rmtree(path::tnew(out_dir)!!);
+		}
+
+		// Flip a byte of the stored data of a.txt (it directly follows its local header).
+		char[] bad = alloc::clone_slice(tmem, bytes);
+		bad[30 + 5 + 3] ^= 0x01;
+		file::save(path, bad)!!;
+
+		ZipArchive zip = zip::open(mem, path)!!;
+		defer (void)zip.close();
+		@expect_fault(zip.read_file_all(tmem, "a.txt"), zip::CORRUPTED_DATA);
+		@expect_fault(zip.extract(out_dir), zip::CORRUPTED_DATA);
+		assert(!file::exists("unittest_badcrc_out/a.txt"), "a corrupt file must not be left behind");
+	};
+}
+
+fn void test_zip_reader_seek_and_empty_read()
+{
+	@pool()
+	{
+		String path = "unittest_seek.zip";
+		char[] bytes = zip_make_small(path);
+		defer (void)file::delete(path);
+
+		ZipArchive zip = zip::open(mem, path)!!;
+		defer (void)zip.close();
+		ZipEntryReader reader = zip.open_reader("a.txt")!!;
+		defer (void)reader.close();
+
+		char[] none = {};
+		assert(reader.read(none)!! == 0, "an empty read must not fail");
+
+		@expect_fault(reader.seek(-1, FROM_CURSOR), io::INVALID_ARGUMENT);
+		@expect_fault(reader.seek(-100, FROM_END), io::INVALID_ARGUMENT);
+		@expect_fault(reader.seek(-1, FROM_START), io::INVALID_ARGUMENT);
+		reader.seek(-5, FROM_END)!!;
+		char[5] tail;
+		assert(reader.read(&tail)!! == 5);
+		assert((String)tail[..] == "hello");
+
+		ZipEntryReader deflated = zip.open_reader("b.txt")!!;
+		defer (void)deflated.close();
+		char[] nothing = {};
+		assert(deflated.read(nothing)!! == 0);
+	};
+}
+
+fn void test_zip_central_directory_flags_match_local_header()
+{
+	@pool()
+	{
+		String path = "unittest_flags.zip";
+		char[] bytes = zip_make_small(path);
+		defer (void)file::delete(path);
+
+		sz lfh = zip_find_signature(bytes, 0x04034B50);
+		sz cdh = zip_find_signature(bytes, 0x02014B50);
+		assert(lfh == 0 && cdh > 0);
+		assert(bytes[lfh + 6] == bytes[cdh + 8] && bytes[lfh + 7] == bytes[cdh + 9], "general purpose flags must match");
 	};
 }

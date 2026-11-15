@@ -32,6 +32,6 @@ entry:
   %4 = insertvalue %"float[]" undef, ptr %ptradd2, 0
   %5 = insertvalue %"float[]" %4, i64 4, 1
   %6 = extractvalue %"float[]" %5, 0
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %y, ptr align 4 %6, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %y, ptr align 4 %6, i64 16, i1 false)
   ret void
 }

@@ -42,6 +42,6 @@ entry:
   store i32 0, ptr %ptradd4, align 4
   %ptradd5 = getelementptr inbounds i8, ptr %ptradd4, i64 4
   store i32 0, ptr %ptradd5, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %f, ptr align 4 @.__const, i32 12, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 4 @.__const.2, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %f, ptr align 4 @.__const, i64 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %y, ptr align 4 @.__const.2, i64 8, i1 false)
   ret i32 0

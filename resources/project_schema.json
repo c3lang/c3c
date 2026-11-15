@@ -75,7 +75,7 @@
           "type": {
             "type": "string",
             "description": "Executable or library type for the target.",
-            "enum": ["executable", "static-lib", "dynamic-lib", "benchmark", "test", "object-files", "prepare"]
+            "enum": ["executable", "static-lib", "dynamic-lib", "benchmark", "test", "object-files", "prepare", "source-lib"]
           },
           "name": {
             "type": "string",
@@ -85,6 +85,10 @@
             "type": "string",
             "description": "Override the default file extension for the build output. Must start with '.'.",
             "pattern": "^\\..*"
+          },
+          "compress": {
+            "type": "boolean",
+            "description": "Pack a 'source-lib' target into a single compressed .c3l file, otherwise output an uncompressed directory (default: true)."
           },
           "template": {
             "type": "string",
@@ -96,6 +100,29 @@
             "description": "Additional libraries for this target.",
             "items": {
               "type": "string"
+            }
+          },
+          "depends-on": {
+            "type": "array",
+            "description": "Targets that are built before this target, in the order listed. Targets they depend on are built first, and each target is only built once.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "env": {
+            "type": "array",
+            "description": "Additional environment variables for the 'exec' scripts of this target, as 'NAME=value'.",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*="
+            }
+          },
+          "env-override": {
+            "type": "array",
+            "description": "Environment variables for the 'exec' scripts of this target, as 'NAME=value', replacing the global 'env'.",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*="
             }
           },
           "sources": {
@@ -205,6 +232,10 @@
       "enum": ["none", "full", "line-tables"],
       "default": "full"
     },
+    "fetch-url": {
+      "type": "string",
+      "description": "Registry that 'dependencies' written as <namespace>/<name>[@<version>] are fetched from, --fetch-url overrides it. A dependency can name its own registry with <url>:<namespace>/<name>[@<version>]."
+    },
     "fp-math": {
       "type": "string",
       "description": "FP math behaviour.",
@@ -246,6 +277,11 @@
       "enum": ["none", "pic", "PIC", "pie", "PIE"],
       "default": "none"
     },
+    "infinite-loop-detect": {
+      "type": "boolean",
+      "description": "Panic on empty infinite loops in safe mode.",
+      "default": false
+    },
     "trap-on-wrap": {
       "type": "boolean",
       "description": "Trap on signed and unsigned integer wrapping for testing.",
@@ -285,6 +321,14 @@
       "type": "boolean",
       "description": "Do not generate or require a main function.",
       "default": false
+    },
+    "env": {
+      "type": "array",
+      "description": "Environment variables for the 'exec' scripts of all targets, as 'NAME=value'.",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*="
+      }
     },
     "use-stdlib": {
       "type": "boolean",

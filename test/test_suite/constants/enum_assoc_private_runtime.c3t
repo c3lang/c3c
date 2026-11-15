@@ -1,0 +1,24 @@
+// #target: macos-aarch64
+module foo;
+
+int via_var @private = 1;
+fn int via_fn() @private => 2;
+
+alias IntFn = fn int();
+
+enum Col : int (int* ptr, IntFn func)
+{
+	RED { &via_var, &via_fn }
+}
+
+module test;
+import foo;
+
+fn int read(foo::Col c) => *c.ptr + c.func();
+
+fn int main() => read(foo::Col.RED);
+
+/* #expect: foo.ll
+
+@foo.via_var = global i32 1, align 4
+define i32 @foo.via_fn()

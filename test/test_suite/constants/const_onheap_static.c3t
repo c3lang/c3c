@@ -1,0 +1,13 @@
+// #target: macos-aarch64
+module test;
+import std::collections::list;
+
+fn int main()
+{
+	static List{int} list = list::ONHEAP{int};
+	return (int)list.size;
+}
+
+/* #expect: std.collections.list.ll
+
+@std.collections.list.dummy = weak global i32 0, align 4

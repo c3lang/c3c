@@ -11,7 +11,7 @@
 #if USE_PTHREAD
 typedef struct timespec BenchTime;
 #else
-typedef clock_t BenchTime;
+typedef int64_t BenchTime;
 #endif
 
 void bench_begin(void);

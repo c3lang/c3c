@@ -39,7 +39,7 @@ entry:
   %self = alloca ptr, align 8
   %x5 = alloca i32, align 4
   %i = alloca i32, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %my, ptr align 1 @.__const, i32 2, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 1 %my, ptr align 1 @.__const, i64 2, i1 false)
   store ptr %my, ptr %ptr, align 8
   %0 = load ptr, ptr %ptr, align 8
   %1 = load i8, ptr %0, align 1

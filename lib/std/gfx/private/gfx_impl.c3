@@ -1134,6 +1134,17 @@ fn void _window_show_platform(GfxWindow* win)
 	$endswitch
 }
 
+// Window - metal
+
+fn void*? _window_create_metal_layer_native(GfxWindow* win)
+{
+	$if $feat(MACOS):
+		return macos::window_create_metal_layer(win);
+	$else
+		return NOT_IMPLEMENTED~;
+	$endif
+}
+
 // Window - opengl
 
 fn void _window_destroy_opengl_context(GfxWindow* win, GfxGlContext* ctx)
@@ -1221,7 +1232,7 @@ fn void _window_opengl_swap_buffers(GfxWindow* win)
 	$endswitch
 }
 
-fn void _window_set_opengl_swap_interval(GfxWindow* win, int swap_interval)
+fn void? _window_set_opengl_swap_interval(GfxWindow* win, int swap_interval) @maydiscard
 {
 	$switch:
 		$case $feat(MACOS):
@@ -1520,6 +1531,8 @@ fn void _init_keycodes_platform()
 
 fn GfxKey _physical_to_mapped_key(GfxKey key)
 {
+	// The layout doesn't change the keypad keys, and they should not become digits and operators on some platforms.
+	if (key >= PAD_SLASH && key <= PAD_RETURN) return key;
 	$switch:
 		$case $feat(MACOS):
 			return macos::physical_to_mapped_key(key);

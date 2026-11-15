@@ -56,7 +56,7 @@ entry:
   store ptr %0, ptr %args, align 8
   %ptradd = getelementptr inbounds i8, ptr %args, i64 8
   store i64 %1, ptr %ptradd, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %literal, ptr align 1 @.__const, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 1 %literal, ptr align 1 @.__const, i64 4, i1 false)
   %2 = insertvalue %"char[]" undef, ptr %literal, 0
   %3 = insertvalue %"char[]" %2, i64 4, 1
   store %"char[]" %3, ptr %x, align 8

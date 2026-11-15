@@ -25,7 +25,7 @@ entry:
   %data4 = alloca ptr, align 8
   %data5 = alloca ptr, align 8
   %data5.f = alloca i64, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %data, ptr align 1 @.bytes
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %data, ptr align 1 @.bytes
   store ptr @.bytes.1, ptr %data2, align 8
   store %"char[]" { ptr @.bytes.2
   store ptr null, ptr %data4, align 8

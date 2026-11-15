@@ -54,16 +54,16 @@ WindowsSDK get_windows_paths(const char *target)
 	scratch_buffer_printf("%s\\lib\\%s", vs_path, target);
 	out.vs_library_path = scratch_buffer_copy();
 
+	const char *host = str_eq(target, "arm64") ? "Hostarm64" : str_eq(target, "x86") ? "Hostx86" : "Hostx64";
+	scratch_buffer_clear();
+	scratch_buffer_printf("%s\\bin\\%s\\%s\\cl.exe", vs_path, host, target);
+	out.cl_path = scratch_buffer_copy();
+
 	if (!getenv("INCLUDE"))
 	{
-		const char *host = str_eq(target, "arm64") ? "Hostarm64" : str_eq(target, "x86") ? "Hostx86" : "Hostx64";
-		scratch_buffer_clear();
-		scratch_buffer_printf("%s\\bin\\%s\\%s\\cl.exe", vs_path, host, target);
-		out.cl_path = scratch_buffer_copy();
 
 		scratch_buffer_clear();
 		scratch_buffer_printf("%s\\include;", vs_path);
-		scratch_buffer_printf("%s\\cppwinrt;", windows_sdk_include_root);
 		scratch_buffer_printf("%s\\cppwinrt;", windows_sdk_include_root);
 		scratch_buffer_printf("%s\\shared;", windows_sdk_include_root);
 		scratch_buffer_printf("%s\\ucrt;", windows_sdk_include_root);

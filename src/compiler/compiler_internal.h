@@ -14,8 +14,8 @@
 typedef double Real;
 typedef int64_t ByteSize;
 typedef int32_t TypeSize;
-typedef int32_t IndexDiff;
-typedef int32_t ArrayIndex;
+typedef int64_t IndexDiff;
+typedef int64_t ArrayIndex;
 typedef int16_t StructIndex;
 typedef int32_t AlignSize;
 typedef int64_t BitSize;
@@ -33,7 +33,6 @@ typedef int32_t FileId;
 
 #define STRUCT_INDEX_MAX INT16_MAX
 #define ALIGN_SIZE_MAX INT32_MAX
-#define MAX_ARRAYINDEX INT_MAX
 #define MAX_FIXUPS 0xFFFFF
 #define MAX_HASH_SIZE (512 * 1024 * 1024)
 #define MAX_SCOPE_DEPTH 0x100
@@ -75,7 +74,7 @@ print_deprecation_at(span__, __VA_ARGS__); } while (0)
 #define PRINT_DEPRECATED_AT_LOC(loc__, ...) do { if (compiler.build.test_output && compiler.build.warnings.deprecation > WARNING_SILENT) print_error_at_loc(loc__, __VA_ARGS__); if (compiler.build.warnings.deprecation > WARNING_SILENT) \
 print_deprecation_at_loc(loc__, __VA_ARGS__); } while (0)
 
-#define EXPAND_EXPR_STRING(str_) (str_)->const_expr.bytes.len, (str_)->const_expr.bytes.ptr
+#define EXPAND_EXPR_STRING(str_) (int)(str_)->const_expr.bytes.len, (str_)->const_expr.bytes.ptr
 #define TABLE_MAX_LOAD 0.5
 #define OUTF(...) do { if (!compiler.build.silent) printf(__VA_ARGS__); } while(0)
 #define OUTN(str__) do { if (!compiler.build.silent) puts(str__); } while(0)
@@ -188,6 +187,7 @@ typedef struct InliningSpan_
 {
 	SourceLocId loc;
 	struct InliningSpan_ *prev;
+	Decl *instance;
 } InliningSpan;
 
 typedef struct
@@ -228,6 +228,7 @@ typedef struct
 typedef struct
 {
 	FileId file_id;
+	FileKind kind;
 	const char *contents;
 	size_t content_len;
 	char *name;
@@ -323,19 +324,12 @@ struct Type_
 {
 	TypeKind type_kind;
 	bool is_live;
+	Module *traced_module;
 	CanonicalType *canonical;
 	const char *name;
 	Type **type_cache;
 	Type *func_ptr;
-	union
-	{
-		void *backend_type;
-		struct
-		{
-			uint16_t tb_set;
-			uint16_t tb_type;
-		};
-	};
+	void *backend_type;
 	TypeSize size;
 	void *backend_typeid;
 	void *backend_debug_type;
@@ -499,7 +493,6 @@ typedef struct VarDecl_
 				// Variable
 				void *optional_ref;
 				int optional_id;
-				int tb_optional_reg;
 			};
 		};
 		struct
@@ -711,11 +704,7 @@ typedef struct
 {
 	AstId defer;
 	bool next_target : 1;
-	union
-	{
-		void *break_target;
-		int tb_break_target;
-	};
+	void *break_target;
 	void *continue_target;
 	AstId scope_defer;
 	AstId parent;
@@ -771,9 +760,7 @@ typedef struct Decl_
 	{
 		void *backend_ref;
 		int backend_id;
-		int tb_register;
 		void *backend_value;
-		void *tb_symbol;
 		Decl *replacement;
 		struct
 		{
@@ -1437,11 +1424,7 @@ typedef struct
 		};
 		struct
 		{
-			union
-			{
-				void *break_block;
-				int tb_break_block;
-			};
+			void *break_block;
 		} codegen;
 	};
 } AstIfStmt;
@@ -1632,9 +1615,11 @@ typedef struct
 typedef struct
 {
 	bool is_ensure;
+	PanicFunction panic_function : 8;
 	ExprId message;
 	ExprId expr;
 	Expr **args;
+	const char *panic_text[PANIC_FN_MAX_TEXTS];
 } AstAssertStmt;
 
 
@@ -1686,6 +1671,7 @@ typedef struct Module_
 	const char *extname;
 	Decl **generic_sections;
 	bool is_external : 1;
+	bool is_compiler_rt : 1;
 	bool is_c_library : 1;
 	bool is_exported : 1;
 	bool no_extprefix : 1;
@@ -1958,6 +1944,7 @@ typedef struct ABIArgInfo_
 		bool signext : 1;
 		bool realign : 1;
 		bool by_val : 1;
+		uint8_t stack_align : 5;
 	} attributes;
 	union
 	{
@@ -2050,6 +2037,98 @@ typedef struct
 
 typedef struct
 {
+	Decl *decl;
+	double time;
+} FunctionAnalysisTime;
+
+typedef enum
+{
+	STATS_ORIGIN_USER,
+	STATS_ORIGIN_STDLIB,
+	STATS_ORIGIN_RUNTIME,
+	STATS_ORIGIN_GENERATED,
+	STATS_ORIGIN_NONE,
+} StatsOrigin;
+
+#define STATS_ORIGINS STATS_ORIGIN_NONE
+
+// A row in one of the statistics lists, the fields used depend on the list.
+typedef struct
+{
+	const char *name;
+	int id;
+	StatsOrigin origin;
+	int instances;
+	int64_t instructions;
+	int64_t lines;
+	double analysis_time;
+	double ir_gen_time;
+	double codegen_time;
+} StatsEntry;
+
+// The top entries of a list, the rest are summed up in "other".
+typedef struct
+{
+	StatsEntry *top;
+	StatsEntry other;
+	int other_count;
+	StatsEntry total;
+} StatsList;
+
+typedef struct
+{
+	int files;
+	int64_t lines;
+	int functions;
+	int64_t ir_instructions;
+	double codegen_time;
+} StatsOriginTotals;
+
+typedef struct
+{
+	double init_time;
+	double parsing_time;
+	double sema_time;
+	double ir_gen_time;
+	double codegen_time;
+	double link_time;
+	double generic_time;
+	int generic_depth;
+	double nested_analysis_time;
+	double codegen_thread_time;
+	int codegen_tasks;
+	int codegen_threads;
+	const char *linker;
+	int source_files;
+	int64_t source_lines;
+	int functions;
+	int types;
+	int generic_instances;
+	int64_t ir_instructions;
+	int64_t object_size;
+	StatsOriginTotals origins[STATS_ORIGINS];
+	int64_t ast_memory;
+	int64_t decl_memory;
+	int64_t expr_memory;
+	int64_t type_info_memory;
+	int64_t sourceloc_memory;
+	FunctionAnalysisTime *function_analysis_times;
+	StatsList generic_list;
+	StatsList generic_function_list;
+	StatsList function_list;
+	StatsList module_size_list;
+	StatsList module_time_list;
+	bool printed;
+} CompilerStats;
+
+typedef struct
+{
+	PanicFunction id;
+	Type *types[PANIC_FN_MAX_VALUES];
+} PanicVariant;
+
+typedef struct
+{
 	bool should_print_environment;
 	bool should_print_asm;
 	Ansi ansi;
@@ -2078,9 +2157,11 @@ typedef struct
 	DeclTable symbols;
 	PathTable path_symbols;
 	Path std_module_path;
+	Path compiler_rt_path;
 	Type *string_type;
 	Decl *panic_var;
-	Decl *panicf;
+	Decl *panic_fn;
+	PanicVariant *panic_variants;
 	Decl *io_error_file_not_found;
 	Decl *main;
 	Decl *decl_stack[MAX_GLOBAL_DECL_STACK];
@@ -2094,6 +2175,7 @@ typedef struct
 	PlatformTarget platform;
 	Linking linking;
 	GlobalContext context;
+	CompilerStats stats;
 	const char *obj_output;
 	int generic_depth;
 	double exec_time;
@@ -2122,6 +2204,18 @@ extern Type *type_cuint;
 extern Type *type_chars;
 extern Type *type_wildcard_optional;
 extern Type *type_string;
+typedef struct
+{
+	const char *name;
+	const char *format;
+	const char *summary;
+	int text_count;
+	int value_count;
+} PanicFunctionDescriptor;
+
+#define PANIC_MODULE_NAME "std::core::runtime::panics"
+extern const PanicFunctionDescriptor panic_fn_desc[PANIC_FN_COUNT];
+
 extern File stdin_file;
 
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
@@ -2150,7 +2244,6 @@ extern const char *kw_alignment;
 extern const char *kw_bitoffset;
 extern const char *kw_bitsize;
 extern const char *kw_cname;
-extern const char *kw_compiler_rt;
 extern const char *kw_description;
 extern const char *kw_default_value;
 extern const char *kw_drop;
@@ -2187,6 +2280,7 @@ extern const char *kw_return;
 extern const char *kw_self;
 extern const char *kw_set;
 extern const char *kw_size;
+extern const char *kw_compiler_rt;
 extern const char *kw_std;
 extern const char *kw_type;
 extern const char *kw_winmain;
@@ -2220,7 +2314,27 @@ INLINE Type *typeget(TypeInfoId id_)
 
 INLINE bool no_panic(void)
 {
-	return compiler.build.feature.panic_level == PANIC_OFF;
+	return compiler.build.feature.panic_level == PANIC_OFF && compiler.build.show_backtrace == SHOW_BACKTRACE_OFF;
+}
+
+INLINE bool panic_use_format(void)
+{
+	return compiler.build.feature.panic_level != PANIC_OFF && compiler.platform.os != OS_TYPE_EMSCRIPTEN;
+}
+
+INLINE int panic_fn_text_count(PanicFunction id)
+{
+	return panic_use_format() || id == PANIC_FN_MESSAGE ? panic_fn_desc[id].text_count : 0;
+}
+
+INLINE int panic_fn_value_count(PanicFunction id)
+{
+	return panic_use_format() ? panic_fn_desc[id].value_count : 0;
+}
+
+INLINE bool panic_use_location(void)
+{
+	return compiler.build.show_backtrace != SHOW_BACKTRACE_OFF;
 }
 
 INLINE bool safe_mode_enabled(void)
@@ -2390,7 +2504,6 @@ Decl **copy_decl_list_macro(Decl **decl_list);
 Ast *copy_ast_macro(Ast *source_ast);
 Ast *copy_ast_defer(Ast *source_ast);
 TypeInfo *copy_type_info_single(TypeInfo *type_info);
-InliningSpan *copy_inlining_span(InliningSpan *span);
 
 void init_asm(PlatformTarget *target);
 void print_asm_list(PlatformTarget *target);
@@ -2423,12 +2536,19 @@ void cast_no_check(Expr *expr, Type *to_type, bool add_optional);
 
 bool cast_to_index_len(SemaContext *context, Expr *index, bool is_len);
 
-const char *c_codegen(void *context);
-const char *llvm_codegen(void *context);
-const char *tilde_codegen(void *context);
+bool c_codegen(void *context, const char **out_name);
+bool llvm_codegen(void *context, const char **out_name);
+void *llvm_load_ir_file(const char *filename, const char *object_filename);
+bool llvm_codegen_ir_file(void *context, const char **out_name);
 void **c_gen(Module** modules, int module_count);
 void **llvm_gen(Module** modules, int module_count);
-void **tilde_gen(Module** modules, int module_count);
+void llvm_collect_module_times(void);
+void compiler_print_stats(void);
+void stats_list_add(StatsList *list, StatsEntry entry, bool in_top);
+StatsOrigin stats_module_origin(Module *module);
+int64_t stats_physical_lines(File *file);
+void stats_collect_after_sema(void);
+void stats_collect_object_size(const char **obj_files, int count);
 
 void header_gen(Module **modules, int module_count);
 const char *build_base_name(void);
@@ -2448,7 +2568,6 @@ const char *get_exe_extension(void);
 
 CompilationUnit * unit_create(File *file);
 void unit_register_global_decl(CompilationUnit *unit, Decl *decl);
-void unit_register_external_symbol(SemaContext *context, Decl *decl);
 void setup_exec_paths(const char **old_dir_ref, const char **script_dir_ref, const char **exec_dir_ref);
 
 bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import, bool is_non_recursive);
@@ -2484,6 +2603,7 @@ INLINE bool decl_is_user_defined_type(Decl *decl);
 INLINE Decl *decl_flatten(Decl *decl);
 INLINE TypeInfo *decl_find_method_target(Decl *decl);
 INLINE TypeInfo *decl_find_target_if_method(Decl *decl);
+INLINE bool decl_skip_benchtest_function(Decl *decl);
 static inline Decl *decl_raw(Decl *decl);
 static inline DeclKind decl_from_token(TokenType type);
 static inline bool decl_is_var_local(Decl *decl);
@@ -2494,7 +2614,7 @@ bool decl_needs_prefix(Decl *decl);
 AlignSize decl_find_member_offset(Decl *decl, Decl *member);
 bool decl_is_externally_visible(Decl *decl);
 bool decl_is_local(Decl *decl);
-bool decl_is_global(Decl *decl);
+bool decl_is_global_ref(Decl *decl);
 void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear);
 
 // --- Expression functions
@@ -2553,6 +2673,7 @@ INLINE void expr_rewrite_const_null(Expr *expr, Type *type);
 INLINE void expr_rewrite_const_bool(Expr *expr, Type *type, bool b);
 INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d);
 INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v);
+INLINE void expr_rewrite_const_byte(Expr *expr, Type *type, uint8_t c);
 INLINE void expr_rewrite_const_typeid(Expr *expr, Type *type);
 INLINE void expr_rewrite_const_initializer(Expr *expr, Type *type, ConstInitializer *initializer);
 INLINE void expr_rewrite_const_untyped_list(Expr *expr, Expr **elements);
@@ -2627,6 +2748,7 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 
 bool sema_analyse_expr_rvalue(SemaContext *context, Expr *expr);
 bool sema_cast_const(Expr *expr);
+void sema_fold_global_init(Expr *init);
 
 bool sema_expr_check_discard(SemaContext *context, Expr *expr);
 bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr, bool *no_match_ref);
@@ -2641,11 +2763,12 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_defi
 bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement);
 bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement);
 bool sema_analyse_statement(SemaContext *context, Ast *statement);
+const char *contract_to_message(Expr *contract, bool is_ensure);
 
 bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type *left_type, Expr *right,
                                          bool is_unwrapped_var, bool is_declaration, bool *failed_ref);
 bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr, bool *no_match_ref);
-Expr **sema_expand_vasplat_exprs(SemaContext *context, Expr **exprs, Decl ***macro_va_decl_ref);
+bool sema_expand_vasplat_exprs(SemaContext *context, Expr ***exprs_ptr, Decl ***macro_va_decl_ref);
 
 bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool optional,
                                     bool *no_match_ref);
@@ -2653,6 +2776,7 @@ bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl
 void sema_expr_convert_enum_to_int(Expr *expr);
 Decl *sema_decl_stack_resolve_symbol(const char *symbol);
 Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *interned_name);
+Decl *sema_panic_fn(SemaContext *context);
 Decl *sema_resolve_type_method(SemaContext *context, CanonicalType *type, const char *method_name);
 Decl *sema_resolve_method(Decl *type, const char *method_name);
 Decl *sema_resolve_method_only(Decl *type, const char *method_name);
@@ -3016,7 +3140,7 @@ INLINE bool type_may_implement_interface(Type *type)
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_TYPEDEF:
 		case TYPE_BITSTRUCT:
 			return true;
@@ -3115,7 +3239,7 @@ INLINE bool type_is_atomic(Type *type_flat)
 		case ALL_SIGNED_INTS:
 		case ALL_FLOATS:
 		case TYPE_ENUM:
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_BOOL:
@@ -3163,7 +3287,7 @@ INLINE bool type_may_negate(Type *type)
 		case TYPE_TYPEDEF:
 			type = type->decl->distinct->type;
 			goto RETRY;
-		case TYPE_CONSTDEF:
+		case TYPE_CONSTSET:
 			type = type->decl->enums.type_info->type;
 			goto RETRY;
 		case TYPE_ALIAS:
@@ -3200,28 +3324,43 @@ INLINE bool type_is_floatlike(Type *type)
 
 INLINE const char *type_invalid_storage_type_name(Type *type)
 {
-	switch (type->type_kind)
+	while (true)
 	{
-		case TYPE_REFLECTION:
-			return "a reflection reference";
-		case TYPE_MEMBER:
-			return "a member reference";
-		case TYPE_UNTYPEDLIST:
-			return "an untyped list";
-		case TYPE_TYPEINFO:
-			return "a typeinfo";
-		case TYPE_WILDCARD:
-			return "an empty value";
-		case TYPE_OPTIONAL:
-			return "an optional with a compile time type";
-		default:
-			UNREACHABLE;
+		type = type->canonical;
+		switch (type->type_kind)
+		{
+			case TYPE_REFLECTION:
+				return "a reflection reference";
+			case TYPE_MEMBER:
+				return "a member reference";
+			case TYPE_UNTYPEDLIST:
+				return "an untyped list";
+			case TYPE_FUNC_RAW:
+				return "a raw function type";
+			case TYPE_FLEXIBLE_ARRAY:
+				return "a flexible array";
+			case TYPE_TYPEINFO:
+				return "a typeinfo";
+			case TYPE_WILDCARD:
+				return "an empty value";
+			case TYPE_OPTIONAL:
+				return "an optional with a compile time type";
+			case TYPE_TYPEDEF:
+				type = type_flatten(type);
+				if (type == type_void) return "a type with unknown size";
+				break;
+			case TYPE_VOID:
+				return "'void'";
+			default:
+				UNREACHABLE;
+		}
 	}
+
 }
 
 INLINE Type *enum_inner_type(Type *enum_type)
 {
-	assert(enum_type->type_kind == TYPE_ENUM || enum_type->type_kind == TYPE_CONSTDEF);
+	assert(enum_type->type_kind == TYPE_ENUM || enum_type->type_kind == TYPE_CONSTSET);
 	return enum_type->decl->enums.type_info->type;
 }
 
@@ -3288,7 +3427,7 @@ INLINE Type *type_flatten_for_bitstruct(Type *type)
 	{
 		type = type->decl->distinct->type;
 	}
-	if (type->type_kind == TYPE_ENUM || type->type_kind == TYPE_CONSTDEF)
+	if (type->type_kind == TYPE_ENUM || type->type_kind == TYPE_CONSTSET)
 	{
 		type = enum_inner_type(type)->canonical;
 		goto RETRY;
@@ -3347,7 +3486,7 @@ static inline Type *type_base(Type *type)
 				type = type->decl->distinct->type;
 				break;
 			case TYPE_ENUM:
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 				type = enum_inner_type(type);
 				break;
 			case TYPE_OPTIONAL:
@@ -3363,7 +3502,7 @@ static inline Type *type_base(Type *type)
 
 
 static const bool is_distinct_like[TYPE_LAST + 1] = {
-	[TYPE_CONSTDEF] = true,
+	[TYPE_CONSTSET] = true,
 	[TYPE_TYPEDEF] = true
 };
 
@@ -3417,7 +3556,7 @@ static inline Type *type_flatten_and_inline(Type *type)
 			case TYPE_TYPEDEF:
 				type = type->decl->distinct->type;
 				continue;
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 				type = type->decl->enums.type_info->type;
 				continue;
 			default:
@@ -3439,7 +3578,7 @@ static inline Type *type_flat_distinct_enum_inline(Type *type)
 				if (!decl->is_substruct) return type;;
 				type = decl->distinct->type;
 				continue;
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 				decl = type->decl;
 				if (!decl->is_substruct) return type;
 				type = decl->enums.type_info->type;
@@ -3454,7 +3593,7 @@ INLINE bool type_is_user_defined(Type *type)
 {
 	static const bool user_defined_types[TYPE_LAST + 1] = {
 		[TYPE_ENUM]       = true,
-		[TYPE_CONSTDEF]   = true,
+		[TYPE_CONSTSET]   = true,
 		[TYPE_STRUCT]     = true,
 		[TYPE_FUNC_RAW]   = true,
 		[TYPE_UNION]      = true,
@@ -3469,6 +3608,7 @@ INLINE bool type_is_user_defined(Type *type)
 
 static inline DeclId type_find_generic(Type *type)
 {
+	type = type_no_optional(type);
 	Type *canonical = type->canonical;
 	while (type->type_kind == TYPE_POINTER)
 	{
@@ -3500,7 +3640,7 @@ static inline Type *type_flatten_to_int(Type *type)
 			case TYPE_BITSTRUCT:
 				type = type->decl->strukt.container_type->type;
 				break;
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 				type = type->decl->enums.type_info->type;
 				break;
 			case TYPE_ENUM:
@@ -3524,7 +3664,7 @@ static inline CanonicalType *type_distinct_inline(Type *type)
 		type = type->canonical;
 		switch (type->type_kind)
 		{
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 				type = enum_inner_type(type);
 				break;
 			case TYPE_TYPEDEF:
@@ -3540,6 +3680,20 @@ static inline CanonicalType *type_distinct_inline(Type *type)
 		}
 	}
 }
+
+INLINE Type *type_flatten_once(Type *type)
+{
+	type = type->canonical;
+	switch (type->type_kind)
+	{
+		case TYPE_CONSTSET: return enum_inner_type(type)->canonical;
+		case TYPE_TYPEDEF: return type->decl->distinct->type->canonical;
+		case TYPE_OPTIONAL: return type->optional->canonical;
+		case TYPE_ALIAS: UNREACHABLE
+		default: return type;
+	}
+}
+
 static inline FlatType *type_flatten(Type *type)
 {
 	while (1)
@@ -3547,7 +3701,7 @@ static inline FlatType *type_flatten(Type *type)
 		type = type->canonical;
 		switch (type->type_kind)
 		{
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 				type = enum_inner_type(type);
 				break;
 			case TYPE_TYPEDEF:
@@ -3578,7 +3732,7 @@ static inline Type *type_flatten_no_export(Type *type)
 				if (type->decl->is_export) return type;
 				type = type->decl->distinct->type;
 				break;
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 				if (type->decl->is_export) return type;
 				type = enum_inner_type(type);
 				break;
@@ -3688,7 +3842,7 @@ static inline Type *type_flat_for_arithmethics(Type *type)
 			case TYPE_OPTIONAL:
 				type = type->optional;
 				continue;
-			case TYPE_CONSTDEF:
+			case TYPE_CONSTSET:
 			case TYPE_TYPEDEF:
 				inner = type_inline(type);
 				if (type->decl->is_substruct)
@@ -3809,7 +3963,7 @@ INLINE bool decl_has_interface(Decl *decl)
 		[DECL_UNION] = true,
 		[DECL_STRUCT] = true,
 		[DECL_ENUM] = true,
-		[DECL_CONSTDEF] = true,
+		[DECL_CONSTSET] = true,
 		[DECL_TYPEDEF] = true,
 		[DECL_BITSTRUCT] = true
 	};
@@ -3879,6 +4033,17 @@ INLINE TypeInfo *decl_find_method_target(Decl *decl)
 INLINE TypeInfo *decl_find_target_if_method(Decl *decl)
 {
 	return type_infoptrzero(decl->func_decl.type_parent);
+}
+
+INLINE bool decl_skip_benchtest_function(Decl *decl)
+{
+	// Always added
+	bool is_test = decl->func_decl.attr_test;
+	bool is_bench = decl->func_decl.attr_benchmark;
+	if (!is_test && !is_bench) return false;
+	bool keep_bench = is_bench && compiler.build.build_benchmark;
+	bool keep_test = is_test && compiler.build.build_test;
+	return !keep_bench && !keep_test;
 }
 
 static inline DeclKind decl_from_token(TokenType type)
@@ -4253,7 +4418,7 @@ bool static_lib_linker(const char *output_file, const char **files, int file_cou
 bool dynamic_lib_linker(const char *output_file, const char **files, int file_count);
 bool linker(const char *output_file, const char **files, int file_count);
 void platform_linker(const char *output_file, const char **files, int file_count);
-const char *cc_compiler(const char *cc, const char *file, const char *flags, const char **include_dirs, const char *output_subdir);
+const char *cc_compiler(const char *cc, const char *file, const char *out_name, const char *flags, const char **include_dirs, const char *output_subdir);
 const char *arch_to_linker_arch(ArchType arch);
 extern char swizzle[256];
 #define SWIZZLE_INDEX(c) ((swizzle[(int)(c)] - 1) & 0xF)
@@ -4543,6 +4708,11 @@ INLINE void expr_rewrite_const_integer(Expr *expr, Type *type, Int128 i)
 	ASSERT_SPAN(expr, type_kind_is_any_integer(expr->const_expr.ixx.type));
 	expr->const_expr.is_character = false;
 	expr->const_expr.const_kind = CONST_INTEGER;
+}
+
+INLINE void expr_rewrite_const_byte(Expr *expr, Type *type, uint8_t c)
+{
+	expr_rewrite_const_int(expr, type, type_is_signed(type_flatten(type)) ? (uint64_t)(int8_t)c : c);
 }
 
 INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v)
@@ -4884,12 +5054,6 @@ INLINE void const_init_set_type(ConstInitializer *init, Type *type)
 	init->type = type_flatten(type);
 }
 
-INLINE bool expr_is_valid_index(Expr *expr)
-{
-	ASSERT_SPAN(expr, expr_is_const_int(expr));
-	return int_fits(expr->const_expr.ixx, TYPE_I64);
-}
-
 INLINE ResolvedAttrData *decl_get_resolved_attributes(Decl *decl)
 {
 	return decl->resolved_attributes ? decl->attrs_resolved : NULL;
@@ -4909,5 +5073,5 @@ const char *os_type_to_string(OsType os);
 
 INLINE void expr_rewrite_const_string_from_scratch(Expr *expr_to_rewrite)
 {
-	expr_rewrite_const_string(expr_to_rewrite, scratch_buffer_copy(), (ArrayIndex)scratch_buffer.len);
+	expr_rewrite_const_string(expr_to_rewrite, scratch_buffer_copy(), (ArrayIndex)scratch_buffer_len());
 }

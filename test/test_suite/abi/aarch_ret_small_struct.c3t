@@ -34,11 +34,11 @@ entry:
   %tempcoerce1 = alloca i64, align 8
   %0 = call i40 @sg_query_features()
   store i40 %0, ptr %tempcoerce, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %result, ptr align 8 %tempcoerce, i32 5, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %fs, ptr align 1 %result, i32 5, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 1 %result, ptr align 8 %tempcoerce, i64 5, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 1 %fs, ptr align 1 %result, i64 5, i1 false)
   %ptradd = getelementptr inbounds i8, ptr %fs, i64 4
   store i8 0, ptr %ptradd, align 1
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tempcoerce1, ptr align 1 %fs, i32 5, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %tempcoerce1, ptr align 1 %fs, i64 5, i1 false)
   %1 = load i64, ptr %tempcoerce1, align 8
   call void @set_features(i64 %1)
   ret void

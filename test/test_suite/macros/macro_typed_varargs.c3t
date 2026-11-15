@@ -46,7 +46,7 @@ entry:
   %i14 = alloca %any, align 8
   %varargslots16 = alloca [1 x %any], align 16
   %retparam17 = alloca i64, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %literal, ptr align 16 @.__const, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %literal, ptr align 16 @.__const, i64 16, i1 false)
   %0 = insertvalue %"int[]" undef, ptr %literal, 0
   %1 = insertvalue %"int[]" %0, i64 4, 1
   store %"int[]" %1, ptr %x, align 8
@@ -112,7 +112,7 @@ loop.body13:                                      ; preds = %loop.cond11
   %23 = load ptr, ptr %x8, align 8
   %24 = load i64, ptr %.anon10, align 8
   %ptroffset15 = getelementptr inbounds [16 x i8], ptr %23, i64 %24
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %i14, ptr align 8 %ptroffset15, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %i14, ptr align 8 %ptroffset15, i64 16, i1 false)
   %25 = load ptr, ptr %i14, align 8
   %26 = insertvalue %any undef, ptr %25, 0
   %27 = insertvalue %any %26, i64 ptrtoint (ptr @"$ct.int" to i64), 1

@@ -46,7 +46,7 @@ entry:
   store %"int[]" %3, ptr %sub, align 8
   %4 = load ptr, ptr %y, align 8
   %ptradd2 = getelementptr inbounds i8, ptr %4, i64 12
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y1, ptr align 4 %ptradd2, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %y1, ptr align 4 %ptradd2, i64 12, i1 false)
   %5 = load ptr, ptr %z, align 8
   %ptradd3 = getelementptr inbounds i8, ptr %5, i64 4
   %6 = load i32, ptr %ptradd3, align 4

@@ -1,0 +1,87 @@
+// #target: linux-x64
+module test;
+
+struct Aligned @align(16) { float[1] a; }
+union AlignedUnion @align(16) { float[1] a; }
+struct Inner { float[1] a; }
+struct Outer { Inner i; double d; }
+struct Half7 { float16[7] a; }
+
+fn float aligned(Aligned x) => x.a[0];
+fn float aligned_union(AlignedUnion x) => x.a[0];
+fn float outer(Outer x) => x.i.a[0];
+fn float16 half7(Half7 x) => x.a[6];
+
+fn int main()
+{
+	Half7 h;
+	half7(h);
+	return 0;
+}
+
+/* #expect: test.ll
+
+define float @test.aligned(float %0) #0 {
+entry:
+  %x = alloca %Aligned, align 16
+  store float %0, ptr %x, align 16
+  %1 = load float, ptr %x, align 4
+  ret float %1
+}
+
+define float @test.aligned_union(float %0) #0 {
+entry:
+  %x = alloca %AlignedUnion, align 16
+  store float %0, ptr %x, align 16
+  %1 = load float, ptr %x, align 4
+  ret float %1
+}
+
+define float @test.outer(<2 x float> %0, double %1) #0 {
+entry:
+  %x = alloca %Outer, align 8
+  store <2 x float> %0, ptr %x, align 8
+  %ptradd = getelementptr inbounds i8, ptr %x, i64 8
+  store double %1, ptr %ptradd, align 8
+  %2 = load float, ptr %x, align 4
+  ret float %2
+}
+
+define half @test.half7(<4 x half> %0, <4 x half> %1) #0 {
+entry:
+  %x = alloca %Half7, align 8
+  %coerce = alloca { <4 x half>, <4 x half> }, align 8
+  store <4 x half> %0, ptr %coerce, align 8
+  %ptradd = getelementptr inbounds i8, ptr %coerce, i64 8
+  store <4 x half> %1, ptr %ptradd, align 8
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %x, ptr align 8 %coerce, i64 14, i1 false)
+  %ptradd1 = getelementptr inbounds i8, ptr %x, i64 12
+  %2 = load half, ptr %ptradd1, align 2
+  ret half %2
+}
+
+define i32 @main() #0 {
+entry:
+  %h = alloca %Half7, align 2
+  %coerce = alloca { <4 x half>, <4 x half> }, align 8
+  store half 0.000000e+00, ptr %h, align 2
+  %ptradd = getelementptr inbounds i8, ptr %h, i64 2
+  store half 0.000000e+00, ptr %ptradd, align 2
+  %ptradd1 = getelementptr inbounds i8, ptr %h, i64 4
+  store half 0.000000e+00, ptr %ptradd1, align 2
+  %ptradd2 = getelementptr inbounds i8, ptr %h, i64 6
+  store half 0.000000e+00, ptr %ptradd2, align 2
+  %ptradd3 = getelementptr inbounds i8, ptr %h, i64 8
+  store half 0.000000e+00, ptr %ptradd3, align 2
+  %ptradd4 = getelementptr inbounds i8, ptr %h, i64 10
+  store half 0.000000e+00, ptr %ptradd4, align 2
+  %ptradd5 = getelementptr inbounds i8, ptr %h, i64 12
+  store half 0.000000e+00, ptr %ptradd5, align 2
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %coerce, ptr align 2 %h, i64 14, i1 false)
+  %lo = load <4 x half>, ptr %coerce, align 8
+  %ptradd6 = getelementptr inbounds i8, ptr %coerce, i64 8
+  %hi = load <4 x half>, ptr %ptradd6, align 8
+  %0 = call half @test.half7(<4 x half> %lo, <4 x half> %hi)
+  ret i32 0
+}
+

@@ -53,6 +53,8 @@
   "optsize": "none",
   // Relocation model: "none", "pic", "PIC", "pie", "PIE".
   "reloc": "none",
+  // Panic on empty infinite loops in safe mode.
+  "infinite-loop-detect": false,
   // Trap on signed and unsigned integer wrapping for testing.
   "trap-on-wrap": false,
   // Turn safety (contracts, runtime bounds checking, null pointer checks etc).

@@ -25,13 +25,14 @@ entry:
   %fpfpext1 = fpext float %1 to double
   %optval = load i64, ptr %b.f, align 8
   %not_err = icmp eq i64 %optval, 0
-  %2 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %2, label %after_check, label %voiderr
+  br i1 %not_err, label %after_check, label %voiderr
+
 after_check:                                      ; preds = %entry
-  %3 = load float, ptr %b, align 4
-  %fpfpext2 = fpext float %3 to double
+  %2 = load float, ptr %b, align 4
+  %fpfpext2 = fpext float %2 to double
   call void (ptr, ...) @printf(ptr @.str, double %fpfpext, double %fpfpext1, double %fpfpext2)
   br label %voiderr
+
 voiderr:                                          ; preds = %after_check, %entry
   ret void
 }

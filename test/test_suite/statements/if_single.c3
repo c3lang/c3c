@@ -26,4 +26,19 @@ fn void test()
         x++;
     }
 
+    if (x < 0)
+    {
+        x++;
+    }
+    else if (x > 0) x++;    // #error: An 'else if' must use '{ }' even around a single statement.
+
+    if (x < 0)
+    {
+        x++;
+    }
+    else if (x > 0)
+    {
+        x++;
+    }
+    else if (x == 0) x++;   // #error: An 'else if' must use '{ }' even around a single statement.
 }

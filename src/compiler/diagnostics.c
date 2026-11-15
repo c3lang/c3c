@@ -126,7 +126,7 @@ static void print_error_type_at(SourceLoc *location, const char *message, PrintT
 		eprintf("\n");
 		return;
 	}
-	if (compiler.build.test_output || compiler.build.benchmark_output)
+	if (compiler.build.test_output)
 	{
 		switch (print_type)
 		{

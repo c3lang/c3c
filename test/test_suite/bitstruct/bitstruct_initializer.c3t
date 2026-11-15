@@ -159,7 +159,7 @@ entry:
   %9 = and i8 %8, 127
   %10 = or i8 %9, %shl27
   store i8 %10, ptr %ptradd28, align 1
-  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %b, ptr align 1 %.assign_list10, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 1 %b, ptr align 1 %.assign_list10, i64 8, i1 false)
   %11 = load i64, ptr %x, align 8
   %12 = and i64 4294967295, %11
   %trunc29 = trunc i64 %12 to i32
@@ -336,7 +336,7 @@ entry:
   %74 = and i8 %73, 127
   %75 = or i8 %74, %shl112
   store i8 %75, ptr %ptradd113, align 1
-  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %b, ptr align 1 %.assign_list88, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 1 %b, ptr align 1 %.assign_list88, i64 8, i1 false)
   %76 = load i64, ptr %x, align 8
   %77 = and i64 4294967295, %76
   %trunc115 = trunc i64 %77 to i32

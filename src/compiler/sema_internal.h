@@ -58,6 +58,7 @@ void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags, Sou
 SemaContext *context_transform_for_eval(SemaContext *context, SemaContext *temp_context, CompilationUnit *eval_unit);
 
 TokenType sema_splitpathref(const char *string, ArrayIndex len, Path **path_ref, const char **ident_ref);
+TypeInfo *sema_type_info_from_string(SemaContext *context, Expr *expr, bool report_missing);
 void sema_print_inline(SemaContext *context, SourceLocId original);
 void sema_error_at(SemaContext *context, SourceLocId loc, const char *message, ...);
 bool sema_warn_at(SemaContext *context, SourceLocId loc, WarningLevel level, const char *message, ...);
@@ -114,7 +115,8 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr);
 void sema_add_methods_to_decl_stack(SemaContext *context, Decl *decl);
 
 bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool call_var_optional, bool *no_match_ref);
-Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, SubscriptIndex *range);
+Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, SubscriptIndex *range, bool *no_match_ref);
+bool sema_check_array_index(SemaContext *context, Expr *index, bool is_len);
 
 Expr *sema_ct_eval_expr(SemaContext *context, CtEvalKind eval_kind, Expr *inner, bool report_missing, bool *was_reflect);
 Expr *sema_resolve_string_ident(SemaContext *context, Expr *inner, bool report_missing);
@@ -179,11 +181,11 @@ INLINE bool sema_analyse_func_macro(SemaContext *context, Decl *decl, AttributeD
 	return true;
 }
 
-INLINE bool sema_check_left_right_const(SemaContext *context, Expr *left, Expr *right)
+INLINE bool sema_check_left_right_const(SemaContext *context, Expr *left, Expr *right, bool *failed_ref)
 {
-	if (!sema_cast_const(left)) RETURN_SEMA_ERROR(left, "Expected this to evaluate to a constant value.");
-	if (!sema_cast_const(right)) RETURN_SEMA_ERROR(right, "Expected this to evaluate to a constant value.");
-	return true;
+	if (sema_cast_const(left) && sema_cast_const(right)) return true;
+	CHECK_ON_DEFINED(failed_ref);
+	RETURN_SEMA_ERROR(sema_cast_const(left) ? right : left, "Expected this to evaluate to a constant value.");
 }
 
 INLINE bool sema_set_alignment(SemaContext *context, Type *type, AlignSize *result, bool is_alloca)
@@ -269,15 +271,20 @@ static inline IndexDiff range_const_len(Range *range)
 	Expr *start = exprptr(range->start);
 	Expr *end = exprptrzero(range->end);
 	if (!end || !expr_is_const_int(end)) return -1;
-	if (!int_fits(end->const_expr.ixx, TYPE_I32)) return -1;
+	if (!int_fits(end->const_expr.ixx, type_sz->canonical->type_kind)) return -1;
 	IndexDiff end_val = (IndexDiff)int_to_i64(end->const_expr.ixx);
 	if (range->is_len) return end_val;
 	if (!expr_is_const_int(start)) return -1;
-	if (!int_fits(start->const_expr.ixx, TYPE_I32)) return -1;
+	if (!int_fits(start->const_expr.ixx, type_sz->canonical->type_kind)) return -1;
 	IndexDiff start_val = (IndexDiff)int_to_i64(start->const_expr.ixx);
 	if (range->start_from_end && range->end_from_end) return start_val - end_val + 1;
 	if (range->start_from_end != range->end_from_end) return -1;
 	return end_val - start_val + 1;
+}
+
+INLINE ArrayIndex max_array_index(void)
+{
+	return type_sz->canonical == type_long ? INT64_MAX : INT32_MAX;
 }
 
 static inline StorageType sema_resolve_storage_type(SemaContext *context, Type *type)

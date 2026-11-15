@@ -1,0 +1,20 @@
+// #target: macos-x64
+module test;
+
+bitstruct Bits : uint
+{
+	uint a : 0..15;
+	uint b : 16..31;
+}
+
+// A constant of the same size as the container is a plain bit reinterpretation,
+// just like `(uint)-1`, so this is all ones.
+fn int main()
+{
+	Bits f = (Bits)-1;
+	return 0;
+}
+
+/* #expect: test.ll
+
+  store i32 -1, ptr %f, align 4

@@ -46,6 +46,6 @@ entry:
   %ptradd2 = getelementptr inbounds i8, ptr %literal, i64 24
   %zext3 = zext i8 %7 to i64
   store i64 %zext3, ptr %ptradd2, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %0, ptr align 8 %literal, i32 32, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %0, ptr align 8 %literal, i64 32, i1 false)
   ret void
 }

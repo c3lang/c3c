@@ -1,0 +1,16 @@
+// #opt: -O1
+// #file: file1.c3
+module test;
+
+fn void main()
+{
+	// The first use of `g` in this module's codegen is the try unwrap,
+	// before the unit declaring `g` has emitted it.
+	if (try g) {}
+}
+
+// #file: file2.c3
+module test;
+
+faultdef NOT_LOADED;
+int? g = NOT_LOADED~;

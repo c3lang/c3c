@@ -87,7 +87,7 @@ entry:
   %a81 = alloca double, align 8
   %.anon87 = alloca i64, align 8
   %a91 = alloca double, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %foo, ptr align 4 @.__const, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %foo, ptr align 4 @.__const, i64 12, i1 false)
   store <4 x float> <float 2.000000e+00, float 4.500000e+00, float 8.000000e+00, float undef>, ptr %foo2, align 16
   store i64 0, ptr %.anon, align 8
   br label %loop.cond

@@ -6,3 +6,5 @@
 
 // This guarantees that the path does not end with '/'
 const char *find_executable_path(void);
+// The full path of the running executable.
+const char *find_executable_file(void);

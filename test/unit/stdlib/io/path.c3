@@ -497,3 +497,13 @@ fn void test_ls_options() => mem::@scoped(tmem)
 	assert(found_alpha);
 	assert(found_gamma);
 }
+fn void test_mkdir_rmdir_string()
+{
+	Path root = path::temp_directory(tmem).tappend("c3_rmdir_string_test")!!;
+	if (path::exists(root)) (void)path::rmtree(root);
+	String dir = (String)root;
+	assert(path::mkdir(dir)!!);
+	assert(path::is_dir(root));
+	assert(path::rmdir(dir)!!);
+	assert(!path::exists(root));
+}

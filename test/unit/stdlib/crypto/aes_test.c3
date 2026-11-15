@@ -333,9 +333,9 @@ fn void test_aes_xcrypt() @test
 			char[] cipher;
 			switch (t.aes)
 			{
-				case AES128: cipher = aes128::tencrypt(t.key, iv, t.plaintext);
-				case AES192: cipher = aes192::tencrypt(t.key, iv, t.plaintext);
-				case AES256: cipher = aes256::tencrypt(t.key, iv, t.plaintext);
+				case AES128: cipher = aes128::tencrypt(t.key[:16], iv, t.plaintext);
+				case AES192: cipher = aes192::tencrypt(t.key[:24], iv, t.plaintext);
+				case AES256: cipher = aes256::tencrypt(t.key[:32], iv, t.plaintext);
 			}
 			assert(cipher == t.cipher[:64],
 				"Test %d failed; invalid cipher; got: %s, want: %s", i + 1, cipher, t.cipher);
@@ -344,9 +344,9 @@ fn void test_aes_xcrypt() @test
 			char[] text;
 			switch (t.aes)
 			{
-				case AES128: text = aes128::tdecrypt(t.key, iv, t.cipher);
-				case AES192: text = aes192::tdecrypt(t.key, iv, t.cipher);
-				case AES256: text = aes256::tdecrypt(t.key, iv, t.cipher);
+				case AES128: text = aes128::tdecrypt(t.key[:16], iv, t.cipher);
+				case AES192: text = aes192::tdecrypt(t.key[:24], iv, t.cipher);
+				case AES256: text = aes256::tdecrypt(t.key[:32], iv, t.cipher);
 			}
 			assert(text[:64] == t.plaintext[:64],
 				"Test %d failed; invalid plaintext; got: %h, want: %h", i + 1, text, t.plaintext);

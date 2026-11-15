@@ -1,0 +1,25 @@
+// #target: macos-aarch64
+// #safe: yes
+module foo;
+
+fn bool first(int x) @private => x > 0;
+fn bool second(int x) @private => x < 10;
+fn bool third(int x) @private => x != 5;
+
+<*
+ @require first(x)
+ @require second(x)
+ @require third(x)
+*>
+fn int checked(int x) => x;
+
+module test;
+import foo;
+
+fn int main() => foo::checked(1);
+
+/* #expect: foo.ll
+
+define zeroext i8 @foo.first(i32 %0)
+define zeroext i8 @foo.second(i32 %0)
+define zeroext i8 @foo.third(i32 %0)

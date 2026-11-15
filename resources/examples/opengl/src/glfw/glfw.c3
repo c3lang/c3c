@@ -5,28 +5,27 @@ import std::io;
 typedef Window @public = inline _Window*;
 typedef Monitor @public = inline _Monitor*;
 
-fn void Window.create(&self, int width, int height, String title, Monitor monitor = {}, Window share = {}
-) @public
+fn void Window.create(&self, int width, int height, String title, Monitor monitor = {}, Window share = {})
 {
 	*self = (Window)_glfwCreateWindow(width, height, title, monitor, share);
 }
 
-fn void Window.destroy(self) @public
+fn void Window.destroy(self)
 {
 	_glfwDestroyWindow((_Window*)self);
 }
 
-fn bool Window.shouldClose(self) @public
+fn bool Window.shouldClose(self)
 {
 	return _glfwWindowShouldClose((_Window*)self);
 }
 
-fn void Window.swapBuffers(self) @public
+fn void Window.swapBuffers(self)
 {
 	return _glfwSwapBuffers((_Window*)self);
 }
 
-fn void Window.makeContextCurrent(self) @public
+fn void Window.makeContextCurrent(self)
 {
 	return _glfwMakeContextCurrent((_Window*)self);
 }

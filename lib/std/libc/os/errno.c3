@@ -28,8 +28,8 @@ macro int errno()                 @feat(WIN32)
 	_get_errno(&holder);
 	return holder;
 }
-extern fn void _get_errno(int* result) @feat(WIN32);
-extern fn void _set_errno(int err)     @feat(WIN32);
+extern fn CInt _get_errno(int* result) @feat(WIN32);
+extern fn CInt _set_errno(int err)     @feat(WIN32);
 macro void errno_set(int err)          @feat(WIN32) => _set_errno(err);
 
 // Default

@@ -1,0 +1,30 @@
+// #target: windows-x64
+module test;
+
+typedef Float4 = float[<4>] @simd;
+typedef Int4 = int[<4>] @simd;
+
+extern fn Float4 get_float4();
+extern fn Float4 add_float4(Float4 a, Float4 b);
+extern fn Int4 add_int4(Int4 a, Int4 b);
+
+fn Float4 mul_float4(Float4 a, Float4 b) => a * b;
+
+fn void use_vectors()
+{
+	Float4 f = get_float4();
+	f = add_float4(f, f);
+	Int4 i = { 1, 2, 3, 4 };
+	i = add_int4(i, i);
+}
+
+/* #expect: test.ll
+
+declare <4 x float> @get_float4()
+declare <4 x float> @add_float4(
+declare <4 x i32> @add_int4(
+define <4 x float> @test.mul_float4(
+define void @test.use_vectors()
+call <4 x float> @get_float4()
+call <4 x float> @add_float4(
+call <4 x i32> @add_int4(

@@ -139,7 +139,7 @@ fn Backtrace? backtrace_load_element(Allocator allocator, String execpath, void*
 		};
 	}
 	Darwin_Dl_info info;
-	if (!buffer || !darwin::dladdr(buffer, &info)) return backtrace::BACKTRACE_UNKNOWN;
+	if (!buffer || !darwin::dladdr(buffer - 1, &info)) return backtrace::BACKTRACE_UNKNOWN;
 	return {
 		.offset = (sz)(iptr)buffer,
 		.function = info.dli_sname ? info.dli_sname.copy(allocator) : "???".copy(allocator),

@@ -1,5 +1,5 @@
-// #file: constdef_value_visibility.c3
-constdef TypeName
+// #file: constset_value_visibility.c3
+constset TypeName
 {
 	AAA @local, // #error: '@local' cannot be used here.
 }

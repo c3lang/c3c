@@ -43,8 +43,7 @@ entry:
   %err = alloca i64, align 8
   %0 = call i64 @foo.test(ptr %retparam)
   %not_err = icmp eq i64 %0, 0
-  %1 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %1, label %after_check, label %assign_optional
+  br i1 %not_err, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %entry
   store i64 %0, ptr %error_var, align 8
@@ -54,10 +53,10 @@ after_check:                                      ; preds = %entry
   br label %noerr_block
 
 guard_block:                                      ; preds = %assign_optional
+  %1 = load i64, ptr %error_var, align 8
+  store i64 %1, ptr %err, align 8
   %2 = load i64, ptr %error_var, align 8
-  store i64 %2, ptr %err, align 8
-  %3 = load i64, ptr %error_var, align 8
-  ret i64 %3
+  ret i64 %2
 
 noerr_block:                                      ; preds = %after_check
   ret i64 0
@@ -88,37 +87,36 @@ entry:
   store i64 ptrtoint (ptr @std.core.builtin.NOT_FOUND to i64), ptr %x.f, align 8
   %optval = load i64, ptr %x.f, align 8
   %not_err = icmp eq i64 %optval, 0
-  %1 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %1, label %after_check, label %assign_optional
+  br i1 %not_err, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %entry
   store i64 %optval, ptr %z.f, align 8
   br label %opt_block_cleanup
 
 after_check:                                      ; preds = %entry
-  %2 = load i32, ptr %x, align 4
-  store i32 %2, ptr %blockret, align 4
+  %1 = load i32, ptr %x, align 4
+  store i32 %1, ptr %blockret, align 4
   br label %expr_block.exit
 
 opt_block_cleanup:                                ; preds = %assign_optional
-  %3 = load i64, ptr %z.f, align 8
-  store i64 %3, ptr %err, align 8
-  %4 = insertvalue %any undef, ptr %err, 0
-  %5 = insertvalue %any %4, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
-  store %any %5, ptr %varargslots, align 16
-  %6 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 6, ptr %varargslots, i64 1)
+  %2 = load i64, ptr %z.f, align 8
+  store i64 %2, ptr %err, align 8
+  %3 = insertvalue %any undef, ptr %err, 0
+  %4 = insertvalue %any %3, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
+  store %any %4, ptr %varargslots, align 16
+  %5 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 6, ptr %varargslots, i64 1)
   store i64 ptrtoint (ptr @foo.FOO to i64), ptr %err, align 8
-  %7 = load i64, ptr %z.f, align 8
-  store i64 %7, ptr %err3, align 8
-  %8 = insertvalue %any undef, ptr %err3, 0
-  %9 = insertvalue %any %8, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
-  store %any %9, ptr %varargslots4, align 16
-  %10 = call i64 @std.io.printfn(ptr %retparam5, ptr @.str.1, i64 8, ptr %varargslots4, i64 1)
+  %6 = load i64, ptr %z.f, align 8
+  store i64 %6, ptr %err3, align 8
+  %7 = insertvalue %any undef, ptr %err3, 0
+  %8 = insertvalue %any %7, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
+  store %any %8, ptr %varargslots4, align 16
+  %9 = call i64 @std.io.printfn(ptr %retparam5, ptr @.str.1, i64 8, ptr %varargslots4, i64 1)
   br label %after_assign
 
 expr_block.exit:                                  ; preds = %after_check
-  %11 = load i32, ptr %blockret, align 4
-  store i32 %11, ptr %z, align 4
+  %10 = load i32, ptr %blockret, align 4
+  store i32 %10, ptr %z, align 4
   store i64 0, ptr %z.f, align 8
   br label %after_assign
 
@@ -126,32 +124,31 @@ after_assign:                                     ; preds = %expr_block.exit, %o
   store i64 ptrtoint (ptr @std.core.builtin.NOT_FOUND to i64), ptr %x.f9, align 8
   %optval10 = load i64, ptr %x.f9, align 8
   %not_err11 = icmp eq i64 %optval10, 0
-  %12 = call i1 @llvm.expect.i1(i1 %not_err11, i1 true)
-  br i1 %12, label %after_check13, label %assign_optional12
+  br i1 %not_err11, label %after_check13, label %assign_optional12
 
 assign_optional12:                                ; preds = %after_assign
   store i64 %optval10, ptr %reterr, align 8
   br label %err_retblock
 
 after_check13:                                    ; preds = %after_assign
-  %13 = load i32, ptr %x8, align 4
-  store i32 %13, ptr %0, align 4
+  %11 = load i32, ptr %x8, align 4
+  store i32 %11, ptr %0, align 4
   ret i64 0
 
 err_retblock:                                     ; preds = %assign_optional12
-  %14 = load i64, ptr %reterr, align 8
-  store i64 %14, ptr %err14, align 8
-  %15 = insertvalue %any undef, ptr %err14, 0
-  %16 = insertvalue %any %15, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
-  store %any %16, ptr %varargslots15, align 16
-  %17 = call i64 @std.io.printfn(ptr %retparam16, ptr @.str.3, i64 6, ptr %varargslots15, i64 1)
+  %12 = load i64, ptr %reterr, align 8
+  store i64 %12, ptr %err14, align 8
+  %13 = insertvalue %any undef, ptr %err14, 0
+  %14 = insertvalue %any %13, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
+  store %any %14, ptr %varargslots15, align 16
+  %15 = call i64 @std.io.printfn(ptr %retparam16, ptr @.str.3, i64 6, ptr %varargslots15, i64 1)
   store i64 ptrtoint (ptr @foo.FOO to i64), ptr %err14, align 8
-  %18 = load i64, ptr %reterr, align 8
-  store i64 %18, ptr %err19, align 8
-  %19 = insertvalue %any undef, ptr %err19, 0
-  %20 = insertvalue %any %19, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
-  store %any %20, ptr %varargslots20, align 16
-  %21 = call i64 @std.io.printfn(ptr %retparam21, ptr @.str.4, i64 8, ptr %varargslots20, i64 1)
-  %22 = load i64, ptr %reterr, align 8
-  ret i64 %22
+  %16 = load i64, ptr %reterr, align 8
+  store i64 %16, ptr %err19, align 8
+  %17 = insertvalue %any undef, ptr %err19, 0
+  %18 = insertvalue %any %17, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
+  store %any %18, ptr %varargslots20, align 16
+  %19 = call i64 @std.io.printfn(ptr %retparam21, ptr @.str.4, i64 8, ptr %varargslots20, i64 1)
+  %20 = load i64, ptr %reterr, align 8
+  ret i64 %20
 }

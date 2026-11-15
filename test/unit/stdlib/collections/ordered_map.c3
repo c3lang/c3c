@@ -216,7 +216,7 @@ enum Foobar : char
 	BAZ
 }
 
-constdef Foobar2 : inline int
+constset Foobar2 : inline int
 {
 	ABC = 3,
 	DEF = 5,

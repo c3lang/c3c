@@ -208,6 +208,7 @@ static int get_executable_path_raw(char *out)
 #endif
 
 static char buffer[MAX_EXE_PATH];
+static char file_buffer[MAX_EXE_PATH];
 static bool path_found = false;
 const char *find_executable_path(void)
 {
@@ -220,6 +221,7 @@ const char *find_executable_path(void)
 	{
 		if ('\\' == buffer[i]) buffer[i] = '/';
 	}
+	memcpy(file_buffer, buffer, len + 1);
 	for (int i = len - 1; i >= 0; i--)
 	{
 		switch (buffer[i])
@@ -234,4 +236,10 @@ const char *find_executable_path(void)
 	}
 	buffer[0] = 0;
 	return buffer;
+}
+
+const char *find_executable_file(void)
+{
+	find_executable_path();
+	return file_buffer;
 }

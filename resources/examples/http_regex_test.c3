@@ -8,9 +8,7 @@ const int THREAD_COUNT = 8;
 // Clean up SIGPIPE errors under Unix-like targets
 fn void ignore_sigpipe() @init(1001) @feat(!WIN32)
 {
-	// c3fmt off
-	libc::signal(libc::SIGPIPE, fn void (int) {});
-	// c3fmt on
+	libc::signal(libc::SIGPIPE, fn void(CInt) {});
 }
 
 struct RegexQuery
@@ -33,7 +31,7 @@ excuse MALFORMED_REQUEST;
 
 fn int main(String[] args)
 {
-	int port                = 8080;
+	int port = 8080;
 	TcpServerSocket? server = tcp::listen("0.0.0.0", port, 128, REUSEADDR);
 	if (catch err = server)
 	{
@@ -43,8 +41,7 @@ fn int main(String[] args)
 
 	io::printfn("Regex Tester running at http://127.0.0.1:%d", port);
 
-	ThreadGroup{TcpSocket*, int} worker_pool;
-	// ThreadGroup{TcpSocket*, void} worker_pool; // not working: https://github.com/c3lang/c3c/blob/master/lib/std/threads/threadgroup.c3#L461
+	ThreadGroup{TcpSocket*, void} worker_pool;
 	if (catch err = worker_pool.init(mem, &handle_thread, THREAD_COUNT))
 	{
 		io::eprintfn("Failed to initialize thread group: %s", err);
@@ -65,13 +62,11 @@ fn int main(String[] args)
 	}
 }
 
-// fn void handle_thread(TcpSocket* conn_ptr, void* context) => @pool_init(mem, 65536) // oops, need to return something
-fn int handle_thread(TcpSocket* conn_ptr, void* context) => @pool_init(mem, 65536)
+fn void handle_thread(TcpSocket* conn_ptr, void* context) => @pool_init(mem, 65536)
 {
 	TcpSocket conn = *conn_ptr;
 	mem::free(conn_ptr);
 	(void)handle(conn);
-	return 0;
 }
 
 fn void? handle(TcpSocket conn)
@@ -80,7 +75,7 @@ fn void? handle(TcpSocket conn)
 
 	while REQ_LOOP: (true)
 	{
-		Poll[1] p   = { { conn.sock, READ, (PollEvent)0 } };
+		Poll[1] p = { { .socket = conn.sock, .events = READ } };
 		ulong ready = net::poll_ms(p[..], 5000) ?? 0;
 		if (ready == 0) return;
 
@@ -100,12 +95,8 @@ fn void? handle(TcpSocket conn)
 
 			String request_data = (String)buf[:total];
 
-			ParsedRequest parsed_req;
-			if (try req_val = parse_request(request_data))
-			{
-				parsed_req = req_val;
-			}
-			else
+			ParsedRequest? parsed_req = parse_request(request_data);
+			if (catch parsed_req)
 			{
 				send_error(&conn, 400, "Bad Request")!;
 				return;
@@ -113,7 +104,7 @@ fn void? handle(TcpSocket conn)
 
 			RegexQuery rq = parse_query_params(parsed_req.query);
 
-			// defaults for testing
+			// Defaults for testing
 			if (rq.regex.len == 0 && rq.data.len == 0)
 			{
 				rq.regex = "(\\w+)@(\\w+)\\.(\\w+)";
@@ -128,12 +119,17 @@ fn void? handle(TcpSocket conn)
 			}
 
 			String html_content = generate_html(rq, result_html);
+			String date_str = datetime::from_time_tz(time::now(), 0).format(tmem, RFC1123);
+			String conn_str = parsed_req.keep_alive ? "keep-alive" : "close";
 
-			conn.write(
-				string::tformat(
-					"HTTP/1.1 200 OK\r\n" "Date: %s\r\n" "Content-Type: text/html; charset=utf-8\r\n" "Content-Length: %d\r\n" "Connection: %s\r\n\r\n" "%s",
-					datetime::from_time_tz(time::now(), 0)
-				.format(tmem, RFC1123), html_content.len, parsed_req.keep_alive ? "keep-alive" : "close", html_content))!;
+			conn.write(string::tformat(
+				"HTTP/1.1 200 OK\r\n"
+				"Date: %s\r\n"
+				"Content-Type: text/html; charset=utf-8\r\n"
+				"Content-Length: %d\r\n"
+				"Connection: %s\r\n\r\n"
+				"%s",
+				date_str, html_content.len, conn_str, html_content))!;
 
 			if (!parsed_req.keep_alive) return;
 		};
@@ -147,9 +143,9 @@ fn ParsedRequest? parse_request(String req)
 	if (catch first_crlf) return MALFORMED_REQUEST~;
 
 	String first_line = req[:first_crlf];
-	Splitter parts    = first_line.tokenize(" ");
-	String method     = parts.next() ?? "";
-	String raw_path   = parts.next() ?? "";
+	Splitter parts = first_line.tokenize(" ");
+	String method = parts.next() ?? "";
+	String raw_path = parts.next() ?? "";
 
 	if (method.len == 0 || raw_path.len == 0) return MALFORMED_REQUEST~;
 	if (method != "GET" && method != "HEAD") return MALFORMED_REQUEST~;
@@ -168,13 +164,13 @@ fn ParsedRequest? parse_request(String req)
 	}
 
 	String headers_part = req[first_crlf + 2..];
-	Splitter lines      = headers_part.tokenize("\r\n");
+	Splitter lines = headers_part.tokenize("\r\n");
 	while (try line = lines.next())
 	{
 		if (try col = line.index_of_char(':'))
 		{
 			String name = line[:col].trim();
-			String val  = line[col + 1..].trim();
+			String val = line[col + 1..].trim();
 			switch (name.to_lower_tcopy())
 			{
 				case "connection":
@@ -190,7 +186,13 @@ fn ParsedRequest? parse_request(String req)
 fn void? send_error(TcpSocket* sock, int code, String reason)
 {
 	String body = string::tformat("<h1>%d %s</h1>", code, reason);
-	sock.write(string::tformat("HTTP/1.1 %d %s\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s", code, reason, body.len, body))!;
+	sock.write(string::tformat(
+		"HTTP/1.1 %d %s\r\n"
+		"Content-Type: text/html; charset=utf-8\r\n"
+		"Content-Length: %d\r\n"
+		"Connection: close\r\n\r\n"
+		"%s",
+		code, reason, body.len, body))!;
 }
 
 fn String get_first_param(UrlQueryValues* vals, String key, String default_val = "")
@@ -223,15 +225,15 @@ fn String html_escape(String input_string)
 	{
 		switch (character)
 		{
-			case '&': ds.append("&amp;");
-			case '<': ds.append("&lt;");
-			case '>': ds.append("&gt;");
-			case '"': ds.append("&quot;");
+			case '&':  ds.append("&amp;");
+			case '<':  ds.append("&lt;");
+			case '>':  ds.append("&gt;");
+			case '"':  ds.append("&quot;");
 			case '\'': ds.append("&#39;");
-			default: ds.append_char(character);
+			default:   ds.append_char(character);
 		}
 	}
-	return ds.copy_str(tmem);
+	return ds.str_view();
 }
 
 fn String build_highlighted_text(String data, regex::Match[] matches)
@@ -241,22 +243,22 @@ fn String build_highlighted_text(String data, regex::Match[] matches)
 	sz last_offset = 0;
 	foreach (m : matches)
 	{
-		int start = m.start();
-		int end   = m.end();
-		if (start >= (int)last_offset)
+		int start = m.start;
+		int end = m.end;
+		if (start >= last_offset)
 		{
-			ds.append(html_escape(data[last_offset:(sz)start - last_offset]));
+			ds.append(html_escape(data[last_offset : start - last_offset]));
 			ds.append("<span class=\"match-highlight\">");
-			ds.append(html_escape(data[(sz)start:(sz)(end - start)]));
+			ds.append(html_escape(data[start : end - start]));
 			ds.append("</span>");
-			last_offset = (sz)end;
+			last_offset = end;
 		}
 	}
 	if (last_offset < data.len)
 	{
 		ds.append(html_escape(data[last_offset..]));
 	}
-	return ds.copy_str(tmem);
+	return ds.str_view();
 }
 
 fn String execute_regex_operation(RegexQuery rq)
@@ -272,7 +274,7 @@ fn String execute_regex_operation(RegexQuery rq)
 	if (catch err = re_opt)
 	{
 		result_ds.appendf("<div style=\"color: #cc0000; font-weight: bold;\">Regex Compile Error: %s</div>", regex::error_string(err));
-		return result_ds.copy_str(tmem);
+		return result_ds.str_view();
 	}
 	regex::Regex re = re_opt;
 	defer re.free();
@@ -280,82 +282,68 @@ fn String execute_regex_operation(RegexQuery rq)
 	switch (rq.op)
 	{
 		case "matches":
+			bool is_match = re.matches(rq.data);
+			result_ds.appendf("<p>Matches: <b style=\"color: %s;\">%s</b></p>", is_match ? "#008000" : "#cc0000", is_match ? "TRUE" : "FALSE");
 
-			{
-				bool is_match = re.matches(rq.data);
-				result_ds.appendf("<p>Matches: <b style=\"color: %s;\">%s</b></p>", is_match ? "#008000" : "#cc0000", is_match ? "TRUE" : "FALSE");
-			}
 		case "find":
-
+			regex::Match[]? matches = re.find_all(tmem, rq.data);
+			if (catch err = matches)
 			{
-				regex::Match[]? matches_opt = re.find_all(tmem, rq.data);
-				if (catch err = matches_opt)
-				{
-					result_ds.appendf("<div style=\"color: #cc0000;\">Execution Error: %s</div>", regex::error_string(err));
-				}
-				else
-				{
-					regex::Match[] matches = matches_opt;
-					if (matches.len == 0)
-					{
-						result_ds.append("<p style=\"color: #cc0000; font-weight: bold;\">No matches found.</p>");
-					}
-					else
-					{
-						result_ds.appendf("<p style=\"color: #008000; font-weight: bold;\">Found %d non-overlapping matches:</p>", matches.len);
-						result_ds.append("<ol style=\"padding-left: 1.5rem;\">");
-						foreach (m : matches)
-						{
-							result_ds.appendf("<li>Match: <code>\"%s\"</code> at byte offsets [%d .. %d]</li>", html_escape(m.str), m.start(), m.end());
-						}
-						result_ds.append("</ol>");
-
-						result_ds.append("<p><b>Visualized Matches:</b></p><pre>");
-						result_ds.append(build_highlighted_text(rq.data, matches));
-						result_ds.append("</pre>");
-					}
-				}
+				result_ds.appendf("<div style=\"color: #cc0000;\">Execution Error: %s</div>", regex::error_string(err));
 			}
+			else if (matches.len == 0)
+			{
+				result_ds.append("<p style=\"color: #cc0000; font-weight: bold;\">No matches found.</p>");
+			}
+			else
+			{
+				result_ds.appendf("<p style=\"color: #008000; font-weight: bold;\">Found %d non-overlapping matches:</p>", matches.len);
+				result_ds.append("<ol style=\"padding-left: 1.5rem;\">");
+				foreach (m : matches)
+				{
+					result_ds.appendf("<li>Match: <code>\"%s\"</code> at byte offsets [%d .. %d]</li>", html_escape(m.str), m.start, m.end);
+				}
+				result_ds.append("</ol>");
+
+				result_ds.append("<p><b>Visualized Matches:</b></p><pre>");
+				result_ds.append(build_highlighted_text(rq.data, matches));
+				result_ds.append("</pre>");
+			}
+
 		case "replace":
-
+			String? replaced = re.replace(tmem, rq.data, rq.replace_with, true);
+			if (catch err = replaced)
 			{
-				String? replaced_opt = re.replace(tmem, rq.data, rq.replace_with, true);
-				if (catch err = replaced_opt)
-				{
-					result_ds.appendf("<div style=\"color: #cc0000;\">Execution Error: %s</div>", regex::error_string(err));
-				}
-				else
-				{
-					String replaced = replaced_opt;
-					result_ds.append("<p><b>Resulting Text:</b></p>");
-					result_ds.appendf("<pre>%s</pre>", html_escape(replaced));
-				}
+				result_ds.appendf("<div style=\"color: #cc0000;\">Execution Error: %s</div>", regex::error_string(err));
 			}
+			else
+			{
+				result_ds.append("<p><b>Resulting Text:</b></p>");
+				result_ds.appendf("<pre>%s</pre>", html_escape(replaced));
+			}
+
 		case "split":
-
+			String[]? parts = re.split(tmem, rq.data);
+			if (catch err = parts)
 			{
-				String[]? parts_opt = re.split(tmem, rq.data);
-				if (catch err = parts_opt)
-				{
-					result_ds.appendf("<div style=\"color: #cc0000;\">Execution Error: %s</div>", regex::error_string(err));
-				}
-				else
-				{
-					String[] parts = parts_opt;
-					result_ds.appendf("<p style=\"color: #008000; font-weight: bold;\">Split into %d parts:</p>", parts.len);
-					result_ds.append("<ol style=\"padding-left: 1.5rem;\">");
-					foreach (p : parts)
-					{
-						result_ds.appendf("<li><code>\"%s\"</code></li>", html_escape(p));
-					}
-					result_ds.append("</ol>");
-				}
+				result_ds.appendf("<div style=\"color: #cc0000;\">Execution Error: %s</div>", regex::error_string(err));
 			}
+			else
+			{
+				result_ds.appendf("<p style=\"color: #008000; font-weight: bold;\">Split into %d parts:</p>", parts.len);
+				result_ds.append("<ol style=\"padding-left: 1.5rem;\">");
+				foreach (p : parts)
+				{
+					result_ds.appendf("<li><code>\"%s\"</code></li>", html_escape(p));
+				}
+				result_ds.append("</ol>");
+			}
+
 		default:
 			result_ds.appendf("<div style=\"color: #cc0000;\">Unknown operation: %s</div>", html_escape(rq.op));
 	}
 
-	return result_ds.copy_str(tmem);
+	return result_ds.str_view();
 }
 
 fn String generate_html(RegexQuery rq, String result_html)
@@ -363,13 +351,13 @@ fn String generate_html(RegexQuery rq, String result_html)
 	DString ds;
 	ds.tinit();
 
-	String escaped_regex        = html_escape(rq.regex);
-	String escaped_data         = html_escape(rq.data);
+	String escaped_regex = html_escape(rq.regex);
+	String escaped_data = html_escape(rq.data);
 	String escaped_replace_with = html_escape(rq.replace_with);
 
 	ds.appendf(HTML_PART_1, escaped_regex, escaped_data);
 
-	String[4] ops       = { "find", "replace", "split", "matches" };
+	String[4] ops = { "find", "replace", "split", "matches" };
 	String[4] op_labels = { "Find All Matches", "Replace Matches", "Split String", "Test Match (bool)" };
 	for (int i = 0; i < 4; i++)
 	{
@@ -385,7 +373,7 @@ fn String generate_html(RegexQuery rq, String result_html)
 
 	ds.append(HTML_PART_3);
 
-	return ds.copy_str(tmem);
+	return ds.str_view();
 }
 
 // HTML Page Templates

@@ -471,6 +471,8 @@ bool x64_contains_float_at_offset(LoweredType *type, int offset)
 	if (type->type_kind == TYPE_STRUCT)
 	{
 		Decl *member = x64_get_member_at_offset(type->decl, offset);
+		// Offset is past the end of the struct, i.e. in trailing padding.
+		if (!member) return false;
 		offset -= member->offset;
 		return x64_contains_float_at_offset(lowered_member_type(member), offset);
 	}
@@ -486,24 +488,49 @@ bool x64_contains_float_at_offset(LoweredType *type, int offset)
 
 static Type *x64_get_fp_type_at_offset(Type *type, int ir_offset)
 {
-	while (type->type_kind == TYPE_UNION)
+	while (true)
 	{
-		Decl *decl = type->decl;
-		type = decl->strukt.members[decl->strukt.union_rep]->type;
+		if (!ir_offset && type_is_float(type)) return type;
+		switch (type->type_kind)
+		{
+			case TYPE_STRUCT:
+			{
+				Decl *decl = type->decl;
+				if (decl->strukt.padding && ir_offset >= type_size(type) - decl->strukt.padding) return NULL;
+				Decl *element = decl->strukt.members[0];
+				FOREACH(Decl *, member, decl->strukt.members)
+				{
+					if (member->offset > ir_offset)
+					{
+						if (ir_offset >= member->offset - member->padding) return NULL;
+						break;
+					}
+					element = member;
+				}
+				type = lowered_member_type(element);
+				ir_offset -= element->offset;
+				break;
+			}
+			case TYPE_UNION:
+			{
+				Decl *decl = type->decl;
+				if (decl->strukt.padding && ir_offset >= type_size(type) - decl->strukt.padding) return NULL;
+				Decl *element = decl->strukt.members[decl->strukt.union_rep];
+				type = lowered_member_type(element);
+				ir_offset -= element->offset;
+				break;
+			}
+			case TYPE_ARRAY:
+			{
+				type = lowered_array_element_type(type);
+				ByteSize size = type_size(type);
+				ir_offset -= (int)((ir_offset / size) * size);
+				break;
+			}
+			default:
+				return NULL;
+		}
 	}
-	if (!ir_offset && type_is_float(type)) return type;
-	if (type->type_kind == TYPE_STRUCT)
-	{
-		Decl *element = x64_get_member_at_offset(type->decl, ir_offset);
-		return x64_get_fp_type_at_offset(lowered_member_type(element), ir_offset - element->offset);
-	}
-	if (type->type_kind == TYPE_ARRAY)
-	{
-		Type *element_type = lowered_array_element_type(type);
-		ByteSize size = type_size(element_type);
-		return x64_get_fp_type_at_offset(element_type, ir_offset - size * (ir_offset / size));
-	}
-	return NULL;
 }
 
 static AbiType x64_get_sse_type_at_offset(Type *type, int ir_offset, Type *source_type, int source_offset)

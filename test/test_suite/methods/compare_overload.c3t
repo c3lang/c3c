@@ -55,13 +55,13 @@ entry:
   %.anon1 = alloca %Foo, align 4
   %.anon2 = alloca %Foo, align 4
   %.anon4 = alloca %Foo, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %a, ptr align 4 @.__const, i32 4, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %b, ptr align 4 @.__const.1, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %a, ptr align 4 @.__const, i64 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %b, ptr align 4 @.__const.1, i64 4, i1 false)
   %0 = load i32, ptr %a, align 4
   %1 = load i32, ptr %b, align 4
   %2 = call i8 @test.Foo.less(i32 %0, i32 %1)
   store i8 %2, ptr %res, align 1
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %.anon, ptr align 4 %a, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %.anon, ptr align 4 %a, i64 4, i1 false)
   %3 = load i32, ptr %b, align 4
   %4 = load i32, ptr %.anon, align 4
   %5 = call i8 @test.Foo.less(i32 %3, i32 %4)
@@ -70,12 +70,12 @@ entry:
   %7 = load i32, ptr %a, align 4
   %8 = call i8 @test.Foo.less(i32 %6, i32 %7)
   store i8 %8, ptr %res, align 1
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %.anon1, ptr align 4 %a, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %.anon1, ptr align 4 %a, i64 4, i1 false)
   %9 = load i32, ptr %a, align 4
   %10 = load i32, ptr %.anon1, align 4
   %11 = call i8 @test.Foo.less(i32 %9, i32 %10)
   store i8 %11, ptr %res, align 1
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %.anon2, ptr align 4 %a, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %.anon2, ptr align 4 %a, i64 4, i1 false)
   %12 = load i32, ptr %b, align 4
   %13 = load i32, ptr %.anon2, align 4
   %14 = call i8 @test.Foo.less(i32 %12, i32 %13)
@@ -90,7 +90,7 @@ entry:
   %not3 = xor i1 %20, true
   %21 = zext i1 %not3 to i8
   store i8 %21, ptr %res, align 1
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %.anon4, ptr align 4 %a, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %.anon4, ptr align 4 %a, i64 4, i1 false)
   %22 = load i32, ptr %a, align 4
   %23 = load i32, ptr %.anon4, align 4
   %24 = call i8 @test.Foo.less(i32 %22, i32 %23)

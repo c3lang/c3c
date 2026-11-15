@@ -1,7 +1,7 @@
 module macro_optional_slice_eq;
 import std;
 
-faultdef BAD_THING;
+excuse BAD_THING;
 
 struct Foo { int bar; }
 

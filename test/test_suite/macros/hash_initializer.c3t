@@ -18,6 +18,6 @@ fn void main()
 @.__const.1 = private unnamed_addr constant [2 x i32] [i32 2, i32 3], align 4
 @.__const.2 = private unnamed_addr constant [2 x i32] [i32 1, i32 0], align 4
 
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 8, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 4 @.__const.1, i32 8, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %z, ptr align 4 @.__const.2, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x, ptr align 4 @.__const, i64 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %y, ptr align 4 @.__const.1, i64 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %z, ptr align 4 @.__const.2, i64 8, i1 false)

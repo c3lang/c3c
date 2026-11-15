@@ -69,8 +69,8 @@ Decl *decl_new_with_type(const char *name, SourceLoc *loc, DeclKind decl_type)
 		case DECL_ENUM:
 			kind = TYPE_ENUM;
 			break;
-		case DECL_CONSTDEF:
-			kind = TYPE_CONSTDEF;
+		case DECL_CONSTSET:
+			kind = TYPE_CONSTSET;
 			break;
 		case DECL_TYPEDEF:
 			kind = TYPE_TYPEDEF;
@@ -129,7 +129,7 @@ const char *decl_to_a_name(Decl *decl)
 		case DECL_ALIAS: case DECL_ALIAS_PATH: case DECL_TYPE_ALIAS: return "an alias";
 		case DECL_TYPEDEF: return "a distinct type";
 		case DECL_ENUM: return "an enum";
-		case DECL_CONSTDEF: return "a constdef";
+		case DECL_CONSTSET: return "a constset";
 		case DECL_ENUM_CONSTANT: return "an enum value";
 		case DECL_ERASED: return "an erased declaration";
 		case DECL_FAULT: return "a fault";
@@ -365,7 +365,7 @@ bool decl_inherits_module_generic(Decl *decl)
 		case DECL_BITSTRUCT:
 		case DECL_DECLARRAY:
 		case DECL_ALIAS:
-		case DECL_CONSTDEF:
+		case DECL_CONSTSET:
 		case DECL_TYPEDEF:
 		case DECL_ENUM:
 		case DECL_FNTYPE:
@@ -474,12 +474,11 @@ bool decl_is_externally_visible(Decl *decl)
 	return decl->is_external_visible || decl->visibility == VISIBLE_PUBLIC || decl->is_export;
 }
 
-
 /*
- * Is this declaration a global of some sort?
- * In other words a static, thread local, global constant or a global
+ * Is this declaration a global ref of some sort?
+ * In other words a function, static, global constant or a global
  */
-bool decl_is_global(Decl *ident)
+bool decl_is_global_ref(Decl *ident)
 {
 	switch (ident->decl_kind)
 	{
@@ -487,6 +486,7 @@ bool decl_is_global(Decl *ident)
 		case DECL_VAR: break;
 		default: return false;
 	}
+	if (ident->var.is_threadlocal) return false;
 	switch (ident->var.kind)
 	{
 		case VARDECL_LOCAL:
@@ -647,15 +647,19 @@ void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear)
 	const char *name = decl_is_user_defined_type(decl) ? decl->type->name : decl->name;
 	const char *template_end = NULL;
 	const char *suffix = NULL;
+	const char *tail = NULL;
+	ASSERT(name);
 	if (decl->is_templated)
 	{
+		Decl *instance = declptr(decl->instance_id);
 		template_end = strchr(name, '{');
-		suffix = declptr(decl->instance_id)->instance_decl.cname_suffix;
+		suffix = instance->instance_decl.cname_suffix;
+		if (template_end) tail = template_end + strlen(instance->instance_decl.name_suffix);
 	}
-	if (!name) name = "$anon";
 	if (decl->is_export)
 	{
 		scratch_buffer_append_but_mangle_underscore_dot(name, template_end, suffix);
+		if (tail) scratch_buffer_append_but_mangle_underscore_dot(tail, NULL, NULL);
 	}
 	else
 	{
@@ -668,6 +672,7 @@ void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear)
 			scratch_buffer_append(name);
 		}
 		if (suffix) scratch_buffer_append(suffix);
+		if (tail) scratch_buffer_append(tail);
 	}
 	if (decl->visibility == VISIBLE_LOCAL)
 	{

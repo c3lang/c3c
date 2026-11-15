@@ -19,11 +19,10 @@ entry:
   %hello = alloca i32, align 4
   %0 = call i64 @std.io.file.load_temp(ptr %retparam, ptr @.str, i64 11)
   %not_err = icmp eq i64 %0, 0
-  %1 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %1, label %after_check, label %else_block
+  br i1 %not_err, label %after_check, label %else_block
 
 after_check:                                      ; preds = %entry
-  %2 = load %"char[]", ptr %retparam, align 8
+  %1 = load %"char[]", ptr %retparam, align 8
   br label %phi_block
 
 else_block:                                       ; preds = %entry
@@ -33,7 +32,7 @@ else_block:                                       ; preds = %entry
   unreachable
 
 phi_block:                                        ; preds = %after_check
-  store %"char[]" %2, ptr %bytes, align 8
+  store %"char[]" %1, ptr %bytes, align 8
   store i32 0, ptr %hello, align 4
   ret void
 }

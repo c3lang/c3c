@@ -29,7 +29,7 @@ macro void quicksort(list, cmp = ..., context = ...) @builtin
  @require @is_valid_cmp_fn(#cmp: ...cmp, #list: list, #context: ...context) : "expected a comparison function which compares values"
  @require @is_valid_context(...cmp, ...context) : "Expected a valid context"
 *>
-macro quickselect(list, sz k, cmp = ..., context = ...) @builtin
+macro select_nth(list, sz k, cmp = ..., context = ...)
 {
 	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
 	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
@@ -37,6 +37,25 @@ macro quickselect(list, sz k, cmp = ..., context = ...) @builtin
 		return qselect{$Typeof(list), $Typeof(used_cmp), $Typeof(used_ctx)}(list, 0, (sz)list.len - 1, k, used_cmp, used_ctx);
 	$else
 		return qselect{$Typeof(*list), $Typeof(used_cmp), $Typeof(used_ctx)}(list, 0, (sz)lengthof(*list) - 1, k, used_cmp, used_ctx);
+	$endif
+}
+
+<*
+ See select_nth.
+
+ @require @list_is_by_ref(list) : "Expected a list passed by reference or be a slice"
+ @require @is_sortable(list) : "The list must be indexable and support .len or .len()"
+ @require @is_valid_cmp_fn(#cmp: ...cmp, #list: list, #context: ...context) : "expected a comparison function which compares values"
+ @require @is_valid_context(...cmp, ...context) : "Expected a valid context"
+*>
+macro quickselect(list, sz k, cmp = ..., context = ...) @builtin @deprecated("Use sort::select_nth")
+{
+	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
+	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
+	$if @kindof(list) == SLICE:
+		return qselect_old{$Typeof(list), $Typeof(used_cmp), $Typeof(used_ctx)}(list, 0, (sz)list.len - 1, k, used_cmp, used_ctx);
+	$else
+		return qselect_old{$Typeof(*list), $Typeof(used_cmp), $Typeof(used_ctx)}(list, 0, (sz)lengthof(*list) - 1, k, used_cmp, used_ctx);
 	$endif
 }
 
@@ -87,34 +106,38 @@ fn void qsort(ListType list, sz low, sz high, CmpFn cmp, Context context) @noinl
 	}
 }
 
+macro ElementType? qselect_old(ListType list, sz low, sz high, sz k, CmpFn cmp, Context context)
+{
+	return qselect(list, low, high, k, cmp, context);
+}
+
 <*
 @require low <= k : "kth smallest element is smaller than lower bounds"
 @require k <= high : "kth smallest element is larger than upper bounds"
+@require low >= 0 : "lower bound must be non-negative"
+@require high < list_len(list) : "upper bound must be within list length"
 *>
-fn ElementType? qselect(ListType list, sz low, sz high, sz k, CmpFn cmp, Context context) @noinline
+fn ElementType qselect(ListType list, sz low, sz high, sz k, CmpFn cmp, Context context) @noinline
 {
-	if (low >= 0 && high >= 0 && low < high)
-	{
-		sz l = low;
-		sz h = high;
-		sz pivot;
 
-		sz max_retries = 64;
-		while (l <= h && max_retries--)
+	sz l = low;
+	sz h = high;
+
+	// Each iteration either returns or strictly shrinks [l, h], so this terminates.
+	while (l <= h)
+	{
+		sz pivot = @partition(list, l, h, cmp, context);
+		if (k == pivot) return list_get(list, k);
+		if (k < pivot)
 		{
-			pivot = @partition(list, l, h, cmp, context);
-			if (k == pivot) return list_get(list, k);
-			if (k < pivot)
-			{
-				h = pivot - 1;
-			}
-			else
-			{
-				l = pivot + 1;
-			}
+			h = pivot - 1;
+		}
+		else
+		{
+			l = pivot + 1;
 		}
 	}
-	return NOT_FOUND~;
+	unreachable("qselect - k not found in range");
 }
 
 macro sz @partition(ListType list, sz l, sz h, CmpFn cmp, Context context)

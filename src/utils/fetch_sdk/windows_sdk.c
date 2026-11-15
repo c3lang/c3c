@@ -31,10 +31,8 @@ static int version_compare(const char *v1, const char *v2)
 		int n2 = atoi(v2);
 		if (n1 > n2) return 1;
 		if (n1 < n2) return -1;
-		while (char_is_digit(*v1))
-			v1++;
-		while (char_is_digit(*v2))
-			v2++;
+		while (char_is_digit(*v1))v1++;
+		while (char_is_digit(*v2)) v2++;
 		if (*v1 == '.') v1++;
 		if (*v2 == '.') v2++;
 	}
@@ -57,7 +55,9 @@ static bool my_strcasestr(const char *h, const char *n)
 {
 	size_t nl = strlen(n);
 	for (; *h; h++)
+	{
 		if (STRNCASECMP(h, n, nl) == 0) return true;
+	}
 	return false;
 }
 
@@ -101,7 +101,9 @@ static bool download_with_verification(const char *url, const char *name,
 	{
 		if (verbose_level >= 1) printf(" ... failed.\n");
 		if (verbose_level >= 0)
+		{
 			eprintf("\nWarning: Download failed for %s: %s\n", name, err);
+		}
 		return false;
 	}
 	if (verbose_level >= 1) printf(" ... done.\n");
@@ -120,7 +122,9 @@ static void copy_to_msvc_sdk(const char *src, const char *dst)
 		char *s_path = file_append_path(src, de->d_name);
 		char *low_name = str_dup(de->d_name);
 		for (char *p = low_name; *p; p++)
+		{
 			*p = (char)tolower((unsigned char)*p);
+		}
 		char *d_path = file_append_path(dst, low_name);
 
 		if (file_is_dir(s_path))
@@ -390,11 +394,13 @@ static void get_msi_cab_list(const char *msi_path, const char ***cabs)
 			cab[filename_len] = 0;
 			bool valid = true;
 			for (int j = 0; j < (int)guid_len; j++)
+			{
 				if (!char_is_hex(cab[j]))
 				{
 					valid = false;
 					break;
 				}
+			}
 			if (valid)
 			{
 				bool exists = false;
@@ -483,7 +489,9 @@ static void collect_versions(JSONObject *pkgs, JSONObject **msvc_vers_out,
 			StringSlice slice = slice_from_string(id);
 			const int id_prefix_segments = 4;
 			for (int i = 0; i < id_prefix_segments; i++)
+			{
 				slice_next_token(&slice, '.');
+			}
 			StringSlice v4 = slice_next_token(&slice, '.');
 			if (!v4.len || !char_is_digit(v4.ptr[0])) continue;
 			StringSlice v5 = slice_next_token(&slice, '.');
@@ -496,7 +504,9 @@ static void collect_versions(JSONObject *pkgs, JSONObject **msvc_vers_out,
 		{
 			const char *last_dot = strrchr(id, '.');
 			if (last_dot && char_is_digit(last_dot[1]))
+			{
 				json_map_set(sdk_paths, last_dot + 1, pkg);
+			}
 		}
 	}
 	*msvc_vers_out = msvc_vers;
@@ -605,7 +615,6 @@ void fetch_winsdk(BuildOptions *options)
 
 	const char *tmp_dir_base = dir_make_temp_dir();
 	if (!tmp_dir_base) error_exit("Failed to create temp directory");
-	if (verbose_level >= 1) printf("Temp dir: %s\n", tmp_dir_base);
 
 	const char *m1_path = file_append_path(tmp_dir_base, "vschannel.json");
 	JSONObject *rj1 = load_manifest(MANIFEST_URL, m1_path, "channel");
@@ -729,7 +738,7 @@ void fetch_winsdk(BuildOptions *options)
 		}
 	}
 
-	for (int i = 0; i < (int)vec_size(archs); i++)
+	for (int i = 0; i < vec_size(archs); i++)
 	{
 		char *msi_name = str_printf("Windows SDK Desktop Libs %s-x86_en-us.msi", archs[i]);
 		vec_add(msi_names, msi_name);
@@ -742,7 +751,7 @@ void fetch_winsdk(BuildOptions *options)
 		}
 	}
 
-	int msi_count = (int)vec_size(msi_names);
+	int msi_count = vec_size(msi_names);
 	JSONObject **msi_packages = NULL;
 	for (int i = 0; i < msi_count; i++) vec_add(msi_packages, (JSONObject *)NULL);
 
@@ -796,7 +805,7 @@ void fetch_winsdk(BuildOptions *options)
 	}
 
 	// Dynamic download of CRT and optionally ASan per requested arch
-	for (int i = 0; i < (int)vec_size(archs); i++)
+	for (int i = 0; i < vec_size(archs); i++)
 	{
 		const char *arch = archs[i];
 		const char *arch_suffixes[4] = {"crt.%s.desktop.base", "crt.%s.store.base", "asan.%s.base", "crt.headers.base"};
@@ -818,7 +827,7 @@ void fetch_winsdk(BuildOptions *options)
 					}
 				}
 			}
-			progress += 32 / ((int)vec_size(archs) * arch_len);
+			progress += 32 / (vec_size(archs) * arch_len);
 			sdk_progress(progress);
 		}
 	}
@@ -849,7 +858,7 @@ void fetch_winsdk(BuildOptions *options)
 	}
 
 	int cabs_done = 0;
-	int cab_count = (int)vec_size(cab_list);
+	int cab_count = vec_size(cab_list);
 	FOREACH(const char *, cab, cab_list)
 	{
 		FOREACH(JSONObject *, pkg, checked_pkgs)
@@ -902,7 +911,9 @@ void fetch_winsdk(BuildOptions *options)
 	if (!s_ucrt || !s_um || !s_msvc)
 	{
 		if (verbose_level >= 0)
+		{
 			eprintf("UCRT: %s, UM: %s, MSVC: %s\n", s_ucrt ? "OK" : "MISSING", s_um ? "OK" : "MISSING", s_msvc ? "OK" : "MISSING");
+		}
 		error_exit("Missing library components");
 	}
 
@@ -921,9 +932,11 @@ void fetch_winsdk(BuildOptions *options)
 		if (!s_msvc_inc || !s_inc_ucrt || !s_inc_um || !s_inc_shared || !s_inc_winrt || !s_inc_cppwinrt)
 		{
 			if (verbose_level >= 0)
+			{
 				eprintf("MSVC: %s, UCRT: %s, UM: %s, SHARED: %s, WINRT: %s, CPPWINRT: %s\n", s_msvc_inc ? "OK" : "MISSING",
 					s_inc_ucrt ? "OK" : "MISSING", s_inc_um ? "OK" : "MISSING", s_inc_shared ? "OK" : "MISSING",
 					s_inc_winrt ? "OK" : "MISSING", s_inc_cppwinrt ? "OK" : "MISSING");
+			}
 			error_exit("Missing header components");
 		}
 
@@ -952,7 +965,7 @@ void fetch_winsdk(BuildOptions *options)
 	}
 
 	// Finalizing and copying files for all requested target architectures
-	for (int i = 0; i < (int)vec_size(archs); i++)
+	for (int i = 0; i < vec_size(archs); i++)
 	{
 		const char *arch = archs[i];
 		char *sdk_arch = file_append_path(sdk_output, arch);
@@ -979,6 +992,4 @@ void fetch_winsdk(BuildOptions *options)
 	}
 
 	if (verbose_level >= 0) printf("The 'msvc_sdk' directory was successfully generated at %s.\n", sdk_output);
-
-	if (verbose_level == 0) file_delete_dir(tmp_dir_base);
 }

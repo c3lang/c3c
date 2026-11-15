@@ -287,9 +287,9 @@ entry:
   %de = alloca [3 x i32], align 4
   %c = alloca %Bobo, align 4
   %indirectarg = alloca %Bobo, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %de, ptr align 4 @.__const, i32 12, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %c, ptr align 8 %1, i32 20, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg, ptr align 4 %c, i32 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %de, ptr align 4 @.__const, i64 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %c, ptr align 8 %1, i64 20, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %indirectarg, ptr align 4 %c, i64 20, i1 false)
   %2 = call i32 @test.helo(double 1.000000e+00, ptr byval(%Bobo) align 8 %indirectarg)
   ret i32 1
 }
@@ -470,8 +470,8 @@ loop.body5:                                       ; preds = %loop.cond2
 
 loop.exit8:                                       ; preds = %loop.cond2
   call void @"std.collections.list.List$int$.free"(ptr %array)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %a, ptr align 4 @.__const.6, i32 4, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %b, ptr align 8 @.__const.7, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %a, ptr align 4 @.__const.6, i64 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %b, ptr align 8 @.__const.7, i64 8, i1 false)
   %19 = load i32, ptr %a, align 4
   %20 = call i32 @"test2.getValue$int$"(i32 %19)
   %21 = call i32 (ptr, ...) @printf(ptr @.str.8, i32 %20)
@@ -487,7 +487,7 @@ loop.exit8:                                       ; preds = %loop.cond2
   %ptradd = getelementptr inbounds i8, ptr %ddx, i64 4
   store i32 0, ptr %ptradd, align 4
   store i32 3, ptr %fro, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x, ptr align 16 @.__const.12, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x, ptr align 16 @.__const.12, i64 16, i1 false)
   %29 = load i32, ptr %fro, align 4
   %30 = insertvalue %"int[]" undef, ptr %x, 0
   %31 = insertvalue %"int[]" %30, i64 4, 1
@@ -500,7 +500,7 @@ loop.exit8:                                       ; preds = %loop.cond2
   %36 = insertvalue %"int[]" undef, ptr %x, 0
   %37 = insertvalue %"int[]" %36, i64 4, 1
   store %"int[]" %37, ptr %z, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %de, ptr align 4 @.__const.15, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %de, ptr align 4 @.__const.15, i64 12, i1 false)
   %38 = insertvalue %"int[]" undef, ptr %x, 0
   %39 = insertvalue %"int[]" %38, i64 4, 1
   %40 = call i32 @test.sum_us(ptr %x, i64 4)

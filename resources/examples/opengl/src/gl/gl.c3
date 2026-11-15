@@ -23,7 +23,7 @@ constset Primitive : int
 
 extern fn void clear(BufferBit mask) @cname("glClear") @public;
 
-extern fn void begin(BufferBit mask) @cname("glBegin") @public;
+extern fn void begin(Primitive mask) @cname("glBegin") @public;
 
 extern fn void end() @cname("glEnd") @public;
 

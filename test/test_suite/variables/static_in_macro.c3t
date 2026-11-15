@@ -47,7 +47,7 @@ macro get_static_ref() {
 
 /* #expect: foo.ll
 
-@bar.x = internal local_unnamed_addr global i8 0, align 1
+@bar.x = internal unnamed_addr global i8 0, align 1
 @bar2.x = internal global i8 0, align 1
 
 define void @foo.bar() #0 {
@@ -62,7 +62,7 @@ entry:
 
 // #expect: test.ll
 
-@bar.x = internal local_unnamed_addr global i8 0, align 1
+@bar.x = internal unnamed_addr global i8 0, align 1
 @bar2.x = internal global i8 0, align 1
 
 define void @test.bar() #0 {

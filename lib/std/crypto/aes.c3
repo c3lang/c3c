@@ -129,7 +129,7 @@ fn Type rotl_nibbles(Type w) <Type> @private @inline
 	$if Type == ulong:
 		return ((w << 4) & (ulong)0xFFF0FFF0FFF0FFF0ULL) | ((w >> 12) & (ulong)0x000F000F000F000FULL);
 	$else
-		return ((w << 4) & (Type)0xFFF0) | ((w >> 12) & (Type)0x000F);
+		return w.rotl(4);
 	$endif
 }
 

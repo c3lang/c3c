@@ -44,18 +44,21 @@ entry:
   store i32 0, ptr %y, align 4
   %0 = call i64 @test.foo()
   br label %postfailed
+
 postfailed:                                       ; preds = %entry
   br label %postfailed1
+
 postfailed1:                                      ; preds = %postfailed
   %1 = call i64 @test.baz(ptr %retparam)
   %2 = call i64 @test.baz(ptr %retparam2)
   %not_err = icmp eq i64 %2, 0
-  %3 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %3, label %after_check, label %voiderr
+  br i1 %not_err, label %after_check, label %voiderr
+
 after_check:                                      ; preds = %postfailed1
-  %4 = load i32, ptr %retparam2, align 4
-  %add = add i32 %4, 1
+  %3 = load i32, ptr %retparam2, align 4
+  %add = add i32 %3, 1
   br label %voiderr
+
 voiderr:                                          ; preds = %after_check, %postfailed1
   ret i32 1
 }

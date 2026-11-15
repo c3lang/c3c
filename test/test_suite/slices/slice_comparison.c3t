@@ -84,7 +84,7 @@ if.then8:                                         ; preds = %slice_cmp_exit6
   br label %if.exit9
 
 if.exit9:                                         ; preds = %if.then8, %slice_cmp_exit6
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %switch, ptr align 8 %y, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %switch, ptr align 8 %y, i64 16, i1 false)
   br label %switch.entry
 
 switch.entry:                                     ; preds = %if.exit9

@@ -32,8 +32,7 @@ entry:
 testblock:                                        ; preds = %entry
   %0 = call i64 @test.canFail()
   %not_err = icmp eq i64 %0, 0
-  %1 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %1, label %after_check, label %assign_optional
+  br i1 %not_err, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %testblock
   store i64 %0, ptr %err, align 8
@@ -44,8 +43,8 @@ after_check:                                      ; preds = %testblock
   br label %end_block
 
 end_block:                                        ; preds = %after_check, %assign_optional
-  %2 = load i64, ptr %err, align 8
-  %i2b = icmp ne i64 %2, 0
+  %1 = load i64, ptr %err, align 8
+  %i2b = icmp ne i64 %1, 0
   ret i32 0
 }
 

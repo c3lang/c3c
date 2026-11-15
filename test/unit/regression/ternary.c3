@@ -10,7 +10,6 @@ fn void const_ternary()
     assert((FOO ?: bar) == 1);
 }
 
-module test_ternary_union;
 
 union TernaryUnion
 {
@@ -19,9 +18,6 @@ union TernaryUnion
 }
 
 fn TernaryUnion pick(bool c, TernaryUnion a, TernaryUnion b) @noinline => c ? a : b;
-
-module test @test;
-import test_ternary_union;
 
 fn void ternary_union_with_padded_rep()
 {
@@ -32,3 +28,29 @@ fn void ternary_union_with_padded_rep()
 	assert(test_ternary_union::pick(true, a, b).wide[1] == 0xAAAA_BBBB_CCCC_DDDD);
 	assert(test_ternary_union::pick(false, a, b).wide[1] == 0x1111_2222_3333_4444);
 }
+
+fn void test_ternary_temp_lifetime()
+{
+    bool c = true;
+    int* p = c ? &&5 : &&7;
+    int* p2 = c ? &&999 : &&888;
+    assert(*p == 5);
+    assert(*p2 == 999);
+}
+
+fn void test_ternary_slice_temp_lifetime()
+{
+    bool c = true;
+    int[] s1 = c ? (int[]){ 10, 20 } : (int[]){ 30, 40 };
+    int[] s2 = c ? (int[]){ 100, 200 } : (int[]){ 300, 400 };
+    assert(s1[0] == 10 && s1[1] == 20);
+    assert(s2[0] == 100 && s2[1] == 200);
+}
+
+fn void test_ternary_any_lifetime()
+{
+    bool c = true;
+    any a = c ? &&5 : &&7;
+    assert(*(int*)a.ptr == 5);
+}
+

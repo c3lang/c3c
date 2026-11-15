@@ -180,6 +180,94 @@ constset NSTrackingAreaOptions : inline NSUInteger
 	ENABLED_DURING_MOUSE_DRAG     = 0x400,
 }
 
+constset NSViewLayerContentsPlacement : inline NSInteger
+{
+	SCALE_AXES_INDEPENDENTLY     = 0,
+	SCALE_PROPORTIONALLY_TO_FIT  = 1,
+	SCALE_PROPORTIONALLY_TO_FILL = 2,
+	CENTER                       = 3,
+	TOP                          = 4,
+	TOP_RIGHT                    = 5,
+	RIGHT                        = 6,
+	BOTTOM_RIGHT                 = 7,
+	BOTTOM                       = 8,
+	BOTTOM_LEFT                  = 9,
+	LEFT                         = 10,
+	TOP_LEFT                     = 11,
+}
+
+// The attributes of an NSOpenGLPixelFormat, a list of these (and their values) ending with 0.
+constset NSOpenGLPixelFormatAttribute : inline uint
+{
+	ALL_RENDERERS           = 1,
+	TRIPLE_BUFFER           = 3,
+	DOUBLE_BUFFER           = 5,
+	STEREO                  = 6,
+	AUX_BUFFERS             = 7,
+	COLOR_SIZE              = 8,
+	ALPHA_SIZE              = 11,
+	DEPTH_SIZE              = 12,
+	STENCIL_SIZE            = 13,
+	ACCUM_SIZE              = 14,
+	MINIMUM_POLICY          = 51,
+	MAXIMUM_POLICY          = 52,
+	OFF_SCREEN              = 53,
+	FULL_SCREEN             = 54,
+	SAMPLE_BUFFERS          = 55,
+	SAMPLES                 = 56,
+	AUX_DEPTH_STENCIL       = 57,
+	COLOR_FLOAT             = 58,
+	MULTISAMPLE             = 59,
+	SUPERSAMPLE             = 60,
+	SAMPLE_ALPHA            = 61,
+	RENDERER_ID             = 70,
+	SINGLE_RENDERER         = 71,
+	NO_RECOVERY             = 72,
+	ACCELERATED             = 73,
+	CLOSEST_POLICY          = 74,
+	ROBUST                  = 75,
+	BACKING_STORE           = 76,
+	MP_SAFE                 = 78,
+	WINDOW                  = 80,
+	MULTI_SCREEN            = 81,
+	COMPLIANT               = 83,
+	SCREEN_MASK             = 84,
+	PIXEL_BUFFER            = 90,
+	REMOTE_PIXEL_BUFFER     = 91,
+	ALLOW_OFFLINE_RENDERERS = 96,
+	ACCELERATED_COMPUTE     = 97,
+	OPEN_GL_PROFILE         = 99,
+	VIRTUAL_SCREEN_COUNT    = 128,
+}
+
+// The value that follows NSOpenGLPixelFormatAttribute.OPEN_GL_PROFILE.
+constset NSOpenGLProfileVersion : inline uint
+{
+	LEGACY   = 0x1000,
+	CORE_3_2 = 0x3200,
+	CORE_4_1 = 0x4100,
+}
+
+// The parameters of NSOpenGLContext setValues:forParameter: and getValues:forParameter:.
+constset NSOpenGLContextParameter : inline NSInteger
+{
+	SWAP_RECTANGLE           = 200,
+	SWAP_RECTANGLE_ENABLE    = 201,
+	RASTERIZATION_ENABLE     = 221,
+	SWAP_INTERVAL            = 222,
+	SURFACE_ORDER            = 235,
+	SURFACE_OPACITY          = 236,
+	STATE_VALIDATION         = 301,
+	SURFACE_BACKING_SIZE     = 304,
+	SURFACE_SURFACE_VOLATILE = 306,
+	RECLAIM_RESOURCES        = 308,
+	CURRENT_RENDERER_ID      = 309,
+	GPU_VERTEX_PROCESSING    = 310,
+	GPU_FRAGMENT_PROCESSING  = 311,
+	HAS_DRAWABLE             = 314,
+	MP_SWAPS_IN_FLIGHT       = 315,
+}
+
 constset NSWindowStyleMask : inline NSUInteger
 {
 	BORDERLESS                = 0,

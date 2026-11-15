@@ -116,21 +116,60 @@ union Sem_t @feat(ANDROID)
 }
 
 module std::thread::os @feat(LINUX);
-typedef Pthread_attr_t = ulong[7]; // 24 on 32bit
-typedef Pthread_cond_t = ulong[6];
-typedef Pthread_condattr_t = uint;
-typedef Pthread_key_t = uint;
-typedef Pthread_mutex_t = ulong[5]; // 24 on 32 bit
-typedef Pthread_mutexattr_t = uint;
-typedef Pthread_once_t = int;
-typedef Pthread_rwlock_t = ulong[7]; // 32 on 3bit
-typedef Pthread_rwlockattr_t = uint;
 
+// The pthread types are sized from the libc headers:
+//   glibc: sysdeps/<arch>/nptl/bits/pthreadtypes-arch.h
+//   musl:  include/alltypes.h.in
+// Where glibc and musl disagree, the larger size is used so that the type is
+// never smaller than the libc expects. The alignment follows glibc.
+//
+//          mutex  attr  mutexattr  condattr  cond  rwlock  rwlockattr  key  once
+// aarch64     48    64          8         8    48      56           8    4     4
+// x86_64      40    56          4         4    48      56           8    4     4
+// riscv64     40    56          4         4    48      56           8    4     4
+// riscv32     32    36          4         4    48      48           8    4     4
+// i386        24    36          4         4    48      32           8    4     4
+
+typedef Pthread_cond_t = ulong[6]; // 48
+typedef Pthread_key_t = uint; // 4
+typedef Pthread_once_t = int; // 4
 union Sem_t
 {
 	char[32] __size;
 	CLong __align;
 }
+
+module std::thread::os @feat(LINUX) @feat(AARCH64);
+typedef Pthread_attr_t = ulong[8]; // 64
+typedef Pthread_condattr_t = uint[2]; // 8
+typedef Pthread_mutex_t = ulong[6]; // 48
+typedef Pthread_mutexattr_t = uint[2]; // 8
+typedef Pthread_rwlock_t = ulong[7]; // 56
+typedef Pthread_rwlockattr_t = ulong; // 8
+
+module std::thread::os @feat(LINUX) @feat(ARCH_64_BIT & !AARCH64);
+typedef Pthread_attr_t = ulong[7]; // 56
+typedef Pthread_condattr_t = uint; // 4
+typedef Pthread_mutex_t = ulong[5]; // 40
+typedef Pthread_mutexattr_t = uint; // 4
+typedef Pthread_rwlock_t = ulong[7]; // 56
+typedef Pthread_rwlockattr_t = ulong; // 8
+
+module std::thread::os @feat(LINUX) @feat(RISCV32);
+typedef Pthread_attr_t = uint[9]; // 36
+typedef Pthread_condattr_t = uint; // 4
+typedef Pthread_mutex_t = uint[8]; // 32
+typedef Pthread_mutexattr_t = uint; // 4
+typedef Pthread_rwlock_t = uint[12]; // 48
+typedef Pthread_rwlockattr_t = uint[2]; // 8
+
+module std::thread::os @feat(LINUX) @feat(ARCH_32_BIT & !RISCV32);
+typedef Pthread_attr_t = uint[9]; // 36
+typedef Pthread_condattr_t = uint; // 4
+typedef Pthread_mutex_t = uint[6]; // 24
+typedef Pthread_mutexattr_t = uint; // 4
+typedef Pthread_rwlock_t = uint[8]; // 32
+typedef Pthread_rwlockattr_t = uint[2]; // 8
 
 module std::thread::os @feat(NETBSD);
 typedef Pthread_attr_t = ulong[2];

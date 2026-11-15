@@ -325,6 +325,14 @@ struct XRRCrtcGamma
 	ushort* blue;
 }
 
+struct XColor
+{
+	CULong pixel;
+	ushort red, green, blue;
+	char flags;
+	char pad;
+}
+
 struct XVisualInfo
 {
 	XVisual* visual;
@@ -452,6 +460,7 @@ extern fn int xIconifyWindow(XDisplay* d, XWindow w, int screen) @cname("XIconif
 extern fn int xDefineCursor(XDisplay* d, XWindow w, XCursor cursor) @cname("XDefineCursor");
 extern fn int xFreeCursor(XDisplay* d, XCursor cursor) @cname("XFreeCursor");
 extern fn XCursor xCreateFontCursor(XDisplay* d, uint shape) @cname("XCreateFontCursor");
+extern fn XCursor xCreatePixmapCursor(XDisplay* d, Pixmap source, Pixmap mask, XColor* fg, XColor* bg, uint x, uint y) @cname("XCreatePixmapCursor");
 extern fn KeySym xkbKeycodeToKeysym(XDisplay* d, KeyCode kc, int group, int level) @cname("XkbKeycodeToKeysym");
 extern fn int xkbGetState(XDisplay* d, uint deviceSpec, void* rtrnState) @cname("XkbGetState");
 extern fn void* xkbGetMap(XDisplay* d, uint which, uint deviceSpec) @cname("XkbGetMap");
@@ -463,6 +472,8 @@ extern fn int xChangeWindowAttributes(XDisplay* d, XWindow w, CULong valuemask, 
 extern fn Region xCreateRegion() @cname("XCreateRegion");
 extern fn int xDestroyRegion(Region r) @cname("XDestroyRegion");
 extern fn XCursor xCreatePixmap(XDisplay* d, XDrawable draw, uint w, uint h, uint depth) @cname("XCreatePixmap");
+extern fn Pixmap xCreateBitmapFromData(XDisplay* d, XDrawable draw, char* data, uint width, uint height) @cname("XCreateBitmapFromData");
+extern fn int xFreePixmap(XDisplay* d, Pixmap pixmap) @cname("XFreePixmap");
 extern fn void* xCreateImage(XDisplay* d, XVisual* visual, uint depth, int format, int offset, char* data, uint w, uint h, int bitmap_pad, int bytes_per_line) @cname("XCreateImage");
 extern fn int xPutImage(XDisplay* d, XDrawable draw, GContext gc, void* image, int src_x, int src_y, int dest_x, int dest_y, uint w, uint h) @cname("XPutImage");
 extern fn int xDestroyImage(void* image) @cname("XDestroyImage");
