@@ -249,6 +249,8 @@ static bool is_constant_int_switch(AstSwitchStmt *sw, ExprId cond_id)
 	{
 		return false;
 	}
+	// C has no 128-bit integer literals for case labels.
+	if (type_size(cond_type) > 8) return false;
 	FOREACH(Ast *, case_stmt, sw->cases)
 	{
 		if (case_stmt->case_stmt.to_expr)
@@ -485,98 +487,35 @@ static void c_emit_switch_stmt(GenContext *c, Ast *stmt)
 				c_value_rvalue(c, &to_expr_val);
 			}
 
-			if (has_cond)
+			if (!has_cond)
 			{
-				Type *ct    = cond_type;
-				Type *caset = c_safe_type_lower(case_expr_val.type);
-				if (is_type_switch && cond_var != 0 && case_expr_val.var != 0)
-				{
-					PRINTF("if (__c3_type_matches((c3typeid_t)___var_%d, (c3typeid_t)___var_%d)) {\n", cond_var, case_expr_val.var);
-				}
-				else if (has_to && cond_var != 0 && case_expr_val.var != 0 && to_expr_val.var != 0)
-				{
-					const char *c_cast  = (ct && type_is_pointer(ct)) ? "(uintptr_t)" : "";
-					const char *cs_cast = (caset && type_is_pointer(caset)) ? "(uintptr_t)" : "";
-					PRINTF("if (%s___var_%d >= %s___var_%d && %s___var_%d <= %s___var_%d) {\n",
-					       c_cast, cond_var, cs_cast, case_expr_val.var,
-					       c_cast, cond_var, cs_cast, to_expr_val.var);
-				}
-				else if (cond_var != 0 && case_expr_val.var != 0)
-				{
-					if (ct && caset && ct->type_kind == TYPE_SLICE && caset->type_kind == TYPE_SLICE)
-					{
-						PRINTF("if (__C3_SLICE_EQ(___var_%d, ___var_%d)) {\n", cond_var, case_expr_val.var);
-					}
-					else if ((ct && c_type_is_aggregate(ct)) || (caset && c_type_is_aggregate(caset)))
-					{
-						const char *tname = c_type_name(c, ct ? ct : caset);
-						PRINTF("if (__c3_memcmp(&___var_%d, &___var_%d, sizeof(%s)) == 0) {\n", cond_var, case_expr_val.var, tname);
-					}
-					else if (ct && type_is_pointer(ct) && caset && type_is_integer(caset))
-					{
-						PRINTF("if ((uintptr_t)___var_%d == (uintptr_t)___var_%d) {\n", cond_var, case_expr_val.var);
-					}
-					else if (ct && type_is_integer(ct) && caset && type_is_pointer(caset))
-					{
-						PRINTF("if ((uintptr_t)___var_%d == (uintptr_t)___var_%d) {\n", cond_var, case_expr_val.var);
-					}
-					else
-					{
-						PRINTF("if (___var_%d == ___var_%d) {\n", cond_var, case_expr_val.var);
-					}
-				}
-				else if (cond_var != 0)
-				{
-					if (ct && ct->type_kind == TYPE_SLICE)
-					{
-						PRINTF("if (___var_%d.len == 0) {\n", cond_var);
-					}
-					else if (ct && c_type_is_aggregate(ct))
-					{
-						PRINT("if (0) {\n");
-					}
-					else if (ct && type_is_pointer(ct))
-					{
-						PRINTF("if (___var_%d == NULL) {\n", cond_var);
-					}
-					else
-					{
-						PRINTF("if (___var_%d == 0) {\n", cond_var);
-					}
-				}
-				else if (case_expr_val.var != 0)
-				{
-					if (caset && caset->type_kind == TYPE_SLICE)
-					{
-						PRINTF("if (___var_%d.len == 0) {\n", case_expr_val.var);
-					}
-					else if (caset && c_type_is_aggregate(caset))
-					{
-						PRINT("if (0) {\n");
-					}
-					else if (caset && type_is_pointer(caset))
-					{
-						PRINTF("if (___var_%d == NULL) {\n", case_expr_val.var);
-					}
-					else
-					{
-						PRINTF("if (___var_%d == 0) {\n", case_expr_val.var);
-					}
-				}
-				else
-				{
-					PRINT("if (1) {\n");
-				}
+				c_ensure_cvalue_var(c, &case_expr_val, type_bool);
+				PRINTF("if (___var_%d) {\n", case_expr_val.var);
+			}
+			else if (is_type_switch)
+			{
+				c_ensure_cvalue_var(c, &case_expr_val, cond_type);
+				PRINTF("if (__c3_type_matches((c3typeid_t)___var_%d, (c3typeid_t)___var_%d)) {\n", cond_var, case_expr_val.var);
 			}
 			else
 			{
-				if (case_expr_val.var != 0)
+				// Same semantics as `==`, as llvm_emit_comp.
+				CValue cond_val = { .var = cond_var, .type = cond_type, .kind = CV_VALUE };
+				c_ensure_cvalue_var(c, &case_expr_val, cond_type);
+				CValue match;
+				if (has_to)
 				{
-					PRINTF("if (___var_%d) {\n", case_expr_val.var);
+					c_ensure_cvalue_var(c, &to_expr_val, cond_type);
+					CValue ge;
+					CValue le;
+					c_emit_binary_op(c, &ge, BINARYOP_GE, type_bool, cond_val, case_expr_val, stmt->loc);
+					c_emit_binary_op(c, &le, BINARYOP_LE, type_bool, cond_val, to_expr_val, stmt->loc);
+					PRINTF("if (___var_%d && ___var_%d) {\n", ge.var, le.var);
 				}
 				else
 				{
-					PRINT("if (1) {\n");
+					c_emit_binary_op(c, &match, BINARYOP_EQ, type_bool, cond_val, case_expr_val, stmt->loc);
+					PRINTF("if (___var_%d) {\n", match.var);
 				}
 			}
 

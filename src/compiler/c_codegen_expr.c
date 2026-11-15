@@ -701,7 +701,7 @@ static void c_emit_shift_check(GenContext *c, Type *shifted_t, CValue *amount, T
 }
 
 // Emit `left op right` for already evaluated operands. Shared by binary and compound assign.
-static void c_emit_binary_op(GenContext *c, CValue *value, BinaryOp op, Type *expr_type, CValue left_value, CValue right_value, SourceLocId loc)
+void c_emit_binary_op(GenContext *c, CValue *value, BinaryOp op, Type *expr_type, CValue left_value, CValue right_value, SourceLocId loc)
 {
 	bool is_comp = (op == BINARYOP_EQ || op == BINARYOP_NE || op == BINARYOP_LT || op == BINARYOP_LE || op == BINARYOP_GT || op == BINARYOP_GE ||
 	                op == BINARYOP_VEC_EQ || op == BINARYOP_VEC_NE || op == BINARYOP_VEC_LT || op == BINARYOP_VEC_LE || op == BINARYOP_VEC_GT || op == BINARYOP_VEC_GE);

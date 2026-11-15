@@ -505,6 +505,7 @@ static inline int c_emit_temp_zero(GenContext *c, CValue *value, Type *type)
 
 /* Expressions & Builtins */
 void c_emit_expr(GenContext *c, CValue *value, Expr *expr);
+void c_emit_binary_op(GenContext *c, CValue *value, BinaryOp op, Type *expr_type, CValue left_value, CValue right_value, SourceLocId loc);
 void c_emit_ignored_expr(GenContext *c, Expr *expr);
 void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr);
 void c_emit_inc_dec(GenContext *c, CValue *value, Expr *expr, bool is_post);
