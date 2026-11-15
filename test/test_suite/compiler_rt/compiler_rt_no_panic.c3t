@@ -1,3 +1,4 @@
+// #target: macos-aarch64
 // #safe: yes
 module compiler_rt::nopanic;
 

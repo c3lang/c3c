@@ -41,7 +41,7 @@ static void llvm_emit_any_pointer(GenContext *c, BEValue *any, BEValue *pointer)
 static void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs_loaded, BinaryOp binary_op);
 static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr, BEValue *target);
 static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr);
-static void llvm_emit_initialize_designated_element(GenContext *c, BEValue *ref, AlignSize offset, DesignatorElement** current, DesignatorElement **last, Expr *expr, BEValue *emitted_value);
+static void llvm_emit_initialize_designated_element(GenContext *c, BEValue *ref, Type *type, AlignSize offset, DesignatorElement** current, DesignatorElement **last, Expr *expr, BEValue *emitted_value);
 static void llvm_emit_macro_body_expansion(GenContext *c, BEValue *value, Expr *body_expr);
 static void llvm_emit_post_unary_expr(GenContext *context, BEValue *be_value, Expr *expr);
 static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr);
@@ -1732,7 +1732,31 @@ static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *r
 	}
 }
 
-static void llvm_emit_initialize_designated_const_range(GenContext *c, BEValue *ref, AlignSize offset, DesignatorElement** current, DesignatorElement **last, Expr *expr, BEValue *emitted_value)
+static void llvm_emit_designated_bitstruct_field(GenContext *c, BEValue *ref, Decl *bitstruct, Decl *member, Expr *expr, BEValue *emitted_value)
+{
+	ASSERT(llvm_value_is_addr(ref));
+	Type *underlying_type = ref->type;
+	BEValue exprval;
+	if (!emitted_value)
+	{
+		llvm_emit_expr(c, &exprval, expr);
+		emitted_value = &exprval;
+	}
+	LLVMValueRef val = llvm_load_value_store(c, emitted_value);
+	bool is_byteswap = bitstruct_requires_byteswap(bitstruct);
+	if (underlying_type->type_kind == TYPE_ARRAY)
+	{
+		llvm_emit_update_bitstruct_array(c, ref->value, ref->alignment, is_byteswap, member, val);
+		return;
+	}
+	LLVMValueRef current_val = llvm_load_value(c, ref);
+	if (is_byteswap) current_val = llvm_emit_bswap(c, current_val);
+	current_val = llvm_emit_bitstruct_value_update(c, current_val, type_bit_size(underlying_type), llvm_get_type(c, underlying_type), member, val);
+	if (is_byteswap) current_val = llvm_emit_bswap(c, current_val);
+	llvm_store_raw(c, ref, current_val);
+}
+
+static void llvm_emit_initialize_designated_const_range(GenContext *c, BEValue *ref, Type *type, AlignSize offset, DesignatorElement** current, DesignatorElement **last, Expr *expr, BEValue *emitted_value)
 {
 	DesignatorElement *curr = current[0];
 	llvm_value_addr(c, ref);
@@ -1746,14 +1770,15 @@ static void llvm_emit_initialize_designated_const_range(GenContext *c, BEValue *
 		emitted_value = &emitted_local;
 	}
 	ASSERT(type_is_arraylike(ref->type));
+	Type *base = type_flatten(type->array.base);
 	for (ArrayIndex i = curr->index; i <= curr->index_end; i++)
 	{
 		BEValue new_ref = llvm_emit_array_gep(c, ref, i);
-		llvm_emit_initialize_designated_element(c, &new_ref, offset, current + 1, last, expr, emitted_value);
+		llvm_emit_initialize_designated_element(c, &new_ref, base, offset, current + 1, last, expr, emitted_value);
 	}
 }
 
-static void llvm_emit_initialize_designated_element(GenContext *c, BEValue *ref, AlignSize offset, DesignatorElement** current,
+static void llvm_emit_initialize_designated_element(GenContext *c, BEValue *ref, Type *type, AlignSize offset, DesignatorElement** current,
                                                     DesignatorElement **last, Expr *expr, BEValue *emitted_value)
 {
 	BEValue value;
@@ -1786,56 +1811,39 @@ static void llvm_emit_initialize_designated_element(GenContext *c, BEValue *ref,
 	{
 		case DESIGNATOR_FIELD:
 		{
-			Decl *decl = ref->type->canonical->decl->strukt.members[curr->index];
+			Decl *decl = type->decl->strukt.members[curr->index];
+			if (type->type_kind == TYPE_BITSTRUCT)
+			{
+				llvm_emit_designated_bitstruct_field(c, ref, type->decl, decl, expr, emitted_value);
+				break;
+			}
 			offset += decl->offset;
-			Type *type = type_flatten(decl->type);
+			Type *member_type = type_flatten(decl->type);
 			int decl_alignment = decl->alignment;
-			if (ref->type->type_kind == TYPE_UNION)
+			if (type->type_kind == TYPE_UNION)
 			{
 				llvm_value_set_address(c,
 				                       &value,
 				                       ref->value,
-				                       type, type_min_alignment(offset, decl_alignment));
+				                       member_type, type_min_alignment(offset, decl_alignment));
 			}
 			else
 			{
 				llvm_value_struct_gep(c, &value, ref, curr->index);
 			}
-			if (type->type_kind == TYPE_BITSTRUCT && last == current + 1)
-			{
-				ASSERT(llvm_value_is_addr(&value));
-				Decl *member = type->decl->strukt.members[last[0]->index];
-				// Special handling of bitstructs.
-				Type *underlying_type = value.type;
-				ASSERT(!emitted_value);
-				BEValue exprval;
-				llvm_emit_expr(c, &exprval, expr);
-				LLVMValueRef val = llvm_load_value_store(c, &exprval);
-				LLVMTypeRef bitstruct_type = llvm_get_type(c, underlying_type);
-				bool is_byteswap = bitstruct_requires_byteswap(type->decl);
-				if (underlying_type->type_kind == TYPE_ARRAY)
-				{
-					llvm_emit_update_bitstruct_array(c, value.value, value.alignment, is_byteswap, member, val);
-					break;
-				}
-				LLVMValueRef current_val = llvm_load_value(c, &value);
-				current_val = llvm_emit_bitstruct_value_update(c, current_val, type_bit_size(underlying_type), bitstruct_type, member, val);
-				llvm_store_raw(c, &value, current_val);
-				break;
-			}
-			llvm_emit_initialize_designated_element(c, &value, offset, current + 1, last, expr, emitted_value);
+			llvm_emit_initialize_designated_element(c, &value, member_type, offset, current + 1, last, expr, emitted_value);
 			break;
 		}
 		case DESIGNATOR_ARRAY:
 		{
-			Type *type = ref->type->array.base;
-			offset += curr->index * type_size(type);
+			Type *base = type_flatten(type->array.base);
+			offset += curr->index * type_size(base);
 			value = llvm_emit_array_gep(c, ref, curr->index);
-			llvm_emit_initialize_designated_element(c, &value, offset, current + 1, last, expr, emitted_value);
+			llvm_emit_initialize_designated_element(c, &value, base, offset, current + 1, last, expr, emitted_value);
 			break;
 		}
 		case DESIGNATOR_RANGE:
-			llvm_emit_initialize_designated_const_range(c, ref, offset, current, last, expr, emitted_value);
+			llvm_emit_initialize_designated_const_range(c, ref, type, offset, current, last, expr, emitted_value);
 			break;
 		default:
 			UNREACHABLE_VOID
@@ -1946,7 +1954,7 @@ static inline void llvm_emit_initialize_reference_designated(GenContext *c, BEVa
 	FOREACH(Expr *, designator, elements)
 	{
 		DesignatorElement **last_element = designator->designator_expr.path + vec_size(designator->designator_expr.path) - 1;
-		llvm_emit_initialize_designated_element(c, ref, 0, designator->designator_expr.path, last_element,
+		llvm_emit_initialize_designated_element(c, ref, type, 0, designator->designator_expr.path, last_element,
 		                                        designator->designator_expr.value, NULL);
 		RETURN_ON_EMPTY_BLOCK(ref);
 	}
