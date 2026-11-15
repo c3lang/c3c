@@ -2265,12 +2265,12 @@ SPLAT_NORMAL:;
 			Expr *eval_name = arg->eval_named_argument_expr.name;
 			Expr *name = eval_name->inner_expr;
 			if (!sema_analyse_ct_expr(context, name)) return false;
-			if (!expr_is_const_string(name)) RETURN_VAL_SEMA_ERROR(poisoned_expr, eval_name, "'$eval' expects a constant string as the argument.");
+			if (!expr_is_const_string(name)) RETURN_SEMA_ERROR(eval_name, "'$eval' expects a constant string as the argument.");
 			const char *name_string = name->const_expr.bytes.ptr;
-			if (!str_is_identifier(name_string)) RETURN_VAL_SEMA_ERROR(poisoned_expr, eval_name, "'$eval' expects a parameter name as the argument.");
+			if (!str_is_identifier(name_string)) RETURN_SEMA_ERROR(eval_name, "'$eval' expects a parameter name as the argument.");
 			TokenType type = TOKEN_IDENT;
 			name_string = symtab_add(name_string, name->const_expr.bytes.len, fnv1a(name_string, name->const_expr.bytes.len), &type);
-			if (type != TOKEN_IDENT) RETURN_VAL_SEMA_ERROR(poisoned_expr, eval_name, "'$eval' expected a parameter name as the argument.");
+			if (type != TOKEN_IDENT) RETURN_SEMA_ERROR(eval_name, "'$eval' expected a parameter name as the argument.");
 			arg->expr_kind = EXPR_NAMED_ARGUMENT;
 			Expr *val = arg->eval_named_argument_expr.value;
 			arg->named_argument_expr.name = name_string;
@@ -5869,12 +5869,12 @@ static bool sema_expr_analyse_reflection_access(SemaContext *context, Expr *expr
 		if (name == kw_is_anonymous && !is_param)
 		{
 			expr_rewrite_const_bool(expr, type_bool, member->name == NULL || str_eq("", member->name));
-			return type;
+			return true;
 		}
 		if (name == kw_is_nested && !is_param)
 		{
 			expr_rewrite_const_bool(expr, type_bool, decl_has_members(member));
-			return type;
+			return true;
 		}
 		if (name == kw_get_tag)
 		{
@@ -7621,7 +7621,7 @@ static Expr **sema_vasplat_insert(SemaContext *context, Expr **init_expressions,
 bool sema_expand_vasplat_exprs(SemaContext *context, Expr ***exprs_ptr, Decl ***macro_va_decl_ref)
 {
 	if (!context) return true;
-	bool in_macro = context->current_macro;
+	bool in_macro = context->current_macro != NULL;
 	Expr** exprs = *exprs_ptr;
 	int count = vec_size(exprs);
 	bool expand;
