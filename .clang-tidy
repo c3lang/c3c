@@ -35,6 +35,31 @@ Checks: >
   -readability-redundant-parentheses,
   -readability-trailing-comma,
   -readability-uppercase-literal-suffix,
+  custom-*,
+
+# Needs clang-tidy 21+ run with --experimental-custom-checks.
+CustomChecks:
+  - Name: pointer-to-bool
+    Query: |
+      match implicitCastExpr(hasCastKind("CK_PointerToBoolean"), unless(hasParent(stmt(anyOf(ifStmt(), whileStmt(), doStmt(), forStmt(), conditionalOperator(), unaryOperator(hasOperatorName("!")), binaryOperator(hasAnyOperatorName("&&", "||")))))), anyOf(hasParent(stmt().bind("use")), hasParent(varDecl(hasInitializer(expr().bind("use"))))))
+    Diagnostic:
+      - BindName: use
+        Message: "implicit conversion from pointer to bool outside a condition, compare with NULL instead"
+        Level: Warning
+  - Name: int-literal-to-bool
+    Query: |
+      match implicitCastExpr(hasCastKind("CK_IntegralToBoolean"), has(integerLiteral(unless(anyOf(isExpandedFromMacro("false"), isExpandedFromMacro("true"), isExpandedFromMacro("UNREACHABLE"), isExpandedFromMacro("PRERELEASE"), isExpandedFromMacro("PLATFORM_WINDOWS"))))), anyOf(hasParent(stmt().bind("use")), hasParent(varDecl(hasInitializer(expr().bind("use"))))))
+    Diagnostic:
+      - BindName: use
+        Message: "integer literal used as bool, use 'true' or 'false' instead"
+        Level: Warning
+  - Name: false-to-pointer
+    Query: |
+      match implicitCastExpr(hasCastKind("CK_NullToPointer"), has(integerLiteral(isExpandedFromMacro("false"))), anyOf(hasParent(stmt().bind("use")), hasParent(varDecl(hasParent(declStmt().bind("use"))))))
+    Diagnostic:
+      - BindName: use
+        Message: "'false' used as a pointer, use NULL instead"
+        Level: Warning
 
 # Turn remaining warnings into errors.
 WarningsAsErrors: "*"

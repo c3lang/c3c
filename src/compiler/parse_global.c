@@ -1424,7 +1424,11 @@ Decl *parse_generic_decl(ParseContext *c)
 {
 	SourceLoc start = c->span;
 	if (!try_consume(c, TOKEN_LESS)) return NULL;
-	if (try_consume(c, TOKEN_GREATER)) RETURN_PRINT_ERROR_HERE("The generic parameter list cannot be empty, it needs at least one element.");
+	if (try_consume(c, TOKEN_GREATER)) 
+	{
+		PRINT_ERROR_HERE("The generic parameter list cannot be empty, it needs at least one element.");
+		return poisoned_decl;
+	}	
 
 	const char **tokens = NULL;
 
@@ -1454,7 +1458,7 @@ Decl *parse_generic_decl(ParseContext *c)
 		advance(c);
 		if (!try_consume(c, TOKEN_COMMA))
 		{
-			if (!consume(c, TOKEN_GREATER, "Expected '>'.")) return false;
+			if (!consume(c, TOKEN_GREATER, "Expected '>'.")) return poisoned_decl;
 			Decl *decl = decl_new_loc(DECL_GENERIC, "", extend_loc_with_token(&start, &c->prev_span));
 			decl->generic_decl.parameters = tokens;
 			return decl;
