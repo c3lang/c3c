@@ -7438,7 +7438,7 @@ FOUND_MEMBER_REFLECT:
 		if (substruct)
 		{
 			current_parent = substruct;
-			type = current_parent->type->canonical;
+			type = type_no_optional(current_parent->type)->canonical;
 			flat_type = type_flatten(type);
 			flat_kind = flat_type->type_kind;
 			goto CHECK_DEEPER;

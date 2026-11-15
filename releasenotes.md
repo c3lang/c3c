@@ -60,6 +60,7 @@
 - A runtime value for a `@bigendian` bitstruct field set through a struct member in an initializer was stored without the byte swap.
 - A ternary on unions could lose data stored in the padding of the union's largest member, like `(c ? a : b).wide[1]` on a union of `struct { ulong lo; ushort hi; }` and `ulong[2] wide`. #3662
 - A raw-vararg splat in a macro call inside a `defer`, like `defer { foo(0, ...y); }`, crashed the compiler. #3661
+- A member or method of an `inline` member accessed through an optional, like `ot.x` or `ot.sum()` on a `Top?`, was rejected.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.
