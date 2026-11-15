@@ -586,8 +586,7 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 	}
 	ASSERT(expr->expr_kind == EXPR_INITIALIZER_LIST);
 
-	// 2. Expand, then grab the expressions inside.
-	if (!sema_expand_vasplat_exprs(context, &expr->initializer_list, NULL)) return false;
+	// 2. Grab the expressions inside.
 	Expr **init_expressions = expr->initializer_list;
 
 	int init_expression_count = vec_size(init_expressions);
@@ -805,6 +804,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 	if (!to) to = type_untypedlist;
 	ASSERT(to);
 	Type *flattened = type_flatten(to);
+	if (expr->expr_kind == EXPR_INITIALIZER_LIST && !sema_expand_vasplat_exprs(context, &expr->initializer_list, NULL)) return false;
 	bool is_zero_init = (expr->expr_kind == EXPR_INITIALIZER_LIST && !vec_size(expr->initializer_list)) ||
 			(expr->resolve_status == RESOLVE_DONE && sema_initializer_list_is_empty(expr));
 
