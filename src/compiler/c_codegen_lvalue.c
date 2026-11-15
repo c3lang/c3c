@@ -720,6 +720,9 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 				PRINTF("%s ___var_%d = (%s)&%s;\n", tname, temp, tname, c_decl_ref(c, d));
 				return;
 			}
+			// An optional variable is only assigned directly, so taking its address reads it.
+			const char *fault = IS_OPTIONAL(expr) ? c_ident_read_fault_ref(c, d) : NULL;
+			if (fault) c_emit_jump_to_optional_exit(c, fault);
 			PRINTF("%s ___var_%d = (%s)&%s;\n", tname, temp, tname, c_decl_lvalue_str(c, d));
 			return;
 		}
