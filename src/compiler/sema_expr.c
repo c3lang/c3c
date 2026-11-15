@@ -1885,7 +1885,7 @@ INLINE Expr *sema_splat_hoist(Expr *two, Expr ***hoist_ref)
 	return two->two_expr.last;
 }
 
-INLINE Expr **sema_splat_struct_insert(SemaContext *context, Expr **args, Expr *arg, Decl *strukt, ArrayIndex index, Expr ***hoist_ref)
+INLINE Expr **sema_splat_struct_insert(SemaContext *context, Expr **args, Expr *arg, Decl *strukt, int index, Expr ***hoist_ref)
 {
 	int len = vec_size(strukt->strukt.members);
 	args = sema_prepare_splat_insert(args, len, index);
@@ -1959,10 +1959,15 @@ INLINE Expr **sema_splat_struct_insert(SemaContext *context, Expr **args, Expr *
 
 INLINE Expr **sema_splat_arraylike_insert(SemaContext *context, Expr **args, Expr *arg, ArrayIndex len, ArrayIndex index, Decl ***macro_va_decl_ref, Expr ***hoist_ref)
 {
-	args = sema_prepare_splat_insert(args, len, index);
+	if (len > INT_MAX || index > INT_MAX || len + index > INT_MAX)
+	{
+		SEMA_ERROR(arg, "Resulting splat would be too large");
+		return NULL;
+	}
+	args = sema_prepare_splat_insert(args, (int)len, (int)index);
 	if (sema_cast_const(arg))
 	{
-		for (ArrayIndex i = 0; i < len; i++)
+		for (int i = 0; i < (int)len; i++)
 		{
 			Expr *expr = expr_copy(arg);
 			Expr *subscript = expr_new_expr(EXPR_SUBSCRIPT, expr);
@@ -1996,7 +2001,7 @@ INLINE Expr **sema_splat_arraylike_insert(SemaContext *context, Expr **args, Exp
 	{
 		args[index] = sema_splat_hoist(two, hoist_ref);
 	}
-	for (ArrayIndex i = 1; i < len; i++)
+	for (int i = 1; i < len; i++)
 	{
 		subscript = expr_new_expr(EXPR_SUBSCRIPT, arg);
 		subscript->subscript_expr.index.expr = exprid(expr_new_const_int(arg->loc, type_sz, i));
@@ -2162,7 +2167,7 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDeclContext
 	ArrayIndex needed = (ArrayIndex)func_param_count - (callee->struct_var ? 1 : 0);
 	// Do we need to store decls separately?
 	Decl ***macro_va_decl_ref_maybe = callee->macro && variadic == VARIADIC_RAW ? &callee->macro_va_decls : NULL;
-	for (ArrayIndex i = 0; i < num_args; i++)
+	for (int i = 0; i < num_args; i++)
 	{
 		Expr *arg = args[i];
 		if (i > 0) last = args[i - 1];
@@ -7571,7 +7576,7 @@ static Expr **sema_vasplat_insert(SemaContext *context, Expr **init_expressions,
 			}
 			return NULL;
 		}
-		end_idx = end_index.i.low;
+		end_idx = (int)end_index.i.low;
 		if (range->end_from_end)
 		{
 			if (end_idx > param_count)
@@ -7628,7 +7633,7 @@ bool sema_expand_vasplat_exprs(SemaContext *context, Expr ***exprs_ptr, Decl ***
 	do
 	{
 		expand = false;
-		for (ArrayIndex i = 0; i < (ArrayIndex)count; i++)
+		for (int i = 0; i < count; i++)
 		{
 			Expr *arg = exprs[i];
 			ExprKind kind = arg->expr_kind;
@@ -8439,7 +8444,6 @@ BITSTRUCT_OK:
 						if (int_is_zero(right->const_expr.ixx)) RETURN_SEMA_ERROR(right, operator == BINARYOP_MOD_ASSIGN ? "%% by zero not allowed." : "Division by zero not allowed.");
 						break;
 					case CONST_FLOAT:
-						break;
 					default:
 						break;
 				}
@@ -8927,14 +8931,14 @@ static bool sema_expr_analyse_div(SemaContext *context, Expr *expr, Expr *left, 
 	{
 		switch (right->const_expr.const_kind)
 		{
+			case CONST_FLOAT:
+				// This is allowed, as it will generate a NaN
+				break;
 			case CONST_INTEGER:
 				if (int_is_zero(right->const_expr.ixx))
 				{
 					RETURN_SEMA_ERROR(right, "This expression evaluates to zero and division by zero is not allowed.");
 				}
-				break;
-			case CONST_FLOAT:
-				// This is allowed, as it will generate a NaN
 				break;
 			case CONST_INITIALIZER:
 				// Do not analyse
@@ -11248,7 +11252,8 @@ static Type *sema_expr_check_type_exists(SemaContext *context, TypeInfo *type_in
 						   type_quoted_error_string(type));
 				return poisoned_type;
 			}
-			return type_get_vector(type, type_info->is_simd ? TYPE_SIMD_VECTOR : TYPE_VECTOR, size);
+			// Vectors are limited in length so casting to int is safe.
+			return type_get_vector(type, type_info->is_simd ? TYPE_SIMD_VECTOR : TYPE_VECTOR, (int)size);
 		}
 		case TYPE_INFO_ARRAY:
 		{
@@ -11530,7 +11535,7 @@ static inline bool sema_expr_analyse_embed(SemaContext *context, Expr *expr, boo
 	expr->const_expr = (ExprConst){
 			.const_kind = CONST_BYTES,
 			.bytes.ptr = content,
-			.bytes.len = len,
+			.bytes.len = (ArrayIndex)len,
 	};
 	expr->expr_kind = EXPR_CONST;
 	expr->resolve_status = RESOLVE_DONE;
@@ -12390,7 +12395,6 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_RECAST:
 		case EXPR_ADDR_CONVERSION:
 		case EXPR_DISCARD:
-			return sema_analyse_expr_rvalue(context, expr->inner_expr);
 		case EXPR_PTR_ACCESS:
 		case EXPR_SLICE_LEN:
 		case EXPR_VECTOR_FROM_ARRAY:
@@ -12582,7 +12586,7 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 	else
 	{
 		Decl *generic;
-		if (to && (generic = declptrzero(type_find_generic(to))) != NULL)
+		if (to && (generic = declptrzero(type_find_generic(to))) != NULL) // NOLINT
 		{
 			Decl *generic_prev = context->generic_infer;
 			context->generic_infer = generic;

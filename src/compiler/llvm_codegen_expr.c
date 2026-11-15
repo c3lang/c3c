@@ -4687,6 +4687,16 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 }
 
 
+static void llvm_emit_ternary_branch(GenContext *c, BEValue *value, Expr *expr, BEValue *result)
+{
+	if (!result)
+	{
+		llvm_emit_rvalue_in_block(c, value, expr);
+		return;
+	}
+	if (llvm_emit_folded_in_block(c, value, expr) && llvm_get_current_block_if_in_use(c)) llvm_store(c, result, value);
+}
+
 void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 {
 	ASSERT(expr->ternary_expr.then_expr);
@@ -4701,8 +4711,9 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 
 	Expr *else_expr = exprptr(expr->ternary_expr.else_expr);
 	Expr *then_expr = exprptr(expr->ternary_expr.then_expr);
+	bool by_addr = llvm_temp_as_address(expr->type);
 
-	if (!IS_OPTIONAL(expr) && expr_is_const(else_expr)
+	if (!by_addr && !IS_OPTIONAL(expr) && expr_is_const(else_expr)
 		&& expr_is_const(then_expr))
 	{
 		BEValue left;
@@ -4723,8 +4734,9 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 	LLVMBasicBlockRef lhs_block = llvm_basic_block_new(c, "cond.lhs");
 	llvm_emit_cond_br(c, value, lhs_block, rhs_block);
 	llvm_emit_block(c, lhs_block);
+	BEValue result = by_addr ? llvm_emit_alloca_b(c, type_no_optional(expr->type), "ternary") : (BEValue) { .value = NULL };
 	BEValue lhs;
-	llvm_emit_rvalue_in_block(c, &lhs, then_expr);
+	llvm_emit_ternary_branch(c, &lhs, then_expr, by_addr ? &result : NULL);
 	LLVMValueRef lhs_value = lhs.value;
 	LLVMBasicBlockRef lhs_exit = llvm_get_current_block_if_in_use(c);
 	if (lhs.type == type_bool && LLVMTypeOf(lhs_value) != c->bool_type)
@@ -4735,7 +4747,7 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 
 	llvm_emit_block(c, rhs_block);
 	BEValue rhs;
-	llvm_emit_rvalue_in_block(c, &rhs, else_expr);
+	llvm_emit_ternary_branch(c, &rhs, else_expr, by_addr ? &result : NULL);
 	LLVMValueRef rhs_value = rhs.value;
 	if (rhs.type == type_bool && LLVMTypeOf(rhs_value) != c->bool_type)
 	{
@@ -4747,6 +4759,11 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 
 	// Generate phi
 	llvm_emit_block(c, phi_block);
+	if (by_addr)
+	{
+		*value = result;
+		return;
+	}
 	if (!rhs_exit)
 	{
 		if (!lhs_value) lhs_value = LLVMGetUndef(llvm_get_type(c, expr->type));

@@ -58,6 +58,7 @@
 - A `$vaarg` splat that expanded to nothing in a slice initializer, like `int[] x = { ...$vaarg };`, was rejected as a zero length array.
 - A runtime value for a bitstruct field set through an array element or range in an initializer, like `Bits[2] b = { [1].x = t };`, crashed the compiler.
 - A runtime value for a `@bigendian` bitstruct field set through a struct member in an initializer was stored without the byte swap.
+- A ternary on unions could lose data stored in the padding of the union's largest member, like `(c ? a : b).wide[1]` on a union of `struct { ulong lo; ushort hi; }` and `ulong[2] wide`. #3662
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.

@@ -2052,7 +2052,7 @@ static inline Type *type_find_max_ptr_type(SemaContext *context, Type *type, Typ
 	// Slice and vararray can implicitly convert to a pointer.
 	if (other->type_kind == TYPE_SLICE)
 	{
-		Type *max_type = type_find_max_type(context, type->pointer, other->pointer, false, false);
+		Type *max_type = type_find_max_type(context, type->pointer, other->pointer, NULL, NULL);
 		if (!max_type || max_type == poisoned_type) return max_type;
 		return type_get_ptr(max_type);
 	}
@@ -2086,7 +2086,7 @@ static inline Type *type_find_max_ptr_type(SemaContext *context, Type *type, Typ
 	{
 		return other;
 	}
-	Type *max_type = type_find_max_type(context, pointer_type, other_pointer_type, false, false);
+	Type *max_type = type_find_max_type(context, pointer_type, other_pointer_type, NULL, NULL);
 	if (!max_type || max_type == poisoned_type) return max_type;
 	return type_get_ptr(max_type);
 }
