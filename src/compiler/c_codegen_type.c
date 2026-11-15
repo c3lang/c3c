@@ -132,50 +132,6 @@ bool c_type_is_resolved(Type *type)
 	}
 }
 
-int c_get_type_introspection_kind(Type *type)
-{
-	type = c_unwrap_alias(type);
-	switch (type->type_kind)
-	{
-		case TYPE_VOID: return INTROSPECT_TYPE_VOID;
-		case TYPE_BOOL: return INTROSPECT_TYPE_BOOL;
-		case TYPE_I8:
-		case TYPE_I16:
-		case TYPE_I32:
-		case TYPE_I64:
-		case TYPE_I128: return INTROSPECT_TYPE_SIGNED_INT;
-		case TYPE_U8:
-		case TYPE_U16:
-		case TYPE_U32:
-		case TYPE_U64:
-		case TYPE_U128: return INTROSPECT_TYPE_UNSIGNED_INT;
-		case TYPE_F16:
-		case TYPE_BF16:
-		case TYPE_F32:
-		case TYPE_F64:
-		case TYPE_F128: return INTROSPECT_TYPE_FLOAT;
-		case TYPE_TYPEID: return INTROSPECT_TYPE_TYPEID;
-		case TYPE_ANYFAULT: return INTROSPECT_TYPE_ANYFAULT;
-		case TYPE_ANY: return INTROSPECT_TYPE_ANY;
-		case TYPE_ENUM: return INTROSPECT_TYPE_ENUM;
-		case TYPE_CONSTSET: return INTROSPECT_TYPE_CONSTSET;
-		case TYPE_STRUCT: return INTROSPECT_TYPE_STRUCT;
-		case TYPE_UNION: return INTROSPECT_TYPE_UNION;
-		case TYPE_BITSTRUCT: return INTROSPECT_TYPE_BITSTRUCT;
-		case TYPE_FUNC_PTR:
-		case TYPE_FUNC_RAW: return INTROSPECT_TYPE_FUNC;
-		case TYPE_OPTIONAL: return INTROSPECT_TYPE_OPTIONAL;
-		case TYPE_ARRAY: return INTROSPECT_TYPE_ARRAY;
-		case TYPE_SLICE: return INTROSPECT_TYPE_SLICE;
-		case TYPE_VECTOR:
-		case TYPE_SIMD_VECTOR: return INTROSPECT_TYPE_VECTOR;
-		case TYPE_TYPEDEF: return INTROSPECT_TYPE_DISTINCT;
-		case TYPE_POINTER: return INTROSPECT_TYPE_POINTER;
-		case TYPE_INTERFACE: return INTROSPECT_TYPE_INTERFACE;
-		default: return INTROSPECT_TYPE_VOID;
-	}
-}
-
 size_t c_get_type_size(Type *type)
 {
 	type = c_unwrap_alias(type);

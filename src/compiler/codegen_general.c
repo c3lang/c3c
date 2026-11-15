@@ -410,3 +410,34 @@ bool builtin_needs_libm(BuiltinFunction func)
 			return false;
 	}
 }
+
+// The index in `parent` of `member`, or of the anonymous member containing it, -1 if neither.
+ArrayIndex find_member_index(Decl *parent, Decl *member)
+{
+	FOREACH_IDX(i, Decl *, maybe_member, parent->strukt.members)
+	{
+		if (member == maybe_member)
+		{
+			return (int)i;
+		}
+		if (!maybe_member->name)
+		{
+			if (find_member_index(maybe_member, member) != -1) return (int)i;
+		}
+	}
+	return -1;
+}
+
+bool bitstruct_requires_byteswap(Decl *decl)
+{
+	ASSERT(decl->decl_kind == DECL_BITSTRUCT);
+	bool big_endian = compiler.platform.big_endian;
+	if (decl->strukt.big_endian) return !big_endian;
+	if (decl->strukt.little_endian) return big_endian;
+	return false;
+}
+
+bool bitstruct_is_big_endian(Decl *decl)
+{
+	return bitstruct_requires_byteswap(decl) ^ compiler.platform.big_endian;
+}

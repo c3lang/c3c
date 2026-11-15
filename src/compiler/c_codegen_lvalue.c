@@ -20,61 +20,21 @@ Decl *get_struct_decl_from_type(Type *type)
 	return NULL;
 }
 
-bool c_find_member_index_rec(Decl *parent_decl, Decl *member, int *out_indices, int *out_depth, int max_depth)
+// The member indices from `parent` down to `member` through anonymous members, as llvm_emit_member_addr.
+// Returns the depth, 0 when `member` is not a field of `parent`.
+int c_member_path(Decl *parent, Decl *member, int indices[MAX_MEMBER_PATH])
 {
-	if (!parent_decl || !member || !decl_has_members(parent_decl) || !parent_decl->strukt.members)
+	int depth = 0;
+	while (true)
 	{
-		return false;
+		ArrayIndex index = find_member_index(parent, member);
+		if (index < 0) return 0;
+		ASSERT(depth < MAX_MEMBER_PATH);
+		indices[depth++] = (int)index;
+		Decl *found      = parent->strukt.members[index];
+		if (found == member) return depth;
+		parent = found;
 	}
-
-	Decl *unwrapped_member = c_decl_unwrap(member);
-
-	FOREACH_IDX(i1, Decl *, m, parent_decl->strukt.members)
-	{
-		if (c_decl_unwrap(m) == unwrapped_member)
-		{
-			if (*out_depth < max_depth)
-			{
-				out_indices[(*out_depth)++] = (int)i1;
-				return true;
-			}
-		}
-	}
-
-	FOREACH_IDX(i2, Decl *, m, parent_decl->strukt.members)
-	{
-		if (m->name && member->name && strcmp(m->name, member->name) == 0)
-		{
-			if (*out_depth < max_depth)
-			{
-				out_indices[(*out_depth)++] = (int)i2;
-				return true;
-			}
-		}
-	}
-
-	FOREACH_IDX(i3, Decl *, m, parent_decl->strukt.members)
-	{
-		bool is_sub = (m->decl_kind == DECL_STRUCT || m->decl_kind == DECL_UNION || m->decl_kind == DECL_BITSTRUCT || m->is_substruct || !m->name);
-		if (is_sub)
-		{
-			Decl *sub_decl = (m->decl_kind == DECL_STRUCT || m->decl_kind == DECL_UNION || m->decl_kind == DECL_BITSTRUCT)
-			                     ? m
-			                     : (m->type ? type_flatten(m->type)->decl : NULL);
-			if (!sub_decl) continue;
-			int saved_depth = *out_depth;
-			if (*out_depth < max_depth)
-			{
-				out_indices[(*out_depth)++] = (int)i3;
-				if (c_find_member_index_rec(sub_decl, member, out_indices, out_depth, max_depth))
-				{
-					return true;
-				}
-				*out_depth = saved_depth;
-			}
-		}
-	}
-	return false;
 }
 
 bool c_is_bitstruct_array(Type *type, Decl **out_decl)
@@ -98,94 +58,6 @@ bool c_is_bitstruct_array(Type *type, Decl **out_decl)
 		}
 	}
 	return false;
-}
-
-bool c_is_bitstruct_big_endian(Decl *d)
-{
-	if (!d)
-	{
-		return false;
-	}
-	if (d->strukt.big_endian)
-	{
-		return true;
-	}
-	if (d->strukt.little_endian)
-	{
-		return false;
-	}
-	return compiler.platform.big_endian;
-}
-
-bool c_is_bitstruct_requires_byteswap(Decl *d)
-{
-	if (!d || d->decl_kind != DECL_BITSTRUCT)
-	{
-		return false;
-	}
-	bool big_endian = compiler.platform.big_endian;
-	if (d->strukt.big_endian)
-	{
-		return !big_endian;
-	}
-	if (d->strukt.little_endian)
-	{
-		return big_endian;
-	}
-	return false;
-}
-
-static int c_eval_bit_const_expr(Expr *e)
-{
-	while (e && (e->expr_kind == EXPR_RVALUE || e->expr_kind == EXPR_RECAST || e->expr_kind == EXPR_EXT_TRUNC))
-	{
-		e = e->inner_expr;
-	}
-	if (!e || e->expr_kind != EXPR_CONST)
-	{
-		return 0;
-	}
-	switch (e->const_expr.const_kind)
-	{
-		case CONST_INTEGER:
-			return (int)e->const_expr.ixx.i.low;
-		case CONST_ENUM:
-			return (int)e->const_expr.enum_val->enum_constant.inner_ordinal;
-		case CONST_BOOL:
-			return e->const_expr.b ? 1 : 0;
-		default:
-			return 0;
-	}
-}
-
-void c_get_bitstruct_member_bits(Decl *m, int *out_start_bit, int *out_end_bit)
-{
-	if (!m || m->decl_kind != DECL_VAR)
-	{
-		*out_start_bit = 0;
-		*out_end_bit   = 0;
-		return;
-	}
-	if (!m->var.bit_is_expr)
-	{
-		*out_start_bit = m->var.start_bit;
-		*out_end_bit   = m->var.end_bit;
-		return;
-	}
-
-	int s = c_eval_bit_const_expr(m->var.start);
-	int e = m->var.end ? c_eval_bit_const_expr(m->var.end) : s;
-
-	if (s < 0)
-	{
-		s = 0;
-	}
-	if (e < s)
-	{
-		e = s;
-	}
-	*out_start_bit = s;
-	*out_end_bit   = e;
 }
 
 // A C expression for the low `bits` bits set, in the width the field is computed in (uint64_t up to 64 bits).
@@ -215,7 +87,7 @@ static void c_emit_bitstruct_accessors(GenContext *c, Decl *decl)
 	}
 
 	bool is_array       = (flat_c->type_kind == TYPE_ARRAY);
-	bool reverse        = c_is_bitstruct_big_endian(decl);
+	bool reverse        = bitstruct_is_big_endian(decl);
 	const char *bs_name = c_get_decl_name(decl);
 
 	FOREACH(Decl *, m, decl->strukt.members)
@@ -227,8 +99,8 @@ static void c_emit_bitstruct_accessors(GenContext *c, Decl *decl)
 		Type *m_type          = m->type ? c_safe_type_lower(m->type) : type_uint;
 		const char *ret_tname = c_type_name(NULL, m_type);
 		const char *m_name    = m->name ? m->name : "_anon";
-		int start_bit = 0, end_bit = 0;
-		c_get_bitstruct_member_bits(m, &start_bit, &end_bit);
+		int start_bit = (int)m->var.start_bit;
+		int end_bit   = (int)m->var.end_bit;
 		int bit_size = end_bit - start_bit + 1;
 		if (bit_size <= 0)
 		{
@@ -304,7 +176,7 @@ static void c_emit_bitstruct_accessors(GenContext *c, Decl *decl)
 		else if (type_size(container_type) > 8)
 		{
 			PRINT("\t__c3_uint128 v = *(const __c3_uint128 *)p;\n");
-			if (c_is_bitstruct_requires_byteswap(decl))
+			if (bitstruct_requires_byteswap(decl))
 			{
 				PRINT("\tv = (((__c3_uint128)__builtin_bswap64((uint64_t)v)) << 64) | ((__c3_uint128)__builtin_bswap64((uint64_t)(v >> 64)));\n");
 			}
@@ -327,7 +199,7 @@ static void c_emit_bitstruct_accessors(GenContext *c, Decl *decl)
 			const char *c_tname = c_type_name(NULL, container_type);
 			uint64_t mask       = (bit_size >= 64) ? ~0ULL : (((uint64_t)1 << bit_size) - 1);
 			PRINTF("\tuint64_t v = (uint64_t)*(const %s *)p;\n", c_tname);
-			if (c_is_bitstruct_requires_byteswap(decl))
+			if (bitstruct_requires_byteswap(decl))
 			{
 				PRINTF("\tif (sizeof(%s) == 2) v = __builtin_bswap16((uint16_t)v);\n", c_tname);
 				PRINTF("\telse if (sizeof(%s) == 4) v = __builtin_bswap32((uint32_t)v);\n", c_tname);
@@ -386,7 +258,7 @@ static void c_emit_bitstruct_accessors(GenContext *c, Decl *decl)
 		else if (type_size(container_type) > 8)
 		{
 			PRINT("\t__c3_uint128 *v = (__c3_uint128 *)p;\n");
-			if (c_is_bitstruct_requires_byteswap(decl))
+			if (bitstruct_requires_byteswap(decl))
 			{
 				PRINT("\t__c3_uint128 _cur = (((__c3_uint128)__builtin_bswap64((uint64_t)*v)) << 64) | ((__c3_uint128)__builtin_bswap64((uint64_t)(*v >> 64)));\n");
 				if (bit_size >= 128)
@@ -419,7 +291,7 @@ static void c_emit_bitstruct_accessors(GenContext *c, Decl *decl)
 			uint64_t mask         = (bit_size >= 64) ? ~0ULL : (((uint64_t)1 << bit_size) - 1);
 			uint64_t shifted_mask = (bit_size >= 64) ? ~0ULL : (mask << start_bit);
 			PRINTF("\t%s *v = (%s *)p;\n", c_tname, c_tname);
-			if (c_is_bitstruct_requires_byteswap(decl))
+			if (bitstruct_requires_byteswap(decl))
 			{
 				PRINTF("\tuint64_t _cur = (uint64_t)*v;\n");
 				PRINTF("\tif (sizeof(%s) == 2) _cur = __builtin_bswap16((uint16_t)_cur);\n", c_tname);
@@ -471,12 +343,8 @@ const char *c_emit_bitstruct_container(GenContext *c, Expr *parent_expr, Decl *m
 	c_emit_lvalue_addr(c, parent_expr, &parent_addr, type_get_ptr(parent_type));
 
 	Decl *parent_decl = get_struct_decl_from_type(parent_expr ? parent_expr->type : parent_type);
-	int indices[16];
-	int depth = 0;
-	if (parent_decl)
-	{
-		c_find_member_index_rec(parent_decl, member, indices, &depth, 16);
-	}
+	int indices[MAX_MEMBER_PATH];
+	int depth = parent_decl ? c_member_path(parent_decl, member, indices) : 0;
 
 	Decl *container_decl = NULL;
 	int temp_ptr         = c_create_variable(c);
@@ -569,12 +437,8 @@ const char *c_emit_bitstruct_container(GenContext *c, Expr *parent_expr, Decl *m
 static void c_emit_struct_member_addr(GenContext *c, const char *tname, int temp, Type *struct_type, int ptr_var, Decl *member)
 {
 	Decl *parent_decl = get_struct_decl_from_type(struct_type);
-	int indices[16];
-	int depth = 0;
-	if (parent_decl)
-	{
-		c_find_member_index_rec(parent_decl, member, indices, &depth, 16);
-	}
+	int indices[MAX_MEMBER_PATH];
+	int depth = parent_decl ? c_member_path(parent_decl, member, indices) : 0;
 	if (depth == 0 || !parent_decl)
 	{
 		if (member && member->decl_kind == DECL_FUNC)

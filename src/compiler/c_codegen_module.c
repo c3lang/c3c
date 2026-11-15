@@ -83,9 +83,9 @@ static bool c_emit_const_lvalue(GenContext *c, Expr *expr)
 			Expr *parent = expr->access_resolved_expr.parent;
 			Type *parent_type = type_flatten(parent->type);
 			if (parent_type->type_kind != TYPE_STRUCT && parent_type->type_kind != TYPE_UNION) return false;
-			int indices[16];
-			int depth = 0;
-			if (!c_find_member_index_rec(parent_type->decl, expr->access_resolved_expr.ref, indices, &depth, 16)) return false;
+			int indices[MAX_MEMBER_PATH];
+			int depth = c_member_path(parent_type->decl, expr->access_resolved_expr.ref, indices);
+			if (!depth) return false;
 			if (!c_emit_const_lvalue(c, parent)) return false;
 			if (c) for (int i = 0; i < depth; i++) PRINTF(".m%d", indices[i]);
 			return true;
@@ -358,7 +358,7 @@ static void c_emit_const_bitstruct_initializer(GenContext *c, ConstInitializer *
 			Decl **members = decl ? decl->strukt.members : NULL;
 			int m_count    = vec_size(members);
 			int init_count = vec_size(init->init_struct);
-			bool rev       = c_is_bitstruct_big_endian(decl);
+			bool rev       = bitstruct_is_big_endian(decl);
 			for (int i = 0; i < m_count && i < init_count; i++)
 			{
 				ConstInitializer *val = init->init_struct[i];
@@ -367,8 +367,8 @@ static void c_emit_const_bitstruct_initializer(GenContext *c, ConstInitializer *
 					continue;
 				}
 				uint64_t v = c_get_const_init_val(val);
-				int start_bit = 0, end_bit = 0;
-				c_get_bitstruct_member_bits(members[i], &start_bit, &end_bit);
+				int start_bit = (int)members[i]->var.start_bit;
+				int end_bit   = (int)members[i]->var.end_bit;
 				c_bit_set_bytes_internal(bytes, start_bit, end_bit, rev, v);
 			}
 		}
@@ -400,8 +400,8 @@ static void c_emit_const_bitstruct_initializer(GenContext *c, ConstInitializer *
 				continue;
 			}
 			uint64_t v = c_get_const_init_val(val);
-			int start_bit = 0, end_bit = 0;
-			c_get_bitstruct_member_bits(members[i], &start_bit, &end_bit);
+			int start_bit = (int)members[i]->var.start_bit;
+			int end_bit   = (int)members[i]->var.end_bit;
 			int bit_size = end_bit - start_bit + 1;
 			if (bit_size <= 0)
 			{
@@ -416,7 +416,7 @@ static void c_emit_const_bitstruct_initializer(GenContext *c, ConstInitializer *
 	{
 		total = c_get_const_init_val(init);
 	}
-	if (c_is_bitstruct_requires_byteswap(decl))
+	if (bitstruct_requires_byteswap(decl))
 	{
 		TypeSize sz = type_size(flat_container);
 		if (sz == 2)
@@ -1733,7 +1733,7 @@ GenContext *c_emit_runtime_c(const char *dir)
 		{
 			continue;
 		}
-		int kind               = c_get_type_introspection_kind(t);
+		int kind               = type_get_introspection_kind(c_unwrap_alias(t)->type_kind);
 		Type *parent_type = NULL;
 		Type *inner_type  = NULL;
 		c_get_runtime_type_dependencies(t, &parent_type, &inner_type);

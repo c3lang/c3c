@@ -246,24 +246,11 @@ static void c_emit_sat_lane(GenContext *c, const char *dst, Type *t, BuiltinFunc
 	PRINT("}\n");
 }
 
-static const char *c_unsigned_type_for_size(int bytes)
-{
-	switch (bytes)
-	{
-		case 1: return "uint8_t";
-		case 2: return "uint16_t";
-		case 4: return "uint32_t";
-		case 8: return "uint64_t";
-		case 16: return "__c3_uint128";
-		default: return "uint64_t";
-	}
-}
-
 // $$bitreverse of the integer expression `x` of type `t` into the lvalue `dst`.
 static void c_emit_bitreverse_lane(GenContext *c, const char *dst, Type *t, const char *x)
 {
 	int bits        = (int)type_size(t) * 8;
-	const char *utn = c_unsigned_type_for_size(bits / 8);
+	const char *utn = c_type_name(c, type_int_unsigned_by_bitsize(bits));
 	PRINTF("%s = 0;\n", dst);
 	PRINTF("for (int ___i = 0; ___i < %d; ___i++) { if ((((%s)%s) >> ___i) & 1) %s |= (%s)((%s)1 << (%d - ___i)); }\n",
 	       bits, utn, x, dst, c_type_name(c, t), utn, bits - 1);
@@ -275,7 +262,7 @@ static const char *c_bit_builtin_lane(GenContext *c, BuiltinFunction builtin, Ty
 	const char *tn  = c_type_name(c, t);
 	int bytes       = (int)type_size(t);
 	int bits        = bytes * 8;
-	const char *utn = c_unsigned_type_for_size(bytes);
+	const char *utn = c_type_name(c, type_int_unsigned_by_bitsize(bits));
 	const char *lo  = str_printf("((uint64_t)%s)", x);
 	const char *hi  = str_printf("((uint64_t)((__c3_uint128)%s >> 64))", x);
 	switch (builtin)
@@ -309,7 +296,7 @@ static void c_emit_sat_shl_lane(GenContext *c, const char *dst, Type *t, const c
 	const char *tn  = c_type_name(c, t);
 	int bytes       = (int)type_size(t);
 	int bits        = bytes * 8;
-	const char *utn = c_unsigned_type_for_size(bytes);
+	const char *utn = c_type_name(c, type_int_unsigned_by_bitsize(bits));
 	bool is_signed  = type_is_signed(t);
 	const char *max_val, *min_val = NULL;
 	if (is_signed)

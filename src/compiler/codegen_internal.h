@@ -265,3 +265,6 @@ INLINE Type *lowered_array_element_type(Type *array_type)
 bool module_should_weaken(Module *module);
 bool decl_should_weaken(Decl *decl);
 bool builtin_needs_libm(BuiltinFunction func);
+ArrayIndex find_member_index(Decl *parent, Decl *member);
+bool bitstruct_requires_byteswap(Decl *decl);
+bool bitstruct_is_big_endian(Decl *decl);

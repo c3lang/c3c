@@ -2069,7 +2069,6 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 		}
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		{
-			Type *raw_type    = expr->type ? type_flatten(expr->type) : NULL;
 			Type *target_type = c_safe_type_lower(expr->type);
 			if (target_type->type_kind == TYPE_VOID)
 			{
@@ -2090,34 +2089,6 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 				PRINTF("%s ___var_%d = {0};\n", tname, temp);
 			}
 			Expr **elements = expr->designated_init.list;
-			if (raw_type && raw_type->type_kind == TYPE_BITSTRUCT)
-			{
-				Decl *d             = raw_type->decl;
-				Decl **members      = d ? d->strukt.members : NULL;
-				int member_count    = vec_size(members);
-				const char *bs_name = c_get_decl_name(d);
-				c_declare_bitstruct_accessors(c, d);
-				FOREACH(Expr *, des, elements)
-				{
-					if (des->expr_kind == EXPR_DESIGNATOR && vec_size(des->designator_expr.path))
-					{
-						DesignatorElement *de = des->designator_expr.path[0];
-						int m_idx             = (int)de->index;
-						Decl *m               = (m_idx < member_count) ? members[m_idx] : NULL;
-						if (!m)
-						{
-							continue;
-						}
-						CValue dval = {0};
-						c_emit_expr(c, &dval, des->designator_expr.value);
-						c_value_rvalue(c, &dval);
-						const char *m_name = m->name ? m->name : "_anon";
-						PRINTF("%s_set_%s((void*)&___var_%d, ___var_%d);\n",
-						       bs_name, m_name, temp, dval.var);
-					}
-				}
-				return;
-			}
 			FOREACH(Expr *, des, elements)
 			{
 				if (des->expr_kind == EXPR_DESIGNATOR && vec_size(des->designator_expr.path))
@@ -2126,7 +2097,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 					c_emit_expr(c, &dval, des->designator_expr.value);
 					c_value_rvalue(c, &dval);
 					c_ensure_cvalue_var(c, &dval, des->designator_expr.value->type);
-					c_emit_designated_store(c, str_printf("___var_%d", temp), target_type, des->designator_expr.path, 0, &dval);
+					c_emit_designated_store(c, str_printf("___var_%d", temp), expr->type, des->designator_expr.path, 0, &dval);
 				}
 			}
 			return;

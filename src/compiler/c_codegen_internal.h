@@ -278,11 +278,9 @@ AlignSize c_get_effective_alignment(Decl *decl, Type *type);
 
 /* Lvalue & Access */
 Decl *get_struct_decl_from_type(Type *type);
-bool c_find_member_index_rec(Decl *parent_decl, Decl *member, int *out_indices, int *out_depth, int max_depth);
+#define MAX_MEMBER_PATH 16
+int c_member_path(Decl *parent, Decl *member, int indices[MAX_MEMBER_PATH]);
 bool c_is_bitstruct_array(Type *type, Decl **out_decl);
-bool c_is_bitstruct_big_endian(Decl *d);
-bool c_is_bitstruct_requires_byteswap(Decl *d);
-void c_get_bitstruct_member_bits(Decl *m, int *out_start_bit, int *out_end_bit);
 void c_declare_bitstruct_accessors(GenContext *c, Decl *decl);
 const char *c_emit_bitstruct_container(GenContext *c, Expr *parent_expr, Decl *member, int *out_container_var, Decl **out_bitstruct_decl);
 void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target_type);
@@ -433,7 +431,6 @@ Type *c_decl_type(Decl *decl);
 Type *c_expr_type(Expr *expr);
 bool c_type_is_aggregate(Type *t);
 bool c_type_is_resolved(Type *type);
-int c_get_type_introspection_kind(Type *type);
 size_t c_get_type_size(Type *type);
 void c_type_names_init(void);
 const char *c_type_name(GenContext *c, Type *type);
