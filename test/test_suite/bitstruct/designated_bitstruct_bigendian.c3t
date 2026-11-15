@@ -1,0 +1,144 @@
+// #target: macos-aarch64
+module test;
+
+bitstruct Big : ushort @bigendian
+{
+	char lo : 0..7;
+	char hi : 8..15;
+}
+
+bitstruct BigArr : char[2] @bigendian
+{
+	char lo : 0..7;
+	char hi : 8..15;
+}
+
+struct Holder
+{
+	int k;
+	Big g;
+}
+
+fn void member(char h)
+{
+	Holder x = { .k = 1, .g.hi = h };
+}
+
+fn void element(char h, char l)
+{
+	Big[2] y = { [1].hi = h, [1].lo = l };
+}
+
+fn void range(char h)
+{
+	Big[3] z = { [0..1].hi = h };
+}
+
+fn void array_backed(char h)
+{
+	BigArr[2] w = { [1].hi = h };
+}
+
+fn void main()
+{
+	array_backed(0x12);
+	member(0x12);
+	element(0x12, 0x34);
+	range(0x12);
+}
+
+/* #expect: test.ll
+
+define void @test.member(i8 zeroext %0) #0 {
+entry:
+  %x = alloca %Holder, align 4
+  store i32 0, ptr %x, align 4
+  %ptradd = getelementptr inbounds i8, ptr %x, i64 4
+  store i16 0, ptr %ptradd, align 4
+  store i32 1, ptr %x, align 4
+  %ptradd1 = getelementptr inbounds i8, ptr %x, i64 4
+  %1 = load i16, ptr %ptradd1, align 4
+  %2 = call i16 @llvm.bswap.i16(i16 %1)
+  %zext = zext i8 %0 to i16
+  %shl = shl i16 %zext, 8
+  %3 = and i16 %shl, -256
+  %4 = and i16 %2, 255
+  %5 = or i16 %4, %3
+  %6 = call i16 @llvm.bswap.i16(i16 %5)
+  store i16 %6, ptr %ptradd1, align 4
+  ret void
+}
+
+define void @test.element(i8 zeroext %0, i8 zeroext %1) #0 {
+entry:
+  %y = alloca [2 x i16], align 2
+  store i16 0, ptr %y, align 2
+  %ptradd = getelementptr inbounds i8, ptr %y, i64 2
+  store i16 0, ptr %ptradd, align 2
+  %ptradd1 = getelementptr inbounds i8, ptr %y, i64 2
+  %2 = load i16, ptr %ptradd1, align 2
+  %3 = call i16 @llvm.bswap.i16(i16 %2)
+  %zext = zext i8 %0 to i16
+  %shl = shl i16 %zext, 8
+  %4 = and i16 %shl, -256
+  %5 = and i16 %3, 255
+  %6 = or i16 %5, %4
+  %7 = call i16 @llvm.bswap.i16(i16 %6)
+  store i16 %7, ptr %ptradd1, align 2
+  %ptradd2 = getelementptr inbounds i8, ptr %y, i64 2
+  %8 = load i16, ptr %ptradd2, align 2
+  %9 = call i16 @llvm.bswap.i16(i16 %8)
+  %zext3 = zext i8 %1 to i16
+  %10 = and i16 %zext3, 255
+  %11 = and i16 %9, -256
+  %12 = or i16 %11, %10
+  %13 = call i16 @llvm.bswap.i16(i16 %12)
+  store i16 %13, ptr %ptradd2, align 2
+  ret void
+}
+
+define void @test.range(i8 zeroext %0) #0 {
+entry:
+  %z = alloca [3 x i16], align 2
+  store i16 0, ptr %z, align 2
+  %ptradd = getelementptr inbounds i8, ptr %z, i64 2
+  store i16 0, ptr %ptradd, align 2
+  %ptradd1 = getelementptr inbounds i8, ptr %z, i64 4
+  store i16 0, ptr %ptradd1, align 2
+  %1 = load i16, ptr %z, align 2
+  %2 = call i16 @llvm.bswap.i16(i16 %1)
+  %zext = zext i8 %0 to i16
+  %shl = shl i16 %zext, 8
+  %3 = and i16 %shl, -256
+  %4 = and i16 %2, 255
+  %5 = or i16 %4, %3
+  %6 = call i16 @llvm.bswap.i16(i16 %5)
+  store i16 %6, ptr %z, align 2
+  %ptradd2 = getelementptr inbounds i8, ptr %z, i64 2
+  %7 = load i16, ptr %ptradd2, align 2
+  %8 = call i16 @llvm.bswap.i16(i16 %7)
+  %zext3 = zext i8 %0 to i16
+  %shl4 = shl i16 %zext3, 8
+  %9 = and i16 %shl4, -256
+  %10 = and i16 %8, 255
+  %11 = or i16 %10, %9
+  %12 = call i16 @llvm.bswap.i16(i16 %11)
+  store i16 %12, ptr %ptradd2, align 2
+  ret void
+}
+
+define void @test.array_backed(i8 zeroext %0) #0 {
+entry:
+  %w = alloca [2 x [2 x i8]], align 1
+  store i8 0, ptr %w, align 1
+  %ptradd = getelementptr inbounds i8, ptr %w, i64 1
+  store i8 0, ptr %ptradd, align 1
+  %ptradd1 = getelementptr inbounds i8, ptr %w, i64 2
+  store i8 0, ptr %ptradd1, align 1
+  %ptradd2 = getelementptr inbounds i8, ptr %ptradd1, i64 1
+  store i8 0, ptr %ptradd2, align 1
+  %ptradd3 = getelementptr inbounds i8, ptr %w, i64 2
+  %ptradd4 = getelementptr inbounds i8, ptr %ptradd3, i64 1
+  store i8 %0, ptr %ptradd4, align 1
+  ret void
+}
