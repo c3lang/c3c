@@ -64,19 +64,19 @@ define i32 @main() #0 {
 entry:
   %h = alloca %Half7, align 2
   %coerce = alloca { <4 x half>, <4 x half> }, align 8
-  store half 0.000000e+00, ptr %h, align 2
+  store half
   %ptradd = getelementptr inbounds i8, ptr %h, i64 2
-  store half 0.000000e+00, ptr %ptradd, align 2
+  store half
   %ptradd1 = getelementptr inbounds i8, ptr %h, i64 4
-  store half 0.000000e+00, ptr %ptradd1, align 2
+  store half
   %ptradd2 = getelementptr inbounds i8, ptr %h, i64 6
-  store half 0.000000e+00, ptr %ptradd2, align 2
+  store half
   %ptradd3 = getelementptr inbounds i8, ptr %h, i64 8
-  store half 0.000000e+00, ptr %ptradd3, align 2
+  store half
   %ptradd4 = getelementptr inbounds i8, ptr %h, i64 10
-  store half 0.000000e+00, ptr %ptradd4, align 2
+  store half
   %ptradd5 = getelementptr inbounds i8, ptr %h, i64 12
-  store half 0.000000e+00, ptr %ptradd5, align 2
+  store half
   call void @llvm.memcpy.p0.p0.i64(ptr align 8 %coerce, ptr align 2 %h, i64 14, i1 false)
   %lo = load <4 x half>, ptr %coerce, align 8
   %ptradd6 = getelementptr inbounds i8, ptr %coerce, i64 8
