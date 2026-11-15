@@ -274,7 +274,7 @@ void c_emit_assign_var(GenContext *c, VariableId dst_var, Type *dst_type, CValue
 bool c_emit_function_decl(GenContext *c, Decl *fn, bool is_current_module);
 void c_emit_function(GenContext *c, Decl *fn);
 void c_emit_local_var_declarations(GenContext *c);
-AlignSize c_get_effective_alignment(Decl *decl, Type *type);
+const char *c_align_attr_str(Decl *decl, Type *type);
 
 /* Lvalue & Access */
 Decl *get_struct_decl_from_type(Type *type);

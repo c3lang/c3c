@@ -1,0 +1,38 @@
+// #target: linux-x64
+module align_test;
+struct Pair { long a; long b; }
+Pair g_pair;
+char[16] g_bytes;
+int g_over @align(32);
+extern fn void use(void* p);
+fn void test() @export("align_test")
+{
+	Pair pair;
+	char[16] bytes;
+	int over @align(32);
+	use(&pair);
+	use(&bytes);
+	use(&over);
+	use(&g_pair);
+	use(&g_bytes);
+	use(&g_over);
+}
+
+/* #expect: align_test.ll
+
+@align_test.g_pair = global %Pair zeroinitializer, align 8
+@align_test.g_bytes = global [16 x i8] zeroinitializer, align 16
+@align_test.g_over = global i32 0, align 32
+  %pair = alloca %Pair, align 8
+  %bytes = alloca [16 x i8], align 16
+  %over = alloca i32, align 32
+
+/* #expect: align_test.c
+
+extern align_test__Pair align_test__g_pair;
+align_test__Pair align_test__g_pair = {0};
+__c3_aligned(16) __c3_array_uint8_t_16 align_test__g_bytes = {0};
+__c3_aligned(32) int32_t align_test__g_over = {0};
+	align_test__Pair ___var_1 = {0};
+	__c3_aligned(16) __c3_array_uint8_t_16 ___var_2 = {0};
+	__c3_aligned(32) int32_t ___var_3 = 0;

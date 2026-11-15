@@ -1078,25 +1078,6 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 	PRINTF("%s", c_type_zero_literal(type));
 }
 
-static const char *c_get_align_attr_str(Decl *decl, Type *type)
-{
-	AlignSize align = decl ? decl->alignment : 0;
-	if (!align && decl && c_type_is_resolved(decl->type))
-	{
-		align = type_alloca_alignment(decl->type);
-	}
-	if (!align && c_type_is_resolved(type))
-	{
-		align = type_alloca_alignment(type);
-	}
-	if (align < 16 && c_get_type_size(type) >= 16)
-	{
-		align = 16;
-	}
-	AlignSize abi_align = (c_type_is_resolved(type)) ? type_abi_alignment(type) : 1;
-	return (align > abi_align) ? str_printf("__c3_aligned(%u) ", (unsigned)align) : "";
-}
-
 // A C3 constant is `const` in C unless C cannot write its initializer statically: it is then assigned at startup.
 static bool c_global_is_c_const(Decl *var)
 {
@@ -1164,7 +1145,7 @@ static void c_emit_global_decl_here(GenContext *c, Decl *var)
 
 	c_emit_type_forward_decl(c, var_type);
 	const char *tname     = c_type_name(c, var_type);
-	const char *align_str = c_get_align_attr_str(var, var_type);
+	const char *align_str = c_align_attr_str(var, var_type);
 	PRINT(c_decl_export_attrs(var, false));
 	PRINT(is_internal ? "static " : "extern ");
 	if (c_global_is_c_const(var))
@@ -1248,7 +1229,7 @@ static void c_emit_global_def_here(GenContext *c, Decl *var)
 
 	c_emit_type_forward_decl(c, var_type);
 	const char *tname     = c_type_name(c, var_type);
-	const char *align_str = c_get_align_attr_str(var, var_type);
+	const char *align_str = c_align_attr_str(var, var_type);
 	bool is_internal      = c_global_is_internal(var);
 	bool is_weak          = !is_internal && decl_should_weaken(var);
 	PRINT(c_decl_export_attrs(var, true));

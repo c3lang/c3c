@@ -1,36 +1,16 @@
 #include "c_codegen_internal.h"
 
-AlignSize c_get_effective_alignment(Decl *decl, Type *type)
+// The alignment attribute a variable needs beyond its C type's: sema's alignment for the variable, as LLVM.
+const char *c_align_attr_str(Decl *decl, Type *type)
 {
-	AlignSize align = decl ? decl->alignment : 0;
-	if (!align && decl && c_type_is_resolved(decl->type))
-	{
-		align = type_alloca_alignment(decl->type);
-	}
-	if (!align && c_type_is_resolved(type))
-	{
-		align = type_alloca_alignment(type);
-	}
-	Type *vt = type ? c_safe_type_lower(type) : type_int;
-	if (align < 16 && c_get_type_size(vt) >= 16)
-	{
-		align = 16;
-	}
-	return align;
+	AlignSize align = decl && decl->alignment ? decl->alignment : type_alloca_alignment(type);
+	return align > type_abi_alignment(type) ? str_printf("__c3_aligned(%u) ", (unsigned)align) : "";
 }
 
 static Type *c_local_static_type(CLocalVar lv)
 {
 	Type *vt = lv.type ? c_safe_type_lower(lv.type) : type_int;
 	return vt->type_kind == TYPE_VOID ? type_int : vt;
-}
-
-static const char *c_local_align_str(Decl *decl, Type *type)
-{
-	AlignSize align     = c_get_effective_alignment(decl, type);
-	Type *vt            = type ? c_safe_type_lower(type) : type_int;
-	AlignSize abi_align = c_type_is_resolved(vt) ? type_abi_alignment(vt) : 1;
-	return (align > abi_align) ? str_printf("__c3_aligned(%u) ", (unsigned)align) : "";
 }
 
 int c_create_label(GenContext *c)
@@ -510,7 +490,7 @@ void c_emit_local_var_declarations(GenContext *c)
 		}
 		c_emit_type_forward_decl(c, vt);
 		const char *tname     = c_type_name(c, vt);
-		const char *align_str = c_local_align_str(lv.decl, vt);
+		const char *align_str = c_align_attr_str(lv.decl, vt);
 
 		if (lv.alloca_count > 0)
 		{
@@ -650,7 +630,7 @@ void c_emit_function(GenContext *c, Decl *fn)
 			if (pass == 0 && is_tls) continue;
 			Type *vt = c_local_static_type(lv);
 			c_emit_type_forward_decl(c, vt);
-			PRINTF("static %s%s%s ___var_%d", c_local_align_str(lv.decl, vt), is_tls ? "__c3_thread_local " : "",
+			PRINTF("static %s%s%s ___var_%d", c_align_attr_str(lv.decl, vt), is_tls ? "__c3_thread_local " : "",
 			       c_type_name(c, vt), lv.id);
 			if (pass == 0)
 			{
