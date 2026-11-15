@@ -170,9 +170,12 @@ jobs:
           key: ${{ runner.os }}-aarch64-llvm-${{ env.LLVM_RELEASE_VERSION }}-Release-Debug-${{ steps.date.outputs.date }}-${{ hashFiles('CMakeLists.txt', '.github/workflows/main.yml') }}
           
       # set up the environment for Ninja
+      # MSVC 14.52 on the windows-11-arm image triggers an LLVM TinyPtrVector assertion with -O1/-Os
+      # (actions/runner-images#15329), pin the previous toolset until that is resolved.
       - uses: TheMrMilchmann/setup-msvc-dev@v4
         with:
           arch: arm64
+          toolset: "14.51"
 
       - name: CMake Build (Release)
         run: |
