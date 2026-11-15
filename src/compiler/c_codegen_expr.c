@@ -578,27 +578,63 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 	free(c_args);
 }
 
-static void c_emit_slice_elem_eq_loop(GenContext *c, int result_var, int left_var, int right_var, const char *len_str, bool elem_is_slice, bool is_eq)
+// Whether equality of `type` differs from comparing its bytes: floats (-0.0 == 0.0, NaN) and slices (by content).
+static bool c_eq_is_elementwise(Type *type)
 {
-	int loop_k = c_create_variable(c);
-	PRINTF("bool ___var_%d = (___var_%d.len == %s);\n", result_var, left_var, len_str);
-	PRINTF("if (___var_%d) {\n", result_var);
-	PRINTF("\tfor (size_t ___var_%d = 0; ___var_%d < %s; ___var_%d++) {\n", loop_k, loop_k, len_str, loop_k);
-	if (elem_is_slice)
+	Type *flat = type_flatten(c_safe_type_lower(type));
+	if (type_is_float(flat)) return true;
+	switch (flat->type_kind)
 	{
-		PRINTF("\t\tif (!__C3_SLICE_EQ(___var_%d.ptr[___var_%d], ___var_%d.ptr[___var_%d])) { ___var_%d = false; break; }\n",
-		       left_var, loop_k, right_var, loop_k, result_var);
+		case TYPE_SLICE:
+			return true;
+		case TYPE_ARRAY:
+		case TYPE_VECTOR:
+		case TYPE_SIMD_VECTOR:
+			return c_eq_is_elementwise(flat->array.base);
+		default:
+			return false;
+	}
+}
+
+// Clear the bool `result` unless the C lvalues `l` and `r` of `type` are equal, as llvm_emit_comp.
+static void c_emit_eq_check(GenContext *c, int result, const char *l, const char *r, Type *type)
+{
+	type       = c_safe_type_lower(type);
+	Type *flat = type_flatten(type);
+	if (!c_eq_is_elementwise(flat))
+	{
+		if (c_type_is_aggregate(flat))
+		{
+			PRINTF("if (__c3_memcmp(&%s, &%s, sizeof(%s)) != 0) ___var_%d = false;\n", l, r, c_type_name(c, type), result);
+			return;
+		}
+		PRINTF("if (%s != %s) ___var_%d = false;\n", l, r, result);
+		return;
+	}
+	if (type_is_float(flat))
+	{
+		PRINTF("if (%s != %s) ___var_%d = false;\n", l, r, result);
+		return;
+	}
+	if (flat->type_kind == TYPE_SLICE && !c_eq_is_elementwise(flat->array.base))
+	{
+		PRINTF("if (!__C3_SLICE_EQ(%s, %s)) ___var_%d = false;\n", l, r, result);
+		return;
+	}
+	int i = c_create_variable(c);
+	const char *len;
+	if (flat->type_kind == TYPE_SLICE)
+	{
+		PRINTF("if (%s.len != %s.len) ___var_%d = false;\n", l, r, result);
+		len = str_printf("%s.len", l);
 	}
 	else
 	{
-		PRINTF("\t\tif (___var_%d.ptr[___var_%d] != ___var_%d.ptr[___var_%d]) { ___var_%d = false; break; }\n",
-		       left_var, loop_k, right_var, loop_k, result_var);
+		len = str_printf("%u", (unsigned)flat->array.len);
 	}
-	PRINT("\t}\n}\n");
-	if (!is_eq)
-	{
-		PRINTF("___var_%d = !___var_%d;\n", result_var, result_var);
-	}
+	PRINTF("for (size_t ___var_%d = 0; ___var_%d && ___var_%d < %s; ___var_%d++) {\n", i, result, i, len, i);
+	c_emit_eq_check(c, result, str_printf("%s.ptr[___var_%d]", l, i), str_printf("%s.ptr[___var_%d]", r, i), flat->array.base);
+	PRINT("}\n");
 }
 
 // Load the current value of `left` ahead of a read-modify-write, evaluating its address once.
@@ -842,20 +878,13 @@ void c_emit_binary_op(GenContext *c, CValue *value, BinaryOp op, Type *expr_type
 	{
 		// Sema converts both operands of a comparison to one type (llvm_emit_comp dispatches on the left type alone).
 		ASSERT(strcmp(c_type_name(c, left_t), c_type_name(c, right_t)) == 0);
-		if (left_t->type_kind == TYPE_SLICE)
+		bool is_eq = op == BINARYOP_EQ || op == BINARYOP_VEC_EQ;
+		bool is_ne = op == BINARYOP_NE || op == BINARYOP_VEC_NE;
+		if ((is_eq || is_ne) && expr_type->type_kind == TYPE_BOOL && c_type_is_aggregate(left_t))
 		{
-			Type *elem_t       = left_t->array.base ? type_flatten(left_t->array.base) : NULL;
-			bool elem_is_slice = elem_t && elem_t->type_kind == TYPE_SLICE;
-			bool elem_is_float = elem_t && type_is_float(elem_t);
-			bool is_eq         = (op == BINARYOP_EQ || op == BINARYOP_VEC_EQ);
-			if (elem_is_slice || elem_is_float)
-			{
-				c_emit_slice_elem_eq_loop(c, value->var, left_value.var, right_value.var,
-				                          str_printf("___var_%d.len", right_value.var), elem_is_slice, is_eq);
-				return;
-			}
-			PRINTF("bool ___var_%d = %s(___var_%d, ___var_%d);\n",
-			       value->var, is_eq ? "__C3_SLICE_EQ" : "__C3_SLICE_NE", left_value.var, right_value.var);
+			PRINTF("bool ___var_%d = true;\n", value->var);
+			c_emit_eq_check(c, value->var, str_printf("___var_%d", left_value.var), str_printf("___var_%d", right_value.var), left_t);
+			if (is_ne) PRINTF("___var_%d = !___var_%d;\n", value->var, value->var);
 			return;
 		}
 		if (left_is_ptr && right_is_ptr)
@@ -866,52 +895,6 @@ void c_emit_binary_op(GenContext *c, CValue *value, BinaryOp op, Type *expr_type
 		}
 		if (c_type_is_aggregate(left_t) || c_type_is_aggregate(right_t))
 		{
-			if (expr_type->type_kind == TYPE_BOOL)
-			{
-				Type *base_t = (left_t && c_type_is_vec_or_arr(left_t)) ? left_t->array.base : NULL;
-				if (base_t)
-				{
-					base_t = type_flatten(base_t);
-				}
-				if (base_t && (type_is_float(base_t) || base_t->type_kind == TYPE_SLICE))
-				{
-					int len              = c_type_aggregate_len(left_t);
-					bool is_eq           = (op == BINARYOP_EQ || op == BINARYOP_VEC_EQ);
-					bool elem_is_slice   = (base_t->type_kind == TYPE_SLICE);
-					const char *logic_op = is_eq ? "&&" : "||";
-					const char *cmp_op   = is_eq ? "==" : "!=";
-					if (len == 0)
-					{
-						PRINTF("bool ___var_%d = %s;\n", value->var, is_eq ? "true" : "false");
-						return;
-					}
-					PRINTF("bool ___var_%d = (", value->var);
-					for (int k = 0; k < len; k++)
-					{
-						if (k > 0)
-						{
-							PRINTF(" %s ", logic_op);
-						}
-						if (elem_is_slice)
-						{
-							PRINTF("%s(___var_%d.ptr[%d], ___var_%d.ptr[%d])",
-							       is_eq ? "__C3_SLICE_EQ" : "__C3_SLICE_NE",
-							       left_value.var, k, right_value.var, k);
-						}
-						else
-						{
-							PRINTF("(___var_%d.ptr[%d] %s ___var_%d.ptr[%d])",
-							       left_value.var, k, cmp_op, right_value.var, k);
-						}
-					}
-					PRINT(");\n");
-					return;
-				}
-				PRINTF("bool ___var_%d = (__c3_memcmp(&___var_%d, &___var_%d, sizeof(%s)) %s 0);\n",
-				       value->var, left_value.var, right_value.var, c_type_name(c, left_t),
-				       (op == BINARYOP_EQ || op == BINARYOP_VEC_EQ) ? "==" : "!=");
-				return;
-			}
 			CValue operands[2] = { left_value, right_value };
 			c_emit_lanewise(c, value->var, expr_type, str_printf("($0 %s $1) ? -1 : 0", operator_string), operands, 2);
 			return;
