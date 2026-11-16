@@ -66,6 +66,9 @@
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.
 - `quickselect` deprecated in favour of `sort::select_nth` which does not return an optional result.
+- New easings module `std::math::ease`, with functions mapping `t` in [0, 1] to [0, 1]: Penner's easings (adding `quart` and `quint`), `smoothstep`, `smootherstep`, CSS-style `steps` and `cubic_bezier`, and `@clamped` for inputs outside [0, 1].
+- `std::math::easing` deprecated in favour of `std::math::ease`.
+- `math::lerp` is now public, and `math::inverse_lerp` added.
 
 ## 0.8.6 Change list
 
