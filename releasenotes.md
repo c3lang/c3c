@@ -64,6 +64,7 @@
 - `b[^1] += 1` and `b[^1]++` on a type with `[]`/`[]=` overloads were rejected.
 - Duplicate `case` values were not detected in `switch` statements on `bool`, strings, floats, faults and pointers.
 - A constant NaN `case` value, which can never match, is now an error.
+- `$defined(v.xy = {1, 2})` was false although assigning to a swizzle is valid.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.

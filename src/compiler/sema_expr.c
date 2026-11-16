@@ -642,7 +642,6 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case UNRESOLVED_EXPRS:
 			UNREACHABLE
 		case EXPR_SWIZZLE:
-			if (failed_ref) goto FAILED_REF;
 			if (expr->swizzle_expr.is_overlapping)
 			{
 				RETURN_SEMA_ERROR(expr, "You cannot use swizzling to assign to multiple elements if they are overlapping");
