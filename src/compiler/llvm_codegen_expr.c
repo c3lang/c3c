@@ -7,7 +7,6 @@
 
 
 static LLVMValueRef llvm_emit_coerce_alignment(GenContext *c, BEValue *be_value, AlignSize target_alignment, AlignSize *resulting_alignment);
-static bool bitstruct_requires_byteswap(Decl *decl);
 static inline LLVMValueRef llvm_const_high_bitmask(GenContext *c, LLVMTypeRef type, int type_bits, int high_bits);
 static inline LLVMValueRef llvm_const_low_bitmask(GenContext *c, LLVMTypeRef type, int type_bits, int low_bits);
 static inline LLVMValueRef llvm_update_vector(GenContext *c, LLVMValueRef vector, LLVMValueRef value, ArrayIndex index);
@@ -875,22 +874,6 @@ static inline void llvm_emit_pointer_offset(GenContext *c, BEValue *value, Expr 
 	value->value = llvm_emit_pointer_gep_raw(c, value->value, offset.value, type_size(element));
 }
 
-
-static ArrayIndex find_member_index(Decl *parent, Decl *member)
-{
-	FOREACH_IDX(i, Decl *, maybe_member, parent->strukt.members)
-	{
-		if (member == maybe_member)
-		{
-			return (int)i;
-		}
-		if (!maybe_member->name)
-		{
-			if (find_member_index(maybe_member, member) != -1) return (int)i;
-		}
-	}
-	return -1;
-}
 
 static void llvm_emit_member_addr(GenContext *c, BEValue *value, Decl *parent, Decl *member)
 {
@@ -1961,15 +1944,6 @@ static inline void llvm_emit_initialize_reference_designated(GenContext *c, BEVa
 }
 
 
-static bool bitstruct_requires_byteswap(Decl *decl)
-{
-	ASSERT(decl->decl_kind == DECL_BITSTRUCT);
-	bool big_endian = compiler.platform.big_endian;
-	if (decl->strukt.big_endian) return !big_endian;
-	if (decl->strukt.little_endian) return big_endian;
-	return false;
-}
-
 LLVMValueRef llvm_emit_const_bitstruct_array(GenContext *c, ConstInitializer *initializer)
 {
 	Decl *decl = initializer->type->decl;
@@ -2017,7 +1991,7 @@ LLVMValueRef llvm_emit_const_bitstruct_array(GenContext *c, ConstInitializer *in
 		value = llvm_mask_low_bits(c, value, bit_size);
 
 		// Run in reverse on BE
-		bool reverse = bitstruct_requires_byteswap(decl) ^ compiler.platform.big_endian;
+		bool reverse = bitstruct_is_big_endian(decl);
 
 		for (int bits_done = 0; bits_done < bit_size; )
 		{
@@ -6368,20 +6342,14 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 		inline_location = &updated_val;
 	}
 	int index = 0;
-	FOREACH(Decl *, val, expr->macro_block.params)
+	FOREACH(Decl *, val, expr->macro_block.arguments)
 	{
-		// Skip vararg
-		if (!val) continue;
-		// Needed for splat
-		if (val->decl_kind == DECL_DECLARRAY)
+		ASSERT_SPAN(val, val->decl_kind == DECL_VAR);
+		if (val->var.kind == VARDECL_LOCAL)
 		{
-			FOREACH (Decl *, d, val->decls)
-			{
-				llvm_emit_local_decl(c, d, be_value);
-			}
+			llvm_emit_local_decl(c, val, be_value);
 			continue;
 		}
-		ASSERT_SPAN(val, val->decl_kind == DECL_VAR);
 		if (val->var.no_init && val->var.defaulted) continue;
 		// In case we have a constant, we never do an emit. The value is already folded.
 		switch (val->var.kind)

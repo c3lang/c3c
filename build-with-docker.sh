@@ -25,12 +25,12 @@ cd ..
 rm -rf build bin
 mkdir -p build bin
 
-chmod -R 777 build bin
-
 exec $DOCKER run -i --rm \
-    -v "$PWD":/home/c3c/source \
-    -w /home/c3c/source $IMAGE bash -c \
-    "git config --global --add safe.directory /home/c3c/source && \
+    --user "$(id -u):$(id -g)" \
+    -e HOME=/tmp \
+    -v "$PWD":/source \
+    -w /source $IMAGE bash -c \
+    "git config --global --add safe.directory /source && \
     cmake -S . -B build \
             -G Ninja \
             -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \

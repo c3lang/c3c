@@ -59,10 +59,16 @@
 - A runtime value for a bitstruct field set through an array element or range in an initializer, like `Bits[2] b = { [1].x = t };`, crashed the compiler.
 - A runtime value for a `@bigendian` bitstruct field set through a struct member in an initializer was stored without the byte swap.
 - A ternary on unions could lose data stored in the padding of the union's largest member, like `(c ? a : b).wide[1]` on a union of `struct { ulong lo; ushort hi; }` and `ulong[2] wide`. #3662
+- A raw-vararg splat in a macro call inside a `defer`, like `defer { foo(0, ...y); }`, crashed the compiler. #3661
+- A member or method of an `inline` member accessed through an optional, like `ot.x` or `ot.sum()` on a `Top?`, was rejected.
+- `b[^1] += 1` and `b[^1]++` on a type with `[]`/`[]=` overloads were rejected.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.
 - `quickselect` deprecated in favour of `sort::select_nth` which does not return an optional result.
+- New easings module `std::math::ease`, with functions mapping `t` in [0, 1] to [0, 1]: Penner's easings (adding `quart` and `quint`), `smoothstep`, `smootherstep`, CSS-style `steps` and `cubic_bezier`, and `@clamped` for inputs outside [0, 1].
+- `std::math::easing` deprecated in favour of `std::math::ease`.
+- `math::lerp` is now public, and `math::inverse_lerp` added.
 - Add `std::compression::zlib` (RFC 1950): `compress`, `compress_stream`, `uncompress`, `uncompress_stream`, `ZlibWriter` and `ZlibReader`. Streams with a preset dictionary are not supported.
 
 ## 0.8.6 Change list
@@ -102,6 +108,7 @@
 - `--panicfn` now names a function rather than a function pointer variable, and sets the initial value of `builtin::panic` through the new `$$PANIC_FN`, so stdlib panics and `abort` also reach it. #3443
 - Make panic on infinite loops opt-in with `--infinite-loop-detect=yes` – and is only added in safe mode. #3630
 - Removed the unused TB (Tilde) backend: `--backend=tb` and the `C3_USE_TB` CMake option.
+- The experimental C backend now matches the LLVM backend and passes the full test suite.
 
 ### Fixes
 - Compressed `.c3l` libraries were not unpacked again when only files other than `manifest.json` had changed.

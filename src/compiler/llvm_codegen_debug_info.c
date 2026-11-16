@@ -270,15 +270,14 @@ LLVMMetadataRef llvm_debug_create_macro(GenContext *c, Decl *macro, Expr *call_e
 	SourceLoc *location = sourceloc_safe(macro->loc);
 	LLVMMetadataRef file = llvm_get_debug_file(c, location->file_id);
 
-	Signature *sig = &macro->func_decl.signature;
 	LLVMMetadataRef params[MAX_PARAMS + 1];
 	int index = 0;
 	Type *expr_type = call_expr->type;
 	params[index++] = type_is_wildcard(expr_type) ? NULL : llvm_get_debug_type(c, expr_type);
-	FOREACH_IDX(i, Decl *, param, sig->params)
+	FOREACH(Decl *, param, call_expr->macro_block.arguments)
 	{
-		if (!param || param->var.kind != VARDECL_PARAM) continue;
-		Expr *expr = call_expr->macro_block.params[i]->var.init_expr;
+		if (param->var.kind != VARDECL_PARAM) continue;
+		Expr *expr = param->var.init_expr;
 		if (!expr || !expr->type) continue;
 		params[index++] = llvm_get_debug_type(c, expr->type);
 	}

@@ -151,7 +151,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.src == 'true' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: windows-11-arm
-    timeout-minutes: 30
+    timeout-minutes: 45
     defaults:
       run:
         shell: cmd
@@ -169,10 +169,41 @@ jobs:
             build-debug/_deps
           key: ${{ runner.os }}-aarch64-llvm-${{ env.LLVM_RELEASE_VERSION }}-Release-Debug-${{ steps.date.outputs.date }}-${{ hashFiles('CMakeLists.txt', '.github/workflows/main.yml') }}
           
+      # MSVC 14.52 on the windows-11-arm image triggers an LLVM TinyPtrVector assertion with -O1/-Os
+      # (actions/runner-images#15329). Install the previous toolset explicitly; it is no longer
+      # included in the runner image.
+      - name: Install MSVC 14.51 ARM64 toolset
+        shell: pwsh
+        run: |
+          $installer = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe"
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsPath = & $vswhere -latest -products * -property installationPath
+          if (-not $vsPath) {
+            throw "Visual Studio installation not found"
+          }
+          $install = Start-Process -FilePath $installer -ArgumentList @(
+            "modify",
+            "--installPath", "`"$vsPath`"",
+            "--add", "Microsoft.VisualStudio.Component.VC.14.51.ARM64",
+            "--quiet",
+            "--norestart"
+          ) -Wait -PassThru
+          if ($install.ExitCode -notin 0, 3010) {
+            throw "Visual Studio Installer failed with exit code $($install.ExitCode)"
+          }
+          $toolset = Get-ChildItem "$vsPath\VC\Tools\MSVC\14.51.*" -Directory |
+            Sort-Object Name -Descending |
+            Select-Object -First 1
+          if (-not $toolset) {
+            throw "MSVC 14.51 was not installed"
+          }
+          Write-Host "Installed MSVC toolset $($toolset.Name)"
+
       # set up the environment for Ninja
       - uses: TheMrMilchmann/setup-msvc-dev@v4
         with:
           arch: arm64
+          toolset: "14.51"
 
       - name: CMake Build (Release)
         run: |

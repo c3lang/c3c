@@ -1096,6 +1096,29 @@ macro gcd(...)
 	return result;
 }
 
+<*
+ Linearly interpolate between `x` and `y`: `amount` 0 gives `x` and 1 gives `y`.
+*>
+macro lerp(x, y, amount) => x + (y - x) * amount;
+
+<*
+ Return the interpolation amount that produces `value` between `x` and `y`.
+
+ This is the inverse of `lerp` and does not clamp its result.
+
+ @require x != y : "The interpolation range must not be empty"
+ @require [x] values::@is_floatlike(x) : "The value must be a floating point scalar or vector"
+ @require [y] values::@is_floatlike(y) : "The value must be a floating point scalar or vector"
+ @require [value] values::@is_floatlike(value) : "The value must be a floating point scalar or vector"
+ @require [y] $defined(y - x) : "`y - x` must be well defined"
+ @require [value] $defined(value - x) : "`value - x` must be well defined"
+ @require [x] $defined((x - y) / (value - x)) : "The types don't properly match."
+*>
+macro inverse_lerp(x, y, value)
+{
+	return (value - x) / (y - x);
+}
+
 module std::math @private;
 
 <*
@@ -1119,9 +1142,6 @@ macro _gcd(a, b)
 	}
 	return aa;
 }
-
-macro lerp(x, y, amount) => x + (y - x) * amount;
-
 
 macro mul_div_helper(val, mul, div)
 {

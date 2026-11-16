@@ -3,6 +3,21 @@ import std::math;
 import std::core::test;
 
 
+fn void test_inverse_lerp() @test
+{
+	float f = math::inverse_lerp(10.0f, 20.0f, 12.5f);
+	$assert $Typeof(f) == float;
+	test::eq_approx(f, 0.25f, 6);
+	test::eq_approx(math::inverse_lerp(10.0f, 20.0f, 5.0f), -0.5f, 6);
+	test::eq_approx(math::inverse_lerp(10.0f, 0.0f, 7.5f), 0.25f, 6);
+
+	double d = math::inverse_lerp(-4.0, 12.0, 8.0);
+	$assert $Typeof(d) == double;
+	test::eq_approx(d, 0.75, 12);
+	test::eq_approx(math::lerp(-4.0, 12.0, d), 8.0, 12);
+}
+
+
 fn void test_sincos() @test
 {
 	$assert(@typeid(math::sincos(1.0)) == double[<2>]::typeid);
