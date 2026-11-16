@@ -74,6 +74,7 @@
 - `++`, `--` or a compound assignment through a `[]`/`[]=` overload on an optional, like `ob[1]++` on a `Box?`, crashed the compiler.
 - A `case` range covering 2^127 or more values in an `int128`/`uint128` switch, like `case 0..uint128::max:`, hung the compiler.
 - A multi-component vector swizzle on an optional vector, like `optional_vector.xy`, lost its optional and crashed during code generation.
+- A runtime property on an optional `typeid`, like `optional_type.size`, lost its optional and crashed during code generation.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.

@@ -6021,7 +6021,7 @@ static inline void sema_expr_rewrite_typeid_kind(Expr *expr, Expr *parent)
 	expr->expr_kind = EXPR_TYPEID_INFO;
 	expr->typeid_info_expr.parent = exprid(parent);
 	expr->typeid_info_expr.kind = TYPEID_INFO_KIND;
-	expr->type = type_for_kind;
+	expr->type = type_add_optional(type_for_kind, IS_OPTIONAL(parent));
 }
 
 
@@ -6494,7 +6494,7 @@ static bool sema_expr_rewrite_typeid_call(Expr *expr, Expr *typeid, TypeIdInfoKi
 	expr->expr_kind = EXPR_TYPEID_INFO;
 	expr->typeid_info_expr.parent = exprid(typeid);
 	expr->typeid_info_expr.kind = kind;
-	expr->type = result_type;
+	expr->type = type_add_optional(result_type, IS_OPTIONAL(typeid));
 	return true;
 }
 
