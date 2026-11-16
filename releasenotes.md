@@ -69,6 +69,7 @@
 - `$defined` of a division or remainder by a constant zero, or a shift by a constant out of range, like `$defined(1 / FOO)` with `const int FOO = 0`, was a hard error instead of false.
 - A default value for a method's self parameter, like `fn void Foo.bar(&self = null)`, was accepted.
 - A `&` parameter on an interface method, like `fn void foo(int& a);`, was accepted and passed by value.
+- A `nextcase` with an inner `defer` inside a `defer`, like `defer switch (0) { case 0: defer x(); nextcase 1; ... }`, crashed the compiler.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.

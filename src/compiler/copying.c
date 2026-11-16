@@ -794,7 +794,7 @@ RETRY:
 		case AST_NEXTCASE_STMT:
 			if (ast->nextcase_stmt.is_resolved)
 			{
-				fixup_astid(c, &ast->nextcase_stmt.defer_id);
+				MACRO_COPY_ASTID(ast->nextcase_stmt.defer_id);
 				if (ast->nextcase_stmt.is_expr) MACRO_COPY_EXPR(ast->nextcase_stmt.nextcase_value);
 				fixup_astid(c, &ast->nextcase_stmt.switch_stmt);
 			}
