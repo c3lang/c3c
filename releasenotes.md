@@ -62,6 +62,8 @@
 - A raw-vararg splat in a macro call inside a `defer`, like `defer { foo(0, ...y); }`, crashed the compiler. #3661
 - A member or method of an `inline` member accessed through an optional, like `ot.x` or `ot.sum()` on a `Top?`, was rejected.
 - `b[^1] += 1` and `b[^1]++` on a type with `[]`/`[]=` overloads were rejected.
+- Duplicate `case` values were not detected in `switch` statements on `bool`, strings, floats, faults and pointers.
+- A constant NaN `case` value, which can never match, is now an error.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.

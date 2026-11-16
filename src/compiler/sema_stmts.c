@@ -3,6 +3,7 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "sema_internal.h"
+#include <math.h>
 
 static inline bool sema_analyse_asm_stmt(SemaContext *context, Ast *stmt);
 static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement);
@@ -2466,6 +2467,28 @@ static inline bool sema_check_type_case(SemaContext *context, Ast *case_stmt, As
 	return true;
 }
 
+static bool sema_check_duplicate_case(SemaContext *context, Ast *case_stmt, Ast **cases, int index, ExprConst *const_expr, ExprConst *to_const_expr)
+{
+	for (int i = 0; i < index; i++)
+	{
+		Ast *other = cases[i];
+		if (other->ast_kind != AST_CASE_STMT) continue;
+		Expr *other_expr = exprptr(other->case_stmt.expr);
+		Expr *other_to_expr = exprptrzero(other->case_stmt.to_expr);
+		if (!sema_cast_const(other_expr)) continue;
+		if (other_to_expr && !sema_cast_const(other_to_expr)) continue;
+		ExprConst *other_const = &other_expr->const_expr;
+		ExprConst *other_to_const = other_to_expr ? &other_to_expr->const_expr : other_const;
+		if (expr_const_in_range(const_expr, to_const_expr, other_const, other_to_const))
+		{
+			SEMA_ERROR(case_stmt, "The same case value appears more than once.");
+			SEMA_NOTE(other, "Here is the previous use of that value.");
+			return false;
+		}
+	}
+	return true;
+}
+
 static inline bool sema_check_value_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases,
                                          int index, bool *if_chained, bool *max_ranged, int64_t *actual_cases_ref, Int *low, Int *high)
 {
@@ -2482,7 +2505,12 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 	if (!is_range && !first_is_const)
 	{
 		*if_chained = true;
-		return true;
+		if (!sema_cast_const(expr)) return true;
+		if (expr->const_expr.const_kind == CONST_FLOAT && isnan(expr->const_expr.fxx.f))
+		{
+			RETURN_SEMA_ERROR(expr, "A NaN case can never match, since NaN is not equal to anything, including itself.");
+		}
+		return sema_check_duplicate_case(context, case_stmt, cases, index, &expr->const_expr, &expr->const_expr);
 	}
 	(*actual_cases_ref)++;
 	if (is_range)
@@ -2540,24 +2568,7 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 			}
 		}
 	}
-	for (int i = 0; i < index; i++)
-	{
-		Ast *other = cases[i];
-		if (other->ast_kind != AST_CASE_STMT) continue;
-		Expr *other_expr = exprptr(other->case_stmt.expr);
-		Expr *other_to_expr = exprptrzero(other->case_stmt.to_expr);
-		if (!sema_cast_const(other_expr)) continue;
-		if (other_to_expr && !sema_cast_const(other_to_expr)) continue;
-		ExprConst *other_const = &other_expr->const_expr;
-		ExprConst *other_to_const = other_to_expr ? &other_to_expr->const_expr : other_const;
-		if (expr_const_in_range(const_expr, to_const_expr, other_const, other_to_const))
-		{
-			SEMA_ERROR(case_stmt, "The same case value appears more than once.");
-			SEMA_NOTE(other, "Here is the previous use of that value.");
-			return false;
-		}
-	}
-	return true;
+	return sema_check_duplicate_case(context, case_stmt, cases, index, const_expr, to_const_expr);
 }
 
 INLINE const char *create_missing_enums_in_switch_error(Ast **cases, int found_count, Decl **enums)
