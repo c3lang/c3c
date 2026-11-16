@@ -1104,6 +1104,12 @@ static bool sema_analyse_interface(SemaContext *context, Decl *decl, bool *erase
 			return decl_poison(method);
 		}
 		bool erase = false;
+		Decl **params = method->func_decl.signature.params;
+		if (params && params[0] && params[0]->var.self_addr)
+		{
+			SEMA_ERROR(params[0], "Interface methods have an implicit self, so '&' parameters are not allowed.");
+			return decl_poison(method);
+		}
 
 		// Insert the first parameter, which is the implicit `void*`
 		Decl *first = decl_new_var(NULL, decl->loc, NULL, VARDECL_PARAM);
