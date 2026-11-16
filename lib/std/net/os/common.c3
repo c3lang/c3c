@@ -18,12 +18,12 @@ struct AddrInfo
 	AISockType ai_socktype;
 	AIProtocol ai_protocol;
 	Socklen_t ai_addrlen;
-	struct @feat(WIN32, DARWIN, ANDROID, NETBSD)
+	struct @feat(WIN32, DARWIN, ANDROID, NETBSD, FREEBSD)
 	{
 		ZString ai_canonname;
 		SockAddrPtr ai_addr;
 	}
-	struct @feat(LINUX, OPENBSD, FREEBSD, EMSCRIPTEN)
+	struct @feat(LINUX, OPENBSD, EMSCRIPTEN)
 	{
 		SockAddrPtr ai_addr;
 		ZString ai_canonname;

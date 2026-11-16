@@ -117,7 +117,7 @@ const AIFamily PLATFORM_AF_INET6_SDP		= (AIFamily)42;		// OFED Socket Direct Pro
 const AIFamily PLATFORM_AF_HYPERV			= (AIFamily)43;		// HyperV sockets
 const AIFamily PLATFORM_AF_DIVERT			= (AIFamily)44;		// divert(4)
 const AIFamily PLATFORM_AF_IPFWLOG			= (AIFamily)46;
-const AIFamily PLATFORM_AF_MAX				= (AIFamily)46;
+const AIFamily PLATFORM_AF_MAX				= (AIFamily)47;
 
 const int SOCK_MAXADDRLEN = 255;	// longest possible addresses
 

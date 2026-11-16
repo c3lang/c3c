@@ -75,6 +75,7 @@
 - A `case` range covering 2^127 or more values in an `int128`/`uint128` switch, like `case 0..uint128::max:`, hung the compiler.
 - A multi-component vector swizzle on an optional vector, like `optional_vector.xy`, lost its optional and crashed during code generation.
 - A runtime property on an optional `typeid`, like `optional_type.size`, lost its optional and crashed during code generation.
+- Corrected the FreeBSD `addrinfo` layout and `AF_MAX`/`PF_MAX` socket constants.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.
