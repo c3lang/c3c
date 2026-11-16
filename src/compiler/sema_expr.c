@@ -4576,7 +4576,7 @@ DEFAULT:
 				RETURN_SEMA_ERROR(subscripted, "Cannot index '%s' from the end, since there is no 'len' overload.", type_to_error_string(subscripted->type));
 			}
 			if (!type_is_pointer_type(current_expr->type)) expr_insert_addr(current_expr);
-			Decl *temp = decl_new_generated_var(current_expr->type, VARDECL_PARAM, current_expr->loc);
+			Decl *temp = decl_new_generated_var(current_expr->type, VARDECL_LOCAL, current_expr->loc);
 			Expr *decl = expr_generate_decl(temp, expr_copy(current_expr));
 			expr_rewrite_two(current_expr, decl, expr_variable(temp));
 			if (!sema_analyse_expr_rvalue(context, current_expr)) return false;
@@ -4742,7 +4742,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 				expr_insert_addr(current_expr);
 			}
 			if (!sema_analyse_expr_rvalue(context, current_expr)) return false;
-			Decl *temp = decl_new_generated_var(current_expr->type, VARDECL_PARAM, current_expr->loc);
+			Decl *temp = decl_new_generated_var(current_expr->type, VARDECL_LOCAL, current_expr->loc);
 			Expr *decl = expr_generate_decl(temp, expr_copy(current_expr));
 			expr_rewrite_two(current_expr, decl, expr_variable(temp));
 			if (!sema_analyse_expr_rvalue(context, current_expr)) return false;
@@ -10475,7 +10475,7 @@ static bool sema_analyse_assign_mutate_overloaded_subscript(SemaContext *context
 	}
 	Decl *temp_val = decl_new_generated_var(increased->type, VARDECL_LOCAL, increased->loc);
 	Decl *index_val = decl_new_generated_var(index->type, VARDECL_LOCAL, index->loc);
-	Decl *value_val = decl_new_generated_var(return_type, VARDECL_LOCAL, main->loc);
+	Decl *value_val = decl_new_generated_var(type_add_optional(return_type, is_optional_result), VARDECL_LOCAL, main->loc);
 	Decl *result_val = decl_new_generated_var(result_type, VARDECL_LOCAL, main->loc);
 	Expr *decl_expr = expr_generate_decl(temp_val, increased);
 	Expr *decl_index_expr = expr_generate_decl(index_val, index);
