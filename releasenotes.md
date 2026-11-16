@@ -72,6 +72,7 @@
 - A `nextcase` with an inner `defer` inside a `defer`, like `defer switch (0) { case 0: defer x(); nextcase 1; ... }`, crashed the compiler.
 - A rethrow `!` in a macro called from a `defer` crashed the compiler.
 - `++`, `--` or a compound assignment through a `[]`/`[]=` overload on an optional, like `ob[1]++` on a `Box?`, crashed the compiler.
+- A `case` range covering 2^127 or more values in an `int128`/`uint128` switch, like `case 0..uint128::max:`, hung the compiler.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.
