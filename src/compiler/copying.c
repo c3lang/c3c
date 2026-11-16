@@ -543,6 +543,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			return expr;
 		case EXPR_RETHROW:
 			MACRO_COPY_EXPR(expr->rethrow_expr.inner);
+			MACRO_COPY_ASTID(expr->rethrow_expr.cleanup);
 			return expr;
 		case EXPR_CONST:
 			return copy_const_expr(c, expr);
