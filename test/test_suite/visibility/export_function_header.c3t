@@ -1,0 +1,10 @@
+// #mode: static-lib
+module test;
+
+fn int visible() @export("visible_symbol") => 1;
+fn int hidden() => 2;
+
+/* #expect: test.h
+extern int32_t visible_symbol(void);
+/* #expect-not: test.h
+test__hidden
