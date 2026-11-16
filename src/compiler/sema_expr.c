@@ -38,7 +38,7 @@ typedef struct
 	Expr *struct_var;
 	Signature *signature;
 	Decl **macro_va_decls;
-	Expr **splat_decls;
+	Decl **evaluations;
 } CalledDeclContext;
 
 typedef struct
@@ -1878,14 +1878,23 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDeclContext *c
 								  callee->macro, false);
 }
 
-INLINE Expr *sema_splat_hoist(Expr *two, Expr ***hoist_ref)
+static Expr *sema_splat_analyse_temp(SemaContext *context, Decl *decl, Expr *access, Decl ***evaluation_ref)
 {
-	if (!hoist_ref) return two;
-	vec_add(*hoist_ref, two->two_expr.first);
-	return two->two_expr.last;
+	if (evaluation_ref)
+	{
+		if (!sema_analyse_decl(context, decl) || !sema_analyse_expr_rvalue(context, access)) return NULL;
+		vec_add(*evaluation_ref, decl);
+		return access;
+	}
+	Expr *two = expr_new_expr(EXPR_TWO, access);
+	Expr *expr = expr_new(EXPR_DECL, decl->loc);
+	expr->decl_expr = decl;
+	two->two_expr.first = expr;
+	two->two_expr.last = access;
+	return sema_analyse_expr_rvalue(context, two) ? two : NULL;
 }
 
-INLINE Expr **sema_splat_struct_insert(SemaContext *context, Expr **args, Expr *arg, Decl *strukt, int index, Expr ***hoist_ref)
+INLINE Expr **sema_splat_struct_insert(SemaContext *context, Expr **args, Expr *arg, Decl *strukt, int index, Decl ***evaluation_ref)
 {
 	int len = vec_size(strukt->strukt.members);
 	args = sema_prepare_splat_insert(args, len, index);
@@ -1936,16 +1945,14 @@ INLINE Expr **sema_splat_struct_insert(SemaContext *context, Expr **args, Expr *
 		return NULL;
 	}
 	Decl *temp = decl_new_generated_var(arg->type, VARDECL_LOCAL, arg->loc);
-	Expr *decl_expr = expr_generate_decl(temp, arg);
-	Expr *two = expr_new_expr(EXPR_TWO, arg);
-	two->two_expr.first = decl_expr;
+	ASSERT(arg);
+	temp->var.init_expr = arg;
 	Expr *access = expr_new_expr(EXPR_ACCESS_RESOLVED, arg);
 	access->access_resolved_expr = (ExprResolvedAccess) { .parent = expr_variable(temp), .ref = strukt->strukt.members[0] };
 	access->resolve_status = RESOLVE_DONE;
 	access->type = strukt->strukt.members[0]->type;
-	two->two_expr.last = access;
-	if (!sema_analyse_expr_rvalue(context, two)) return NULL;
-	args[index] = sema_splat_hoist(two, hoist_ref);
+	args[index] = sema_splat_analyse_temp(context, temp, access, evaluation_ref);
+	if (!args[index]) return NULL;
 	for (ArrayIndex i = 1; i < len; i++)
 	{
 		access = expr_new_expr(EXPR_ACCESS_RESOLVED, arg);
@@ -1957,7 +1964,7 @@ INLINE Expr **sema_splat_struct_insert(SemaContext *context, Expr **args, Expr *
 	return args;
 }
 
-INLINE Expr **sema_splat_arraylike_insert(SemaContext *context, Expr **args, Expr *arg, ArrayIndex len, ArrayIndex index, Decl ***macro_va_decl_ref, Expr ***hoist_ref)
+INLINE Expr **sema_splat_arraylike_insert(SemaContext *context, Expr **args, Expr *arg, ArrayIndex len, ArrayIndex index, Decl ***macro_va_decl_ref, Decl ***evaluation_ref)
 {
 	if (len > INT_MAX || index > INT_MAX || len + index > INT_MAX)
 	{
@@ -1983,24 +1990,14 @@ INLINE Expr **sema_splat_arraylike_insert(SemaContext *context, Expr **args, Exp
 		return NULL;
 	}
 	Decl *temp = decl_new_generated_var(arg->type, VARDECL_LOCAL, arg->loc);
-	Expr *decl_expr = expr_generate_decl(temp, arg);
-	Expr *two = expr_new_expr(EXPR_TWO, arg);
-	two->two_expr.first = decl_expr;
+	ASSERT(arg);
+	temp->var.init_expr = arg;
 	Expr *subscript = expr_new_expr(EXPR_SUBSCRIPT, arg);
 	subscript->subscript_expr.index.expr = exprid(expr_new_const_int(arg->loc, type_sz, 0));
 	subscript->subscript_expr.expr = exprid(expr_variable(temp));
-	two->two_expr.last = subscript;
-	if (!sema_analyse_expr_rvalue(context, two)) return NULL;
-
-	if (macro_va_decl_ref)
-	{
-		vec_add(*macro_va_decl_ref, temp);
-		args[index] = subscript;
-	}
-	else
-	{
-		args[index] = sema_splat_hoist(two, hoist_ref);
-	}
+	if (macro_va_decl_ref) vec_add(*macro_va_decl_ref, temp);
+	args[index] = sema_splat_analyse_temp(context, temp, subscript, evaluation_ref);
+	if (!args[index]) return NULL;
 	for (int i = 1; i < len; i++)
 	{
 		subscript = expr_new_expr(EXPR_SUBSCRIPT, arg);
@@ -2106,12 +2103,16 @@ INLINE Type *sema_get_va_type(SemaContext *context, Expr *expr, Variadic variadi
 	return expr->make_any_expr.typeid->const_expr.typeid;
 }
 
-INLINE Expr ***sema_splat_hoist_ref(CalledDeclContext *callee, Variadic variadic, int vaarg_index, ArrayIndex index)
+INLINE Decl ***sema_splat_evaluation_ref(CalledDeclContext *callee)
 {
 	if (!callee->macro) return NULL;
-	if (variadic != VARIADIC_NONE && index >= vaarg_index) index = vaarg_index;
-	Decl *param = index < vec_size(callee->params) ? callee->params[index] : NULL;
-	return param && param->var.kind == VARDECL_PARAM ? NULL : &callee->splat_decls;
+	return &callee->evaluations;
+}
+
+INLINE void sema_add_macro_evaluation(CalledDeclContext *callee, Decl *param)
+{
+	if (!callee->macro || !param || param->var.kind != VARDECL_PARAM) return;
+	vec_add(callee->evaluations, param);
 }
 
 INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDeclContext *callee, Expr *call, bool *optional,
@@ -2161,6 +2162,7 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDeclContext
 
 	// 2. Loop through the parameters.
 	bool has_named = false;
+	bool vararg_evaluation_added = false;
 	ArrayIndex last_index = -1;
 	Expr *last_named_arg = INVALID_PTR; // NOLINT
 	Expr *last = NULL;
@@ -2199,6 +2201,7 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDeclContext
 					break;
 			}
 			if (!sema_analyse_expr_rvalue(context, inner)) return false;
+			*optional |= IS_OPTIONAL(inner);
 
 			// Let's try fit up a slice to the in the vaslot
 			if (variadic_type && i == vaarg_index)
@@ -2227,13 +2230,14 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDeclContext
 				if (inner != inner_new) expr_replace(inner, inner_new);
 				// We splat it in the right spot!
 				call->call_expr.va_is_splat = true;
-				*optional |= IS_OPTIONAL(inner);
 				call->call_expr.vasplat = inner;
+				sema_add_macro_evaluation(callee, decl_params[vaarg_index]);
+				vararg_evaluation_added = true;
 				continue;
 			}
 SPLAT_NORMAL:;
-			Expr **new_args;
 			Type *flat = type_flatten(inner->type);
+			bool is_struct = false;
 			switch (flat->type_kind)
 			{
 				case VECTORS:
@@ -2242,22 +2246,22 @@ SPLAT_NORMAL:;
 				case TYPE_UNTYPEDLIST:
 					break;
 				case TYPE_STRUCT:
-					new_args = sema_splat_struct_insert(context, args, inner, flat->decl, i, sema_splat_hoist_ref(callee, variadic, vaarg_index, i));
-					goto AFTER_SPLAT;
+					is_struct = true;
 					break;
 				default:
 					RETURN_SEMA_ERROR(arg, "An argument of type %s cannot be splatted.",
 									  type_quoted_error_string(inner->type));
 			}
-			// This is the fallback: just splat like vasplat:
-			ArrayIndex len = sema_len_from_expr(inner);
-			if (len == -1) RETURN_SEMA_ERROR(arg, "Splat may not be used with raw varargs if the length is not known, but if you slice it to a constant length it will work (e.g '...val[:2]')");
-			if (len == 0 && !expr_is_const(arg))
+			ArrayIndex len = is_struct ? 0 : sema_len_from_expr(inner);
+			if (!is_struct && len == -1) RETURN_SEMA_ERROR(arg, "Splat may not be used with raw varargs if the length is not known, but if you slice it to a constant length it will work (e.g '...val[:2]')");
+			if (!is_struct && len == 0 && !expr_is_const(arg))
 			{
 				RETURN_SEMA_ERROR(arg, "A non-constant zero size splat cannot be used with raw varargs.");
 			}
-			new_args = sema_splat_arraylike_insert(context, args, inner, len, i, i >= vaarg_index ? macro_va_decl_ref_maybe : NULL, sema_splat_hoist_ref(callee, variadic, vaarg_index, i));
-		AFTER_SPLAT:;
+			Decl ***evaluation_ref = sema_splat_evaluation_ref(callee);
+			Expr **new_args = is_struct
+			                  ? sema_splat_struct_insert(context, args, inner, flat->decl, i, evaluation_ref)
+			                  : sema_splat_arraylike_insert(context, args, inner, len, i, i >= vaarg_index ? macro_va_decl_ref_maybe : NULL, evaluation_ref);
 			if (!new_args) return false;
 			args = new_args;
 			i--;
@@ -2317,7 +2321,12 @@ SPLAT_NORMAL:;
 			if (last_index == -1) last_index = i - 1;
 			for (int j = (int)last_index + 1; j < index; j++)
 			{
-				if (j == vaarg_index) continue;
+				if (j == vaarg_index)
+				{
+					if (!vararg_evaluation_added) sema_add_macro_evaluation(callee, params[j]);
+					vararg_evaluation_added = true;
+					continue;
+				}
 				if (!sema_set_default_argument(context, callee, call,
 				                               params[j], no_match_ref,
 				                               &actual_args[j],
@@ -2325,6 +2334,7 @@ SPLAT_NORMAL:;
 				{
 					return false;
 				}
+				sema_add_macro_evaluation(callee, params[j]);
 			}
 			last_index = index;
 			last_named_arg = arg;
@@ -2343,6 +2353,7 @@ SPLAT_NORMAL:;
 						{
 							return false;
 						}
+						sema_add_macro_evaluation(callee, params[index]);
 						continue;
 					case SPLAT_ONE:
 						expr_replace(actual_args[index], inner);
@@ -2353,6 +2364,7 @@ SPLAT_NORMAL:;
 			}
 			if (!sema_analyse_parameter(context, actual_args[index], param, callee->definition, optional, no_match_ref,
 										callee->macro, false)) return false;
+			sema_add_macro_evaluation(callee, param);
 			continue;
 		}
 		if (call->call_expr.va_is_splat)
@@ -2382,6 +2394,8 @@ SPLAT_NORMAL:;
 		//     in the case of typed vararg) we're now in a variadic list.
 		if (variadic != VARIADIC_NONE && i >= vaarg_index)
 		{
+			if (!vararg_evaluation_added) sema_add_macro_evaluation(callee, params[vaarg_index]);
+			vararg_evaluation_added = true;
 			switch (variadic)
 			{
 				case VARIADIC_RAW:
@@ -2430,6 +2444,7 @@ SPLAT_NORMAL:;
 			continue;
 		}
 		if (!sema_analyse_parameter(context, arg, params[i], callee->definition, optional, no_match_ref, callee->macro, callee->struct_var && i == 0)) return false;
+		sema_add_macro_evaluation(callee, params[i]);
 		actual_args[i] = arg;
 	}
 	if (call->call_expr.varargs && variadic != VARIADIC_RAW)
@@ -2466,10 +2481,16 @@ SPLAT_NORMAL:;
 	{
 		// 17a. Assigned a value - skip
 		if (actual_args[i]) continue;
-		if (i == vaarg_index && variadic != VARIADIC_NONE) continue;
+		if (i == vaarg_index && variadic != VARIADIC_NONE)
+		{
+			if (!vararg_evaluation_added) sema_add_macro_evaluation(callee, params[i]);
+			vararg_evaluation_added = true;
+			continue;
+		}
 
 		if (!sema_set_default_argument(context, callee, call, params[i], no_match_ref, &actual_args[i],
 		                               optional)) return false;
+		sema_add_macro_evaluation(callee, params[i]);
 	}
 	for (int i = 0; i < func_param_count; i++)
 	{
@@ -3044,13 +3065,16 @@ static inline bool sema_expr_setup_call_analysis(SemaContext *context, CalledDec
 	macro_context->yield_body = yield_body;
 	macro_context->yield_params = yield_params;
 	macro_context->yield_context = context;
-	FOREACH(Expr *, expr, call_expr->call_expr.varargs)
+	if (!call_expr->call_expr.va_is_splat)
 	{
-		if (expr->resolve_status == RESOLVE_DONE) continue;
-		Expr *expr_inner = expr_copy(expr);
-		expr->expr_kind = EXPR_OTHER_CONTEXT;
-		expr->expr_other_context.inner = expr_inner;
-		expr->expr_other_context.context = context;
+		FOREACH(Expr *, expr, call_expr->call_expr.varargs)
+		{
+			if (expr->resolve_status == RESOLVE_DONE) continue;
+			Expr *expr_inner = expr_copy(expr);
+			expr->expr_kind = EXPR_OTHER_CONTEXT;
+			expr->expr_other_context.inner = expr_inner;
+			expr->expr_other_context.context = context;
+		}
 	}
 	macro_context->macro_has_vaargs = callee->macro && callee->signature->variadic == VARIADIC_RAW;
 	macro_context->macro_varargs = macro_context->macro_has_vaargs ? call_expr->call_expr.varargs : NULL;
@@ -3205,13 +3229,10 @@ static inline bool sema_analyse_macro_params(SemaContext *context, SemaContext *
 		{
 			if (callee->macro_va_decls)
 			{
-				Decl *decl_arr = decl_new(DECL_DECLARRAY, "", call_expr->loc);
-				decl_arr->decls = callee->macro_va_decls;
 				FOREACH(Decl *, d, callee->macro_va_decls)
 				{
 					sema_add_local(macro_context, d);
 				}
-				params[idx] = decl_arr;
 			}
 			continue;
 		}
@@ -3488,6 +3509,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	}
 	if ((returns_found == 1 && !implicit_void_return) || (returns_found == 0 && implicit_void_return))
 	{
+		if (callee.evaluations) goto NOT_CT;
 		Ast *ret = returns_found ? macro_context.block_returns[0] : NULL;
 		Expr *result = ret ? ret->return_stmt.expr : NULL;
 		if (result && !expr_is_runtime_const(result)) goto NOT_CT;
@@ -3520,12 +3542,27 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	}
 NOT_CT:
 	call_expr->expr_kind = EXPR_MACRO_BLOCK;
-	call_expr->macro_block.had_optional_arg = has_optional_arg;
-	call_expr->macro_block.is_must_use = must_use;
-	call_expr->macro_block.is_optional_return = optional_return;
-	call_expr->macro_block.first_stmt = body->compound_stmt.first_stmt;
-	call_expr->macro_block.macro = decl;
-	call_expr->macro_block.params = params;
+	call_expr->macro_block = (ExprMacroBlock) {
+		.had_optional_arg = has_optional_arg,
+		.is_must_use = must_use,
+		.is_optional_return = optional_return,
+		.first_stmt = body->compound_stmt.first_stmt,
+		.macro = decl,
+	};
+	if (callee.evaluations)
+	{
+		FOREACH_IDX(idx, Decl *, evaluation_decl, callee.evaluations)
+		{
+			if (evaluation_decl->var.kind != VARDECL_PARAM) continue;
+			FOREACH_IDX(j, Decl *, original_param, callee.params)
+			{
+				if (evaluation_decl != original_param) continue;
+				callee.evaluations[idx] = params[j];
+				break;
+			}
+		}
+		call_expr->macro_block.arguments = callee.evaluations;
+	}
 	call_expr->macro_block.block_exit = block_exit_ref;
 	call_expr->macro_block.is_noreturn = is_no_return;
 EXIT:
@@ -3557,12 +3594,6 @@ EXIT:
 			SEMA_NOTE(decl, "The macro was declared here.");
 			return false;
 		}
-	}
-	for (int j = vec_size(callee.splat_decls) - 1; j >= 0; j--)
-	{
-		Expr *inner = expr_copy(call_expr);
-		call_expr->expr_kind = EXPR_TWO;
-		call_expr->two_expr = (ExprTwo) { .first = callee.splat_decls[j], .last = inner };
 	}
 	return true;
 EXIT_FAIL:

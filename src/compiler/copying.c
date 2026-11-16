@@ -531,7 +531,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			MACRO_COPY_EXPR_LIST(expr->cond_expr);
 			return expr;
 		case EXPR_MACRO_BLOCK:
-			MACRO_COPY_DECL_LIST(expr->macro_block.params);
+			MACRO_COPY_DECL_LIST(expr->macro_block.arguments);
 			MACRO_COPY_ASTID(expr->macro_block.first_stmt);
 			fixup_decl(c, &expr->macro_block.macro);
 			return expr;

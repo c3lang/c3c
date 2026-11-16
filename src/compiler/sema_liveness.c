@@ -77,6 +77,11 @@ INLINE void sema_trace_astid_liveness(Module *m, AstId astid)
 	if (astid) sema_trace_stmt_liveness(m, astptr(astid));
 }
 
+static void sema_trace_decl_list_liveness(Module *m, Decl **decllist)
+{
+	FOREACH(Decl *, arg, decllist) sema_trace_decl_liveness(m, arg);
+}
+
 static void sema_trace_expr_list_liveness(Module *m, Expr **exprlist)
 {
 	FOREACH(Expr *, arg, exprlist) sema_trace_expr_liveness(m, arg);
@@ -445,16 +450,12 @@ RETRY:
 			sema_trace_decl_liveness(m, expr->ident_expr);
 			return;
 		case EXPR_INITIALIZER_LIST:
-		{
-			FOREACH(Expr *, e, expr->initializer_list) sema_trace_expr_liveness(m, e);
+			sema_trace_expr_list_liveness(m, expr->initializer_list);
 			return;
-		}
 		case EXPR_MACRO_BLOCK:
-		{
-			FOREACH(Decl *, val, expr->macro_block.params) sema_trace_decl_liveness(m, val);
+			sema_trace_decl_list_liveness(m, expr->macro_block.arguments);
 			sema_trace_stmt_chain_liveness(m, expr->macro_block.first_stmt);
 			return;
-		}
 		case EXPR_MACRO_BODY_EXPANSION:
 		{
 			FOREACH(Decl *, arg, expr->body_expansion_expr.declarations) sema_trace_decl_liveness(m, arg);

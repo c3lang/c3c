@@ -2820,58 +2820,36 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 				*expr->macro_block.block_exit = &c_exit;
 			}
 
-			FOREACH(Decl *, param, expr->macro_block.params)
+			FOREACH(Decl *, param, expr->macro_block.arguments)
 			{
-				if (!param)
-				{
-					continue;
-				}
-				if (param->decl_kind == DECL_DECLARRAY)
-				{
-					FOREACH(Decl *, d, param->decls)
-					{
-						if (!d || d->decl_kind != DECL_VAR)
-						{
-							continue;
-						}
-						if (d->var.kind == VARDECL_PARAM_CT || d->var.kind == VARDECL_PARAM_CT_TYPE || d->var.kind == VARDECL_PARAM_EXPR)
-						{
-							continue;
-						}
-						CValue pval = {0};
-						c_emit_local_decl(c, d, &pval);
-						if (expr->macro_block.had_optional_arg)
-						{
-							PRINTF("if (__c3_current_fault != NULL) {\n");
-							if (fault_var != 0)
-							{
-								PRINTF("\t___var_%d = __c3_current_fault;\n", fault_var);
-							}
-							PRINTF("\tgoto __C3_LABEL_%d;\n}\n", macro_exit);
-						}
-					}
-					continue;
-				}
-				if (param->decl_kind != DECL_VAR)
-				{
-					continue;
-				}
+				if (param->decl_kind != DECL_VAR) continue;
 				if (param->var.kind == VARDECL_PARAM_CT || param->var.kind == VARDECL_PARAM_CT_TYPE || param->var.kind == VARDECL_PARAM_EXPR)
 				{
 					continue;
 				}
-				if (param->var.no_init && param->var.defaulted)
-				{
-					continue;
-				}
+				if (param->var.no_init && param->var.defaulted) continue;
 				CValue pval = {0};
 				c_emit_local_decl(c, param, &pval);
 				if (expr->macro_block.had_optional_arg)
 				{
-					PRINTF("if (__c3_current_fault != NULL) {\n");
+					if (pval.optional)
+					{
+						PRINTF("if (___var_%d != NULL) {\n", pval.optional);
+					}
+					else
+					{
+						PRINTF("if (__c3_current_fault != NULL) {\n");
+					}
 					if (fault_var != 0)
 					{
-						PRINTF("\t___var_%d = __c3_current_fault;\n", fault_var);
+						if (pval.optional)
+						{
+							PRINTF("\t___var_%d = ___var_%d;\n", fault_var, pval.optional);
+						}
+						else
+						{
+							PRINTF("\t___var_%d = __c3_current_fault;\n", fault_var);
+						}
 					}
 					PRINTF("\tgoto __C3_LABEL_%d;\n}\n", macro_exit);
 				}
