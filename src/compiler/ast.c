@@ -611,35 +611,64 @@ static void scratch_buffer_append_but_mangle_underscore_dot(const char *name, co
 	if (suffix) scratch_buffer_append(suffix);
 }
 
+// Appends ".<file stem>.<row>.<col>".
+void scratch_buffer_append_decl_pos(Decl *decl)
+{
+	if (!decl->loc) return;
+	SourceLoc *loc = sourcelocptr(decl->loc);
+	const char *stem = source_file_by_id(loc->file_id)->name;
+	for (const char *p = stem; *p; p++)
+	{
+		if (*p == '/' || *p == '\\') stem = p + 1;
+	}
+	const char *dot = strchr(stem, '.');
+	int len = dot ? (int)(dot - stem) : (int)strlen(stem);
+	scratch_buffer_printf(".%.*s.%u.%u", len, stem, (unsigned)loc->row, (unsigned)loc->col);
+}
+
+static bool append_extern_decl_name(Decl *decl, bool clear, bool stable);
+
 void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear)
+{
+	append_extern_decl_name(decl, clear, false);
+}
+
+bool scratch_buffer_set_stable_extern_decl_name(Decl *decl, bool clear)
+{
+	return append_extern_decl_name(decl, clear, true);
+}
+
+// stable: suffix locals with their source position, not their declid.
+// Returns true if it did; macro copies share that suffix.
+static bool append_extern_decl_name(Decl *decl, bool clear, bool stable)
 {
 	if (clear) scratch_buffer_clear();
 	if (decl->extname)
 	{
 		scratch_buffer_append(decl->extname);
-		return;
+		return false;
 	}
 	if (decl->is_extern)
 	{
 		scratch_buffer_append(decl->name);
-		return;
+		return false;
 	}
 	if (decl->decl_kind == DECL_FUNC && decl->func_decl.type_parent)
 	{
 		Type *parent = decl_find_method_target(decl)->type->canonical;
 		if (type_is_user_defined(parent))
 		{
-			scratch_buffer_set_extern_decl_name(parent->decl, false);
+			bool pos = append_extern_decl_name(parent->decl, false, stable);
 			scratch_buffer_append(decl->is_export ? "__" : ".");
 			scratch_buffer_append(decl->name);
-			return;
+			return pos;
 		}
 		if (decl->unit && decl->unit->module) scratch_buffer_append_module(decl->unit->module, decl->is_export);
 		scratch_buffer_append(decl->is_export ? "__" : ".");
 		scratch_buffer_append(parent->name);
 		scratch_buffer_append(decl->is_export ? "__" : ".");
 		scratch_buffer_append(decl->name);
-		return;
+		return false;
 	}
 	Module *module = decl->unit ? decl->unit->module : NULL;
 	if (module) scratch_buffer_append_module(module, decl->is_export);
@@ -674,9 +703,13 @@ void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear)
 		if (suffix) scratch_buffer_append(suffix);
 		if (tail) scratch_buffer_append(tail);
 	}
-	if (decl->visibility == VISIBLE_LOCAL)
+	if (decl->visibility != VISIBLE_LOCAL) return false;
+	ASSERT_SPAN(decl, module);
+	if (stable)
 	{
-		ASSERT_SPAN(decl, module);
-		scratch_buffer_printf(".%u", (unsigned)declid(decl));
+		scratch_buffer_append_decl_pos(decl);
+		return true;
 	}
+	scratch_buffer_printf(".%u", (unsigned)declid(decl));
+	return false;
 }
