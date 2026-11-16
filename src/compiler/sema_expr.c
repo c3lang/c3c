@@ -646,7 +646,8 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 			{
 				RETURN_SEMA_ERROR(expr, "You cannot use swizzling to assign to multiple elements if they are overlapping");
 			}
-			return sema_binary_is_expr_lvalue(context, top_expr, exprptr(expr->swizzle_expr.parent), failed_ref);
+			if (!sema_binary_is_expr_lvalue(context, top_expr, exprptr(expr->swizzle_expr.parent), failed_ref)) return false;
+			goto CHECK_OPTIONAL;
 		case EXPR_LAMBDA:
 			if (failed_ref) goto FAILED_REF;
 			RETURN_SEMA_ERROR(expr, "This expression is a value and cannot be assigned to.");
@@ -7081,7 +7082,7 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, E
 	Type *result = type_get_vector(indexed_type, flat_type->type_kind, len);
 	expr->expr_kind = EXPR_SWIZZLE;
 	expr->swizzle_expr = (ExprSwizzle) { .parent = exprid(parent), .swizzle = kw, .is_overlapping = is_overlapping };
-	expr->type = result;
+	expr->type = type_add_optional(result, IS_OPTIONAL(parent));
 	return true;
 }
 
