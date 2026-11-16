@@ -171,11 +171,12 @@ jobs:
           
       # set up the environment for Ninja
       # MSVC 14.52 on the windows-11-arm image triggers an LLVM TinyPtrVector assertion with -O1/-Os
-      # (actions/runner-images#15329), pin the previous toolset until that is resolved.
+      # (actions/runner-images#15329). The VS 2026 image does not include the 14.51 compiler
+      # toolset, so use its installed VS 2022 compatibility toolset until that is resolved.
       - uses: TheMrMilchmann/setup-msvc-dev@v4
         with:
           arch: arm64
-          toolset: "14.51"
+          toolset: "14.44"
 
       - name: CMake Build (Release)
         run: |
