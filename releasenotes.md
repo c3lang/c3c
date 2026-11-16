@@ -65,6 +65,9 @@
 - Duplicate `case` values were not detected in `switch` statements on `bool`, strings, floats, faults and pointers.
 - A constant NaN `case` value, which can never match, is now an error.
 - `$defined(v.xy = {1, 2})` was false although assigning to a swizzle is valid.
+- `$defined` of an ill-typed unary operator, `++`/`--` or compound assignment, like `$defined(-s)` or `$defined(x += s)` on a struct, was a hard error instead of false.
+- `$defined` of a division or remainder by a constant zero, or a shift by a constant out of range, like `$defined(1 / FOO)` with `const int FOO = 0`, was a hard error instead of false.
+- A default value for a method's self parameter, like `fn void Foo.bar(&self = null)`, was accepted.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.

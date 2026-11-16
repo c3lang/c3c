@@ -1343,6 +1343,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 	if (method_parent && params && params[0] && !params[0]->var.type_info)
 	{
 		Decl *param = params[0];
+		if (param->var.init_expr) RETURN_SEMA_ERROR(param->var.init_expr, "A self parameter cannot have a default value.");
 		Type *inferred_type = NULL;
 		switch (param->var.kind)
 		{
