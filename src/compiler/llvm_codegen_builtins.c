@@ -143,7 +143,7 @@ INLINE void llvm_emit_volatile_store(GenContext *c, BEValue *result_value, Expr 
 static bool llvm_emit_aggregate_load_copy(GenContext *c, BEValue *value, bool is_volatile)
 {
 	Type *type = type_lowering(value->type);
-	if (!llvm_type_contains_padded_union(type)) return false;
+	if (!type_contains_padded_union(type)) return false;
 	BEValue copy = llvm_emit_alloca_b(c, type, "load.copy");
 	LLVMValueRef memcpy = llvm_emit_memcpy(c, copy.value, copy.alignment, value->value, value->alignment, type_size(type));
 	if (is_volatile) LLVMMemCpySetVolatile(memcpy, LLVMConstAllOnes(c->bool_type));
