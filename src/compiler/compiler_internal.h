@@ -5073,6 +5073,8 @@ INLINE ResolvedAttrData *decl_create_resolved_attributes(Decl *decl)
 }
 
 const char *find_c_compiler(void);
+bool cc_is_msvc(const char *cc);
+bool cc_is_tcc(const char *cc);
 
 void print_build_env(void);
 void print_asm(PlatformTarget *target);

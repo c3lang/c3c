@@ -87,7 +87,7 @@ static bool c_emit_const_lvalue(GenContext *c, Expr *expr)
 			int depth = c_member_path(parent_type->decl, expr->access_resolved_expr.ref, indices);
 			if (!depth) return false;
 			if (!c_emit_const_lvalue(c, parent)) return false;
-			if (c) for (int i = 0; i < depth; i++) PRINTF(".m%d", indices[i]);
+			if (c) PRINT(c_member_path_str(parent_type->decl, indices, depth));
 			return true;
 		}
 		case EXPR_SUBSCRIPT:
@@ -128,6 +128,28 @@ static bool c_expr_is_address_int(Expr *expr)
 	}
 }
 
+static bool c_const_initializer_is_static(ConstInitializer *init);
+static bool c_const_init_bytes(ConstInitializer *init, uint8_t *bytes);
+
+// Whether member `index` of `type` can be initialized statically with `init`, or with `value` when `init` is NULL.
+// A member kept as bytes (c_member_is_bytes) only takes what c_const_init_bytes can write; otherwise the global is
+// initialized at runtime.
+static bool c_member_init_is_static(Type *type, ArrayIndex index, ConstInitializer *init, Expr *value)
+{
+	Type *flat   = type_flatten(type);
+	Decl *d      = flat->type_kind == TYPE_STRUCT || flat->type_kind == TYPE_UNION ? flat->decl : NULL;
+	Decl *member = d && index < vec_size(d->strukt.members) ? d->strukt.members[index] : NULL;
+	if (!member || !c_member_is_bytes(d, member))
+	{
+		return init ? c_const_initializer_is_static(init) : c_can_emit_static_initializer(value);
+	}
+	ConstInitializer wrapped = { .kind = CONST_INIT_VALUE, .type = type_flatten(member->type), .init_value = value };
+	uint8_t *bytes           = calloc((size_t)type_size(member->type) + 1, 1);
+	bool is_static           = c_const_init_bytes(init ? init : &wrapped, bytes);
+	free(bytes);
+	return is_static;
+}
+
 static bool c_const_initializer_is_static(ConstInitializer *init)
 {
 	switch (init->kind)
@@ -138,14 +160,14 @@ static bool c_const_initializer_is_static(ConstInitializer *init)
 			return c_can_emit_static_initializer(init->init_value);
 		case CONST_INIT_STRUCT:
 		{
-			FOREACH(ConstInitializer *, element, init->init_struct)
+			FOREACH_IDX(i, ConstInitializer *, element, init->init_struct)
 			{
-				if (!c_const_initializer_is_static(element)) return false;
+				if (!c_member_init_is_static(init->type, i, element, NULL)) return false;
 			}
 			return true;
 		}
 		case CONST_INIT_UNION:
-			return c_const_initializer_is_static(init->init_union.element);
+			return c_member_init_is_static(init->type, init->init_union.index, init->init_union.element, NULL);
 		case CONST_INIT_ARRAY:
 		{
 			FOREACH(ConstInitializer *, element, init->init_array.elements)
@@ -188,10 +210,7 @@ bool c_can_emit_static_initializer(Expr *expr)
 			int count       = vec_size(elements);
 			for (int i = 0; i < count; i++)
 			{
-				if (!c_can_emit_static_initializer(elements[i]))
-				{
-					return false;
-				}
+				if (!c_member_init_is_static(expr->type, i, NULL, elements[i])) return false;
 			}
 			return true;
 		}
@@ -205,13 +224,14 @@ bool c_can_emit_static_initializer(Expr *expr)
 			int count       = vec_size(elements);
 			for (int i = 0; i < count; i++)
 			{
-				if (elements[i]->expr_kind == EXPR_DESIGNATOR && elements[i]->designator_expr.value)
-				{
-					if (!c_can_emit_static_initializer(elements[i]->designator_expr.value))
-					{
-						return false;
-					}
-				}
+				Expr *des = elements[i];
+				if (des->expr_kind != EXPR_DESIGNATOR || !des->designator_expr.value) continue;
+				DesignatorElement **path = des->designator_expr.path;
+				Type *flat               = type_flatten(expr->type);
+				Decl *d                  = flat->type_kind == TYPE_STRUCT || flat->type_kind == TYPE_UNION ? flat->decl : NULL;
+				// Only a whole member kept as bytes can be written as bytes.
+				if (vec_size(path) > 1 && d && c_member_is_bytes(d, d->strukt.members[path[0]->index])) return false;
+				if (!c_member_init_is_static(expr->type, path[0]->index, NULL, des->designator_expr.value)) return false;
 			}
 			return true;
 		}
@@ -418,21 +438,247 @@ static void c_emit_const_bitstruct_initializer(GenContext *c, ConstInitializer *
 	}
 	if (bitstruct_requires_byteswap(decl))
 	{
-		TypeSize sz = type_size(flat_container);
-		if (sz == 2)
-		{
-			total = c_bswap16((uint16_t)total);
-		}
-		else if (sz == 4)
-		{
-			total = c_bswap32((uint32_t)total);
-		}
-		else if (sz == 8)
-		{
-			total = c_bswap64((uint64_t)total);
-		}
+		uint64_t swapped = 0;
+		for (TypeSize i = 0; i < type_size(flat_container); i++) swapped = (swapped << 8) | ((total >> (i * 8)) & 0xFF);
+		total = swapped;
 	}
 	PRINTF("0x%" PRIx64 "ULL", total);
+}
+
+// Writes `size` bytes of `v` in the target's byte order.
+static void c_put_int_bytes(uint8_t *bytes, Int128 v, ByteSize size)
+{
+	for (ByteSize i = 0; i < size; i++)
+	{
+		uint8_t byte = (uint8_t)((i < 8 ? v.low : v.high) >> ((i % 8) * 8));
+		bytes[compiler.platform.big_endian ? size - 1 - i : i] = byte;
+	}
+}
+
+// Writes the constant `init` as the target stores it, for a member kept as bytes (c_member_is_bytes). False for what
+// has no bytes before linking, like an address, and for bitstructs.
+static bool c_const_init_bytes(ConstInitializer *init, uint8_t *bytes)
+{
+	if (!init) return true;
+	Type *type = type_flatten(init->type);
+	switch (init->kind)
+	{
+		case CONST_INIT_ZERO:
+			return true;
+		case CONST_INIT_STRUCT:
+		{
+			if (type->type_kind == TYPE_BITSTRUCT) return false;
+			Decl **members = type->decl->strukt.members;
+			FOREACH_IDX(i, ConstInitializer *, element, init->init_struct)
+			{
+				if (!c_const_init_bytes(element, bytes + members[i]->offset)) return false;
+			}
+			return true;
+		}
+		case CONST_INIT_UNION:
+			return c_const_init_bytes(init->init_union.element, bytes);
+		case CONST_INIT_ARRAY:
+		case CONST_INIT_ARRAY_FULL:
+		{
+			ByteSize stride = type_size(type->array.base);
+			ConstInitializer **elements = init->kind == CONST_INIT_ARRAY ? init->init_array.elements : init->init_array_full;
+			FOREACH_IDX(i, ConstInitializer *, element, elements)
+			{
+				ArrayIndex index = i;
+				if (element->kind == CONST_INIT_ARRAY_VALUE)
+				{
+					index   = element->init_array_value.index;
+					element = element->init_array_value.element;
+				}
+				if (!c_const_init_bytes(element, bytes + stride * index)) return false;
+			}
+			return true;
+		}
+		case CONST_INIT_ARRAY_VALUE:
+			return c_const_init_bytes(init->init_array_value.element, bytes + type_size(init->init_array_value.element->type) * init->init_array_value.index);
+		case CONST_INIT_VALUE:
+		{
+			Expr *expr = init->init_value;
+			if (expr->expr_kind != EXPR_CONST) return false;
+			ExprConst *ec  = &expr->const_expr;
+			ByteSize size  = type_size(type);
+			switch (ec->const_kind)
+			{
+				case CONST_INTEGER:
+					c_put_int_bytes(bytes, ec->ixx.i, size);
+					return true;
+				case CONST_BOOL:
+					bytes[0] = ec->b;
+					return true;
+				case CONST_ENUM:
+					c_put_int_bytes(bytes, (Int128){ 0, (uint64_t)ec->enum_val->enum_constant.inner_ordinal }, size);
+					return true;
+				case CONST_POINTER:
+					c_put_int_bytes(bytes, (Int128){ 0, ec->ptr }, size);
+					return true;
+				case CONST_FLOAT:
+				{
+					if (type->type_kind != TYPE_F32 && type->type_kind != TYPE_F64) return false;
+					float f32   = (float)ec->fxx.f;
+					double f64  = (double)ec->fxx.f;
+					uint64_t u  = 0;
+					memcpy(&u, type->type_kind == TYPE_F32 ? (void *)&f32 : (void *)&f64, size);
+					c_put_int_bytes(bytes, (Int128){ 0, u }, size);
+					return true;
+				}
+				case CONST_BYTES:
+				case CONST_STRING:
+					if (type->type_kind != TYPE_ARRAY && type->type_kind != TYPE_VECTOR) return false;
+					memcpy(bytes, ec->bytes.ptr, (size_t)(ec->bytes.len < size ? ec->bytes.len : size));
+					return true;
+				case CONST_INITIALIZER:
+					return c_const_init_bytes(ec->initializer, bytes);
+				default:
+					return false;
+			}
+		}
+	}
+	UNREACHABLE
+}
+
+// The initializer of `member`, kept as bytes, from `init`.
+static void c_emit_const_bytes(GenContext *c, ConstInitializer *init, Decl *member)
+{
+	ByteSize size  = type_size(member->type);
+	uint8_t *bytes = calloc(size ? size : 1, 1);
+	if (!c_const_init_bytes(init, bytes))
+	{
+		// Static initializers are plain data here (c_member_init_is_static), others c_emit_const_stores.
+		error_exit("C backend: no bytes for the initializer of '%s'.", member->name ? member->name : "(anonymous)");
+	}
+	PRINT("{ ");
+	for (ByteSize i = 0; i < size; i++) PRINTF(i ? ", 0x%02X" : "0x%02X", bytes[i]);
+	PRINT(" }");
+	free(bytes);
+}
+
+// `value` as the static initializer of member `index` of `d`, or of `fallback` when `d` has no such member.
+static void c_emit_const_member_init(GenContext *c, Decl *d, int index, Expr *value, Type *fallback)
+{
+	Decl *member = d && index < vec_size(d->strukt.members) ? d->strukt.members[index] : NULL;
+	if (!member || !c_member_is_bytes(d, member))
+	{
+		c_emit_const_init_expr(c, value, member ? member->type : fallback);
+		return;
+	}
+	ConstInitializer init = { .kind = CONST_INIT_VALUE, .type = type_flatten(member->type), .init_value = value };
+	c_emit_const_bytes(c, &init, member);
+}
+
+// Whether member `index` of `d` keeps `init` as bytes c_const_init_bytes can't write, like an address, at any depth.
+static bool c_const_member_needs_stores(Decl *d, ArrayIndex index, ConstInitializer *init)
+{
+	if (!c_member_is_bytes(d, d->strukt.members[index])) return c_const_init_needs_stores(init);
+	return !c_member_init_is_static(d->type, index, init, NULL);
+}
+
+// Whether C has no single initializer for `init`, as a member kept as bytes holds what c_const_init_bytes can't
+// write. Such a constant is built by c_emit_const_stores.
+bool c_const_init_needs_stores(ConstInitializer *init)
+{
+	if (!init) return false;
+	Type *flat = type_flatten(init->type);
+	switch (init->kind)
+	{
+		case CONST_INIT_ZERO:
+			return false;
+		case CONST_INIT_STRUCT:
+			if (flat->type_kind == TYPE_BITSTRUCT) return false;
+			FOREACH_IDX(i, ConstInitializer *, element, init->init_struct)
+			{
+				if (c_const_member_needs_stores(flat->decl, i, element)) return true;
+			}
+			return false;
+		case CONST_INIT_UNION:
+			return c_const_member_needs_stores(flat->decl, init->init_union.index, init->init_union.element);
+		case CONST_INIT_ARRAY:
+		case CONST_INIT_ARRAY_FULL:
+		{
+			ConstInitializer **elements = init->kind == CONST_INIT_ARRAY ? init->init_array.elements : init->init_array_full;
+			FOREACH(ConstInitializer *, element, elements)
+			{
+				if (c_const_init_needs_stores(element)) return true;
+			}
+			return false;
+		}
+		case CONST_INIT_ARRAY_VALUE:
+			return c_const_init_needs_stores(init->init_array_value.element);
+		case CONST_INIT_VALUE:
+		{
+			Expr *expr = init->init_value;
+			return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER &&
+			       c_const_init_needs_stores(expr->const_expr.initializer);
+		}
+	}
+	UNREACHABLE
+}
+
+// Stores the constant `init` into the zeroed C lvalue `lvalue`, member by member where c_const_init_needs_stores.
+void c_emit_const_stores(GenContext *c, const char *lvalue, ConstInitializer *init)
+{
+	if (!c_const_init_needs_stores(init))
+	{
+		PRINTF("%s = (%s)", lvalue, c_type_name(c, init->type));
+		c_emit_const_initializer_rec(c, init);
+		PRINT(";\n");
+		return;
+	}
+	Type *flat = type_flatten(init->type);
+	switch (init->kind)
+	{
+		case CONST_INIT_STRUCT:
+		case CONST_INIT_UNION:
+		{
+			bool is_union             = init->kind == CONST_INIT_UNION;
+			ConstInitializer **values = is_union ? &init->init_union.element : init->init_struct;
+			int count                 = is_union ? 1 : vec_size(init->init_struct);
+			for (int i = 0; i < count; i++)
+			{
+				int index        = is_union ? (int)init->init_union.index : i;
+				Decl *member     = flat->decl->strukt.members[index];
+				const char *field = str_printf("%s.%s", lvalue, c_member_name(flat->decl, index));
+				if (type_flatten(member->type)->type_kind == TYPE_FLEXIBLE_ARRAY) continue;
+				if (!c_member_is_bytes(flat->decl, member))
+				{
+					c_emit_const_stores(c, field, values[i]);
+					continue;
+				}
+				// The value is built in a variable of its type and copied in.
+				const char *mtn = c_type_name(c, member->type);
+				int copy        = c_create_variable(c);
+				PRINTF("%s ___var_%d;\n__c3_memset(&___var_%d, 0, sizeof(%s));\n", mtn, copy, copy, mtn);
+				c_emit_const_stores(c, str_printf("___var_%d", copy), values[i]);
+				PRINTF("__c3_memcpy(&%s, &___var_%d, sizeof(%s));\n", field, copy, mtn);
+			}
+			return;
+		}
+		case CONST_INIT_ARRAY:
+		case CONST_INIT_ARRAY_FULL:
+		{
+			ConstInitializer **elements = init->kind == CONST_INIT_ARRAY ? init->init_array.elements : init->init_array_full;
+			FOREACH_IDX(i, ConstInitializer *, element, elements)
+			{
+				ArrayIndex index = i;
+				if (element->kind == CONST_INIT_ARRAY_VALUE)
+				{
+					index   = element->init_array_value.index;
+					element = element->init_array_value.element;
+				}
+				c_emit_const_stores(c, str_printf("%s.ptr[%lld]", lvalue, (long long)index), element);
+			}
+			return;
+		}
+		case CONST_INIT_VALUE:
+			c_emit_const_stores(c, lvalue, init->init_value->const_expr.initializer);
+			return;
+		default:
+			UNREACHABLE_VOID
+	}
 }
 
 void c_emit_const_initializer_rec(GenContext *c, ConstInitializer *init)
@@ -500,11 +746,22 @@ void c_emit_const_initializer_rec(GenContext *c, ConstInitializer *init)
 		{
 			PRINT("{ ");
 			int count = vec_size(init->init_struct);
+			// A packed struct has padding fields between its members.
+			bool designated = c_struct_is_packed(type_flatten(init->type)->decl);
 			for (int i = 0; i < count; i++)
 			{
+				// C has no initializer for a flexible array member.
+				if (type_flatten(init->init_struct[i]->type)->type_kind == TYPE_FLEXIBLE_ARRAY) continue;
 				if (i > 0)
 				{
 					PRINT(", ");
+				}
+				if (designated) PRINTF(".%s = ", c_member_name(type_flatten(init->type)->decl, i));
+				Decl *member = type_flatten(init->type)->decl->strukt.members[i];
+				if (designated && c_member_is_bytes(type_flatten(init->type)->decl, member))
+				{
+					c_emit_const_bytes(c, init->init_struct[i], member);
+					continue;
 				}
 				c_emit_const_initializer_rec(c, init->init_struct[i]);
 			}
@@ -513,8 +770,17 @@ void c_emit_const_initializer_rec(GenContext *c, ConstInitializer *init)
 		}
 		case CONST_INIT_UNION:
 		{
-			PRINTF("{ .m%d = ", (int)init->init_union.index);
-			c_emit_const_initializer_rec(c, init->init_union.element);
+			Decl *union_decl = type_flatten(init->type)->decl;
+			PRINTF("{ .%s = ", c_member_name(union_decl, (int)init->init_union.index));
+			Decl *member     = union_decl->strukt.members[init->init_union.index];
+			if (c_member_is_bytes(union_decl, member))
+			{
+				c_emit_const_bytes(c, init->init_union.element, member);
+			}
+			else
+			{
+				c_emit_const_initializer_rec(c, init->init_union.element);
+			}
 			PRINT(" }");
 			return;
 		}
@@ -571,42 +837,10 @@ void c_emit_const_float_literal(GenContext *c, double f)
 
 void c_emit_const_int_literal(GenContext *c, const ExprConst *ec, Type *type)
 {
-	TypeKind tkind = type ? type->type_kind : TYPE_VOID;
-	if (tkind == TYPE_U128)
+	if (type && c_type_is_int128(type))
 	{
-		if (ec->ixx.i.high != 0)
-		{
-			PRINTF("(((__c3_uint128)%" PRIu64 "ULL << 64) | ((__c3_uint128)%" PRIu64 "ULL))",
-			       ec->ixx.i.high, ec->ixx.i.low);
-		}
-		else
-		{
-			PRINTF("((__c3_uint128)%" PRIu64 "ULL)", ec->ixx.i.low);
-		}
-		return;
-	}
-	if (tkind == TYPE_I128)
-	{
-		if (ec->ixx.i.high == 0)
-		{
-			PRINTF("((__c3_int128)(__c3_uint128)%" PRIu64 "ULL)", ec->ixx.i.low);
-		}
-		else if (ec->ixx.i.high == UINT64_MAX && (int64_t)ec->ixx.i.low < 0)
-		{
-			if ((int64_t)ec->ixx.i.low == INT64_MIN)
-			{
-				PRINT("((__c3_int128)(-9223372036854775807LL - 1LL))");
-			}
-			else
-			{
-				PRINTF("((__c3_int128)%" PRId64 "LL)", (int64_t)ec->ixx.i.low);
-			}
-		}
-		else
-		{
-			PRINTF("((__c3_int128)(((__c3_uint128)%" PRIu64 "ULL << 64) | ((__c3_uint128)%" PRIu64 "ULL)))",
-			       ec->ixx.i.high, ec->ixx.i.low);
-		}
+		// A braced list for a struct: only valid in an initializer.
+		PRINTF("__C3_%c128_INIT(0x%" PRIx64 "ULL, 0x%" PRIx64 "ULL)", type_is_signed(type) ? 'I' : 'U', ec->ixx.i.high, ec->ixx.i.low);
 		return;
 	}
 	if (type && type_is_unsigned(type))
@@ -720,10 +954,7 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 				return;
 			}
 			Type *inner_t = (inner) ? c_safe_type_lower(inner->type) : type_void;
-			if (inner_t->type_kind == TYPE_VOID)
-			{
-				inner_t = type_int;
-			}
+			ASSERT(inner_t->type_kind != TYPE_VOID);
 			if (c_type_is_aggregate(inner_t))
 			{
 				PRINTF("(%s)&((%s)", tname, c_type_name(c, inner_t));
@@ -881,8 +1112,7 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 		}
 		if (type && type->type_kind == TYPE_STRUCT)
 		{
-			Decl *d        = type->decl;
-			Decl **members = d ? d->strukt.members : NULL;
+			Decl *d = type->decl;
 			PRINT("{ ");
 			for (int i = 0; i < count; i++)
 			{
@@ -890,8 +1120,9 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 				{
 					PRINT(", ");
 				}
-				Type *mt = (members && i < vec_size(members)) ? members[i]->type : elem_t;
-				c_emit_const_init_expr(c, elements[i], mt);
+				// A packed struct has padding fields between its members.
+				if (d && c_struct_is_packed(d)) PRINTF(".%s = ", c_member_name(d, i));
+				c_emit_const_member_init(c, d, i, elements[i], elem_t);
 			}
 			PRINT(" }");
 			return;
@@ -911,8 +1142,6 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 	if (expr->expr_kind == EXPR_DESIGNATED_INITIALIZER_LIST)
 	{
 		Decl *d          = type->decl;
-		Decl **members   = d ? d->strukt.members : NULL;
-		int member_count = vec_size(members);
 		Expr **elements  = expr->designated_init.list;
 		PRINT("{ ");
 		int des_count = vec_size(elements);
@@ -926,9 +1155,8 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 					PRINT(", ");
 				}
 				DesignatorElement *de = des->designator_expr.path[0];
-				Type *mt              = (members && de->index < member_count) ? members[de->index]->type : NULL;
-				PRINTF(".m%d = ", (int)de->index);
-				c_emit_const_init_expr(c, des->designator_expr.value, mt);
+				PRINTF(".%s = ", c_member_name(d, (int)de->index));
+				c_emit_const_member_init(c, d, (int)de->index, des->designator_expr.value, NULL);
 			}
 		}
 		PRINT(" }");
@@ -1101,7 +1329,8 @@ void c_emit_enum_assoc_decl(GenContext *c, Decl *enum_decl, Decl *param)
 	if (htable_get(&c->emitted_global_decls, (void *)arr_name)) return;
 	htable_set(&c->emitted_global_decls, (void *)arr_name, (void *)1);
 	ByteBuffer *prev = c_decl_stream_enter(c, c->decl_buffer);
-	Type *ptype      = param->type ? c_safe_type_lower(param->type) : type_int;
+	ASSERT(param->type);
+	Type *ptype      = c_safe_type_lower(param->type);
 	c_emit_type_forward_decl(c, ptype);
 	PRINTF("extern const %s %s[%d];\n", c_type_name(c, ptype), arr_name, vec_size(enum_decl->enums.values));
 	c->buffer = prev;
@@ -1138,10 +1367,7 @@ static void c_emit_global_decl_here(GenContext *c, Decl *var)
 	}
 
 	Type *var_type = c_decl_type(var);
-	if (!var_type || var_type->type_kind == TYPE_VOID)
-	{
-		var_type = type_voidptr;
-	}
+	ASSERT(var_type && var_type->type_kind != TYPE_VOID);
 
 	c_emit_type_forward_decl(c, var_type);
 	const char *tname     = c_type_name(c, var_type);
@@ -1207,10 +1433,7 @@ static void c_emit_global_def_here(GenContext *c, Decl *var)
 	htable_set(&c->emitted_global_defs, (void *)vname, (void *)1);
 
 	Type *var_type = c_decl_type(var);
-	if (!var_type || var_type->type_kind == TYPE_VOID)
-	{
-		var_type = type_voidptr;
-	}
+	ASSERT(var_type && var_type->type_kind != TYPE_VOID);
 
 	// The initializer may declare what it references, so it is rendered first.
 	ByteBuffer init_buf;
@@ -1233,6 +1456,10 @@ static void c_emit_global_def_here(GenContext *c, Decl *var)
 	bool is_internal      = c_global_is_internal(var);
 	bool is_weak          = !is_internal && decl_should_weaken(var);
 	PRINT(c_decl_export_attrs(var, true));
+	if (var->attrs_resolved && var->attrs_resolved->section)
+	{
+		PRINTF("__C3_SECTION_VAR(\"%s\") ", var->attrs_resolved->section);
+	}
 	if (is_internal) PRINT("static ");
 	if (is_weak) PRINT("__c3_linkonce ");
 	if (c_global_is_c_const(var))
@@ -1457,10 +1684,10 @@ static void c_emit_dynamic_dispatcher_here(GenContext *c, Decl *dyn_fn)
 			{
 				c_emit_type_forward_decl(c, first_ptype);
 			}
-			bool pass_by_val     = first_ptype && !type_is_pointer(first_ptype);
+			bool pass_by_val     = first_ptype && !type_is_pointer(first_ptype) && !c_param_by_ref(first_ptype);
 			const char *self_arg = pass_by_val
 			                           ? str_printf("*(%s*)___self.ptr", c_type_name(c, first_ptype))
-			                           : str_printf("(%s)___self.ptr", c_type_name(c, first_ptype));
+			                           : str_printf(c_param_by_ref(first_ptype) ? "(%s*)___self.ptr" : "(%s)___self.ptr", c_type_name(c, first_ptype));
 
 			const char *tsym         = c_typeid_ref(c, target_type);
 			const char *impl_fn_name = c_get_decl_name(impl);
@@ -1501,7 +1728,7 @@ static void c_emit_dynamic_dispatcher_here(GenContext *c, Decl *dyn_fn)
 	}
 	else
 	{
-		// The dispatcher has no access to the call site, so the panic reports the interface method.
+		// Unreachable: the call checks first (c_emit_call_expr), with its location.
 		const char *saved_name = c->cur_func_name;
 		c->cur_func_name       = dyn_fn->name;
 		c_emit_panic_fn(c, PANIC_FN_NO_METHOD, dyn_fn->loc, &dyn_fn->name, NULL);
@@ -1614,7 +1841,7 @@ static Type **c_collect_runtime_types(HTable *emitted_types)
 		for (int i = 0; i < type_count; i++)
 		{
 			Type *t = compiler.context.type[i];
-			if (!c_type_needs_emission(t))
+			if (!c_type_is_resolved(t) || !c_type_has_typeid(t) || (strip_unused() && !t->is_live))
 			{
 				continue;
 			}
@@ -1664,7 +1891,56 @@ void c_emit_runtime_header(const char *dir)
 
 	// The runtime header is target neutral text; the target's 128-bit integer alignment comes from C3's layout.
 	fprintf(f, "#define __C3_INT128_ALIGN %d\n", (int)type_abi_alignment(type_i128));
+	if (compiler.platform.big_endian) fputs("#define __C3_BIG_ENDIAN 1\n", f);
 	fwrite(c_runtime_header_boilerplate, 1, c_runtime_header_boilerplate_len, f);
+
+	// float16, bfloat and float128 have no C form of their size yet.
+	Type *scalars[] = { type_bool, type_ichar, type_short, type_int, type_long, type_i128, type_float, type_double, type_voidptr };
+	for (size_t i = 0; i < ELEMENTLEN(scalars); i++)
+	{
+		Type *t          = scalars[i];
+		const char *name = c_type_name(NULL, t);
+		const char *id   = c_sanitize_name(name);
+		fprintf(f, "__C3_ASSERT_LAYOUT(sizeof(%s) == %d, %s_size);\n", name, (int)type_size(t), id);
+		fprintf(f, "__C3_ASSERT_LAYOUT(__C3_ALIGNOF(%s) == %d, %s_align);\n", name, (int)type_abi_alignment(t), id);
+	}
+	fprintf(f, "__C3_ASSERT_LAYOUT(sizeof(int) == %d, c_int_size);\n", (int)type_size(type_cint));
+	fprintf(f, "__C3_ASSERT_LAYOUT(sizeof(long) == %d, c_long_size);\n\n", compiler.platform.width_c_long / 8);
+
+	// The C compiler must build for the target, as C3 chose the stdlib's platform code and every layout for it.
+	const char *arch = NULL;
+	switch (compiler.platform.arch)
+	{
+		case ARCH_TYPE_X86: arch = "defined(__i386__) || defined(_M_IX86)"; break;
+		case ARCH_TYPE_X86_64: arch = "defined(__x86_64__) || defined(_M_X64)"; break;
+		case ARCH_TYPE_AARCH64: arch = "defined(__aarch64__) || defined(_M_ARM64)"; break;
+		case ARCH_TYPE_ARM:
+		case ARCH_TYPE_THUMB: arch = "defined(__arm__) || defined(_M_ARM)"; break;
+		case ARCH_TYPE_RISCV32: arch = "defined(__riscv) && __riscv_xlen == 32"; break;
+		case ARCH_TYPE_RISCV64: arch = "defined(__riscv) && __riscv_xlen == 64"; break;
+		case ARCH_TYPE_WASM32: arch = "defined(__wasm32__)"; break;
+		case ARCH_TYPE_WASM64: arch = "defined(__wasm64__)"; break;
+		case ARCH_TYPE_XTENSA: arch = "defined(__XTENSA__) || defined(__xtensa__)"; break;
+		case ARCH_TYPE_AVR: arch = "defined(__AVR__)"; break;
+		default: break;
+	}
+	const char *os = NULL;
+	switch (compiler.platform.os)
+	{
+		case OS_TYPE_LINUX: os = "defined(__linux__)"; break;
+		case OS_TYPE_ANDROID: os = "defined(__ANDROID__)"; break;
+		case OS_TYPE_WIN32: os = "defined(_WIN32)"; break;
+		case OS_DARWIN_TYPES: os = "defined(__APPLE__)"; break;
+		case OS_TYPE_FREEBSD: os = "defined(__FreeBSD__)"; break;
+		case OS_TYPE_NETBSD: os = "defined(__NetBSD__)"; break;
+		case OS_TYPE_OPENBSD: os = "defined(__OpenBSD__)"; break;
+		case OS_TYPE_EMSCRIPTEN: os = "defined(__EMSCRIPTEN__)"; break;
+		case OS_TYPE_WASI: os = "defined(__wasi__)"; break;
+		default: break;
+	}
+	if (arch) fprintf(f, "#if !(%s)\n#error \"C3: the C compiler doesn't build for the target's architecture (%s)\"\n#endif\n", arch, compiler.platform.target_triple);
+	if (os) fprintf(f, "#if !(%s)\n#error \"C3: the C compiler doesn't build for the target's OS (%s)\"\n#endif\n", os, compiler.platform.target_triple);
+	fputs("\n", f);
 
 	// Program specific declarations go in the files using them, keeping this header constant.
 	fputs("extern const c3type_info_t __c3_typeid_void;\n\n", f);

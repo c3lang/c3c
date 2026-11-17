@@ -1,0 +1,15 @@
+// #target: linux-x64
+module at;
+import std::atomic;
+
+void* g_ptr;
+int g_int;
+
+fn void* load_ptr() @export("at_load_ptr") => @atomic_load(g_ptr);
+fn int add(int v) @export("at_add") => atomic::fetch_add(&g_int, v);
+
+/* #expect: at.c
+
+void* ___var_7 = (void*)__atomic_load_n((void**)___var_3, __ATOMIC_SEQ_CST);
+
+int32_t ___var_20 = (int32_t)__atomic_fetch_add((int32_t*)___var_15, ___var_16, __ATOMIC_SEQ_CST);

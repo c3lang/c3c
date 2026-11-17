@@ -1,0 +1,32 @@
+// #target: linux-x64
+module fa;
+extern fn void stop();
+
+int counter @section(".fa_data") @export("fa_counter") = 3;
+fn int helper(int x) @noinline @export("fa_helper") => x * 2;
+fn int fast(int x) @inline @export("fa_fast") => x + 1;
+fn void die() @noreturn @export("fa_die") { stop(); }
+fn void placed() @section(".fa_text") @export("fa_placed") {}
+fn int seven() @naked @export("fa_seven")
+{
+	asm
+	{
+		movl $eax, 7;
+		ret;
+	}
+}
+
+/* #expect: fa.c
+
+__C3_NOINLINE extern int32_t fa_helper(int32_t);
+extern int32_t fa_fast(int32_t);
+__C3_NORETURN extern void fa_die(void);
+__C3_SECTION_FN(".fa_text") extern void fa_placed(void);
+__C3_NAKED extern int32_t fa_seven(void);
+__C3_SECTION_VAR(".fa_data") int32_t fa_counter = 3LL;
+__C3_NOINLINE int32_t fa_helper(int32_t x_) {
+__C3_INLINE int32_t fa_fast(int32_t x_) {
+__C3_NORETURN void fa_die(void) {
+__C3_SECTION_FN(".fa_text") void fa_placed(void) {
+__C3_NAKED int32_t fa_seven(void) {
+#if defined(_MSC_VER) && !defined(__clang__)

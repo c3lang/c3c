@@ -1,0 +1,40 @@
+// #target: linux-x64
+module pk;
+
+bitstruct Op : ushort @align(1) { uint v : 0..15; }
+struct Packed @packed { char c; long l; }
+struct Wide @packed { char c; int128 x; }
+
+Wide g_wide @export("pk_wide") = { 1, -2 };
+
+fn long get(Packed* p) @export("pk_get") => p.l;
+fn void set(Packed* p, long l) @export("pk_set") { p.l = l; }
+fn void set_op(Op* op) @export("pk_op") { *op = { 3 }; }
+
+/* #expect: pk.c
+
+struct pk__Wide__ {
+	uint8_t c;
+	uint8_t x[16];
+};
+pk__Wide pk_wide = { .c = 1ULL, .x = { 0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF } };
+int64_t pk_get(pk__Packed* p_) {
+{
+pk__Packed* ___var_4 = (pk__Packed*)p_;
+int64_t* ___var_3 = (int64_t*)((uint8_t*)___var_4 + 1);
+int64_t ___var_2;
+__c3_memcpy(&___var_2, (void*)(uintptr_t)___var_3, sizeof(int64_t));
+return ___var_2;
+}
+}
+
+void pk_set(pk__Packed* p_, int64_t l_) {
+{
+int64_t ___var_7 = l_;
+pk__Packed* ___var_9 = (pk__Packed*)p_;
+int64_t* ___var_8 = (int64_t*)((uint8_t*)___var_9 + 1);
+__c3_memcpy((void*)(uintptr_t)___var_8, &___var_7, sizeof(int64_t));
+}
+return;
+uint16_t* ___var_13 = (uint16_t*)op_;
+__c3_memcpy((void*)(uintptr_t)___var_12, &___var_11, sizeof(uint16_t));

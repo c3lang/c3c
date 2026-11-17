@@ -6,49 +6,6 @@
 
 #include "../utils/byte_buffer.h"
 
-static inline uint16_t c_bswap16(uint16_t x)
-{
-#if defined(_MSC_VER)
-	return _byteswap_ushort(x);
-#elif defined(__GNUC__) || defined(__clang__)
-	return __builtin_bswap16(x);
-#else
-	return (uint16_t)((x << 8) | (x >> 8));
-#endif
-}
-
-static inline uint32_t c_bswap32(uint32_t x)
-{
-#if defined(_MSC_VER)
-	return _byteswap_ulong(x);
-#elif defined(__GNUC__) || defined(__clang__)
-	return __builtin_bswap32(x);
-#else
-	return ((x << 24) & 0xff000000u) |
-	       ((x << 8) & 0x00ff0000u) |
-	       ((x >> 8) & 0x0000ff00u) |
-	       ((x >> 24) & 0x000000ffu);
-#endif
-}
-
-static inline uint64_t c_bswap64(uint64_t x)
-{
-#if defined(_MSC_VER)
-	return _byteswap_uint64(x);
-#elif defined(__GNUC__) || defined(__clang__)
-	return __builtin_bswap64(x);
-#else
-	return ((x << 56) & 0xff00000000000000ull) |
-	       ((x << 40) & 0x00ff000000000000ull) |
-	       ((x << 24) & 0x0000ff0000000000ull) |
-	       ((x << 8) & 0x000000ff00000000ull) |
-	       ((x >> 8) & 0x00000000ff000000ull) |
-	       ((x >> 24) & 0x0000000000ff0000ull) |
-	       ((x >> 40) & 0x000000000000ff00ull) |
-	       ((x >> 56) & 0x00000000000000ffull);
-#endif
-}
-
 #define PRINT(s) c_print(c, (s))
 #define PRINTF(...) c_printf(c, __VA_ARGS__)
 
@@ -72,6 +29,9 @@ typedef struct
 	// The fault slot of an optional variable whose value this is (EXPR_DECL), or NULL. Reading the value checks it and
 	// jumps to the catch target first, as LLVM's BE_ADDRESS_OPTIONAL folds on rvalue.
 	const char *fault;
+	// The alignment of the address an lvalue address points at, when lower than its type's (a @packed member), or
+	// 0. Loads and stores through it then go through memcpy, as LLVM loads with a lower alignment.
+	AlignSize align;
 } CValue;
 
 static inline void c_value_set_void(CValue *val)
@@ -166,6 +126,12 @@ typedef struct GenContext
 	HTable local_vars;
 	HTable local_fault_vars;
 	HTable declared_vars;
+	// The C names of variables with a C3 name, which c_write_mapped_lines gives ___var_N. A function uses each
+	// name once: used_var_names maps a name to the last name_scope (a function) that took it.
+	HTable var_names;
+	HTable used_var_names;
+	HTable used_static_names;
+	int name_scope;
 	HTable decl_names;
 	HTable declared_typeids;
 	HTable declared_faults;
@@ -183,7 +149,6 @@ static inline ByteBuffer *c_decl_stream_enter(GenContext *c, ByteBuffer *stream)
 	return prev;
 }
 
-VariableId c_emit_alloca(GenContext *c, Type *type);
 VariableId c_emit_alloca_array(GenContext *c, Type *base_type, ArrayIndex count);
 
 typedef void (*CDeclVisitor)(GenContext *c, Decl *d, void *userdata);
@@ -191,8 +156,10 @@ typedef void (*CDeclVisitor)(GenContext *c, Decl *d, void *userdata);
 /* Output */
 void c_write_bytes(GenContext *c, const uint8_t *bytes, size_t len);
 void c_print(GenContext *c, const char *str);
+// With debug info, maps the C that follows to `loc` (c_write_mapped_lines); C_LINE_RESET returns to the C file.
+void c_emit_line(GenContext *c, SourceLocId loc);
+#define C_LINE_RESET "#line __c3_reset__\n"
 void c_printf(GenContext *c, const char *fmt, ...);
-void c_print_byte(GenContext *c, uint8_t b);
 
 /* Module & Utility */
 const char *c_intern(const char *str);
@@ -200,6 +167,7 @@ const char *c_sanitize_name(const char *name);
 const char *c_get_decl_name(Decl *decl);
 const char *c_get_decl_asm_name(Decl *decl);
 bool c_decl_needs_asm_label(Decl *decl);
+const char *c_decl_ext_symbol(Decl *decl);
 bool c_fn_is_main(Decl *fn);
 const char *c_decl_lvalue_str(GenContext *c, Decl *decl);
 // The name of a function or global the code refers to, declared in the file on first use.
@@ -247,7 +215,6 @@ typedef struct
 } CSigOpts;
 // `ret declarator(params)` for a signature. declarator: "name", "(*)", "(*name)".
 const char *c_signature_str(GenContext *c, Signature *sig, const char *declarator, CSigOpts opts);
-CRet c_type_ret(Type *rtype);
 CRet c_signature_ret(Signature *sig);
 const char *c_ident_read_fault_ref(GenContext *c, Decl *ident);
 void c_emit_jump_to_optional_exit(GenContext *c, const char *fault);
@@ -265,6 +232,7 @@ void c_optional_assign_end(GenContext *c, COptionalAssign *assign);
 VariableId c_ensure_cvalue_var(GenContext *c, CValue *val, Type *fallback_type);
 void c_value_rvalue(GenContext *c, CValue *val);
 void c_value_addr(GenContext *c, CValue *val);
+const char *c_addr_bytes(const CValue *addr);
 const char *c_arrow(const CValue *val);
 void c_emit_lanewise(GenContext *c, int result_var, Type *result_type, const char *tmpl, CValue *args, int arg_count);
 void c_emit_label(GenContext *c, int label_id);
@@ -274,13 +242,13 @@ void c_emit_assign_var(GenContext *c, VariableId dst_var, Type *dst_type, CValue
 bool c_emit_function_decl(GenContext *c, Decl *fn, bool is_current_module);
 void c_emit_function(GenContext *c, Decl *fn);
 void c_emit_local_var_declarations(GenContext *c);
+void c_declare_local_here(GenContext *c, VariableId id);
 const char *c_align_attr_str(Decl *decl, Type *type);
 
 /* Lvalue & Access */
 Decl *get_struct_decl_from_type(Type *type);
 #define MAX_MEMBER_PATH 16
 int c_member_path(Decl *parent, Decl *member, int indices[MAX_MEMBER_PATH]);
-bool c_is_bitstruct_array(Type *type, Decl **out_decl);
 void c_declare_bitstruct_accessors(GenContext *c, Decl *decl);
 const char *c_emit_bitstruct_container(GenContext *c, Expr *parent_expr, Decl *member, int *out_container_var, Decl **out_bitstruct_decl);
 void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target_type);
@@ -290,6 +258,8 @@ void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *addr, CValue *right
 /* Global & Runtime */
 bool c_is_file_global(Decl *decl);
 bool c_can_emit_static_initializer(Expr *expr);
+bool c_const_init_needs_stores(ConstInitializer *init);
+void c_emit_const_stores(GenContext *c, const char *lvalue, ConstInitializer *init);
 void c_emit_const_initializer_rec(GenContext *c, ConstInitializer *init);
 void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type);
 void c_emit_global_decl(GenContext *c, Decl *var);
@@ -435,6 +405,21 @@ size_t c_get_type_size(Type *type);
 void c_type_names_init(void);
 const char *c_type_name(GenContext *c, Type *type);
 const char *c_type_zero_literal(Type *t);
+AlignSize c_type_alignment(Type *type);
+bool c_struct_is_packed(Decl *d);
+bool c_member_is_bytes(Decl *d, Decl *member);
+bool c_name_is_reserved(const char *name);
+const char *c_member_name(Decl *d, int index);
+const char *c_member_path_str(Decl *parent, const int *indices, int depth);
+bool c_type_is_int128(Type *type);
+const char *c_int_value_str(GenContext *c, Type *type, int64_t value);
+const char *c_scalar_convert_str(GenContext *c, Type *to, Type *from, const char *expr);
+const char *c_binary_str(BinaryOp op, Type *type, const char *l, const char *r);
+const char *c_truth_str(Type *type, const char *x, bool negate);
+const char *c_int_neg_str(Type *type, const char *x);
+const char *c_int_limit_str(GenContext *c, Type *type, bool is_max);
+const char *c_shift_amount_str(Type *type, const char *expr);
+const char *c_overflow_builtin_name(BinaryOp op, Type *type);
 bool c_emit_type_forward_decl(GenContext *c, Type *type);
 bool c_emit_type_decl(GenContext *c, Type *type);
 const char *c_typeid_name(Type *type);
@@ -460,18 +445,6 @@ static inline Decl *c_type_get_decl(Type *t)
 	}
 }
 
-static inline bool c_decl_is_live(Decl *d)
-{
-	if (!d) return false;
-	if (d->decl_kind == DECL_FUNC)
-	{
-		if (d->func_decl.attr_test && !compiler.build.build_test) return false;
-		if (d->func_decl.attr_benchmark && !compiler.build.build_benchmark) return false;
-	}
-	if (strip_unused() && !d->is_live) return false;
-	return true;
-}
-
 // Whether a typeid can exist for the type at all.
 static inline bool c_type_has_typeid(Type *t)
 {
@@ -488,20 +461,9 @@ static inline bool c_type_has_typeid(Type *t)
 	return true;
 }
 
-static inline bool c_type_needs_emission(Type *t)
-{
-	return c_type_is_resolved(t) && c_type_has_typeid(t) && (!strip_unused() || t->is_live);
-}
-
-static inline int c_emit_temp_zero(GenContext *c, CValue *value, Type *type)
-{
-	int temp = c_emit_temp_var(c, value, type);
-	PRINTF("%s ___var_%d = %s;\n", c_type_name(c, type), temp, c_type_zero_literal(type));
-	return temp;
-}
-
 /* Expressions & Builtins */
 void c_emit_expr(GenContext *c, CValue *value, Expr *expr);
+bool c_param_by_ref(Type *type);
 void c_emit_binary_op(GenContext *c, CValue *value, BinaryOp op, Type *expr_type, CValue left_value, CValue right_value, SourceLocId loc);
 void c_emit_ignored_expr(GenContext *c, Expr *expr);
 void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr);

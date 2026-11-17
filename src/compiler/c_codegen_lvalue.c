@@ -37,35 +37,29 @@ int c_member_path(Decl *parent, Decl *member, int indices[MAX_MEMBER_PATH])
 	}
 }
 
-bool c_is_bitstruct_array(Type *type, Decl **out_decl)
+// The C member path `.a_0.b_1` of the `indices` from c_member_path below `parent`.
+const char *c_member_path_str(Decl *parent, const int *indices, int depth)
 {
-	Type *flat = c_flatten_deref(type);
-	if (!flat || flat->type_kind != TYPE_BITSTRUCT || !flat->decl)
+	const char *path = "";
+	for (int i = 0; i < depth; i++)
 	{
-		return false;
+		path   = str_printf("%s.%s", path, c_member_name(parent, indices[i]));
+		parent = parent->strukt.members[indices[i]];
 	}
-	Decl *d = flat->decl;
-	if (out_decl)
-	{
-		*out_decl = d;
-	}
-	if (d->strukt.container_type)
-	{
-		Type *cflat = type_flatten(d->strukt.container_type->type);
-		if (cflat && cflat->type_kind == TYPE_ARRAY)
-		{
-			return true;
-		}
-	}
-	return false;
+	return path;
 }
 
-// A C expression for the low `bits` bits set, in the width the field is computed in (uint64_t up to 64 bits).
-static const char *c_bit_mask_str(int bits)
+// The low `bits` bits set, as a __c3_uint128 expression.
+static const char *c_bit_mask128_str(int bits)
 {
-	if (bits > 64) return str_printf("((((__c3_uint128)1) << %d) - 1)", bits);
-	if (bits == 64) return "0xFFFFFFFFFFFFFFFFULL";
-	return str_printf("0x%" PRIx64 "ULL", ((uint64_t)1 << bits) - 1);
+	return str_printf("__c3_u128_lshr(__c3_u128_not(__c3_u128_from_u64(0)), %d)", 128 - bits);
+}
+
+// Sign extends the `bits` wide field in the __c3_uint128 variable `var`.
+static void c_emit_sign_extend128(GenContext *c, const char *var, int bits)
+{
+	PRINTF("\tif (__c3_u128_nonzero(__c3_u128_and(%s, __c3_u128_shl(__c3_u128_from_u64(1), %d)))) %s = __c3_u128_or(%s, __c3_u128_not(%s));\n",
+	       var, bits - 1, var, var, c_bit_mask128_str(bits));
 }
 
 static void c_emit_bitstruct_accessors(GenContext *c, Decl *decl)
@@ -106,8 +100,13 @@ static void c_emit_bitstruct_accessors(GenContext *c, Decl *decl)
 		{
 			bit_size = 1;
 		}
-		bool is_signed         = type_is_signed(m_type);
-		const char *shift_type = (bit_size > 64) ? "__c3_uint128" : "uint64_t";
+		bool is_signed = type_is_signed(m_type);
+		// A container of 2, 4 or 8 bytes is swapped with __builtin_bswapN.
+		int swap_bits  = bitstruct_requires_byteswap(decl) && !is_array && type_size(container_type) > 1 ? (int)type_size(container_type) * 8 : 0;
+		// Fields wider than 64 bits are computed as __c3_uint128, others as uint64_t.
+		bool is_wide       = bit_size > 64;
+		Type *res_type     = is_wide ? type_u128 : (is_signed ? type_long : type_ulong);
+		const char *result = c_scalar_convert_str(c, m_type, res_type, "res");
 
 		PRINTF("static inline %s %s_get_%s(const void *p) {\n", ret_tname, bs_name, m_name);
 		if (is_array)
@@ -119,208 +118,157 @@ static void c_emit_bitstruct_accessors(GenContext *c, Decl *decl)
 			for (int bits_done = 0; bits_done < bit_size; )
 			{
 				CBitfieldStep s = c_bitfield_step(start_bit, bit_size, bits_done, reverse);
+				bits_done += s.step_bits;
+				if (is_wide)
+				{
+					const char *byte = str_printf("b[%d]", s.byte_idx);
+					if (s.bit_in_byte > 0) byte = str_printf("(%s >> %d)", byte, s.bit_in_byte);
+					if (s.step_bits != 8) byte = str_printf("(%s & 0x%X)", byte, s.step_mask);
+					const char *term = str_printf("__c3_u128_shl(__c3_u128_from_u64(%s), %d)", byte, s.shift);
+					if (term_count++)
+					{
+						PRINTF("\tres = __c3_u128_or(res, %s);\n", term);
+					}
+					else
+					{
+						PRINTF("\t__c3_uint128 res = %s;\n", term);
+					}
+					continue;
+				}
 				char term[128];
 				if (s.bit_in_byte == 0 && s.step_bits == 8)
 				{
 					if (s.shift > 0)
 					{
-						snprintf(term, sizeof(term), "((%s)b[%d] << %d)", shift_type, s.byte_idx, s.shift);
+						snprintf(term, sizeof(term), "((uint64_t)b[%d] << %d)", s.byte_idx, s.shift);
 					}
 					else
 					{
-						snprintf(term, sizeof(term), "(%s)b[%d]", shift_type, s.byte_idx);
+						snprintf(term, sizeof(term), "(uint64_t)b[%d]", s.byte_idx);
 					}
 				}
 				else
 				{
 					if (s.bit_in_byte > 0 && s.shift > 0)
 					{
-						snprintf(term, sizeof(term), "(((%s)(b[%d] >> %d & 0x%X) << %d))", shift_type, s.byte_idx, s.bit_in_byte, s.step_mask, s.shift);
+						snprintf(term, sizeof(term), "(((uint64_t)(b[%d] >> %d & 0x%X) << %d))", s.byte_idx, s.bit_in_byte, s.step_mask, s.shift);
 					}
 					else if (s.bit_in_byte > 0)
 					{
-						snprintf(term, sizeof(term), "((%s)(b[%d] >> %d & 0x%X))", shift_type, s.byte_idx, s.bit_in_byte, s.step_mask);
+						snprintf(term, sizeof(term), "((uint64_t)(b[%d] >> %d & 0x%X))", s.byte_idx, s.bit_in_byte, s.step_mask);
 					}
 					else if (s.shift > 0)
 					{
-						snprintf(term, sizeof(term), "(((%s)(b[%d] & 0x%X) << %d))", shift_type, s.byte_idx, s.step_mask, s.shift);
+						snprintf(term, sizeof(term), "(((uint64_t)(b[%d] & 0x%X) << %d))", s.byte_idx, s.step_mask, s.shift);
 					}
 					else
 					{
-						snprintf(term, sizeof(term), "((%s)(b[%d] & 0x%X))", shift_type, s.byte_idx, s.step_mask);
+						snprintf(term, sizeof(term), "((uint64_t)(b[%d] & 0x%X))", s.byte_idx, s.step_mask);
 					}
 				}
-				if (term_count > 0)
+				if (term_count++)
 				{
 					strncat(expr_buf, " | ", sizeof(expr_buf) - strlen(expr_buf) - 1);
 				}
 				strncat(expr_buf, term, sizeof(expr_buf) - strlen(expr_buf) - 1);
-				term_count++;
-				bits_done += s.step_bits;
 			}
-			if (term_count == 0)
+			if (is_wide)
 			{
-				strcpy(expr_buf, "0");
-			}
-			if (is_signed && bit_size < 128)
-			{
-				PRINTF("\t%s res = %s;\n", shift_type, expr_buf);
-				PRINTF("\tif (res & ((%s)1 << %d)) res |= ~(((%s)1 << %d) - 1);\n", shift_type, bit_size - 1, shift_type, bit_size);
-				PRINTF("\treturn (%s)res;\n", ret_tname);
+				if (is_signed && bit_size < 128) c_emit_sign_extend128(c, "res", bit_size);
 			}
 			else
 			{
-				PRINTF("\treturn (%s)(%s);\n", ret_tname, expr_buf);
+				PRINTF("\tuint64_t res = %s;\n", expr_buf);
+				if (is_signed && bit_size < 64) PRINTF("\tif (res & ((uint64_t)1 << %d)) res |= ~(((uint64_t)1 << %d) - 1);\n", bit_size - 1, bit_size);
 			}
+			PRINTF("\treturn %s;\n", result);
 		}
 		else if (type_size(container_type) > 8)
 		{
-			PRINT("\t__c3_uint128 v = *(const __c3_uint128 *)p;\n");
-			if (bitstruct_requires_byteswap(decl))
+			PRINT("\t__c3_uint128 res;\n\t__c3_memcpy(&res, p, sizeof(res));\n");
+			if (bitstruct_requires_byteswap(decl)) PRINT("\tres = __c3_u128_bswap(res);\n");
+			if (bit_size < 128)
 			{
-				PRINT("\tv = (((__c3_uint128)__builtin_bswap64((uint64_t)v)) << 64) | ((__c3_uint128)__builtin_bswap64((uint64_t)(v >> 64)));\n");
+				PRINTF("\tres = __c3_u128_and(__c3_u128_lshr(res, %d), %s);\n", start_bit, c_bit_mask128_str(bit_size));
+				if (is_signed) c_emit_sign_extend128(c, "res", bit_size);
 			}
-			if (bit_size >= 128)
-			{
-				PRINTF("\treturn (%s)v;\n", ret_tname);
-			}
-			else
-			{
-				PRINTF("\t%s res = (%s)((v >> %d) & %s);\n", shift_type, shift_type, start_bit, c_bit_mask_str(bit_size));
-				if (is_signed)
-				{
-					PRINTF("\tif (res & ((%s)1 << %d)) res |= ~(%s)%s;\n", shift_type, bit_size - 1, shift_type, c_bit_mask_str(bit_size));
-				}
-				PRINTF("\treturn (%s)res;\n", ret_tname);
-			}
+			PRINTF("\treturn %s;\n", c_scalar_convert_str(c, m_type, type_u128, "res"));
 		}
 		else
 		{
 			const char *c_tname = c_type_name(NULL, container_type);
 			uint64_t mask       = (bit_size >= 64) ? ~0ULL : (((uint64_t)1 << bit_size) - 1);
-			PRINTF("\tuint64_t v = (uint64_t)*(const %s *)p;\n", c_tname);
-			if (bitstruct_requires_byteswap(decl))
-			{
-				PRINTF("\tif (sizeof(%s) == 2) v = __builtin_bswap16((uint16_t)v);\n", c_tname);
-				PRINTF("\telse if (sizeof(%s) == 4) v = __builtin_bswap32((uint32_t)v);\n", c_tname);
-				PRINTF("\telse if (sizeof(%s) == 8) v = __builtin_bswap64((uint64_t)v);\n", c_tname);
-			}
-			if (start_bit == 0)
-			{
-				PRINTF("\tuint64_t res = v & 0x%" PRIx64 "ULL;\n", mask);
-			}
-			else
-			{
-				PRINTF("\tuint64_t res = (v >> %d) & 0x%" PRIx64 "ULL;\n", start_bit, mask);
-			}
+			const char *v       = swap_bits ? str_printf("__builtin_bswap%d((uint%d_t)c)", swap_bits, swap_bits) : "c";
+			PRINTF("\t%s c;\n\t__c3_memcpy(&c, p, sizeof(c));\n", c_tname);
+			PRINTF("\tuint64_t res = ((uint64_t)%s >> %d) & 0x%" PRIx64 "ULL;\n", v, start_bit, mask);
 			if (is_signed && bit_size < 64)
 			{
 				PRINTF("\tif (res & (1ULL << %d)) res |= ~0x%" PRIx64 "ULL;\n", bit_size - 1, mask);
 			}
-			PRINTF("\treturn (%s)res;\n", ret_tname);
+			PRINTF("\treturn %s;\n", result);
 		}
 		PRINT("}\n");
 
 		PRINTF("static inline void %s_set_%s(void *p, %s val) {\n", bs_name, m_name, ret_tname);
+		bool is_wide_container = !is_array && type_size(container_type) > 8;
+		const char *val        = "val";
+		if (c_type_is_int128(m_type) || is_wide || is_wide_container)
+		{
+			// Below, `_val` is a uint64_t or a __c3_uint128.
+			Type *val_type = (is_wide || is_wide_container) ? type_u128 : type_ulong;
+			PRINTF("\t%s _val = %s;\n", c_type_name(c, val_type), c_scalar_convert_str(c, val_type, m_type, "val"));
+			val = "_val";
+		}
 		if (is_array)
 		{
 			PRINT("\tuint8_t *b = (uint8_t *)p;\n");
 			for (int bits_done = 0; bits_done < bit_size; )
 			{
 				CBitfieldStep s = c_bitfield_step(start_bit, bit_size, bits_done, reverse);
+				const char *byte = is_wide ? str_printf("(uint8_t)__c3_u128_lo(__c3_u128_lshr(%s, %d))", val, s.shift)
+				                 : s.shift > 0 ? str_printf("(uint8_t)((uint64_t)%s >> %d)", val, s.shift)
+				                               : str_printf("(uint8_t)%s", val);
 				if (s.bit_in_byte == 0 && s.step_bits == 8)
 				{
-					if (s.shift > 0)
-					{
-						PRINTF("\tb[%d] = (uint8_t)((%s)val >> %d);\n", s.byte_idx, shift_type, s.shift);
-					}
-					else
-					{
-						PRINTF("\tb[%d] = (uint8_t)val;\n", s.byte_idx);
-					}
+					PRINTF("\tb[%d] = %s;\n", s.byte_idx, byte);
 				}
 				else
 				{
-					if (s.shift > 0)
-					{
-						PRINTF("\tb[%d] = (b[%d] & ~0x%02X) | (((uint8_t)((%s)val >> %d) & 0x%02X) << %d);\n",
-						        s.byte_idx, s.byte_idx, s.byte_mask, shift_type, s.shift, s.step_mask, s.bit_in_byte);
-					}
-					else
-					{
-						PRINTF("\tb[%d] = (b[%d] & ~0x%02X) | (((uint8_t)val & 0x%02X) << %d);\n",
-						        s.byte_idx, s.byte_idx, s.byte_mask, s.step_mask, s.bit_in_byte);
-					}
+					PRINTF("\tb[%d] = (b[%d] & ~0x%02X) | ((%s & 0x%02X) << %d);\n",
+					        s.byte_idx, s.byte_idx, s.byte_mask, byte, s.step_mask, s.bit_in_byte);
 				}
 				bits_done += s.step_bits;
 			}
 		}
 		else if (type_size(container_type) > 8)
 		{
-			PRINT("\t__c3_uint128 *v = (__c3_uint128 *)p;\n");
-			if (bitstruct_requires_byteswap(decl))
+			bool swap = bitstruct_requires_byteswap(decl);
+			PRINT("\t__c3_uint128 _cur;\n");
+			if (bit_size >= 128)
 			{
-				PRINT("\t__c3_uint128 _cur = (((__c3_uint128)__builtin_bswap64((uint64_t)*v)) << 64) | ((__c3_uint128)__builtin_bswap64((uint64_t)(*v >> 64)));\n");
-				if (bit_size >= 128)
-				{
-					PRINTF("\t_cur = (__c3_uint128)val;\n");
-				}
-				else
-				{
-					PRINTF("\t__c3_uint128 mask = ((__c3_uint128)%s) << %d;\n", c_bit_mask_str(bit_size), start_bit);
-					PRINTF("\t_cur = (_cur & ~mask) | ((((__c3_uint128)val) & %s) << %d);\n", c_bit_mask_str(bit_size), start_bit);
-				}
-				PRINT("\t*v = (((__c3_uint128)__builtin_bswap64((uint64_t)_cur)) << 64) | ((__c3_uint128)__builtin_bswap64((uint64_t)(_cur >> 64)));\n");
+				PRINT("\t_cur = _val;\n");
 			}
 			else
 			{
-				if (bit_size >= 128)
-				{
-					PRINTF("\t*v = (__c3_uint128)val;\n");
-				}
-				else
-				{
-					PRINTF("\t__c3_uint128 mask = ((__c3_uint128)%s) << %d;\n", c_bit_mask_str(bit_size), start_bit);
-					PRINTF("\t*v = (*v & ~mask) | ((((__c3_uint128)val) & %s) << %d);\n", c_bit_mask_str(bit_size), start_bit);
-				}
+				const char *field_mask = c_bit_mask128_str(bit_size);
+				PRINT("\t__c3_memcpy(&_cur, p, sizeof(_cur));\n");
+				if (swap) PRINT("\t_cur = __c3_u128_bswap(_cur);\n");
+				PRINTF("\t__c3_uint128 mask = __c3_u128_shl(%s, %d);\n", field_mask, start_bit);
+				PRINTF("\t_cur = __c3_u128_or(__c3_u128_and(_cur, __c3_u128_not(mask)), __c3_u128_shl(__c3_u128_and(_val, %s), %d));\n", field_mask, start_bit);
 			}
+			if (swap) PRINT("\t_cur = __c3_u128_bswap(_cur);\n");
+			PRINT("\t__c3_memcpy(p, &_cur, sizeof(_cur));\n");
 		}
 		else
 		{
 			const char *c_tname   = c_type_name(NULL, container_type);
 			uint64_t mask         = (bit_size >= 64) ? ~0ULL : (((uint64_t)1 << bit_size) - 1);
 			uint64_t shifted_mask = (bit_size >= 64) ? ~0ULL : (mask << start_bit);
-			PRINTF("\t%s *v = (%s *)p;\n", c_tname, c_tname);
-			if (bitstruct_requires_byteswap(decl))
-			{
-				PRINTF("\tuint64_t _cur = (uint64_t)*v;\n");
-				PRINTF("\tif (sizeof(%s) == 2) _cur = __builtin_bswap16((uint16_t)_cur);\n", c_tname);
-				PRINTF("\telse if (sizeof(%s) == 4) _cur = __builtin_bswap32((uint32_t)_cur);\n", c_tname);
-				PRINTF("\telse if (sizeof(%s) == 8) _cur = __builtin_bswap64((uint64_t)_cur);\n", c_tname);
-				if (start_bit == 0)
-				{
-					PRINTF("\t_cur = (_cur & ~0x%" PRIx64 "ULL) | ((uint64_t)(%s)val & 0x%" PRIx64 "ULL);\n", shifted_mask, c_tname, mask);
-				}
-				else
-				{
-					PRINTF("\t_cur = (_cur & ~0x%" PRIx64 "ULL) | (((uint64_t)(%s)val & 0x%" PRIx64 "ULL) << %d);\n", shifted_mask, c_tname, mask, start_bit);
-				}
-				PRINTF("\tif (sizeof(%s) == 2) _cur = __builtin_bswap16((uint16_t)_cur);\n", c_tname);
-				PRINTF("\telse if (sizeof(%s) == 4) _cur = __builtin_bswap32((uint32_t)_cur);\n", c_tname);
-				PRINTF("\telse if (sizeof(%s) == 8) _cur = __builtin_bswap64((uint64_t)_cur);\n", c_tname);
-				PRINTF("\t*v = (%s)_cur;\n", c_tname);
-			}
-			else
-			{
-				if (start_bit == 0)
-				{
-					PRINTF("\t*v = (%s)((*v & ~0x%" PRIx64 "ULL) | ((uint64_t)(%s)val & 0x%" PRIx64 "ULL));\n", c_tname, shifted_mask, c_tname, mask);
-				}
-				else
-				{
-					PRINTF("\t*v = (%s)((*v & ~0x%" PRIx64 "ULL) | (((uint64_t)(%s)val & 0x%" PRIx64 "ULL) << %d));\n", c_tname, shifted_mask, c_tname, mask, start_bit);
-				}
-			}
+			const char *swap      = swap_bits ? str_printf("__builtin_bswap%d((uint%d_t)", swap_bits, swap_bits) : "(";
+			PRINTF("\t%s v;\n\t__c3_memcpy(&v, p, sizeof(v));\n", c_tname);
+			PRINTF("\tuint64_t _cur = %sv);\n", swap);
+			PRINTF("\t_cur = (_cur & ~0x%" PRIx64 "ULL) | (((uint64_t)(%s)%s & 0x%" PRIx64 "ULL) << %d);\n", shifted_mask, c_tname, val, mask, start_bit);
+			PRINTF("\tv = (%s)%s_cur);\n\t__c3_memcpy(p, &v, sizeof(v));\n", c_tname, swap);
 		}
 		PRINT("}\n\n");
 	}
@@ -388,11 +336,7 @@ const char *c_emit_bitstruct_container(GenContext *c, Expr *parent_expr, Decl *m
 		const char *c_tname = c_type_name(c, c_type);
 		PRINTF("%s* ___var_%d = (%s*)&((*((%s*)___var_%d))",
 		       c_tname, temp_ptr, c_tname, c_type_name(c, parent_type), parent_addr.var);
-		for (int i = 0; i < depth - 1; i++)
-		{
-			PRINTF(".m%d", indices[i]);
-		}
-		PRINT(");\n");
+		PRINTF("%s);\n", c_member_path_str(parent_decl, indices, depth - 1));
 		*out_container_var = temp_ptr;
 		if (out_bitstruct_decl)
 		{
@@ -434,7 +378,9 @@ const char *c_emit_bitstruct_container(GenContext *c, Expr *parent_expr, Decl *m
 	return c_tname;
 }
 
-static void c_emit_struct_member_addr(GenContext *c, const char *tname, int temp, Type *struct_type, int ptr_var, Decl *member)
+// The address of `member` in the struct at `ptr_var`, known to be `parent_align` aligned (0: its type's alignment).
+// Returns the alignment of the member's address, 0 when it has its type's.
+static AlignSize c_emit_struct_member_addr(GenContext *c, const char *tname, int temp, Type *struct_type, int ptr_var, Decl *member, AlignSize parent_align)
 {
 	Decl *parent_decl = get_struct_decl_from_type(struct_type);
 	int indices[MAX_MEMBER_PATH];
@@ -444,18 +390,24 @@ static void c_emit_struct_member_addr(GenContext *c, const char *tname, int temp
 		if (member && member->decl_kind == DECL_FUNC)
 		{
 			PRINTF("%s ___var_%d = (%s)&%s;\n", tname, temp, tname, c_decl_ref(c, member));
-			return;
+			return 0;
 		}
 		PRINTF("%s ___var_%d = (%s)___var_%d;\n", tname, temp, tname, ptr_var);
-		return;
+		return member && parent_align < c_type_alignment(member->type) ? parent_align : 0;
 	}
-	PRINTF("%s ___var_%d = (%s)&((*((%s*)___var_%d))",
-	       tname, temp, tname, c_type_name(c, struct_type), ptr_var);
-	for (int i = 0; i < depth; i++)
+	AlignSize offset = decl_find_member_offset(parent_decl, member);
+	if (parent_align || c_struct_is_packed(parent_decl))
 	{
-		PRINTF(".m%d", indices[i]);
+		// Through a misaligned struct pointer even `&p->m` is undefined, and a packed struct may keep members as bytes.
+		PRINTF("%s ___var_%d = (%s)((uint8_t*)___var_%d + %u);\n", tname, temp, tname, ptr_var, offset);
 	}
-	PRINT(");\n");
+	else
+	{
+		PRINTF("%s ___var_%d = (%s)&((*((%s*)___var_%d))", tname, temp, tname, c_type_name(c, struct_type), ptr_var);
+		PRINTF("%s);\n", c_member_path_str(parent_decl, indices, depth));
+	}
+	AlignSize align = type_min_alignment(offset, parent_align ? parent_align : type_abi_alignment(struct_type));
+	return align < c_type_alignment(member->type) ? align : 0;
 }
 
 static void c_emit_enum_assoc_access(GenContext *c, Decl *enum_decl, Decl *member, Expr *parent_expr, bool parent_is_ptr, int temp, const char *tname, Type *target_type, bool is_addr)
@@ -519,7 +471,21 @@ static void c_emit_deref_check(GenContext *c, Expr *deref, VariableId ptr_var)
 	}
 }
 
+static void c_emit_lvalue_addr_of(GenContext *c, Expr *expr, CValue *out_val, Type *target_type);
+
 void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target_type)
+{
+	c_emit_lvalue_addr_of(c, expr, out_val, target_type);
+	// A C3 type less aligned than its C form, like a bitstruct with `@align(1)`, is misaligned for C anywhere.
+	TypeKind kind = expr ? type_flatten(expr->type)->type_kind : TYPE_VOID;
+	if (!out_val->align && (kind == TYPE_BITSTRUCT || kind == TYPE_ARRAY || kind == TYPE_VECTOR))
+	{
+		AlignSize align = type_abi_alignment(expr->type);
+		if (align < c_type_alignment(expr->type)) out_val->align = align;
+	}
+}
+
+static void c_emit_lvalue_addr_of(GenContext *c, Expr *expr, CValue *out_val, Type *target_type)
 {
 	target_type = c_safe_type_lower(target_type);
 	if (target_type->type_kind == TYPE_VOID && expr)
@@ -530,10 +496,7 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 			target_type = type_get_ptr(target_type);
 		}
 	}
-	if (target_type->type_kind == TYPE_VOID)
-	{
-		target_type = type_voidptr;
-	}
+	ASSERT(target_type->type_kind != TYPE_VOID);
 	ASSERT(c_type_is_c_pointer(target_type));
 	int temp          = c_emit_temp_var(c, out_val, target_type);
 	const char *tname = c_type_name(c, target_type);
@@ -638,7 +601,7 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 				PRINTF("%s ___var_%d = (%s)&(((__c3_any__*)___var_%d)->%s);\n", tname, temp, tname, parent_val.var, fname);
 				return;
 			}
-			c_emit_struct_member_addr(c, tname, temp, base_struct_type, parent_val.var, member);
+			out_val->align = c_emit_struct_member_addr(c, tname, temp, base_struct_type, parent_val.var, member, 0);
 			return;
 		}
 		if (parent_type->type_kind == TYPE_SLICE)
@@ -688,7 +651,7 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 			c_emit_lvalue_addr(c, parent, &parent_addr, type_get_ptr(parent_type));
 		}
 		c_ensure_cvalue_var(c, &parent_addr, type_get_ptr(parent_type));
-		c_emit_struct_member_addr(c, tname, temp, parent_type, parent_addr.var, member);
+		out_val->align = c_emit_struct_member_addr(c, tname, temp, parent_type, parent_addr.var, member, parent_addr.align);
 		return;
 	}
 	if (expr->expr_kind == EXPR_SUBSCRIPT || expr->expr_kind == EXPR_SUBSCRIPT_ADDR)
@@ -701,7 +664,9 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 		// Evaluation order is left to right: the parent, then the index.
 		// `base` is the C expression of the first element, `len` the element count where known.
 		const char *base;
-		const char *len = NULL;
+		const char *len          = NULL;
+		AlignSize parent_align   = 0;
+		int parent_addr_var      = 0;
 		if (parent_type->type_kind == TYPE_POINTER)
 		{
 			CValue parent_val = {0};
@@ -723,9 +688,18 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 		{
 			CValue parent_addr = {0};
 			c_emit_lvalue_addr(c, parent_expr, &parent_addr, type_get_ptr(parent_type));
-			base = str_printf("((%s*)___var_%d)->ptr", c_type_name(c, parent_type), parent_addr.var);
-			// A flexible array member has no known length.
-			if (parent_type->type_kind != TYPE_FLEXIBLE_ARRAY) len = str_printf("%lluULL", (unsigned long long)parent_type->array.len);
+			parent_align    = parent_addr.align;
+			parent_addr_var = parent_addr.var;
+			if (parent_type->type_kind == TYPE_FLEXIBLE_ARRAY)
+			{
+				// A flexible array member has no wrapper and no known length.
+				base = str_printf("((%s*)___var_%d)", c_type_name(c, parent_type->array.base), parent_addr.var);
+			}
+			else
+			{
+				base = str_printf("((%s*)___var_%d)->ptr", c_type_name(c, parent_type), parent_addr.var);
+				len  = str_printf("%lluULL", (unsigned long long)parent_type->array.len);
+			}
 			// A constant index into a fixed size array was checked by sema.
 			if (expr_is_const(index_expr)) is_safe = false;
 		}
@@ -745,6 +719,13 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 		if (is_safe && len)
 		{
 			c_emit_index_check(c, &index_val, len, index_expr->loc);
+		}
+		if (parent_align && parent_align < c_type_alignment(parent_type->array.base))
+		{
+			out_val->align = parent_align;
+			PRINTF("%s ___var_%d = (%s)((uint8_t*)___var_%d + ___var_%d * sizeof(%s));\n", tname, temp, tname,
+			       parent_addr_var, index_val.var, c_type_name(c, parent_type->array.base));
+			return;
 		}
 		PRINTF("%s ___var_%d = (%s)&(%s[___var_%d]);\n", tname, temp, tname, base, index_val.var);
 		return;
@@ -801,10 +782,7 @@ void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target
 	{
 		target_type = c_expr_type(expr);
 	}
-	if (target_type->type_kind == TYPE_VOID)
-	{
-		target_type = type_int;
-	}
+	ASSERT(target_type->type_kind != TYPE_VOID);
 
 	if (!expr)
 	{
@@ -888,36 +866,17 @@ void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target
 	c_emit_lvalue_addr(c, expr, &addr_val, type_get_ptr(target_type));
 
 	PRINTF("%s ___var_%d;\n", tname, temp);
-	if (c_type_is_aggregate(target_type))
+	if (!addr_val.var)
 	{
-		if (addr_val.var != 0)
-		{
-			PRINTF("__c3_memcpy(&___var_%d, (void*)___var_%d, sizeof(%s));\n",
-			       temp, addr_val.var, tname);
-		}
-		else
-		{
-			PRINTF("__c3_memset(&___var_%d, 0, sizeof(%s));\n", temp, tname);
-		}
+		PRINTF("__c3_memset(&___var_%d, 0, sizeof(%s));\n", temp, tname);
+	}
+	else if (c_type_is_aggregate(target_type) || c_type_is_int128(target_type) || addr_val.align)
+	{
+		PRINTF("__c3_memcpy(&___var_%d, %s, sizeof(%s));\n", temp, c_addr_bytes(&addr_val), tname);
 	}
 	else
 	{
-		if (addr_val.var != 0)
-		{
-			if (type_size(target_type) == 16 && (target_type->type_kind == TYPE_I128 || target_type->type_kind == TYPE_U128))
-			{
-				PRINTF("___var_%d = 0;\n", temp);
-				PRINTF("__c3_memcpy(&___var_%d, (void*)___var_%d, sizeof(%s));\n", temp, addr_val.var, tname);
-			}
-			else
-			{
-				PRINTF("___var_%d = *(%s*)___var_%d;\n", temp, tname, addr_val.var);
-			}
-		}
-		else
-		{
-			PRINTF("___var_%d = 0;\n", temp);
-		}
+		PRINTF("___var_%d = *(%s*)___var_%d;\n", temp, tname, addr_val.var);
 	}
 }
 
@@ -946,6 +905,14 @@ void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *addr, CValue *right
 		CValue parent_addr = (addr && addr->var) ? *addr : (CValue){0};
 		if (!parent_addr.var) c_emit_lvalue_addr(c, parent, &parent_addr, type_get_ptr(parent_type));
 		const char *ptname = c_type_name(c, parent_type);
+		// The lanes of a misaligned vector are changed in an aligned copy.
+		const char *vec    = str_printf("((%s*)___var_%d)->ptr", ptname, parent_addr.var);
+		int copy           = parent_addr.align ? c_create_variable(c) : 0;
+		if (copy)
+		{
+			PRINTF("%s ___var_%d;\n__c3_memcpy(&___var_%d, %s, sizeof(%s));\n", ptname, copy, copy, c_addr_bytes(&parent_addr), ptname);
+			vec = str_printf("___var_%d.ptr", copy);
+		}
 		const char *sw     = left->swizzle_expr.swizzle;
 		int sw_len         = (int)strlen(sw);
 		Type *target_type  = c_expr_type(left);
@@ -957,22 +924,24 @@ void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *addr, CValue *right
 			{
 				if (right_val->kind == CV_ADDRESS)
 				{
-					PRINTF("((%s*)___var_%d)->ptr[%d] = ((%s*)___var_%d)->ptr[%d];\n", ptname, parent_addr.var, p_idx, c_type_name(c, right_val->type), right_val->var, i);
+					PRINTF("%s[%d] = ((%s*)___var_%d)->ptr[%d];\n", vec, p_idx, c_type_name(c, right_val->type), right_val->var, i);
 				}
 				else
 				{
-					PRINTF("((%s*)___var_%d)->ptr[%d] = ___var_%d.ptr[%d];\n", ptname, parent_addr.var, p_idx, right_val->var, i);
+					PRINTF("%s[%d] = ___var_%d.ptr[%d];\n", vec, p_idx, right_val->var, i);
 				}
 			}
 			else if (right_val && right_val->var != 0)
 			{
-				PRINTF("((%s*)___var_%d)->ptr[%d] = ___var_%d;\n", ptname, parent_addr.var, p_idx, right_val->var);
+				PRINTF("%s[%d] = ___var_%d;\n", vec, p_idx, right_val->var);
 			}
 			else
 			{
-				PRINTF("((%s*)___var_%d)->ptr[%d] = 0;\n", ptname, parent_addr.var, p_idx);
+				Type *elem_t = c_safe_type_lower(parent_type->array.base);
+				PRINTF("%s[%d] = (%s)%s;\n", vec, p_idx, c_type_name(c, elem_t), c_type_zero_literal(elem_t));
 			}
 		}
+		if (copy) PRINTF("__c3_memcpy(%s, &___var_%d, sizeof(%s));\n", c_addr_bytes(&parent_addr), copy, ptname);
 		if (out_val)
 		{
 			int res_temp = c_emit_temp_var(c, out_val, target_type);
@@ -980,7 +949,7 @@ void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *addr, CValue *right
 			for (int i = 0; i < sw_len; i++)
 			{
 				int p_idx = SWIZZLE_INDEX(sw[i]);
-				PRINTF("___var_%d.ptr[%d] = ((%s*)___var_%d)->ptr[%d];\n", res_temp, i, ptname, parent_addr.var, p_idx);
+				PRINTF("___var_%d.ptr[%d] = %s[%d];\n", res_temp, i, vec, p_idx);
 			}
 		}
 		return;
@@ -1007,12 +976,17 @@ void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *addr, CValue *right
 		c_emit_lvalue_addr(c, left, &addr_val, type_get_ptr(target_type));
 	}
 	const char *tname = c_type_name(c, target_type);
-	if (right_val && right_val->var && (target_type->type_kind == TYPE_I128 || target_type->type_kind == TYPE_U128))
+	bool has_value    = right_val && right_val->var;
+	if (addr_val.align && !has_value)
 	{
-		// The address may not be 16 byte aligned.
+		PRINTF("__c3_memset(%s, 0, sizeof(%s));\n", c_addr_bytes(&addr_val), tname);
+	}
+	else if (has_value && (c_type_is_int128(target_type) || addr_val.align))
+	{
+		// An int128 address may not be 16 byte aligned.
 		ASSERT(strcmp(tname, c_type_name(c, c_safe_type_lower(right_val->type))) == 0);
 		c_value_rvalue(c, right_val);
-		PRINTF("__c3_memcpy((void*)___var_%d, &___var_%d, sizeof(%s));\n", addr_val.var, right_val->var, tname);
+		PRINTF("__c3_memcpy(%s, &___var_%d, sizeof(%s));\n", c_addr_bytes(&addr_val), right_val->var, tname);
 	}
 	else
 	{
