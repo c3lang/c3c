@@ -868,13 +868,20 @@ Int int_shl64(Int op, uint64_t op2)
 	return (Int){ i128_extend(i128_shl64(op.i, op2), op.type), op.type };
 }
 
-Real int_to_real(Int op)
+Real int_to_real(Int op, int precision)
 {
-	if (type_kind_is_signed(op.type))
-	{
-		return i128_to_float_signed(op.i);
-	}
-	return i128_to_float(op.i);
+	bool negative = int_is_neg(op);
+	Int128 magnitude = negative ? i128_neg(op.i) : op.i;
+	int shift = (int)(128 - i128_clz(&magnitude)) - precision;
+	if (shift <= 0) return negative ? -(Real)magnitude.low : (Real)magnitude.low;
+	Int128 significand = i128_lshr64(magnitude, shift);
+	Int128 remainder = i128_sub(magnitude, i128_shl64(significand, shift));
+	Int128 halfway = i128_shl64((Int128){ .low = 1 }, shift - 1);
+	CmpRes cmp = i128_comp(remainder, halfway, type_u128);
+	// Round once, to nearest with ties to even, before converting to the host double.
+	if (cmp == CMP_GT || (cmp == CMP_EQ && (significand.low & 1))) significand.low++;
+	Real result = ldexp((Real)significand.low, shift);
+	return negative ? -result : result;
 }
 
 bool int_is_neg(Int op)

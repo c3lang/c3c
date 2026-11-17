@@ -2428,7 +2428,7 @@ Int int_not(Int op);
 bool int_is_neg(Int op);
 Int int_shr64(Int op, uint64_t);
 Int int_shl64(Int op, uint64_t);
-Real int_to_real(Int op);
+Real int_to_real(Int op, int precision);
 Int int_from_real(Real d, TypeKind type);
 char *int_to_str(Int i, int radix, bool use_prefix);
 bool i128_can_convert_from_double(double x);

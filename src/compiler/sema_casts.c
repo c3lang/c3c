@@ -2164,7 +2164,15 @@ static void cast_int_to_float(Expr *expr, Type *type)
 		return;
 	}
 
-	Real f = int_to_real(expr->const_expr.ixx);
+	unsigned precision;
+	switch (type_flatten(type)->type_kind)
+	{
+		case TYPE_F16: precision = 11; break;
+		case TYPE_BF16: precision = 8; break;
+		case TYPE_F32: precision = 24; break;
+		default: precision = 53; break;
+	}
+	Real f = int_to_real(expr->const_expr.ixx, precision);
 	expr_rewrite_const_float(expr, type, f);
 }
 

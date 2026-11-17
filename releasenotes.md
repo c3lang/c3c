@@ -77,6 +77,7 @@
 - A runtime property on an optional `typeid`, like `optional_type.size`, lost its optional and crashed during code generation.
 - Corrected the FreeBSD `addrinfo` layout and `AF_MAX`/`PF_MAX` socket constants.
 - `@volatile_load` and `mem::load` could lose union bytes stored in padding.
+- Constant integer-to-float conversions could round twice and produce a different result from runtime conversion.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.
