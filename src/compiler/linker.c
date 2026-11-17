@@ -1218,20 +1218,22 @@ static bool link_exe(const char *output_file, const char **files_to_link, int fi
 	switch (compiler.platform.object_format)
 	{
 		case OBJ_FORMAT_COFF:
-			success = llvm_link_coff(args, count, &error);
+			success = llvm_link_coff(args, count);
 			break;
 		case OBJ_FORMAT_ELF:
-			success = llvm_link_elf(args, count, &error);
+			success = llvm_link_elf(args, count);
 			break;
 		case OBJ_FORMAT_MACHO:
-			success = llvm_link_macho(args, count, &error);
+			success = llvm_link_macho(args, count);
 			break;
 		case OBJ_FORMAT_WASM:
-			success = llvm_link_wasm(args, count, &error);
+			success = llvm_link_wasm(args, count);
 			break;
 		default:
 			UNREACHABLE
 	}
+	// lld prints its own errors.
+	if (!success) error = "the built-in linker (lld) failed";
 #elif PLATFORM_WINDOWS
 	vec_insert_first(args, find_msvc_linker());
 	const char *cmd = assemble_linker_command(args, true);
@@ -1515,28 +1517,27 @@ bool dynamic_lib_linker(const char *output_file, const char **files, int file_co
 		return true;
 	}
 	bool success;
-	const char *error = NULL;
 	int count = assemble_link_arguments(args, vec_size(args));
 	switch (compiler.platform.object_format)
 	{
 		case OBJ_FORMAT_COFF:
-			success = llvm_link_coff(args, count, &error);
+			success = llvm_link_coff(args, count);
 			break;
 		case OBJ_FORMAT_ELF:
-			success = llvm_link_elf(args, count, &error);
+			success = llvm_link_elf(args, count);
 			break;
 		case OBJ_FORMAT_MACHO:
-			success = llvm_link_macho(args, count, &error);
+			success = llvm_link_macho(args, count);
 			break;
 		case OBJ_FORMAT_WASM:
-			success = llvm_link_wasm(args, count, &error);
+			success = llvm_link_wasm(args, count);
 			break;
 		default:
 			UNREACHABLE
 	}
 	if (!success)
 	{
-		error_exit("Failed to create a dynamic library: %s", error);
+		error_exit("Failed to create a dynamic library: the built-in linker (lld) failed.");
 	}
 	INFO_LOG("Linking complete.");
 	return true;

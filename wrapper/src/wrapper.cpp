@@ -74,7 +74,7 @@ typedef enum
 	MINGW
 } ObjFormat;
 
-static bool llvm_link(ObjFormat format, const char **args, int arg_count, const char** error_string)
+static bool llvm_link(ObjFormat format, const char **args, int arg_count)
 {
 	std::vector<const char*> arg_vector = std::vector<const char *>();
 	switch (format)
@@ -96,8 +96,6 @@ static bool llvm_link(ObjFormat format, const char **args, int arg_count, const 
 			break;
 	}
 	for (int i = 0; i < arg_count; i++) arg_vector.push_back(strdup(args[i]));
-	std::string output_string {};
-	std::string output_err_string {};
 
 	llvm::raw_ostream &output = llvm::outs();
 	llvm::raw_ostream &output_err = llvm::errs();
@@ -131,7 +129,6 @@ static bool llvm_link(ObjFormat format, const char **args, int arg_count, const 
 	{
 		lld::CommonLinkerContext::destroy();
 	}
-	//*error_string = strdup(output_err_string.c_str());
 	return success;
 }
 
@@ -417,29 +414,29 @@ void LLVMMemCpySetVolatile(LLVMValueRef memcpy, LLVMValueRef val)
 	inst->setVolatile(llvm::unwrap<llvm::Constant>(val));
 }
 
-bool llvm_link_elf(const char **args, int arg_count, const char** error_string)
+bool llvm_link_elf(const char **args, int arg_count)
 {
-	return llvm_link(ELF, args, arg_count, error_string);
+	return llvm_link(ELF, args, arg_count);
 }
 
-bool llvm_link_macho(const char **args, int arg_count, const char** error_string)
+bool llvm_link_macho(const char **args, int arg_count)
 {
-	return llvm_link(MACHO, args, arg_count, error_string);
+	return llvm_link(MACHO, args, arg_count);
 }
 
-bool llvm_link_coff(const char **args, int arg_count, const char** error_string)
+bool llvm_link_coff(const char **args, int arg_count)
 {
-	return llvm_link(COFF, args, arg_count, error_string);
+	return llvm_link(COFF, args, arg_count);
 }
 
-bool llvm_link_wasm(const char **args, int arg_count, const char** error_string)
+bool llvm_link_wasm(const char **args, int arg_count)
 {
-	return llvm_link(WASM, args, arg_count, error_string);
+	return llvm_link(WASM, args, arg_count);
 }
 
-bool llvm_link_mingw(const char **args, int arg_count, const char** error_string)
+bool llvm_link_mingw(const char **args, int arg_count)
 {
-	return llvm_link(MINGW, args, arg_count, error_string);
+	return llvm_link(MINGW, args, arg_count);
 }
 
 
