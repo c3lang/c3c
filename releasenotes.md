@@ -78,6 +78,9 @@
 - Corrected the FreeBSD `addrinfo` layout and `AF_MAX`/`PF_MAX` socket constants.
 - `@volatile_load` and `mem::load` could lose union bytes stored in padding.
 - Constant integer-to-float conversions could round twice and produce a different result from runtime conversion.
+- Refusing to link with the C compiler always claimed it was not found.
+- A failure of the built-in linker printed `(null)` as the error.
+- The RISC-V target replaced the given `--riscv-abi` with the one derived from the CPU.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.
