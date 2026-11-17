@@ -334,9 +334,6 @@ void c_emit_line(GenContext *c, SourceLocId loc)
 	PRINT("\"\n");
 }
 
-// Writes `len` bytes of C with c_emit_line markers to `f`, where `line` C lines are already written. A marker names
-// its file only when that changes, every C line after it repeats its line number, as a C compiler numbers the lines
-// after a #line onwards, and C_LINE_RESET becomes the real line of the C file.
 // Writes a C line, renaming each ___var_N in GenContext.var_names. A name the file also declares, like an extern
 // `dgemm_`, stays ___var_N, as it would hide the declaration.
 static void c_write_named_line(FILE *f, const char *start, size_t len, GenContext *c)
@@ -347,13 +344,15 @@ static void c_write_named_line(FILE *f, const char *start, size_t len, GenContex
 	const char *p              = start;
 	while (p < end)
 	{
-		const char *hit = memmem(p, (size_t)(end - p), prefix, plen);
+		const char *hit = p;
+		while ((hit = memchr(hit, '_', end - hit)) != NULL && ((size_t)(end - hit) < plen || memcmp(hit, prefix, plen) != 0)) hit++;
 		if (!hit) break;
 		const char *digits = hit + plen;
 		const char *after  = digits;
-		while (after < end && char_is_digit(*after)) after++;
+		int id = 0;
+		while (after < end && char_is_digit(*after)) id = id * 10 + (*after++ - '0');
 		bool starts_word = hit == start || !char_is_alphanum_(hit[-1]);
-		const char *name = starts_word && after > digits ? htable_get(&c->var_names, c_id_to_ptr(atoi(digits))) : NULL;
+		const char *name = starts_word && after > digits ? htable_get(&c->var_names, c_id_to_ptr(id)) : NULL;
 		if (name && (htable_get(&c->decl_names, (void *)name) || htable_get(&c->emitted_global_decls, (void *)name))) name = NULL;
 		if (!name)
 		{
@@ -368,6 +367,9 @@ static void c_write_named_line(FILE *f, const char *start, size_t len, GenContex
 	fwrite(p, 1, (size_t)(end - p), f);
 }
 
+// Writes `len` bytes of C with c_emit_line markers to `f`, where `line` C lines are already written. A marker names
+// its file only when that changes, every C line after it repeats its line number, as a C compiler numbers the lines
+// after a #line onwards, and C_LINE_RESET becomes the real line of the C file.
 static void c_write_mapped_lines(FILE *f, GenContext *c, const char *bytes, size_t len, uint32_t *line)
 {
 	const char *c_filename = c->c_filename;
