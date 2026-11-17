@@ -1435,6 +1435,7 @@ typedef struct
 	ExprId expr;
 	ExprId to_expr;
 	int index;
+	bool was_constant;
 	Ast *body;
 	void *backend_block;
 } AstCaseStmt;

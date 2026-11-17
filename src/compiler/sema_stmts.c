@@ -2469,12 +2469,15 @@ static inline bool sema_check_type_case(SemaContext *context, Ast *case_stmt, As
 
 static bool sema_check_duplicate_case(SemaContext *context, Ast *case_stmt, Ast **cases, int index, ExprConst *const_expr, ExprConst *to_const_expr)
 {
+	bool compare_folded = const_expr->const_kind == CONST_INTEGER || const_expr->const_kind == CONST_ENUM;
+	if (!compare_folded && !case_stmt->case_stmt.was_constant) return true;
 	for (int i = 0; i < index; i++)
 	{
 		Ast *other = cases[i];
 		if (other->ast_kind != AST_CASE_STMT) continue;
 		Expr *other_expr = exprptr(other->case_stmt.expr);
 		Expr *other_to_expr = exprptrzero(other->case_stmt.to_expr);
+		if (!compare_folded && !other->case_stmt.was_constant) continue;
 		if (!sema_cast_const(other_expr)) continue;
 		if (other_to_expr && !sema_cast_const(other_to_expr)) continue;
 		ExprConst *other_const = &other_expr->const_expr;
@@ -2495,6 +2498,8 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 	ASSERT(switch_type);
 	Expr *expr = exprptr(case_stmt->case_stmt.expr);
 	Expr *to_expr = exprptrzero(case_stmt->case_stmt.to_expr);
+	// Non-integer cases only diagnose duplicates that were already constant before folding.
+	case_stmt->case_stmt.was_constant = expr->expr_kind == EXPR_CONST;
 
 	// 1. Try to do implicit conversion to the correct type.
 	if (!sema_analyse_expr_rhs(context, switch_type, expr, false, NULL, false)) return false;

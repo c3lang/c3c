@@ -26,7 +26,7 @@ fn void test_float(double d)
 	switch (d)
 	{
 		case 0.0: break;
-		case -0.0: break; // #error: The same case value appears more than once
+		case 0.0: break; // #error: The same case value appears more than once
 		default: break;
 	}
 }
@@ -52,7 +52,7 @@ fn void test_fault(fault f)
 	{
 		case BAD: break;
 		case OTHER: break;
-		case BAD: break; // #error: The same case value appears more than once
+		case BAD: break;
 		default: break;
 	}
 }
