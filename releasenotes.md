@@ -78,6 +78,8 @@
 - Corrected the FreeBSD `addrinfo` layout and `AF_MAX`/`PF_MAX` socket constants.
 - `@volatile_load` and `mem::load` could lose union bytes stored in padding.
 - Constant integer-to-float conversions could round twice and produce a different result from runtime conversion.
+- Programs using the stdlib failed to compile for `elf-aarch64`.
+- Printing crashed with a libc other than those of Linux, Darwin, the BSDs and Windows, such as newlib.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.
