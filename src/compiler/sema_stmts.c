@@ -2536,7 +2536,7 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 			if (ord1 > ord2)
 			{
 				sema_error_at(context, make_loc(extend_loc_with_token(sourcelocptr(expr->loc), sourcelocptr(to_expr->loc))),
-				              "The range is not valid because the first enum (%s) has a lower ordinal than the second (%s). "
+				              "The range is not valid because the first enum (%s) has a higher ordinal than the second (%s). "
 				              "It would work if you swapped their order.",
 				              const_expr->enum_val->name,
 				              to_const_expr->enum_val->name);
