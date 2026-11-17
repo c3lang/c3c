@@ -4685,7 +4685,7 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 
 	Expr *else_expr = exprptr(expr->ternary_expr.else_expr);
 	Expr *then_expr = exprptr(expr->ternary_expr.then_expr);
-	bool by_addr = llvm_temp_as_address(expr->type);
+	bool by_addr = type_contains_padded_union(expr->type);
 
 	if (!by_addr && !IS_OPTIONAL(expr) && expr_is_const(else_expr)
 		&& expr_is_const(then_expr))

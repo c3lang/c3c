@@ -140,10 +140,22 @@ INLINE void llvm_emit_volatile_store(GenContext *c, BEValue *result_value, Expr 
 	LLVMSetVolatile(store, true);
 }
 
+static bool llvm_emit_aggregate_load_copy(GenContext *c, BEValue *value, bool is_volatile)
+{
+	Type *type = type_lowering(value->type);
+	if (!llvm_type_contains_padded_union(type)) return false;
+	BEValue copy = llvm_emit_alloca_b(c, type, "load.copy");
+	LLVMValueRef memcpy = llvm_emit_memcpy(c, copy.value, copy.alignment, value->value, value->alignment, type_size(type));
+	if (is_volatile) LLVMMemCpySetVolatile(memcpy, LLVMConstAllOnes(c->bool_type));
+	*value = copy;
+	return true;
+}
+
 INLINE void llvm_emit_volatile_load(GenContext *c, BEValue *result_value, Expr *expr)
 {
 	llvm_emit_expr(c, result_value, expr->call_expr.arguments[0]);
 	llvm_value_deref(c, result_value);
+	if (llvm_emit_aggregate_load_copy(c, result_value, true)) return;
 	llvm_value_rvalue(c, result_value);
 	LLVMSetVolatile(result_value->value, true);
 }
@@ -279,6 +291,11 @@ INLINE void llvm_emit_unaligned_load(GenContext *c, BEValue *result_value, Expr 
 	bool is_volatile = expr->call_expr.arguments[2]->const_expr.b;
 	llvm_value_deref(c, result_value);
 	result_value->alignment = expr->call_expr.arguments[1]->const_expr.ixx.i.low;
+	if (llvm_emit_aggregate_load_copy(c, result_value, is_volatile))
+	{
+		c->emitting_load_store_check = emit_check;
+		return;
+	}
 	llvm_value_rvalue(c, result_value);
 	if (is_volatile && result_value->value) LLVMSetVolatile(result_value->value, is_volatile);
 	c->emitting_load_store_check = emit_check;

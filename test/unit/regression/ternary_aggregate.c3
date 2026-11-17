@@ -18,6 +18,15 @@ struct Tagged
 	PaddedRepUnion u;
 }
 
+struct NestedPad { ulong lo; ushort hi; }
+struct NestedRep { NestedPad[2] values; }
+
+union NestedArrayUnion
+{
+	NestedRep rep;
+	ulong[4] wide;
+}
+
 struct Big { long a; long b; long c; }
 
 alias UnionPair = PaddedRepUnion[2];
@@ -29,6 +38,7 @@ fn PaddedRepUnion pick_const(bool c) @noinline => c ? (PaddedRepUnion){ .wide = 
 fn GapRepUnion pick_gap(bool c, GapRepUnion a, GapRepUnion b) @noinline => c ? a : b;
 fn Tagged pick_tagged(bool c, Tagged a, Tagged b) @noinline => c ? a : b;
 fn UnionPair pick_pair(bool c, UnionPair a, UnionPair b) @noinline => c ? a : b;
+fn NestedArrayUnion pick_nested_array(bool c, NestedArrayUnion a, NestedArrayUnion b) @noinline => c ? a : b;
 fn Big? some_or_fault(Big* p) @noinline => p ? *p : BAD~;
 fn Big? fault_or_some(Big* p) @noinline => p ? BAD~ : *p;
 
@@ -89,6 +99,14 @@ fn void union_array() @test
 	UnionPair b = { { .wide = { 2, 0x1111_2222_3333_4444 } }, { .wide = { 4, 0x1111_2222_3333_4444 } } };
 	assert(pick_pair(true, a, b)[1].wide[1] == 0xAAAA_BBBB_CCCC_DDDD);
 	assert(pick_pair(false, a, b)[0].wide[1] == 0x1111_2222_3333_4444);
+}
+
+fn void padding_nested_through_array() @test
+{
+	NestedArrayUnion a = { .wide = { 1, 2, 3, 4 } };
+	NestedArrayUnion b = { .wide = { 5, 6, 7, 8 } };
+	assert(pick_nested_array(true, a, b).wide == { 1, 2, 3, 4 });
+	assert(pick_nested_array(false, a, b).wide == { 5, 6, 7, 8 });
 }
 
 fn void fault_in_one_branch() @test

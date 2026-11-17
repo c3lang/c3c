@@ -2891,6 +2891,7 @@ void type_mangle_introspect_name_to_buffer(Type *type);
 void type_mangle_introspect_name_with(Type *type, void (*append_decl_name)(Decl *));
 AlignSize type_alloca_alignment(Type *type);
 AlignSize type_abi_alignment(Type *type);
+bool type_contains_padded_union(Type *type);
 bool type_func_match(Type *fn_type, Type *rtype, int arg_count, ...);
 Type *type_find_largest_union_element(Type *type);
 Type *type_find_max_type(SemaContext *context, Type *type, Type *other, Expr *first, Expr *second);

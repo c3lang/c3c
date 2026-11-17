@@ -918,6 +918,36 @@ INLINE AlignSize type_alignment_(Type *type, bool alloca)
 	UNREACHABLE
 }
 
+static bool _type_contains_padded_union(Type *type, bool in_union_rep)
+{
+	type = type_flatten(type);
+	switch (type->type_kind)
+	{
+		case TYPE_STRUCT:
+		{
+			ByteSize offset = 0;
+			FOREACH(Decl *, member, type->decl->strukt.members)
+			{
+				if (in_union_rep && member->offset > offset + member->padding) return true;
+				if (_type_contains_padded_union(member->type, in_union_rep)) return true;
+				offset = member->offset + type_size(member->type);
+			}
+			return in_union_rep && type_size(type) > offset + type->decl->strukt.padding;
+		}
+		case TYPE_UNION:
+			return _type_contains_padded_union(type->decl->strukt.members[type->decl->strukt.union_rep]->type, true);
+		case TYPE_ARRAY:
+			return _type_contains_padded_union(type->array.base, in_union_rep);
+		default:
+			return false;
+	}
+}
+
+bool type_contains_padded_union(Type *type)
+{
+	return _type_contains_padded_union(type, false);
+}
+
 AlignSize type_abi_alignment(Type *type)
 {
 	return type_alignment_(type, false);
