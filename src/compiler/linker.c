@@ -1206,6 +1206,8 @@ static const char *find_msvc_linker(void)
 // Links with lld, printing its warnings. Returns its errors on failure, NULL on success.
 static const char *lld_link(const char **args)
 {
+	// First, so that a user flag can override it.
+	if (use_ansi()) vec_insert_first(args, "--color-diagnostics");
 	int count = assemble_link_arguments(args, vec_size(args));
 	const char *output = NULL;
 	bool success;
