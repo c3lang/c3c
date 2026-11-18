@@ -3556,7 +3556,6 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		{
 			if (!result)
 			{
-				ASSERT(implicit_void_return);
 				expr_rewrite_const_null(call_expr, type_void);
 				goto EXIT;
 			}
