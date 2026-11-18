@@ -90,6 +90,7 @@
 - Calling a local optional function pointer, like `Fn? f = &twice; f(3);`, was rejected.
 - Indexing an optional struct through its `inline` member, like `Outer? o; o[1]`, was rejected.
 - An out-of-range constant float vector cast to integer elements wasn't caught when the element type was a typedef or the source a constant slice, causing miscompilation or crash.
+- Calling a function with a parameter after its varargs, like `fn void b(int... x, int a)`, with no arguments crashed the compiler.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.

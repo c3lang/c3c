@@ -2166,7 +2166,8 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDeclContext
 	ArrayIndex last_index = -1;
 	Expr *last_named_arg = INVALID_PTR; // NOLINT
 	Expr *last = NULL;
-	ArrayIndex needed = (ArrayIndex)func_param_count - (callee->struct_var ? 1 : 0);
+	bool has_vaarg_param = variadic != VARIADIC_NONE && vaarg_index < func_param_count;
+	ArrayIndex needed = (ArrayIndex)func_param_count - (callee->struct_var ? 1 : 0) - (has_vaarg_param ? 1 : 0);
 	// Do we need to store decls separately?
 	Decl ***macro_va_decl_ref_maybe = callee->macro && variadic == VARIADIC_RAW ? &callee->macro_va_decls : NULL;
 	for (int i = 0; i < num_args; i++)
@@ -2503,7 +2504,7 @@ SPLAT_NORMAL:;
 		if (!has_named || !param->name)
 		{
 			int missing = 1;
-			for (int j = i + 1; j < func_param_count; j++) if (!actual_args[j]) missing++;
+			for (int j = i + 1; j < func_param_count; j++) if (!actual_args[j] && (j != vaarg_index || !has_vaarg_param)) missing++;
 			int implicit_args = callee->struct_var ? 1 : 0;
 			if (vec_size(callee->params) == 1 + implicit_args)
 			{
@@ -2515,13 +2516,18 @@ SPLAT_NORMAL:;
 				}
 				RETURN_SEMA_FUNC_ERROR(callee->definition, call, "This call expected a parameter, did you forget it?");
 			}
-			if (variadic != VARIADIC_NONE && i > vaarg_index)
+			if (variadic != VARIADIC_NONE && i > vaarg_index && last)
 			{
 				print_error_after(sourcelocptr(last->loc), "Expected '%s: ...' after this argument.", param->name);
 				RETURN_NOTE_FUNC_DEFINITION;
 			}
 			if (num_args == implicit_args)
 			{
+				if (variadic != VARIADIC_NONE)
+				{
+					RETURN_SEMA_FUNC_ERROR(callee->definition, call, "'%s' expects at least %d parameter%s, but none were provided.",
+										   callee->name, missing, missing == 1 ? "" : "s");
+				}
 				if (missing != needed)
 				{
 					RETURN_SEMA_FUNC_ERROR(callee->definition, call, "'%s' expects %d-%lld parameters, but none were provided.",
@@ -2531,7 +2537,7 @@ SPLAT_NORMAL:;
 									   callee->name, (long long)needed);
 			}
 			if (!last) last = args[0];
-			int more_needed = (int)((ArrayIndex)func_param_count - i);
+			int more_needed = (int)((ArrayIndex)func_param_count - i) - (has_vaarg_param && i < vaarg_index ? 1 : 0);
 			if (missing != more_needed)
 			{
 				RETURN_SEMA_FUNC_ERROR(callee->definition, last,
