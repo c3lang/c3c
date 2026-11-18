@@ -1,6 +1,77 @@
-// 128-bit integers may be a struct in C (see c_runtime.h), so their values only go through the runtime's helpers.
+// Scalars C may not have: 128-bit integers may be a struct in C and float16 and bfloat always are (see c_runtime.h),
+// so their values only go through the runtime's helpers.
 
 #include "c_codegen_internal.h"
+#include <math.h>
+
+// The runtime's name of float16 or bfloat, or NULL for other types.
+static const char *c_half_name(Type *type)
+{
+	if (!type) return NULL;
+	switch (c_safe_type_lower(type)->type_kind)
+	{
+		case TYPE_F16: return "f16";
+		case TYPE_BF16: return "bf16";
+		default: return NULL;
+	}
+}
+
+bool c_type_is_half(Type *type)
+{
+	return c_half_name(type) != NULL;
+}
+
+// `x` of `type` as a double when `type` is float16 or bfloat, otherwise `x`.
+const char *c_half_to_f64_str(Type *type, const char *x)
+{
+	const char *name = c_half_name(type);
+	return name ? str_printf("__c3_%s_to_f64(%s)", name, x) : x;
+}
+
+// The double `x` as `type` when that is float16 or bfloat, otherwise `x`.
+const char *c_half_from_f64_str(Type *type, const char *x)
+{
+	const char *name = c_half_name(type);
+	return name ? str_printf("__c3_f64_to_%s(%s)", name, x) : x;
+}
+
+// The bits of the float constant `f`, exact in `type`.
+uint64_t c_float_const_bits(Type *type, Real f)
+{
+	double d = (double)f;
+	switch (c_safe_type_lower(type)->type_kind)
+	{
+		case TYPE_F32:
+		{
+			float f32 = (float)d;
+			uint32_t u;
+			memcpy(&u, &f32, 4);
+			return u;
+		}
+		case TYPE_F16:
+		case TYPE_BF16:
+			break;
+		default:
+		{
+			uint64_t u;
+			memcpy(&u, &d, 8);
+			return u;
+		}
+	}
+	int mant      = c_safe_type_lower(type)->type_kind == TYPE_F16 ? 10 : 7;
+	int max_exp   = (1 << (15 - mant)) - 1;
+	int bias      = max_exp >> 1;
+	uint64_t sign = signbit(d) ? 0x8000 : 0;
+	d             = fabs(d);
+	if (isnan(d)) return sign | (uint64_t)max_exp << mant | 1ULL << (mant - 1);
+	if (isinf(d)) return sign | (uint64_t)max_exp << mant;
+	if (d == 0) return sign;
+	int e;
+	double m = frexp(d, &e); // d = m * 2^e, 0.5 <= m < 1
+	int biased = e - 1 + bias;
+	if (biased < 1) return sign | (uint64_t)ldexp(d, bias - 1 + mant);
+	return sign | (uint64_t)biased << mant | ((uint64_t)ldexp(m, mant + 1) & ((1ULL << mant) - 1));
+}
 
 bool c_type_is_int128(Type *type)
 {
@@ -25,6 +96,7 @@ INLINE bool c_type_is_i128(Type *type)
 
 const char *c_int_value_str(GenContext *c, Type *type, int64_t value)
 {
+	if (c_type_is_half(type)) return c_half_from_f64_str(type, str_printf("(double)%" PRId64 "LL", value));
 	if (!c_type_is_int128(type)) return str_printf("(%s)%" PRId64 "LL", c_type_name(c, type), value);
 	const char *wide = str_printf("__c3_i128_from_i64(%" PRId64 "LL)", value);
 	return c_type_is_i128(type) ? wide : str_printf("__c3_i128_as_u128(%s)", wide);
@@ -38,6 +110,21 @@ const char *c_scalar_convert_str(GenContext *c, Type *to, Type *from, const char
 	from = c_safe_type_lower(from);
 	const char *tname = c_type_name(c, to);
 	if (strcmp(tname, c_type_name(c, from)) == 0) return expr;
+	if (c_type_is_half(from) || c_type_is_half(to))
+	{
+		// Through double, which holds every float16 and bfloat.
+		if (c_type_is_half(from))
+		{
+			expr = c_half_to_f64_str(from, expr);
+			from = type_double;
+		}
+		if (!c_type_is_half(to)) return c_scalar_convert_str(c, to, from, expr);
+		if (type_is_float(from)) return c_half_from_f64_str(to, str_printf("(double)%s", expr));
+		// An integer may not fit in a double, which would round it twice.
+		bool is_signed = type_is_signed(from);
+		if (c_type_is_int128(from)) return c_half_from_f64_str(to, str_printf("__c3_%c128_to_f64_sticky(%s)", is_signed ? 'i' : 'u', expr));
+		return c_half_from_f64_str(to, str_printf(is_signed ? "__c3_i64_to_f64_sticky((int64_t)%s)" : "__c3_u64_to_f64_sticky((uint64_t)%s)", expr));
+	}
 	bool to_wide = c_type_is_int128(to);
 	if (!to_wide && !c_type_is_int128(from))
 	{
@@ -74,6 +161,13 @@ const char *c_binary_str(BinaryOp op, Type *type, const char *l, const char *r)
 	{
 		return str_printf("%s ? -1 : 0", c_binary_str(op - BINARYOP_VEC_GT + BINARYOP_GT, type, l, r));
 	}
+	if (c_type_is_half(type))
+	{
+		const char *result = c_binary_str(op, type_double, c_half_to_f64_str(type, l), c_half_to_f64_str(type, r));
+		return op >= BINARYOP_GT && op <= BINARYOP_EQ ? result : c_half_from_f64_str(type, result);
+	}
+	// C has no `%` on floating point.
+	if (op == BINARYOP_MOD && type_is_float(c_safe_type_lower(type))) return str_printf("__c3_fmod(%s, %s)", l, r);
 	if (!c_type_is_int128(type))
 	{
 		if (op != BINARYOP_ADD && op != BINARYOP_SUB && op != BINARYOP_MULT && op != BINARYOP_SHL) return str_printf("(%s %s %s)", l, c_binary_op_str(op), r);
@@ -109,12 +203,14 @@ const char *c_binary_str(BinaryOp op, Type *type, const char *l, const char *r)
 const char *c_truth_str(Type *type, const char *x, bool negate)
 {
 	if (c_type_is_int128(type)) return str_printf("%s__c3_u128_nonzero(%s)", negate ? "!" : "", x);
+	if (c_type_is_half(type)) return c_truth_str(type_double, c_half_to_f64_str(type, x), negate);
 	return str_printf("%s%s", negate ? "!" : "!!", x);
 }
 
 const char *c_int_neg_str(Type *type, const char *x)
 {
 	if (c_type_is_int128(type)) return str_printf("__c3_u128_neg(%s)", x);
+	if (c_type_is_half(type)) return c_half_from_f64_str(type, str_printf("(-%s)", c_half_to_f64_str(type, x)));
 	const char *wide = c_int_wrap_type(type);
 	if (!wide) return str_printf("(-%s)", x);
 	return str_printf("((%s)((%s)0 - (%s)%s))", c_type_name(NULL, type), wide, wide, x);

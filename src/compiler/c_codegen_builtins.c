@@ -67,21 +67,29 @@ static inline int c_get_const_int_arg(Expr *expr, int def_val)
 	return def_val;
 }
 
-static void c_emit_atomic_float_cas(GenContext *c, int temp, const char *tn, Type *rtype, int ptr_var, int val_var, const char *op, bool is_cmp)
+// The unsigned integer type holding the bits of the float type `type`.
+static const char *c_float_bits_type(GenContext *c, Type *type)
 {
-	const char *u_int = (type_size(rtype) == 8) ? "uint64_t" : "uint32_t";
+	return c_type_name(c, type_int_unsigned_by_bitsize(type_size(type) * 8));
+}
+
+// An atomic `*ptr = *ptr op val` on a float, or with a comparison `op`, `*ptr = *ptr op val ? *ptr : val`.
+static void c_emit_atomic_float_cas(GenContext *c, int temp, const char *tn, Type *rtype, int ptr_var, int val_var, BinaryOp op)
+{
+	const char *u_int = c_float_bits_type(c, rtype);
+	const char *val   = str_printf("___var_%d", val_var);
 	PRINTF("%s ___var_%d;\n", tn, temp);
 	PRINT("{\n");
 	PRINTF("\tunion { %s f; %s i; } _old, _new;\n", tn, u_int);
 	PRINTF("\t_old.f = *(volatile %s*)___var_%d;\n", tn, ptr_var);
 	PRINTF("\tdo {\n");
-	if (is_cmp)
+	if (op >= BINARYOP_GT && op <= BINARYOP_EQ)
 	{
-		PRINTF("\t\t_new.f = (_old.f %s ___var_%d) ? _old.f : ___var_%d;\n", op, val_var, val_var);
+		PRINTF("\t\t_new.f = %s ? _old.f : %s;\n", c_binary_str(op, rtype, "_old.f", val), val);
 	}
 	else
 	{
-		PRINTF("\t\t_new.f = _old.f %s ___var_%d;\n", op, val_var);
+		PRINTF("\t\t_new.f = %s;\n", c_binary_str(op, rtype, "_old.f", val));
 	}
 	PRINTF("\t} while (!__atomic_compare_exchange_n((%s*)___var_%d, &_old.i, _new.i, 1, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));\n", u_int, ptr_var);
 	PRINTF("\t___var_%d = _old.f;\n", temp);
@@ -150,35 +158,33 @@ static bool c_try_emit_table_builtin(GenContext *c, CValue *value, Type *return_
 		{
 			continue;
 		}
-		const char *builtin_fn     = simple_builtins_table[i].c_fn;
-		if (has_return)
-		{
-			c_emit_type_forward_decl(c, return_type);
-			Type *flat_ret = return_type ? type_flatten(return_type) : NULL;
-			if (c_type_is_vec_or_arr(flat_ret))
-			{
-				const char *lane = str_printf("%s(", builtin_fn);
-				for (int j = 0; j < arg_idx; j++) lane = str_printf("%s%s$%d", lane, j ? ", " : "", j);
-				c_emit_lanewise(c, c_emit_temp_var(c, value, return_type), return_type, str_printf("%s)", lane), c_args, arg_idx);
-				return true;
-			}
-			PRINTF("%s ___var_%d = %s(", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type), builtin_fn);
-		}
-		else
-		{
-			c_value_set_void(value);
-			PRINTF("%s(", builtin_fn);
-		}
+		// Vectors call the function per lane. float16 and bfloat go through double.
+		Type *flat_ret = has_return && return_type ? type_flatten(return_type) : NULL;
+		bool is_vec    = c_type_is_vec_or_arr(flat_ret);
+		const char *call = str_printf("%s(", simple_builtins_table[i].c_fn);
 		for (int j = 0; j < arg_idx; j++)
 		{
-			if (j != 0)
-			{
-				PRINT(", ");
-			}
-			c_value_rvalue(c, &c_args[j]);
-			PRINTF("___var_%d", c_args[j].var);
+			if (!is_vec) c_value_rvalue(c, &c_args[j]);
+			Type *arg_t = c_safe_type_lower(c_args[j].type);
+			if (c_type_is_vec_or_arr(arg_t)) arg_t = arg_t->array.base;
+			const char *arg = is_vec ? str_printf("$%d", j) : str_printf("___var_%d", c_args[j].var);
+			call = str_printf("%s%s%s", call, j ? ", " : "", c_half_to_f64_str(arg_t, arg));
 		}
-		PRINT(");\n");
+		call = str_printf("%s)", call);
+		if (!has_return)
+		{
+			c_value_set_void(value);
+			PRINTF("%s;\n", call);
+			return true;
+		}
+		c_emit_type_forward_decl(c, return_type);
+		int temp = c_emit_temp_var(c, value, return_type);
+		if (is_vec)
+		{
+			c_emit_lanewise(c, temp, return_type, c_half_from_f64_str(flat_ret->array.base, call), c_args, arg_idx);
+			return true;
+		}
+		PRINTF("%s ___var_%d = %s;\n", c_type_name(c, return_type), temp, c_half_from_f64_str(return_type, call));
 		return true;
 	}
 	return false;
@@ -789,7 +795,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			if (c_type_is_vec_or_arr(flat_ret))
 			{
 				Type *lane_t     = c_safe_type_lower(flat_ret->array.base);
-				const char *lane = type_is_float(lane_t) ? "__builtin_fabs($0)"
+				const char *lane = type_is_float(lane_t) ? c_half_from_f64_str(lane_t, str_printf("__builtin_fabs(%s)", c_half_to_f64_str(lane_t, "$0")))
 				                   : str_printf("(%s ? %s : $0)", c_binary_str(BINARYOP_LT, lane_t, "$0", c_int_value_str(c, lane_t, 0)), c_int_neg_str(lane_t, "$0"));
 				c_emit_lanewise(c, temp, return_type, lane, c_args, 1);
 			}
@@ -798,7 +804,8 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 				c_value_rvalue(c, &c_args[0]);
 				if (type_is_float(return_type))
 				{
-					PRINTF("%s ___var_%d = (__builtin_fabs(___var_%d));\n", tn, temp, c_args[0].var);
+					const char *x = c_half_to_f64_str(return_type, str_printf("___var_%d", c_args[0].var));
+					PRINTF("%s ___var_%d = %s;\n", tn, temp, c_half_from_f64_str(return_type, str_printf("__builtin_fabs(%s)", x)));
 				}
 				else
 				{
@@ -869,7 +876,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			const char *tn = c_type_name(c, return_type);
 			if (type_is_float(return_type))
 			{
-				const char *u_int = (type_size(return_type) == 8) ? "uint64_t" : "uint32_t";
+				const char *u_int = c_float_bits_type(c, return_type);
 				PRINTF("%s ___var_%d;\n", tn, temp);
 				PRINT("{\n");
 				PRINTF("\t%s _raw = __atomic_load_n((%s*)___var_%d, __ATOMIC_SEQ_CST);\n", u_int, u_int, c_args[0].var);
@@ -892,7 +899,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			Type *vt = c_expr_type(args[1]);
 			if (type_is_float(vt))
 			{
-				const char *u_int = (type_size(vt) == 8) ? "uint64_t" : "uint32_t";
+				const char *u_int = c_float_bits_type(c, vt);
 				PRINT("{\n");
 				PRINTF("\t%s _raw;\n", u_int);
 				PRINTF("\t__c3_memcpy(&_raw, &___var_%d, sizeof(%s));\n", c_args[1].var, u_int);
@@ -929,8 +936,8 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			c_value_rvalue(c, &c_args[1]);
 			if (type_is_float(return_type) && (builtin == BUILTIN_ATOMIC_FETCH_ADD || builtin == BUILTIN_ATOMIC_FETCH_SUB))
 			{
-				const char *op = (builtin == BUILTIN_ATOMIC_FETCH_SUB) ? "-" : "+";
-				c_emit_atomic_float_cas(c, temp, tn, return_type, c_args[0].var, c_args[1].var, op, false);
+				BinaryOp op = builtin == BUILTIN_ATOMIC_FETCH_SUB ? BINARYOP_SUB : BINARYOP_ADD;
+				c_emit_atomic_float_cas(c, temp, tn, return_type, c_args[0].var, c_args[1].var, op);
 			}
 			else if (return_type->type_kind == TYPE_BOOL)
 			{
@@ -952,7 +959,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			c_value_rvalue(c, &c_args[1]);
 			if (type_is_float(return_type))
 			{
-				c_emit_atomic_float_cas(c, temp, tn, return_type, c_args[0].var, c_args[1].var, op, true);
+				c_emit_atomic_float_cas(c, temp, tn, return_type, c_args[0].var, c_args[1].var, builtin == BUILTIN_ATOMIC_FETCH_MIN ? BINARYOP_LT : BINARYOP_GT);
 			}
 			else
 			{
@@ -979,7 +986,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			const char *tn = c_type_name(c, return_type);
 			if (type_is_float(return_type))
 			{
-				const char *u_int = (type_size(return_type) == 8) ? "uint64_t" : "uint32_t";
+				const char *u_int = c_float_bits_type(c, return_type);
 				PRINTF("%s ___var_%d;\n", tn, temp);
 				PRINT("{\n");
 				PRINTF("\t%s _exp, _des;\n", u_int);

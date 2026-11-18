@@ -628,7 +628,7 @@ static void c_emit_eq_check(GenContext *c, int result, const char *l, const char
 	}
 	if (type_is_float(flat))
 	{
-		PRINTF("if (%s != %s) ___var_%d = false;\n", l, r, result);
+		PRINTF("if (%s) ___var_%d = false;\n", c_binary_str(BINARYOP_NE, flat, l, r), result);
 		return;
 	}
 	if (flat->type_kind == TYPE_SLICE && !c_eq_is_elementwise(flat->array.base))
@@ -879,12 +879,6 @@ void c_emit_binary_op(GenContext *c, CValue *value, BinaryOp op, Type *expr_type
 		c_emit_panic_if(c, str_printf("%s(___var_%d, ___var_%d, &___var_%d)", bname, left_value.var, right_value.var, value->var), panic_fn, loc, NULL, NULL, NULL);
 		return;
 	}
-	if (op == BINARYOP_MOD && type_is_float(expr_type))
-	{
-		PRINTF("%s ___var_%d = __c3_fmod(___var_%d, ___var_%d);\n", type_string, value->var, left_value.var, right_value.var);
-		return;
-	}
-
 	const char *operator_string = c_binary_op_str(op);
 	bool left_is_ptr            = c_type_is_c_pointer(left_t);
 	bool right_is_ptr           = c_type_is_c_pointer(right_t);
@@ -947,15 +941,13 @@ void c_emit_binary_op(GenContext *c, CValue *value, BinaryOp op, Type *expr_type
 
 	if (c_type_is_vec_or_arr(expr_type))
 	{
-		// C has no `%` on floating point, lanes go through fmod.
 		Type *lane_t       = expr_type->array.base;
-		bool is_fmod       = op == BINARYOP_MOD && type_is_float(type_flatten(lane_t));
 		CValue operands[2] = { left_value, right_value };
 		bool is_shift      = op == BINARYOP_SHL || op == BINARYOP_SHR;
 		const char *rhs    = is_shift ? c_shift_amount_str(right_t->array.base, "$1") : "$1";
 		// The operands' lane type: `ptr - ptr` lanes are pointer differences.
 		Type *operand_t    = c_type_is_vec_or_arr(left_t) ? left_t->array.base : lane_t;
-		c_emit_lanewise(c, value->var, expr_type, is_fmod ? "__c3_fmod($0, $1)" : c_binary_str(op, operand_t, "$0", rhs), operands, 2);
+		c_emit_lanewise(c, value->var, expr_type, c_binary_str(op, operand_t, "$0", rhs), operands, 2);
 		return;
 	}
 

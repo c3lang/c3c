@@ -236,8 +236,8 @@ const char *c_type_name(GenContext *c, Type *type)
 		case TYPE_U32: return "uint32_t";
 		case TYPE_U64: return "uint64_t";
 		case TYPE_U128: return "__c3_uint128";
-		case TYPE_F16:
-		case TYPE_BF16:
+		case TYPE_F16: return "__c3_f16";
+		case TYPE_BF16: return "__c3_bf16";
 		case TYPE_F32: return "float";
 		case TYPE_F64:
 		case TYPE_F128: return "double";
@@ -291,7 +291,7 @@ const char *c_type_name(GenContext *c, Type *type)
 const char *c_type_zero_literal(Type *t)
 {
 	t = c_safe_type_lower(t);
-	if (c_type_is_aggregate(t) || c_type_is_int128(t))
+	if (c_type_is_aggregate(t) || c_type_is_int128(t) || c_type_is_half(t))
 	{
 		return "{0}";
 	}

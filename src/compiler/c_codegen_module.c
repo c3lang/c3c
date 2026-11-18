@@ -518,12 +518,8 @@ static bool c_const_init_bytes(ConstInitializer *init, uint8_t *bytes)
 					return true;
 				case CONST_FLOAT:
 				{
-					if (type->type_kind != TYPE_F32 && type->type_kind != TYPE_F64) return false;
-					float f32   = (float)ec->fxx.f;
-					double f64  = (double)ec->fxx.f;
-					uint64_t u  = 0;
-					memcpy(&u, type->type_kind == TYPE_F32 ? (void *)&f32 : (void *)&f64, size);
-					c_put_int_bytes(bytes, (Int128){ 0, u }, size);
+					if (type->type_kind == TYPE_F128) return false;
+					c_put_int_bytes(bytes, (Int128){ 0, c_float_const_bits(type, ec->fxx.f) }, size);
 					return true;
 				}
 				case CONST_BYTES:
@@ -1180,6 +1176,12 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 				c_emit_const_int_literal(c, &expr->const_expr, type);
 				return;
 			case CONST_FLOAT:
+				if (c_type_is_half(type))
+				{
+					// A braced list for a struct: only valid in an initializer.
+					PRINTF("{ 0x%04X }", (unsigned)c_float_const_bits(type, expr->const_expr.fxx.f));
+					return;
+				}
 				c_emit_const_float_literal(c, expr->const_expr.fxx.f);
 				return;
 			case CONST_BOOL:
@@ -1894,8 +1896,8 @@ void c_emit_runtime_header(const char *dir)
 	if (compiler.platform.big_endian) fputs("#define __C3_BIG_ENDIAN 1\n", f);
 	fwrite(c_runtime_header_boilerplate, 1, c_runtime_header_boilerplate_len, f);
 
-	// float16, bfloat and float128 have no C form of their size yet.
-	Type *scalars[] = { type_bool, type_ichar, type_short, type_int, type_long, type_i128, type_float, type_double, type_voidptr };
+	// float128 has no C form of its size yet.
+	Type *scalars[] = { type_bool, type_ichar, type_short, type_int, type_long, type_i128, type_float16, type_bfloat, type_float, type_double, type_voidptr };
 	for (size_t i = 0; i < ELEMENTLEN(scalars); i++)
 	{
 		Type *t          = scalars[i];

@@ -925,31 +925,6 @@ static inline __c3_int128 __c3_i128_smod(__c3_int128 a, __c3_int128 b)
 	return (a.hi >> 63) ? __c3_u128_neg(r) : r;
 }
 
-// x as m * 2^e, with a sticky low bit in m so converting m rounds once.
-static inline uint64_t __c3_u128_to_sticky64(__c3_uint128 x, int *e)
-{
-	*e = 64 - __builtin_clzll(x.hi);
-	__c3_uint128 m = __c3_u128_lshr(x, (unsigned)*e);
-	return m.lo | !__c3_u128_eq(__c3_u128_shl(m, (unsigned)*e), x);
-}
-static inline double __c3_u128_to_f64(__c3_uint128 x)
-{
-	int e;
-	if (!x.hi) return (double)x.lo;
-	double d = (double)__c3_u128_to_sticky64(x, &e);
-	while (e--) d *= 2.0;
-	return d;
-}
-static inline float __c3_u128_to_f32(__c3_uint128 x)
-{
-	int e;
-	if (!x.hi) return (float)x.lo;
-	float f = (float)__c3_u128_to_sticky64(x, &e);
-	while (e--) f *= 2.0f;
-	return f;
-}
-static inline double __c3_i128_to_f64(__c3_int128 x) { return (x.hi >> 63) ? -__c3_u128_to_f64(__c3_u128_neg(x)) : __c3_u128_to_f64(x); }
-static inline float __c3_i128_to_f32(__c3_int128 x) { return (x.hi >> 63) ? -__c3_u128_to_f32(__c3_u128_neg(x)) : __c3_u128_to_f32(x); }
 static inline __c3_uint128 __c3_f64_to_u128(double d)
 {
 	const double two64 = 18446744073709551616.0;
@@ -997,6 +972,35 @@ static inline bool __c3_i128_mul_overflow(__c3_int128 a, __c3_int128 b, __c3_int
 
 #endif
 
+// x as m * 2^e, with a sticky low bit in m so converting m rounds once. x must not fit in 64 bits.
+static inline uint64_t __c3_u128_to_sticky64(__c3_uint128 x, int *e)
+{
+	*e = 64 - __builtin_clzll(__c3_u128_hi(x));
+	__c3_uint128 m = __c3_u128_lshr(x, (unsigned)*e);
+	return __c3_u128_lo(m) | !__c3_u128_eq(__c3_u128_shl(m, (unsigned)*e), x);
+}
+
+#if defined(__C3_INT128_STRUCT)
+static inline double __c3_u128_to_f64(__c3_uint128 x)
+{
+	int e;
+	if (!x.hi) return (double)x.lo;
+	double d = (double)__c3_u128_to_sticky64(x, &e);
+	while (e--) d *= 2.0;
+	return d;
+}
+static inline float __c3_u128_to_f32(__c3_uint128 x)
+{
+	int e;
+	if (!x.hi) return (float)x.lo;
+	float f = (float)__c3_u128_to_sticky64(x, &e);
+	while (e--) f *= 2.0f;
+	return f;
+}
+static inline double __c3_i128_to_f64(__c3_int128 x) { return (x.hi >> 63) ? -__c3_u128_to_f64(__c3_u128_neg(x)) : __c3_u128_to_f64(x); }
+static inline float __c3_i128_to_f32(__c3_int128 x) { return (x.hi >> 63) ? -__c3_u128_to_f32(__c3_u128_neg(x)) : __c3_u128_to_f32(x); }
+#endif
+
 static inline uint64_t __c3_u128_clz(__c3_uint128 x)
 {
 	uint64_t hi = __c3_u128_hi(x), lo = __c3_u128_lo(x);
@@ -1036,6 +1040,85 @@ static inline __c3_uint128 __c3_u128_fshr(__c3_uint128 a, __c3_uint128 b, __c3_u
 	unsigned n = (unsigned)__c3_u128_lo(s) & 127;
 	return n ? __c3_u128_or(__c3_u128_shl(a, 128 - n), __c3_u128_lshr(b, n)) : b;
 }
+
+/* --- 16-bit Floats --- */
+
+// float16 and bfloat keep their own layout and are computed in double, as LLVM promotes them on targets without
+// 16-bit float arithmetic; double holds every result of float16 or bfloat + - * / exactly enough to round once.
+// Generated code only uses them through the helpers below. Both have a sign bit and `mant` stored mantissa bits.
+typedef struct { uint16_t bits; } __c3_f16;
+typedef struct { uint16_t bits; } __c3_bf16;
+
+static inline double __c3_half_to_f64(uint16_t h, int mant) {
+	int exp_bits  = 15 - mant;
+	int bias      = (1 << (exp_bits - 1)) - 1;
+	uint64_t sign = (uint64_t)(h >> 15) << 63;
+	int e         = (h >> mant) & ((1 << exp_bits) - 1);
+	uint64_t m    = h & ((1u << mant) - 1);
+	uint64_t bits;
+	if (e == (1 << exp_bits) - 1) {
+		bits = sign | (0x7FFULL << 52) | (m << (52 - mant));
+	} else if (e == 0 && m == 0) {
+		bits = sign;
+	} else {
+		if (e == 0) {
+			// Subnormal: normalize.
+			e = 1;
+			while (!(m >> mant)) { m <<= 1; e--; }
+			m &= (1u << mant) - 1;
+		}
+		bits = sign | ((uint64_t)(e - bias + 1023) << 52) | (m << (52 - mant));
+	}
+	double d;
+	__c3_memcpy(&d, &bits, 8);
+	return d;
+}
+
+// `d` rounded to nearest, ties to even. A NaN stays a NaN, made quiet.
+static inline uint16_t __c3_f64_to_half(double d, int mant) {
+	int exp_bits = 15 - mant;
+	int max_exp  = (1 << exp_bits) - 1;
+	uint64_t bits;
+	__c3_memcpy(&bits, &d, 8);
+	uint16_t sign = (uint16_t)((bits >> 63) << 15);
+	int de        = (int)((bits >> 52) & 0x7FF);
+	uint64_t sig  = bits & ((1ULL << 52) - 1);
+	if (de == 0x7FF) {
+		return sign | (uint16_t)(max_exp << mant) | (sig ? (uint16_t)(1u << (mant - 1) | (sig >> (52 - mant))) : 0);
+	}
+	if (de) sig |= 1ULL << 52;
+	// The biased exponent in the result; at most 0 is a subnormal, shifted further right.
+	int e     = (de ? de : 1) - 1023 + (1 << (exp_bits - 1)) - 1;
+	int shift = 52 - mant + (e < 1 ? 1 - e : 0);
+	if (e >= max_exp) return sign | (uint16_t)(max_exp << mant);
+	if (shift > 54) return sign;
+	uint64_t r    = sig >> shift;
+	uint64_t rest = sig & ((1ULL << shift) - 1);
+	uint64_t half = 1ULL << (shift - 1);
+	if (rest > half || (rest == half && (r & 1))) r++;
+	// A carry out of the mantissa raises the exponent, up to infinity.
+	return sign | (uint16_t)((e > 0 ? (uint64_t)(e - 1) << mant : 0) + r);
+}
+
+// The integer x as a double with the bits below its top 53 folded into a sticky bit, so rounding it to float16 or
+// bfloat rounds x once: a plain conversion rounds to 53 bits first.
+static inline double __c3_u64_to_f64_sticky(uint64_t x) { return (double)(x >> 53 ? (x & ~0xFFFULL) | (uint64_t)((x & 0xFFF) != 0) << 11 : x); }
+static inline double __c3_i64_to_f64_sticky(int64_t x) { return x < 0 ? -__c3_u64_to_f64_sticky(0 - (uint64_t)x) : __c3_u64_to_f64_sticky((uint64_t)x); }
+static inline double __c3_u128_to_f64_sticky(__c3_uint128 x) {
+	if (!__c3_u128_hi(x)) return __c3_u64_to_f64_sticky(__c3_u128_lo(x));
+	int e;
+	double d = __c3_u64_to_f64_sticky(__c3_u128_to_sticky64(x, &e));
+	while (e--) d *= 2.0;
+	return d;
+}
+static inline double __c3_i128_to_f64_sticky(__c3_int128 x) {
+	return (__c3_u128_hi(x) >> 63) ? -__c3_u128_to_f64_sticky(__c3_u128_neg(x)) : __c3_u128_to_f64_sticky(x);
+}
+
+static inline double __c3_f16_to_f64(__c3_f16 x) { return __c3_half_to_f64(x.bits, 10); }
+static inline double __c3_bf16_to_f64(__c3_bf16 x) { return __c3_half_to_f64(x.bits, 7); }
+static inline __c3_f16 __c3_f64_to_f16(double d) { __c3_f16 r; r.bits = __c3_f64_to_half(d, 10); return r; }
+static inline __c3_bf16 __c3_f64_to_bf16(double d) { __c3_bf16 r; r.bits = __c3_f64_to_half(d, 7); return r; }
 
 /* --- System --- */
 

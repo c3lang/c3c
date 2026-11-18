@@ -341,7 +341,7 @@ void c_emit_var_zero_init(GenContext *c, VariableId var_id, Type *type)
 }
 
 // Store `src` into the C lvalue `dst`. Sema makes every conversion explicit, so the source has the destination's
-// type (compared by C name: types such as float16 / bfloat or two Type* for one C type are the same in C).
+// type (compared by C name: two Type* for one C type are the same in C).
 // Only the C form differs: a zero value (var 0), or an aggregate held at an address.
 void c_emit_store(GenContext *c, const char *dst, Type *type, CValue *src)
 {

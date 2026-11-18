@@ -59,8 +59,8 @@ Design:
 
 Known issues:
 
-1. float16, bfloat and float128 lower to float/double. struct { float16 a, b; } is 4 bytes to c3c but 8 in C, so
-   mem::new_array(Pair, 4) overflows the heap (ASan-confirmed). Half-precision rounding is also lost.
+1. float128 lowers to double: 8 bytes in C but 16 to c3c, so the layout of a struct with one differs from c3c's,
+   and it has double's precision.
 
 2. cl.exe: inline assembly is emitted as GNU extended asm, which cl.exe rejects (#error). A compiler with neither
    GNU constructors nor MSVC's .CRT$XC* table never runs @finalizer, and runs @init and runtime global initializers
