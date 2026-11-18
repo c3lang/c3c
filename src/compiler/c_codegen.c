@@ -1245,7 +1245,7 @@ static const char *c_backend_build_cflags(const char *cc)
 {
 	bool is_cl    = cc_is_msvc(cc);
 	bool is_tcc   = cc_is_tcc(cc);
-	bool is_clang = strstr(cc, "clang") != NULL || strstr(cc, "zig") != NULL;
+	bool is_clang = cc_is_clang(cc);
 
 	scratch_buffer_clear();
 	bool has_warn_flags = compiler.build.cflags && (strstr(compiler.build.cflags, "-W") || strstr(compiler.build.cflags, "/W"));
@@ -1277,6 +1277,12 @@ static const char *c_backend_build_cflags(const char *cc)
 			scratch_buffer_append("--target=");
 			scratch_buffer_append(compiler.platform.target_triple);
 			scratch_buffer_append(" ");
+		}
+		if (compiler.build.bsd_sysroot && os_is_bsd(compiler.platform.os))
+		{
+			scratch_buffer_append("--sysroot=\"");
+			scratch_buffer_append(compiler.build.bsd_sysroot);
+			scratch_buffer_append("\" ");
 		}
 		if (compiler.platform.os == OS_TYPE_IOS && compiler.build.ios.sysroot)
 		{

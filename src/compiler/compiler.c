@@ -527,10 +527,17 @@ static bool compiler_link_exe(const char *output_exe, const char **obj_files, in
 	bool system_linker_available = link_libc() && compiler.platform.os != OS_TYPE_WIN32;
 	bool is_emscripten = compiler.platform.os == OS_TYPE_EMSCRIPTEN;
 	const char *cc = NULL;
+	const char *no_system_linker = !link_libc()
+		? "the C compiler is only used as linker when linking libc (--link-libc=yes)"
+		: "the C compiler isn't used as linker for Windows targets";
 	if (system_linker_available)
 	{
 		cc = find_c_compiler();
-		if (!file_executable_in_path(cc)) system_linker_available = false;
+		if (!file_executable_in_path(cc))
+		{
+			system_linker_available = false;
+			no_system_linker = str_printf("C compiler '%s' not found", cc);
+		}
 		if (is_emscripten && compiler.build.linker_type != LINKER_TYPE_BUILTIN && (!file_executable_in_path(cc) || !str_contains(cc, "emcc")))
 		{
 			error_exit("\"emscripten\" target requires Emscripten to be installed on your system; \"%s\" was not found.", cc);
@@ -544,13 +551,12 @@ static bool compiler_link_exe(const char *output_exe, const char **obj_files, in
 		case LINKER_TYPE_CC:
 			if (!system_linker_available)
 			{
-				cc = cc ? cc : find_c_compiler();
 #if LLVM_AVAILABLE
-				OUTF("C compiler '%s' not found or system linker is unsupported; using built-in linker instead.\n", cc);
+				OUTF("Not linking with the C compiler: %s. Using the built-in linker instead.\n", no_system_linker);
 				compiler.build.linker_type = LINKER_TYPE_BUILTIN;
 				use_system_linker = false;
 #else
-				error_exit("C compiler '%s' not found or system linker is unsupported, and built-in linker is not available without LLVM.", cc);
+				error_exit("Can't link with the C compiler: %s. The built-in linker is not available without LLVM.", no_system_linker);
 #endif
 				break;
 			}
@@ -2361,6 +2367,12 @@ bool cc_is_msvc(const char *cc)
 bool cc_is_tcc(const char *cc)
 {
 	return cc_is_named(cc, "tcc");
+}
+
+// Whether `cc` takes clang's --target.
+bool cc_is_clang(const char *cc)
+{
+	return strstr(cc, "clang") != NULL || strstr(cc, "zig") != NULL;
 }
 
 static bool is_posix(OsType os)

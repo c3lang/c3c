@@ -253,6 +253,11 @@ bool os_is_apple(OsType os_type)
 		   os_type == OS_TYPE_MACOSX || os_type == OS_TYPE_IOS;
 }
 
+bool os_is_bsd(OsType os_type)
+{
+	return os_type == OS_TYPE_FREEBSD || os_type == OS_TYPE_OPENBSD || os_type == OS_TYPE_NETBSD;
+}
+
 bool arch_is_wasm(ArchType type)
 {
 	return type == ARCH_TYPE_WASM32 || type == ARCH_TYPE_WASM64;
@@ -2093,7 +2098,9 @@ static void target_setup_riscv_abi(BuildTarget *target)
 		if (cpu == RISCV_CPU_DEFAULT) cpu = RISCV_CPU_RVI;
 	}
 	INFO_LOG("RISC-V Setup: cpu=%d, current_abi=%d", (int)cpu, (int)target->feature.riscv_abi);
-	if (target->feature.riscv_abi == RISCV_ABI_DEFAULT)
+	// Resolved here, so the C backend can tell an explicit --riscv-abi.
+	RiscvAbi abi = target->feature.riscv_abi;
+	if (abi == RISCV_ABI_DEFAULT)
 	{
 		switch (cpu)
 		{
@@ -2101,25 +2108,25 @@ static void target_setup_riscv_abi(BuildTarget *target)
 				UNREACHABLE_VOID
 			case RISCV_CPU_RVI:
 			case RISCV_CPU_RVIMAC:
-				target->feature.riscv_abi = RISCV_ABI_INT_ONLY;
+				abi = RISCV_ABI_INT_ONLY;
 				break;
 			case RISCV_CPU_RVIMAFC:
-				target->feature.riscv_abi = RISCV_ABI_FLOAT;
+				abi = RISCV_ABI_FLOAT;
 				break;
 			case RISCV_CPU_RVGC:
 			case RISCV_CPU_RVGCV:
-				target->feature.riscv_abi = RISCV_ABI_DOUBLE;
+				abi = RISCV_ABI_DOUBLE;
 				break;
 		}
 	}
-	switch (target->feature.riscv_abi)
+	switch (abi)
 	{
 		case RISCV_ABI_DEFAULT:
 			UNREACHABLE_VOID
 		case RISCV_ABI_INT_ONLY:
 		case RISCV_ABI_FLOAT:
 		case RISCV_ABI_DOUBLE:
-			compiler.platform.riscv.flen = 4 * target->feature.riscv_abi;
+			compiler.platform.riscv.flen = 4 * abi;
 			break;
 	}
 	cpu_features_add_feature_single(&features, RISCV_FEAT_I);
@@ -2151,12 +2158,12 @@ static void target_setup_riscv_abi(BuildTarget *target)
 			break;
 	}
 
-	if (target->feature.riscv_abi >= RISCV_ABI_FLOAT)
+	if (abi >= RISCV_ABI_FLOAT)
 	{
 		cpu_features_add_feature_single(&features, RISCV_FEAT_F);
 		cpu_features_add_feature_single(&features, RISCV_FEAT_ZICSR);
 	}
-	if (target->feature.riscv_abi >= RISCV_ABI_DOUBLE)
+	if (abi >= RISCV_ABI_DOUBLE)
 	{
 		cpu_features_add_feature_single(&features, RISCV_FEAT_D);
 	}

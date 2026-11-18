@@ -2867,6 +2867,7 @@ void codegen_setup_object_names(Module *module, const char **base_name, const ch
 void target_setup(BuildTarget *build_target);
 int target_alloca_addr_space(void);
 bool os_is_apple(OsType os_type);
+bool os_is_bsd(OsType os_type);
 bool os_supports_stacktrace(OsType os_type);
 bool arch_is_wasm(ArchType type);
 
@@ -5078,6 +5079,7 @@ INLINE ResolvedAttrData *decl_create_resolved_attributes(Decl *decl)
 const char *find_c_compiler(void);
 bool cc_is_msvc(const char *cc);
 bool cc_is_tcc(const char *cc);
+bool cc_is_clang(const char *cc);
 
 void print_build_env(void);
 void print_asm(PlatformTarget *target);

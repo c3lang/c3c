@@ -816,6 +816,7 @@ static void linker_setup_bsd(const char ***args_ref, Linker linker_type, bool is
 		if (compiler.linking.link_math) linking_add_link(&compiler.linking, "m");
 		linking_add_link(&compiler.linking, "pthread");
 		linking_add_link(&compiler.linking, "execinfo");
+		if (compiler.build.bsd_sysroot) add_concat_quote_arg("--sysroot=", compiler.build.bsd_sysroot);
 		if (compiler.build.debug_info == DEBUG_INFO_FULL) add_plain_arg("-rdynamic");
 		// tcc's linker has no --gc-sections.
 		if (strip_unused() && compiler.build.type == TARGET_TYPE_EXECUTABLE && !cc_is_tcc(find_c_compiler())) add_plain_arg("-Wl,--gc-sections");
@@ -1008,6 +1009,12 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, int
 			break;
 		case LINKER_CC:
 			if (is_dylib) add_plain_arg("-shared");
+			// clang links for the host unless told the target. Darwin passes its own -target.
+			if (compiler.build.arch_os_target != default_target && !os_is_apple(compiler.platform.os)
+				&& cc_is_clang(find_c_compiler()))
+			{
+				add_plain_arg(str_printf("--target=%s", compiler.platform.target_triple));
+			}
 			break;
 		default:
 			UNREACHABLE
@@ -1204,6 +1211,44 @@ static const char *find_msvc_linker(void)
 }
 #endif
 
+#if LLVM_AVAILABLE
+// Links with lld, printing its warnings. Returns its errors on failure, NULL on success.
+static const char *lld_link(const char **args)
+{
+	// First, so that a user flag can override it.
+	if (use_ansi()) vec_insert_first(args, "--color-diagnostics");
+	int count = assemble_link_arguments(args, vec_size(args));
+	const char *output = NULL;
+	bool success;
+	switch (compiler.platform.object_format)
+	{
+		case OBJ_FORMAT_COFF:
+			success = llvm_link_coff(args, count, &output);
+			break;
+		case OBJ_FORMAT_ELF:
+			success = llvm_link_elf(args, count, &output);
+			break;
+		case OBJ_FORMAT_MACHO:
+			success = llvm_link_macho(args, count, &output);
+			break;
+		case OBJ_FORMAT_WASM:
+			success = llvm_link_wasm(args, count, &output);
+			break;
+		default:
+			UNREACHABLE
+	}
+	if (success)
+	{
+		eprintf("%s", output);
+		return NULL;
+	}
+	if (!output[0]) return "the built-in linker (lld) failed";
+	char *error = str_dup(output);
+	str_trim_end(error);
+	return error;
+}
+#endif
+
 static bool link_exe(const char *output_file, const char **files_to_link, int file_count)
 {
 	INFO_LOG("Using linker directly.");
@@ -1216,24 +1261,8 @@ static bool link_exe(const char *output_file, const char **files_to_link, int fi
 
 	bool success;
 #if LLVM_AVAILABLE
-	int count = assemble_link_arguments(args, vec_size(args));
-	switch (compiler.platform.object_format)
-	{
-		case OBJ_FORMAT_COFF:
-			success = llvm_link_coff(args, count, &error);
-			break;
-		case OBJ_FORMAT_ELF:
-			success = llvm_link_elf(args, count, &error);
-			break;
-		case OBJ_FORMAT_MACHO:
-			success = llvm_link_macho(args, count, &error);
-			break;
-		case OBJ_FORMAT_WASM:
-			success = llvm_link_wasm(args, count, &error);
-			break;
-		default:
-			UNREACHABLE
-	}
+	error = lld_link(args);
+	success = !error;
 #elif PLATFORM_WINDOWS
 	vec_insert_first(args, find_msvc_linker());
 	const char *cmd = assemble_linker_command(args, true);
@@ -1516,30 +1545,8 @@ bool dynamic_lib_linker(const char *output_file, const char **files, int file_co
 		}
 		return true;
 	}
-	bool success;
-	const char *error = NULL;
-	int count = assemble_link_arguments(args, vec_size(args));
-	switch (compiler.platform.object_format)
-	{
-		case OBJ_FORMAT_COFF:
-			success = llvm_link_coff(args, count, &error);
-			break;
-		case OBJ_FORMAT_ELF:
-			success = llvm_link_elf(args, count, &error);
-			break;
-		case OBJ_FORMAT_MACHO:
-			success = llvm_link_macho(args, count, &error);
-			break;
-		case OBJ_FORMAT_WASM:
-			success = llvm_link_wasm(args, count, &error);
-			break;
-		default:
-			UNREACHABLE
-	}
-	if (!success)
-	{
-		error_exit("Failed to create a dynamic library: %s", error);
-	}
+	const char *error = lld_link(args);
+	if (error) error_exit("Failed to create a dynamic library: %s", error);
 	INFO_LOG("Linking complete.");
 	return true;
 #endif

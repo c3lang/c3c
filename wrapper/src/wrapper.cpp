@@ -96,11 +96,10 @@ static bool llvm_link(ObjFormat format, const char **args, int arg_count, const 
 			break;
 	}
 	for (int i = 0; i < arg_count; i++) arg_vector.push_back(strdup(args[i]));
-	std::string output_string {};
 	std::string output_err_string {};
 
 	llvm::raw_ostream &output = llvm::outs();
-	llvm::raw_ostream &output_err = llvm::errs();
+	llvm::raw_string_ostream output_err { output_err_string };
 	bool success;
 	switch (format)
 	{
@@ -131,7 +130,7 @@ static bool llvm_link(ObjFormat format, const char **args, int arg_count, const 
 	{
 		lld::CommonLinkerContext::destroy();
 	}
-	//*error_string = strdup(output_err_string.c_str());
+	*error_string = strdup(output_err.str().c_str());
 	return success;
 }
 
