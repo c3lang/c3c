@@ -89,6 +89,7 @@
 - Writing through a slice of a temporary array, like `ra()[0:2][0] = 1` or `&ra()[..][1]`, was accepted and changed a copy.
 - Calling a local optional function pointer, like `Fn? f = &twice; f(3);`, was rejected.
 - Indexing an optional struct through its `inline` member, like `Outer? o; o[1]`, was rejected.
+- An out-of-range constant float vector cast to integer elements wasn't caught when the element type was a typedef or the source a constant slice, causing miscompilation or crash.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.
