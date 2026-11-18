@@ -81,6 +81,8 @@
 - Constant integer-to-float conversions could round twice and produce a different result from runtime conversion.
 - Backtraces showed "source unavailable" when `addr2line` printed a discriminator.
 - `float16` and `bfloat` conversions failed to link without libgcc, such as on Windows.
+- Programs using the stdlib failed to compile for `elf-aarch64`.
+- Printing crashed with a libc other than those of Linux, Darwin, the BSDs and Windows, such as newlib.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.
