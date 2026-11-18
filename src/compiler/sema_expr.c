@@ -713,7 +713,7 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 			}
 			{
 				Expr *parent = exprptr(expr->expr_kind == EXPR_SLICE ? expr->slice_expr.expr : expr->subscript_expr.expr);
-				if (parent->type && type_is_arraylike(type_flatten(parent->type)) && !sema_binary_is_expr_lvalue(context, top_expr, parent, failed_ref)) return false;
+				if (parent->type && (type_is_arraylike(type_flatten(parent->type)) || parent->expr_kind == EXPR_SLICE) && !sema_binary_is_expr_lvalue(context, top_expr, parent, failed_ref)) return false;
 			}
 			goto CHECK_OPTIONAL;
 		case EXPR_SUBSCRIPT_ASSIGN:
@@ -10031,7 +10031,12 @@ static bool sema_expr_is_temporary(Expr *expr)
 		case EXPR_SUBSCRIPT_ADDR:
 		{
 			Expr *parent = exprptr(expr->subscript_expr.expr);
-			return type_is_arraylike(type_flatten(parent->type)) && sema_expr_is_temporary(parent);
+			return (type_is_arraylike(type_flatten(parent->type)) || parent->expr_kind == EXPR_SLICE) && sema_expr_is_temporary(parent);
+		}
+		case EXPR_SLICE:
+		{
+			Expr *parent = exprptr(expr->slice_expr.expr);
+			return (type_is_arraylike(type_flatten(parent->type)) || parent->expr_kind == EXPR_SLICE) && sema_expr_is_temporary(parent);
 		}
 		default:
 			return true;

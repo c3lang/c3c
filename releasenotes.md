@@ -86,6 +86,7 @@
 - Constant casts to `float16` and `bfloat` were only rounded to `float` precision, so `(float)(float16)70000.0` stayed 70000 instead of infinity.
 - A runtime splat into a `@bigendian` bitstruct initializer, like `{ ...base, .f = true }`, produced wrong field values.
 - Taking `&` of a vector component of a temporary, like `&rv().y` or `&(c ? a : b).y`, was accepted and pointed into a copy.
+- Writing through a slice of a temporary array, like `ra()[0:2][0] = 1` or `&ra()[..][1]`, was accepted and changed a copy.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.
