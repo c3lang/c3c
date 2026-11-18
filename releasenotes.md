@@ -80,6 +80,7 @@
 - `@volatile_load` and `mem::load` could lose union bytes stored in padding.
 - Constant integer-to-float conversions could round twice and produce a different result from runtime conversion.
 - Backtraces showed "source unavailable" when `addr2line` printed a discriminator.
+- `float16` and `bfloat` conversions failed to link without libgcc, such as on Windows.
 
 ### Stdlib changes
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.

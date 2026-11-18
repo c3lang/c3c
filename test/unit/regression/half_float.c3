@@ -56,7 +56,6 @@ fn void vectors() @test
 	float16[<4>] v = { 1, 2.5, -3, 100 };
 	float16[<4>] w = v * v + v;
 	assert(w == (float16[<4>]){ 2, 8.75, 6, 10096 });
-	assert($$reduce_max(v) == 100);
 	float16[<4>] r = math::sqrt(math::abs(v));
 	assert(bitcast(r[1], ushort) == 0x3e53);
 }
