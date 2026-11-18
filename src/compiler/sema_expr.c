@@ -3955,6 +3955,10 @@ static inline bool sema_expr_analyse_typecall(SemaContext *context, Expr *expr)
 {
 	Expr *tag = exprptr(expr->call_expr.function);
 	if (!sema_expand_vasplat_exprs(context, &expr->call_expr.arguments, NULL)) return false;
+	FOREACH(Expr *, arg, expr->call_expr.arguments)
+	{
+		if (expr_is_named_param(arg)) RETURN_SEMA_ERROR(arg, "Named arguments are not allowed in builtin calls.");
+	}
 	Decl *decl = tag->type_call_expr.type;
 	if (decl && !sema_analyse_decl(context, decl)) return false;
 	switch (tag->type_call_expr.property)
