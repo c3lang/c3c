@@ -536,7 +536,9 @@ static bool compiler_link_exe(const char *output_exe, const char **obj_files, in
 			error_exit("\"emscripten\" target requires Emscripten to be installed on your system; \"%s\" was not found.", cc);
 		}
 	}
-	bool use_system_linker = system_linker_available && (compiler.build.arch_os_target == default_target || is_emscripten);
+	// The C backend's C compiler builds for the target, so it links for it too.
+	bool use_system_linker = system_linker_available &&
+	                         (compiler.build.arch_os_target == default_target || is_emscripten || compiler.build.backend == BACKEND_C);
 	switch (compiler.build.linker_type)
 	{
 		case LINKER_TYPE_CC:
@@ -2335,6 +2337,30 @@ const char *find_c_compiler(void)
 	if (compiler.platform.os == OS_TYPE_EMSCRIPTEN) return cc = "emcc";
 	return cc = "cc";
 #endif
+}
+
+// Whether the file name of `cc`, without a directory or `.exe`, is `name`.
+static bool cc_is_named(const char *cc, const char *name)
+{
+	const char *base = cc;
+	for (const char *p = cc; *p; p++)
+	{
+		if (*p == '/' || *p == '\\') base = p + 1;
+	}
+	size_t len = strlen(base);
+	if (len > 4 && STRCASECMP(base + len - 4, ".exe") == 0) len -= 4;
+	return len == strlen(name) && STRNCASECMP(base, name, len) == 0;
+}
+
+// Whether `cc` takes MSVC style arguments: cl or clang-cl (msvc-wine's wrapper is a plain `cl`).
+bool cc_is_msvc(const char *cc)
+{
+	return cc_is_named(cc, "cl") || cc_is_named(cc, "clang-cl");
+}
+
+bool cc_is_tcc(const char *cc)
+{
+	return cc_is_named(cc, "tcc");
 }
 
 static bool is_posix(OsType os)

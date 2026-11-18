@@ -67,21 +67,29 @@ static inline int c_get_const_int_arg(Expr *expr, int def_val)
 	return def_val;
 }
 
-static void c_emit_atomic_float_cas(GenContext *c, int temp, const char *tn, Type *rtype, int ptr_var, int val_var, const char *op, bool is_cmp)
+// The unsigned integer type holding the bits of the float type `type`.
+static const char *c_float_bits_type(GenContext *c, Type *type)
 {
-	const char *u_int = (type_size(rtype) == 8) ? "uint64_t" : "uint32_t";
+	return c_type_name(c, type_int_unsigned_by_bitsize(type_size(type) * 8));
+}
+
+// An atomic `*ptr = *ptr op val` on a float, or with a comparison `op`, `*ptr = *ptr op val ? *ptr : val`.
+static void c_emit_atomic_float_cas(GenContext *c, int temp, const char *tn, Type *rtype, int ptr_var, int val_var, BinaryOp op)
+{
+	const char *u_int = c_float_bits_type(c, rtype);
+	const char *val   = str_printf("___var_%d", val_var);
 	PRINTF("%s ___var_%d;\n", tn, temp);
 	PRINT("{\n");
 	PRINTF("\tunion { %s f; %s i; } _old, _new;\n", tn, u_int);
 	PRINTF("\t_old.f = *(volatile %s*)___var_%d;\n", tn, ptr_var);
 	PRINTF("\tdo {\n");
-	if (is_cmp)
+	if (op >= BINARYOP_GT && op <= BINARYOP_EQ)
 	{
-		PRINTF("\t\t_new.f = (_old.f %s ___var_%d) ? _old.f : ___var_%d;\n", op, val_var, val_var);
+		PRINTF("\t\t_new.f = %s ? _old.f : %s;\n", c_binary_str(op, rtype, "_old.f", val), val);
 	}
 	else
 	{
-		PRINTF("\t\t_new.f = _old.f %s ___var_%d;\n", op, val_var);
+		PRINTF("\t\t_new.f = %s;\n", c_binary_str(op, rtype, "_old.f", val));
 	}
 	PRINTF("\t} while (!__atomic_compare_exchange_n((%s*)___var_%d, &_old.i, _new.i, 1, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));\n", u_int, ptr_var);
 	PRINTF("\t___var_%d = _old.f;\n", temp);
@@ -150,98 +158,54 @@ static bool c_try_emit_table_builtin(GenContext *c, CValue *value, Type *return_
 		{
 			continue;
 		}
-		const char *builtin_fn     = simple_builtins_table[i].c_fn;
-		if (has_return)
-		{
-			c_emit_type_forward_decl(c, return_type);
-			Type *flat_ret = return_type ? type_flatten(return_type) : NULL;
-			if (c_type_is_vec_or_arr(flat_ret))
-			{
-				const char *lane = str_printf("%s(", builtin_fn);
-				for (int j = 0; j < arg_idx; j++) lane = str_printf("%s%s$%d", lane, j ? ", " : "", j);
-				c_emit_lanewise(c, c_emit_temp_var(c, value, return_type), return_type, str_printf("%s)", lane), c_args, arg_idx);
-				return true;
-			}
-			PRINTF("%s ___var_%d = %s(", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type), builtin_fn);
-		}
-		else
-		{
-			c_value_set_void(value);
-			PRINTF("%s(", builtin_fn);
-		}
+		// Vectors call the function per lane. float16 and bfloat go through double.
+		Type *flat_ret = has_return && return_type ? type_flatten(return_type) : NULL;
+		bool is_vec    = c_type_is_vec_or_arr(flat_ret);
+		const char *call = str_printf("%s(", simple_builtins_table[i].c_fn);
 		for (int j = 0; j < arg_idx; j++)
 		{
-			if (j != 0)
-			{
-				PRINT(", ");
-			}
-			c_value_rvalue(c, &c_args[j]);
-			PRINTF("___var_%d", c_args[j].var);
+			if (!is_vec) c_value_rvalue(c, &c_args[j]);
+			Type *arg_t = c_safe_type_lower(c_args[j].type);
+			if (c_type_is_vec_or_arr(arg_t)) arg_t = arg_t->array.base;
+			const char *arg = is_vec ? str_printf("$%d", j) : str_printf("___var_%d", c_args[j].var);
+			call = str_printf("%s%s%s", call, j ? ", " : "", c_half_to_f64_str(arg_t, arg));
 		}
-		PRINT(");\n");
+		call = str_printf("%s)", call);
+		if (!has_return)
+		{
+			c_value_set_void(value);
+			PRINTF("%s;\n", call);
+			return true;
+		}
+		c_emit_type_forward_decl(c, return_type);
+		int temp = c_emit_temp_var(c, value, return_type);
+		if (is_vec)
+		{
+			c_emit_lanewise(c, temp, return_type, c_half_from_f64_str(flat_ret->array.base, call), c_args, arg_idx);
+			return true;
+		}
+		PRINTF("%s ___var_%d = %s;\n", c_type_name(c, return_type), temp, c_half_from_f64_str(return_type, call));
 		return true;
 	}
 	return false;
 }
 
-static void c_emit_builtin_fshl(GenContext *c, CValue *value, Type *rtype, CValue *a, CValue *b, CValue *s)
-{
-	c_value_rvalue(c, a);
-	c_value_rvalue(c, b);
-	c_value_rvalue(c, s);
-	int temp       = c_emit_temp_var(c, value, rtype);
-	const char *tn = c_type_name(c, rtype);
-	PRINTF("%s ___var_%d;\n", tn, temp);
-	PRINTF("{\n\tsize_t _w = sizeof(%s) * 8;\n", tn);
-	PRINTF("\tsize_t _s = ___var_%d & (_w - 1);\n", s->var);
-	PRINTF("\t___var_%d = _s ? ((___var_%d << _s) | (___var_%d >> (_w - _s))) : ___var_%d;\n}\n",
-	       temp, a->var, b->var, a->var);
-}
-
-static void c_emit_builtin_fshr(GenContext *c, CValue *value, Type *rtype, CValue *a, CValue *b, CValue *s)
-{
-	c_value_rvalue(c, a);
-	c_value_rvalue(c, b);
-	c_value_rvalue(c, s);
-	int temp       = c_emit_temp_var(c, value, rtype);
-	const char *tn = c_type_name(c, rtype);
-	PRINTF("%s ___var_%d;\n", tn, temp);
-	PRINTF("{\n\tsize_t _w = sizeof(%s) * 8;\n", tn);
-	PRINTF("\tsize_t _s = ___var_%d & (_w - 1);\n", s->var);
-	PRINTF("\t___var_%d = _s ? ((___var_%d << (_w - _s)) | (___var_%d >> _s)) : ___var_%d;\n}\n",
-	       temp, a->var, b->var, b->var);
-}
-
 // Saturating add/sub/mul of the integer lvalue strings `a` and `b` of type `t` into `dst`.
 static void c_emit_sat_lane(GenContext *c, const char *dst, Type *t, BuiltinFunction op, const char *a, const char *b)
 {
-	const char *tn    = c_type_name(c, t);
-	const char *bname = (op == BUILTIN_SAT_SUB) ? "__builtin_sub_overflow" : (op == BUILTIN_SAT_MUL) ? "__builtin_mul_overflow"
-	                                                                                                 : "__builtin_add_overflow";
-	PRINTF("if (%s(%s, %s, &%s)) {\n", bname, a, b, dst);
-	int bytes = (int)type_size(t);
+	BinaryOp bop = op == BUILTIN_SAT_SUB ? BINARYOP_SUB : (op == BUILTIN_SAT_MUL ? BINARYOP_MULT : BINARYOP_ADD);
+	PRINTF("if (%s(%s, %s, &%s)) {\n", c_overflow_builtin_name(bop, t), a, b, dst);
 	if (type_is_signed(t))
 	{
-		const char *is_max_cond = op == BUILTIN_SAT_SUB ? str_printf("%s < 0", b)
-		                        : op == BUILTIN_SAT_MUL ? str_printf("(%s < 0) == (%s < 0)", a, b)
-		                                                : str_printf("%s >= 0", b);
-		if (bytes == 16)
-		{
-			PRINTF("\t%s = (%s) ? (__c3_int128)(~((__c3_uint128)1 << 127)) : (__c3_int128)((__c3_uint128)1 << 127);\n", dst, is_max_cond);
-		}
-		else
-		{
-			PRINTF("\t%s = (%s) ? (%s)(((uint64_t)1 << (sizeof(%s)*8-1)) - 1) : (%s)(~(((uint64_t)1 << (sizeof(%s)*8-1)) - 1));\n",
-			       dst, is_max_cond, tn, tn, tn, tn);
-		}
-	}
-	else if (op == BUILTIN_SAT_SUB)
-	{
-		PRINTF("\t%s = 0;\n", dst);
+		const char *zero        = c_int_value_str(c, t, 0);
+		const char *is_max_cond = op == BUILTIN_SAT_SUB ? c_binary_str(BINARYOP_LT, t, b, zero)
+		                        : op == BUILTIN_SAT_MUL ? str_printf("%s == %s", c_binary_str(BINARYOP_LT, t, a, zero), c_binary_str(BINARYOP_LT, t, b, zero))
+		                                                : c_binary_str(BINARYOP_GE, t, b, zero);
+		PRINTF("\t%s = (%s) ? %s : %s;\n", dst, is_max_cond, c_int_limit_str(c, t, true), c_int_limit_str(c, t, false));
 	}
 	else
 	{
-		PRINTF("\t%s = %s;\n", dst, bytes == 16 ? "(__c3_uint128)~(__c3_uint128)0" : str_printf("(%s)(~0ULL)", tn));
+		PRINTF("\t%s = %s;\n", dst, c_int_limit_str(c, t, op != BUILTIN_SAT_SUB));
 	}
 	PRINT("}\n");
 }
@@ -249,6 +213,11 @@ static void c_emit_sat_lane(GenContext *c, const char *dst, Type *t, BuiltinFunc
 // $$bitreverse of the integer expression `x` of type `t` into the lvalue `dst`.
 static void c_emit_bitreverse_lane(GenContext *c, const char *dst, Type *t, const char *x)
 {
+	if (c_type_is_int128(t))
+	{
+		PRINTF("%s = __c3_u128_bitreverse(%s);\n", dst, x);
+		return;
+	}
 	int bits        = (int)type_size(t) * 8;
 	const char *utn = c_type_name(c, type_int_unsigned_by_bitsize(bits));
 	PRINTF("%s = 0;\n", dst);
@@ -263,18 +232,19 @@ static const char *c_bit_builtin_lane(GenContext *c, BuiltinFunction builtin, Ty
 	int bytes       = (int)type_size(t);
 	int bits        = bytes * 8;
 	const char *utn = c_type_name(c, type_int_unsigned_by_bitsize(bits));
-	const char *lo  = str_printf("((uint64_t)%s)", x);
-	const char *hi  = str_printf("((uint64_t)((__c3_uint128)%s >> 64))", x);
+	if (c_type_is_int128(t))
+	{
+		if (builtin == BUILTIN_BSWAP) return str_printf("__c3_u128_bswap(%s)", x);
+		const char *name = builtin == BUILTIN_CTLZ ? "clz" : (builtin == BUILTIN_CTTZ ? "ctz" : "popcount");
+		return c_scalar_convert_str(c, t, type_ulong, str_printf("__c3_u128_%s(%s)", name, x));
+	}
 	switch (builtin)
 	{
 		case BUILTIN_CTLZ:
-			if (bytes == 16) return str_printf("(%s ? (%s)__builtin_clzll(%s) : (%s ? (%s)(64 + __builtin_clzll(%s)) : (%s)128))", hi, tn, hi, lo, tn, lo, tn);
 			return str_printf("((%s)%s == 0 ? (%s)%d : (%s)(__builtin_clzll((uint64_t)(%s)%s) - %d))", utn, x, tn, bits, tn, utn, x, 64 - bits);
 		case BUILTIN_CTTZ:
-			if (bytes == 16) return str_printf("(%s ? (%s)__builtin_ctzll(%s) : (%s ? (%s)(64 + __builtin_ctzll(%s)) : (%s)128))", lo, tn, lo, hi, tn, hi, tn);
 			return str_printf("((%s)%s == 0 ? (%s)%d : (%s)__builtin_ctzll((uint64_t)(%s)%s))", utn, x, tn, bits, tn, utn, x);
 		case BUILTIN_POPCOUNT:
-			if (bytes == 16) return str_printf("(%s)(__builtin_popcountll(%s) + __builtin_popcountll(%s))", tn, lo, hi);
 			return str_printf("(%s)__builtin_popcountll((uint64_t)(%s)%s)", tn, utn, x);
 		case BUILTIN_BSWAP:
 			// Sema folds the single byte case.
@@ -283,7 +253,6 @@ static const char *c_bit_builtin_lane(GenContext *c, BuiltinFunction builtin, Ty
 				case 2: return str_printf("(%s)__builtin_bswap16((uint16_t)%s)", tn, x);
 				case 4: return str_printf("(%s)__builtin_bswap32((uint32_t)%s)", tn, x);
 				case 8: return str_printf("(%s)__builtin_bswap64((uint64_t)%s)", tn, x);
-				case 16: return str_printf("(%s)(((__c3_uint128)__builtin_bswap64(%s) << 64) | (__c3_uint128)__builtin_bswap64(%s))", tn, lo, hi);
 				default: UNREACHABLE
 			}
 		default: UNREACHABLE
@@ -293,35 +262,32 @@ static const char *c_bit_builtin_lane(GenContext *c, BuiltinFunction builtin, Ty
 // Saturating left shift of the integer lvalue string `a` of type `t` by `b` into `dst`.
 static void c_emit_sat_shl_lane(GenContext *c, const char *dst, Type *t, const char *a, const char *b)
 {
-	const char *tn  = c_type_name(c, t);
-	int bytes       = (int)type_size(t);
-	int bits        = bytes * 8;
-	const char *utn = c_type_name(c, type_int_unsigned_by_bitsize(bits));
-	bool is_signed  = type_is_signed(t);
-	const char *max_val, *min_val = NULL;
-	if (is_signed)
-	{
-		max_val = bytes == 16 ? "(__c3_int128)(~((__c3_uint128)1 << 127))" : str_printf("(%s)(((uint64_t)1 << (%d - 1)) - 1)", tn, bits);
-		min_val = bytes == 16 ? "(__c3_int128)((__c3_uint128)1 << 127)" : str_printf("(%s)(~(((uint64_t)1 << (%d - 1)) - 1))", tn, bits);
-	}
-	else
-	{
-		max_val = bytes == 16 ? "(__c3_uint128)~(__c3_uint128)0" : str_printf("(%s)(~0ULL)", tn);
-	}
-	PRINTF("{\n\tsize_t _shift = (size_t)%s;\n", b);
+	const char *tn   = c_type_name(c, t);
+	int bits         = (int)type_size(t) * 8;
+	const char *utn  = c_type_name(c, type_int_unsigned_by_bitsize(bits));
+	bool is_signed   = type_is_signed(t);
+	bool is_wide     = c_type_is_int128(t);
+	const char *zero = c_int_value_str(c, t, 0);
+	const char *max_val = c_int_limit_str(c, t, true);
+	const char *min_val = c_int_limit_str(c, t, false);
+	const char *towards = is_signed ? str_printf("%s ? %s : %s", c_binary_str(BINARYOP_GT, t, a, zero), max_val, min_val) : max_val;
+	PRINTF("{\n\tuint64_t _shift = %s;\n", c_shift_amount_str(t, b));
 	PRINTF("\tif (_shift >= %d) {\n", bits);
 	if (is_signed)
 	{
-		PRINTF("\t\t%s = (%s > 0) ? %s : ((%s < 0) ? %s : 0);\n", dst, a, max_val, a, min_val);
+		PRINTF("\t\t%s = %s ? %s : (%s ? %s : %s);\n", dst, c_binary_str(BINARYOP_GT, t, a, zero), max_val,
+		       c_binary_str(BINARYOP_LT, t, a, zero), min_val, zero);
 	}
 	else
 	{
-		PRINTF("\t\t%s = (%s != 0) ? %s : 0;\n", dst, a, max_val);
+		PRINTF("\t\t%s = %s ? %s : %s;\n", dst, c_binary_str(BINARYOP_NE, t, a, zero), max_val, zero);
 	}
 	PRINTF("\t} else {\n");
-	PRINTF("\t\t%s _res = (%s)((%s)%s << _shift);\n", tn, tn, utn, a);
-	PRINTF("\t\tif (((%s)(_res >> _shift)) != %s) {\n", tn, a);
-	PRINTF("\t\t\t%s = %s;\n", dst, is_signed ? str_printf("(%s > 0) ? %s : %s", a, max_val, min_val) : max_val);
+	const char *shifted = is_wide ? c_binary_str(BINARYOP_SHL, t, a, "_shift") : str_printf("(%s)((%s)%s << _shift)", tn, utn, a);
+	const char *back    = is_wide ? c_binary_str(BINARYOP_SHR, t, "_res", "_shift") : str_printf("(%s)(_res >> _shift)", tn);
+	PRINTF("\t\t%s _res = %s;\n", tn, shifted);
+	PRINTF("\t\tif (%s) {\n", c_binary_str(BINARYOP_NE, t, back, a));
+	PRINTF("\t\t\t%s = %s;\n", dst, towards);
 	PRINTF("\t\t} else {\n");
 	PRINTF("\t\t\t%s = _res;\n", dst);
 	PRINT("\t\t}\n\t}\n}\n");
@@ -398,7 +364,7 @@ static void c_emit_builtin_reduce(GenContext *c, CValue *value, Type *rtype, Bui
 		else
 		{
 			c_value_rvalue(c, vec_arg);
-			PRINTF("%s ___var_%d = (%s)___var_%d;\n", tn, temp, tn, vec_arg->var);
+			PRINTF("%s ___var_%d = ___var_%d;\n", tn, temp, vec_arg->var);
 		}
 		return;
 	}
@@ -408,7 +374,7 @@ static void c_emit_builtin_reduce(GenContext *c, CValue *value, Type *rtype, Bui
 	if (acc_arg)
 	{
 		c_value_rvalue(c, acc_arg);
-		PRINTF("%s ___var_%d = (%s)___var_%d;\n", tn, temp, tn, acc_arg->var);
+		PRINTF("%s ___var_%d = ___var_%d;\n", tn, temp, acc_arg->var);
 		start_k = 0;
 	}
 	else
@@ -416,38 +382,31 @@ static void c_emit_builtin_reduce(GenContext *c, CValue *value, Type *rtype, Bui
 		PRINTF("%s ___var_%d = ___var_%d%sptr[0];\n", tn, temp, vec_arg->var, arrow);
 	}
 
+	const char *acc = str_printf("___var_%d", temp);
 	if (op == BUILTIN_REDUCE_MIN || op == BUILTIN_REDUCE_MAX)
 	{
-		const char *comp_op = (op == BUILTIN_REDUCE_MIN) ? "<" : ">";
+		BinaryOp comp_op = (op == BUILTIN_REDUCE_MIN) ? BINARYOP_LT : BINARYOP_GT;
 		for (int k = start_k; k < len; k++)
 		{
-			PRINTF("if (___var_%d%sptr[%d] %s ___var_%d) ___var_%d = ___var_%d%sptr[%d];\n",
-			       vec_arg->var, arrow, k, comp_op, temp, temp, vec_arg->var, arrow, k);
+			const char *lane = str_printf("___var_%d%sptr[%d]", vec_arg->var, arrow, k);
+			PRINTF("if (%s) %s = %s;\n", c_binary_str(comp_op, rtype, lane, acc), acc, lane);
 		}
 		return;
 	}
 
-	const char *bin_op = "+";
-	if (op == BUILTIN_REDUCE_MUL || op == BUILTIN_REDUCE_FMUL)
+	BinaryOp bin_op = BINARYOP_ADD;
+	switch (op)
 	{
-		bin_op = "*";
+		case BUILTIN_REDUCE_MUL:
+		case BUILTIN_REDUCE_FMUL: bin_op = BINARYOP_MULT; break;
+		case BUILTIN_REDUCE_AND: bin_op = BINARYOP_BIT_AND; break;
+		case BUILTIN_REDUCE_OR: bin_op = BINARYOP_BIT_OR; break;
+		case BUILTIN_REDUCE_XOR: bin_op = BINARYOP_BIT_XOR; break;
+		default: break;
 	}
-	else if (op == BUILTIN_REDUCE_AND)
-	{
-		bin_op = "&";
-	}
-	else if (op == BUILTIN_REDUCE_OR)
-	{
-		bin_op = "|";
-	}
-	else if (op == BUILTIN_REDUCE_XOR)
-	{
-		bin_op = "^";
-	}
-
 	for (int k = start_k; k < len; k++)
 	{
-		PRINTF("___var_%d %s= ___var_%d%sptr[%d];\n", temp, bin_op, vec_arg->var, arrow, k);
+		PRINTF("%s = %s;\n", acc, c_binary_str(bin_op, rtype, acc, str_printf("___var_%d%sptr[%d]", vec_arg->var, arrow, k)));
 	}
 }
 
@@ -591,21 +550,22 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 		{
 			int temp       = c_emit_temp_var(c, value, return_type);
 			const char *tn = c_type_name(c, return_type);
-			const char *op = (builtin == BUILTIN_MIN) ? "<" : ">";
+			BinaryOp op    = (builtin == BUILTIN_MIN) ? BINARYOP_LT : BINARYOP_GT;
 			Type *flat_ret = return_type ? type_flatten(return_type) : NULL;
 			if (c_type_is_vec_or_arr(flat_ret))
 			{
-				int len = c_type_aggregate_len(flat_ret);
+				int len      = c_type_aggregate_len(flat_ret);
+				Type *lane_t = c_safe_type_lower(flat_ret->array.base);
 				PRINTF("%s ___var_%d;\n", tn, temp);
 				for (int k = 0; k < len; k++)
 				{
-					const char *a0 = c_vec_elem_operand(c, &c_args[0], k);
-					PRINTF("___var_%d.ptr[%d] = %s;\n", temp, k, a0);
+					const char *a0  = c_vec_elem_operand(c, &c_args[0], k);
+					const char *cur = str_printf("___var_%d.ptr[%d]", temp, k);
+					PRINTF("%s = %s;\n", cur, a0);
 					for (int a = 1; a < num_args; a++)
 					{
 						const char *next = c_vec_elem_operand(c, &c_args[a], k);
-						PRINTF("if (%s %s ___var_%d.ptr[%d]) ___var_%d.ptr[%d] = %s;\n",
-						       next, op, temp, k, temp, k, next);
+						PRINTF("if (%s) %s = %s;\n", c_binary_str(op, lane_t, next, cur), cur, next);
 					}
 				}
 			}
@@ -613,11 +573,12 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			{
 				c_value_rvalue(c, &c_args[0]);
 				PRINTF("%s ___var_%d = ___var_%d;\n", tn, temp, c_args[0].var);
+				const char *cur = str_printf("___var_%d", temp);
 				for (int a = 1; a < num_args; a++)
 				{
 					c_value_rvalue(c, &c_args[a]);
-					PRINTF("if (___var_%d %s ___var_%d) ___var_%d = ___var_%d;\n",
-					       c_args[a].var, op, temp, temp, c_args[a].var);
+					const char *next = str_printf("___var_%d", c_args[a].var);
+					PRINTF("if (%s) %s = %s;\n", c_binary_str(op, return_type, next, cur), cur, next);
 				}
 			}
 			break;
@@ -658,12 +619,13 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			c_value_rvalue(c, &c_args[0]);
 			Type *vec          = type_flatten(args[0]->type);
 			int len            = c_type_is_vec_or_arr(vec) ? (int)vec->array.len : 0;
-			const char *one_tn = (type_bit_size(return_type) > 64) ? "__c3_uint128" : "uint64_t";
-			PRINTF("%s ___var_%d = 0;\n", tn, temp);
+			PRINTF("%s ___var_%d = %s;\n", tn, temp, c_type_zero_literal(return_type));
 			for (int i = 0; i < len; i++)
 			{
-				PRINTF("if (___var_%d.ptr[%d]) ___var_%d |= (%s)((%s)1 << %d);\n",
-				       c_args[0].var, i, temp, tn, one_tn, i);
+				const char *bit = c_type_is_int128(return_type)
+				                  ? str_printf("___var_%d = __c3_u128_or(___var_%d, __c3_u128_shl(__c3_u128_from_u64(1), %d))", temp, temp, i)
+				                  : str_printf("___var_%d |= (%s)((uint64_t)1 << %d)", temp, tn, i);
+				PRINTF("if (___var_%d.ptr[%d]) %s;\n", c_args[0].var, i, bit);
 			}
 			break;
 		}
@@ -675,8 +637,9 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			Type *arg0_type    = type_flatten(args[0]->type);
 			BitSize bits       = type_bit_size(arg0_type);
 			const char *u_tn   = c_type_name(c, type_int_unsigned_by_bitsize(bits));
-			const char *one_tn = (bits > 64) ? "__c3_uint128" : "uint64_t";
-			c_emit_lanewise(c, temp, return_type, str_printf("(((%s)$0 & ((%s)1 << $k)) != 0)", u_tn, one_tn), c_args, 1);
+			const char *lane   = bits > 64 ? "__c3_u128_nonzero(__c3_u128_and($0, __c3_u128_shl(__c3_u128_from_u64(1), $k)))"
+			                               : str_printf("(((%s)$0 & ((uint64_t)1 << $k)) != 0)", u_tn);
+			c_emit_lanewise(c, temp, return_type, lane, c_args, 1);
 			break;
 		}
 		case BUILTIN_SWIZZLE:
@@ -718,13 +681,13 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 		{
 			int temp       = c_emit_temp_var(c, value, return_type);
 			const char *tn = c_type_name(c, return_type);
-			const char *op = (builtin == BUILTIN_EXACT_ADD) ? "+" : (builtin == BUILTIN_EXACT_SUB) ? "-"
-			                                                    : (builtin == BUILTIN_EXACT_MUL)   ? "*"
-			                                                    : (builtin == BUILTIN_EXACT_DIV)   ? "/"
-			                                                                                       : "%";
+			BinaryOp op    = (builtin == BUILTIN_EXACT_ADD) ? BINARYOP_ADD : (builtin == BUILTIN_EXACT_SUB) ? BINARYOP_SUB
+			               : (builtin == BUILTIN_EXACT_MUL) ? BINARYOP_MULT : (builtin == BUILTIN_EXACT_DIV) ? BINARYOP_DIV
+			                                                                                                 : BINARYOP_MOD;
 			c_value_rvalue(c, &c_args[0]);
 			c_value_rvalue(c, &c_args[1]);
-			PRINTF("%s ___var_%d = ___var_%d %s ___var_%d;\n", tn, temp, c_args[0].var, op, c_args[1].var);
+			PRINTF("%s ___var_%d = %s;\n", tn, temp,
+			       c_binary_str(op, return_type, str_printf("___var_%d", c_args[0].var), str_printf("___var_%d", c_args[1].var)));
 			break;
 		}
 		case BUILTIN_EXACT_NEG:
@@ -732,7 +695,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			int temp       = c_emit_temp_var(c, value, return_type);
 			const char *tn = c_type_name(c, return_type);
 			c_value_rvalue(c, &c_args[0]);
-			PRINTF("%s ___var_%d = -___var_%d;\n", tn, temp, c_args[0].var);
+			PRINTF("%s ___var_%d = %s;\n", tn, temp, c_int_neg_str(return_type, str_printf("___var_%d", c_args[0].var)));
 			break;
 		}
 		case BUILTIN_OVERFLOW_ADD:
@@ -743,9 +706,9 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			c_value_rvalue(c, &c_args[1]);
 			Type *flag_type   = c_type_is_vec_or_arr(return_type) ? return_type : type_bool;
 			int temp          = c_emit_temp_var(c, value, flag_type);
-			const char *bname = (builtin == BUILTIN_OVERFLOW_SUB) ? "__builtin_sub_overflow" : (builtin == BUILTIN_OVERFLOW_MUL) ? "__builtin_mul_overflow"
-			                                                                                                                     : "__builtin_add_overflow";
+			BinaryOp op       = (builtin == BUILTIN_OVERFLOW_SUB) ? BINARYOP_SUB : (builtin == BUILTIN_OVERFLOW_MUL) ? BINARYOP_MULT : BINARYOP_ADD;
 			Type *op_type     = c_safe_type_lower(c_args[0].type);
+			const char *bname = c_overflow_builtin_name(op, c_type_is_vec_or_arr(op_type) ? op_type->array.base : op_type);
 			if (c_type_is_vec_or_arr(op_type))
 			{
 				// As LLVM's vector overflow intrinsics: one flag per lane, the result is a bool vector.
@@ -798,11 +761,32 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			break;
 		}
 		case BUILTIN_FSHL:
-			c_emit_builtin_fshl(c, value, return_type, &c_args[0], &c_args[1], &c_args[2]);
-			break;
 		case BUILTIN_FSHR:
-			c_emit_builtin_fshr(c, value, return_type, &c_args[0], &c_args[1], &c_args[2]);
+		{
+			bool is_left = builtin == BUILTIN_FSHL;
+			for (int i = 0; i < 3; i++) c_value_rvalue(c, &c_args[i]);
+			int a          = c_args[0].var;
+			int b          = c_args[1].var;
+			int temp       = c_emit_temp_var(c, value, return_type);
+			const char *tn = c_type_name(c, return_type);
+			if (c_type_is_int128(return_type))
+			{
+				PRINTF("%s ___var_%d = __c3_u128_%s(___var_%d, ___var_%d, ___var_%d);\n", tn, temp, is_left ? "fshl" : "fshr", a, b, c_args[2].var);
+				break;
+			}
+			PRINTF("%s ___var_%d;\n", tn, temp);
+			PRINTF("{\n\tsize_t _w = sizeof(%s) * 8;\n", tn);
+			PRINTF("\tsize_t _s = ___var_%d & (_w - 1);\n", c_args[2].var);
+			if (is_left)
+			{
+				PRINTF("\t___var_%d = _s ? ((___var_%d << _s) | (___var_%d >> (_w - _s))) : ___var_%d;\n}\n", temp, a, b, a);
+			}
+			else
+			{
+				PRINTF("\t___var_%d = _s ? ((___var_%d << (_w - _s)) | (___var_%d >> _s)) : ___var_%d;\n}\n", temp, a, b, b);
+			}
 			break;
+		}
 		case BUILTIN_ABS:
 		{
 			int temp       = c_emit_temp_var(c, value, return_type);
@@ -810,19 +794,24 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			Type *flat_ret = return_type ? type_flatten(return_type) : NULL;
 			if (c_type_is_vec_or_arr(flat_ret))
 			{
-				bool is_float = type_is_float(type_flatten(flat_ret->array.base));
-				c_emit_lanewise(c, temp, return_type, is_float ? "__builtin_fabs($0)" : "($0 < 0 ? -$0 : $0)", c_args, 1);
+				Type *lane_t     = c_safe_type_lower(flat_ret->array.base);
+				const char *lane = type_is_float(lane_t) ? c_half_from_f64_str(lane_t, str_printf("__builtin_fabs(%s)", c_half_to_f64_str(lane_t, "$0")))
+				                   : str_printf("(%s ? %s : $0)", c_binary_str(BINARYOP_LT, lane_t, "$0", c_int_value_str(c, lane_t, 0)), c_int_neg_str(lane_t, "$0"));
+				c_emit_lanewise(c, temp, return_type, lane, c_args, 1);
 			}
 			else
 			{
 				c_value_rvalue(c, &c_args[0]);
 				if (type_is_float(return_type))
 				{
-					PRINTF("%s ___var_%d = (__builtin_fabs(___var_%d));\n", tn, temp, c_args[0].var);
+					const char *x = c_half_to_f64_str(return_type, str_printf("___var_%d", c_args[0].var));
+					PRINTF("%s ___var_%d = %s;\n", tn, temp, c_half_from_f64_str(return_type, str_printf("__builtin_fabs(%s)", x)));
 				}
 				else
 				{
-					PRINTF("%s ___var_%d = (___var_%d < 0 ? -___var_%d : ___var_%d);\n", tn, temp, c_args[0].var, c_args[0].var, c_args[0].var);
+					const char *x = str_printf("___var_%d", c_args[0].var);
+					PRINTF("%s ___var_%d = (%s ? %s : %s);\n", tn, temp, c_binary_str(BINARYOP_LT, return_type, x, c_int_value_str(c, return_type, 0)),
+					       c_int_neg_str(return_type, x), x);
 				}
 			}
 			break;
@@ -832,6 +821,12 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			// The probability is a hint only.
 			c_value_rvalue(c, &c_args[0]);
 			c_value_rvalue(c, &c_args[1]);
+			if (c_type_is_int128(return_type))
+			{
+				// __builtin_expect takes a long.
+				PRINTF("%s ___var_%d = ___var_%d;\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type), c_args[0].var);
+				break;
+			}
 			PRINTF("%s ___var_%d = __builtin_expect(___var_%d, ___var_%d);\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type), c_args[0].var, c_args[1].var);
 			break;
 		case BUILTIN_PREFETCH:
@@ -881,7 +876,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			const char *tn = c_type_name(c, return_type);
 			if (type_is_float(return_type))
 			{
-				const char *u_int = (type_size(return_type) == 8) ? "uint64_t" : "uint32_t";
+				const char *u_int = c_float_bits_type(c, return_type);
 				PRINTF("%s ___var_%d;\n", tn, temp);
 				PRINT("{\n");
 				PRINTF("\t%s _raw = __atomic_load_n((%s*)___var_%d, __ATOMIC_SEQ_CST);\n", u_int, u_int, c_args[0].var);
@@ -894,7 +889,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			}
 			else
 			{
-				PRINTF("%s ___var_%d = __atomic_load_n((%s*)___var_%d, __ATOMIC_SEQ_CST);\n", tn, temp, tn, c_args[0].var);
+				PRINTF("%s ___var_%d = (%s)__atomic_load_n((%s*)___var_%d, __ATOMIC_SEQ_CST);\n", tn, temp, tn, tn, c_args[0].var);
 			}
 			break;
 		}
@@ -904,7 +899,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			Type *vt = c_expr_type(args[1]);
 			if (type_is_float(vt))
 			{
-				const char *u_int = (type_size(vt) == 8) ? "uint64_t" : "uint32_t";
+				const char *u_int = c_float_bits_type(c, vt);
 				PRINT("{\n");
 				PRINTF("\t%s _raw;\n", u_int);
 				PRINTF("\t__c3_memcpy(&_raw, &___var_%d, sizeof(%s));\n", c_args[1].var, u_int);
@@ -941,8 +936,8 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			c_value_rvalue(c, &c_args[1]);
 			if (type_is_float(return_type) && (builtin == BUILTIN_ATOMIC_FETCH_ADD || builtin == BUILTIN_ATOMIC_FETCH_SUB))
 			{
-				const char *op = (builtin == BUILTIN_ATOMIC_FETCH_SUB) ? "-" : "+";
-				c_emit_atomic_float_cas(c, temp, tn, return_type, c_args[0].var, c_args[1].var, op, false);
+				BinaryOp op = builtin == BUILTIN_ATOMIC_FETCH_SUB ? BINARYOP_SUB : BINARYOP_ADD;
+				c_emit_atomic_float_cas(c, temp, tn, return_type, c_args[0].var, c_args[1].var, op);
 			}
 			else if (return_type->type_kind == TYPE_BOOL)
 			{
@@ -951,7 +946,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			}
 			else
 			{
-				PRINTF("%s ___var_%d = %s((%s*)___var_%d, ___var_%d, __ATOMIC_SEQ_CST);\n", tn, temp, aname, tn, c_args[0].var, c_args[1].var);
+				PRINTF("%s ___var_%d = (%s)%s((%s*)___var_%d, ___var_%d, __ATOMIC_SEQ_CST);\n", tn, temp, tn, aname, tn, c_args[0].var, c_args[1].var);
 			}
 			break;
 		}
@@ -964,7 +959,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			c_value_rvalue(c, &c_args[1]);
 			if (type_is_float(return_type))
 			{
-				c_emit_atomic_float_cas(c, temp, tn, return_type, c_args[0].var, c_args[1].var, op, true);
+				c_emit_atomic_float_cas(c, temp, tn, return_type, c_args[0].var, c_args[1].var, builtin == BUILTIN_ATOMIC_FETCH_MIN ? BINARYOP_LT : BINARYOP_GT);
 			}
 			else
 			{
@@ -991,7 +986,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			const char *tn = c_type_name(c, return_type);
 			if (type_is_float(return_type))
 			{
-				const char *u_int = (type_size(return_type) == 8) ? "uint64_t" : "uint32_t";
+				const char *u_int = c_float_bits_type(c, return_type);
 				PRINTF("%s ___var_%d;\n", tn, temp);
 				PRINT("{\n");
 				PRINTF("\t%s _exp, _des;\n", u_int);

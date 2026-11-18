@@ -561,6 +561,7 @@ add_executable(c3c
         src/compiler/c_codegen_type.c
         src/compiler/c_codegen_lvalue.c
         src/compiler/c_codegen_function.c
+        src/compiler/c_codegen_int128.c
         src/compiler/c_codegen_module.c
         src/compiler/decltable.c
         src/compiler/methodtable.c

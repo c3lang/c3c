@@ -1,0 +1,30 @@
+// #target: linux-x64
+module flex;
+
+struct Page
+{
+	Page* prev;
+	long size;
+	char[*] data;
+}
+
+Page g @export("flex_g") = { .size = 7 };
+
+fn char get(Page* p, int i) @export("flex_get") => p.data[i];
+fn char[] part(Page* p) @export("flex_part") => p.data[2:4];
+
+/* #expect: flex.c
+
+struct flex__Page__ {
+	flex__Page* prev;
+	int64_t size;
+	uint8_t data[];
+};
+__C3_ASSERT_LAYOUT(sizeof(flex__Page) == 16, flex__Page_size);
+__C3_ASSERT_LAYOUT(__C3_ALIGNOF(flex__Page) == 8, flex__Page_align);
+__C3_ASSERT_LAYOUT(offsetof(flex__Page, prev) == 0, flex__Page_prev);
+__C3_ASSERT_LAYOUT(offsetof(flex__Page, size) == 8, flex__Page_size);
+__C3_ASSERT_LAYOUT(offsetof(flex__Page, data) == 16, flex__Page_data);
+flex__Page flex_g = { NULL, 7LL };
+uint8_t* ___var_4 = (uint8_t*)&(((uint8_t*)___var_5)[___var_8]);
+uint8_t* ___var_10 = (uint8_t*)___var_11;

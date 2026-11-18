@@ -9,8 +9,8 @@ const char *c_align_attr_str(Decl *decl, Type *type)
 
 static Type *c_local_static_type(CLocalVar lv)
 {
-	Type *vt = lv.type ? c_safe_type_lower(lv.type) : type_int;
-	return vt->type_kind == TYPE_VOID ? type_int : vt;
+	ASSERT(lv.type && c_safe_type_lower(lv.type)->type_kind != TYPE_VOID);
+	return c_safe_type_lower(lv.type);
 }
 
 int c_create_label(GenContext *c)
@@ -23,6 +23,24 @@ int c_create_variable(GenContext *c)
 	return ++c->id_gen;
 }
 
+// Names variable `id` `name_`, after its C3 name: the `_` keeps it from hiding a C function or macro of the same
+// name. Unique in the function, or in the file for a static, which C declares at file scope. See
+// GenContext.var_names.
+static void c_name_variable(GenContext *c, VariableId id, const char *name, bool is_static)
+{
+	if (!name || !char_is_lower_(name[0])) return;
+	const char *base   = str_printf("%s_", name);
+	const char *unique = c_intern(base);
+	for (int n = 2; c_ptr_to_id(htable_get(&c->used_var_names, (void *)unique)) == c->name_scope ||
+	                (is_static && htable_get(&c->used_static_names, (void *)unique)); n++)
+	{
+		unique = c_intern(str_printf("%s_%d", base, n));
+	}
+	htable_set(&c->used_var_names, (void *)unique, c_id_to_ptr(c->name_scope));
+	if (is_static) htable_set(&c->used_static_names, (void *)unique, (void *)1);
+	htable_set(&c->var_names, c_id_to_ptr(id), (void *)unique);
+}
+
 void c_register_function_local(GenContext *c, VariableId id, Type *type, bool is_static, Decl *decl)
 {
 	if (!id)
@@ -30,35 +48,15 @@ void c_register_function_local(GenContext *c, VariableId id, Type *type, bool is
 		return;
 	}
 	Type *lowered = c_safe_type_lower(type);
-	if (lowered->type_kind == TYPE_VOID)
-	{
-		lowered = type_int;
-	}
+	ASSERT(lowered->type_kind != TYPE_VOID);
 	CLocalVar lv = {.id = id, .type = lowered, .is_static = is_static, .is_alloca = false, .alloca_count = 0, .decl = decl};
 	vec_add(c->function_locals, lv);
-}
-
-VariableId c_emit_alloca(GenContext *c, Type *type)
-{
-	Type *lowered = c_safe_type_lower(type);
-	if (lowered->type_kind == TYPE_VOID)
-	{
-		lowered = type_int;
-	}
-	c_emit_type_forward_decl(c, lowered);
-	VariableId id = c_create_variable(c);
-	CLocalVar lv = {.id = id, .type = lowered, .is_static = false, .is_alloca = true, .alloca_count = 0, .decl = NULL};
-	vec_add(c->function_locals, lv);
-	return id;
 }
 
 VariableId c_emit_alloca_array(GenContext *c, Type *base_type, ArrayIndex count)
 {
 	Type *lowered = c_safe_type_lower(base_type);
-	if (lowered->type_kind == TYPE_VOID)
-	{
-		lowered = type_int;
-	}
+	ASSERT(lowered->type_kind != TYPE_VOID);
 	c_emit_type_forward_decl(c, lowered);
 	VariableId id = c_create_variable(c);
 	CLocalVar lv = {.id = id, .type = lowered, .is_static = false, .is_alloca = true, .alloca_count = count, .decl = NULL};
@@ -69,10 +67,7 @@ VariableId c_emit_alloca_array(GenContext *c, Type *base_type, ArrayIndex count)
 VariableId c_emit_temp_var(GenContext *c, CValue *value, Type *type)
 {
 	Type *lowered = c_safe_type_lower(type);
-	if (lowered->type_kind == TYPE_VOID)
-	{
-		lowered = type_int;
-	}
+	ASSERT(lowered->type_kind != TYPE_VOID);
 	c_emit_type_forward_decl(c, lowered);
 	VariableId id = c_create_variable(c);
 	c_register_function_local(c, id, lowered, false, NULL);
@@ -101,11 +96,9 @@ VariableId c_get_or_create_decl_var(GenContext *c, Decl *decl)
 	VariableId var = c_create_variable(c);
 	htable_set(&c->local_vars, decl, c_id_to_ptr(var));
 	Type *var_type = c_decl_type(decl);
-	if (!var_type || var_type->type_kind == TYPE_VOID)
-	{
-		var_type = type_int;
-	}
+	ASSERT(var_type && var_type->type_kind != TYPE_VOID);
 	bool is_static = (decl->decl_kind == DECL_VAR && (decl->var.is_static || decl->var.kind == VARDECL_CONST));
+	c_name_variable(c, var, decl->name, is_static);
 	c_register_function_local(c, var, var_type, is_static, decl);
 	if (decl->decl_kind == DECL_VAR && IS_OPTIONAL(decl))
 	{
@@ -133,6 +126,7 @@ VariableId c_get_decl_fault_var(GenContext *c, Decl *decl)
 	VariableId fvar = c_create_variable(c);
 	htable_set(&c->local_fault_vars, decl, c_id_to_ptr(fvar));
 	bool is_static = (decl->var.is_static || decl->var.kind == VARDECL_CONST);
+	if (decl->name) c_name_variable(c, fvar, str_printf("%s_fault", decl->name), is_static);
 	c_register_function_local(c, fvar, type_fault, is_static, decl);
 	return fvar;
 }
@@ -216,13 +210,9 @@ VariableId c_ensure_cvalue_var(GenContext *c, CValue *val, Type *fallback_type)
 		return val->var;
 	}
 
-	Type *t = (val->type->type_kind != TYPE_VOID)
-	              ? c_safe_type_lower(val->type)
-	              : (fallback_type->type_kind != TYPE_VOID ? c_safe_type_lower(fallback_type) : type_int);
-	if (t->type_kind == TYPE_VOID)
-	{
-		t = type_int;
-	}
+	// A value without a type, of an expression that never returns (`FAULT~!!` as a case), takes the caller's type.
+	Type *t = c_safe_type_lower(val->type->type_kind != TYPE_VOID ? val->type : fallback_type);
+	ASSERT(t->type_kind != TYPE_VOID);
 
 	val->type = t;
 	val->kind = CV_VALUE;
@@ -276,12 +266,11 @@ void c_value_addr(GenContext *c, CValue *val)
 	}
 
 	Type *t = c_safe_type_lower(val->type);
-	if (t->type_kind == TYPE_VOID)
-	{
-		t = type_int;
-	}
+	ASSERT(t->type_kind != TYPE_VOID);
 
-	VariableId temp = c_emit_alloca(c, t);
+	c_emit_type_forward_decl(c, t);
+	VariableId temp = c_create_variable(c);
+	vec_add(c->function_locals, ((CLocalVar){ .id = temp, .type = t, .is_alloca = true }));
 	c_emit_assign_var(c, temp, t, val);
 	val->var  = temp;
 	val->kind = CV_ADDRESS;
@@ -323,6 +312,13 @@ void c_emit_lanewise(GenContext *c, int result_var, Type *result_type, const cha
 	}
 }
 
+// The lvalue address `addr` as a memcpy argument. Through an integer when it is less aligned than its type, as
+// compilers may assume a `T*` is aligned for T.
+const char *c_addr_bytes(const CValue *addr)
+{
+	return str_printf(addr->align ? "(void*)(uintptr_t)___var_%d" : "(void*)___var_%d", addr->var);
+}
+
 const char *c_arrow(const CValue *val)
 {
 	return (val && val->kind == CV_ADDRESS) ? "->" : ".";
@@ -345,7 +341,7 @@ void c_emit_var_zero_init(GenContext *c, VariableId var_id, Type *type)
 }
 
 // Store `src` into the C lvalue `dst`. Sema makes every conversion explicit, so the source has the destination's
-// type (compared by C name: types such as float16 / bfloat or two Type* for one C type are the same in C).
+// type (compared by C name: two Type* for one C type are the same in C).
 // Only the C form differs: a zero value (var 0), or an aggregate held at an address.
 void c_emit_store(GenContext *c, const char *dst, Type *type, CValue *src)
 {
@@ -386,17 +382,20 @@ static bool c_type_is_zero_sized(Type *type)
 	return c_type_is_resolved(type) && type_size(type) == 0;
 }
 
-// The return convention for a function returning `rtype`, as LLVM's c_abi_func_create.
-CRet c_type_ret(Type *rtype)
+// The return convention, as LLVM's c_abi_func_create.
+CRet c_signature_ret(Signature *sig)
 {
+	Type *rtype = typeget(sig->rtype);
 	Type *value = c_safe_type_lower(type_no_optional(rtype));
 	if (!value || value->type_kind == TYPE_VOID || c_type_is_zero_sized(value)) value = NULL;
 	return (CRet){ .optional = type_is_optional(rtype), .value = value };
 }
 
-CRet c_signature_ret(Signature *sig)
+// Windows passes a parameter aligned to 128 or more as a pointer to a copy, which the callee copies.
+// cl rejects it by value (C2719).
+bool c_param_by_ref(Type *type)
 {
-	return c_type_ret(typeget(sig->rtype));
+	return compiler.platform.os == OS_TYPE_WIN32 && c_type_is_resolved(type) && type_abi_alignment(type) >= 128;
 }
 
 // c == NULL: declares nothing.
@@ -415,6 +414,7 @@ const char *c_signature_str(GenContext *c, Signature *sig, const char *declarato
 		if (c_type_is_zero_sized(ptype)) continue;
 		if (c) c_emit_type_forward_decl(c, ptype);
 		const char *tname = (opts.is_main && (arg_index == 1 || arg_index == 2)) ? "char**" : c_type_name(c, ptype);
+		if (c_param_by_ref(ptype)) tname = str_printf("%s*", tname);
 		params            = str_printf("%s%s%s%s%s", params, count ? ", " : "", tname, opts.names ? " " : "", opts.names ? opts.names[i] : "");
 		count++;
 		arg_index++;
@@ -446,6 +446,30 @@ bool c_emit_function_decl(GenContext *c, Decl *fn, bool is_current_module)
 	return emitted;
 }
 
+// The attributes of function `fn` (c_runtime.h). gcc drops a constructor's priority unless every declaration has it;
+// __C3_INLINE is only on the definition, as an always-inline call to a body in another file fails to compile.
+static const char *c_function_attrs(Decl *fn, bool is_definition)
+{
+	const char *attrs = "";
+	if (fn->func_decl.attr_init || fn->func_decl.attr_finalizer)
+	{
+		// GNU reserves priorities up to 100, and 101 runs the global initializers.
+		uint32_t prio = fn->func_decl.priority ? fn->func_decl.priority : MAX_PRIORITY;
+		int base_prio = fn->func_decl.attr_init ? 102 : 101;
+		int c_prio    = base_prio + (int)((prio - 1) * (65535 - base_prio) / (MAX_PRIORITY - 1));
+		attrs         = str_printf("__C3_%s(%d) ", fn->func_decl.attr_init ? "INIT" : "FINI", c_prio);
+	}
+	if (fn->func_decl.attr_inline && is_definition) attrs = str_printf("%s__C3_INLINE ", attrs);
+	if (fn->func_decl.attr_noinline) attrs = str_printf("%s__C3_NOINLINE ", attrs);
+	if (fn->func_decl.signature.attrs.noreturn) attrs = str_printf("%s__C3_NORETURN ", attrs);
+	if (fn->func_decl.attr_naked) attrs = str_printf("%s__C3_NAKED ", attrs);
+	if (fn->attrs_resolved && fn->attrs_resolved->section)
+	{
+		attrs = str_printf("%s__C3_SECTION_FN(\"%s\") ", attrs, fn->attrs_resolved->section);
+	}
+	return attrs;
+}
+
 static bool c_emit_function_decl_here(GenContext *c, Decl *fn)
 {
 	if (!fn || fn->replacement || fn->decl_kind != DECL_FUNC || fn->is_template || fn->func_decl.attr_interface_method)
@@ -458,55 +482,66 @@ static bool c_emit_function_decl_here(GenContext *c, Decl *fn)
 	{
 		return false;
 	}
-	const char *signature = c_signature_str(c, &fn->func_decl.signature, fn_name, (CSigOpts){ .is_main = c_fn_is_main(fn) });
+	CSigOpts opts         = { .is_main = c_fn_is_main(fn) };
+	const char *signature = c_signature_str(c, &fn->func_decl.signature, fn_name, opts);
 	// The prototype is kept: calls through an extern declaration with another signature cast to their own.
 	htable_set(&c->decl_names, (void *)fn_name, (void *)signature);
-	PRINTF("%s%s %s", c_decl_export_attrs(fn, false), c_fn_is_internal(fn) ? "static" : "extern", signature);
+	// `(name)` keeps a function-like macro of the runtime header (MSVC's `_setjmp`) from expanding.
+	if (fn->is_extern) signature = c_signature_str(c, &fn->func_decl.signature, str_printf("(%s)", fn_name), opts);
+	PRINTF("%s%s%s %s", c_function_attrs(fn, false), c_decl_export_attrs(fn, false), c_fn_is_internal(fn) ? "static" : "extern", signature);
 	if (c_decl_needs_asm_label(fn))
 	{
 		PRINTF(" __asm__(\"%s\")", c_get_decl_asm_name(fn));
+	}
+	const char *ext_symbol = c_decl_ext_symbol(fn);
+	if (ext_symbol)
+	{
+		PRINTF(" %s", ext_symbol);
+		// A local of the same name would hide it where it is the plain symbol (cl.exe), see c_write_named_line.
+		htable_set(&c->decl_names, (void *)c_intern(c_sanitize_name(c_get_decl_asm_name(fn))), (void *)1);
 	}
 	PRINT(";\n");
 	return !fn->is_extern;
 }
 
+static void c_emit_local_var_declaration(GenContext *c, CLocalVar *lv)
+{
+	htable_set(&c->declared_vars, c_id_to_ptr(lv->id), (void *)1);
+	ASSERT(lv->type);
+	Type *vt = c_safe_type_lower(lv->type);
+	ASSERT(vt->type_kind != TYPE_VOID);
+	c_emit_type_forward_decl(c, vt);
+	const char *tname     = c_type_name(c, vt);
+	const char *align_str = c_align_attr_str(lv->decl, vt);
+	if (lv->alloca_count > 0)
+	{
+		PRINTF("\t%s%s ___var_%d[%lld] = {0};\n", align_str, tname, lv->id, (long long)lv->alloca_count);
+		return;
+	}
+	PRINTF("\t%s%s ___var_%d = %s;\n", align_str, tname, lv->id, c_type_zero_literal(vt));
+}
+
+// The locals not declared in place (c_declare_local_here), at the top of the function.
 void c_emit_local_var_declarations(GenContext *c)
 {
-	FOREACH(CLocalVar, lv, c->function_locals)
+	FOREACH_REF(CLocalVar, lv, c->function_locals)
 	{
-		if (!lv.decl && !lv.is_alloca)
-		{
-			continue;
-		}
-		if (htable_get(&c->declared_vars, c_id_to_ptr(lv.id)))
-		{
-			continue;
-		}
-		htable_set(&c->declared_vars, c_id_to_ptr(lv.id), (void *)1);
-		Type *vt = lv.type ? c_safe_type_lower(lv.type) : type_int;
-		if (vt->type_kind == TYPE_VOID)
-		{
-			vt = type_int;
-		}
-		c_emit_type_forward_decl(c, vt);
-		const char *tname     = c_type_name(c, vt);
-		const char *align_str = c_align_attr_str(lv.decl, vt);
+		if (!lv->decl && !lv->is_alloca) continue;
+		if (htable_get(&c->declared_vars, c_id_to_ptr(lv->id))) continue;
+		c_emit_local_var_declaration(c, lv);
+	}
+}
 
-		if (lv.alloca_count > 0)
+// Declares local `id` where C3 does, so debuggers show it in its scope only, as LLVM's lexical blocks.
+void c_declare_local_here(GenContext *c, VariableId id)
+{
+	if (!id || htable_get(&c->declared_vars, c_id_to_ptr(id))) return;
+	FOREACH_REF(CLocalVar, lv, c->function_locals)
+	{
+		if (lv->id == id && !lv->is_static)
 		{
-			PRINTF("\t%s%s ___var_%d[%lld] = {0};\n", align_str, tname, lv.id, (long long)lv.alloca_count);
-		}
-		else if (c_type_is_aggregate(vt))
-		{
-			PRINTF("\t%s%s ___var_%d = {0};\n", align_str, tname, lv.id);
-		}
-		else if (type_is_pointer(vt) || vt->type_kind == TYPE_ANYFAULT || vt->type_kind == TYPE_TYPEID)
-		{
-			PRINTF("\t%s%s ___var_%d = NULL;\n", align_str, tname, lv.id);
-		}
-		else
-		{
-			PRINTF("\t%s%s ___var_%d = 0;\n", align_str, tname, lv.id);
+			c_emit_local_var_declaration(c, lv);
+			return;
 		}
 	}
 }
@@ -517,6 +552,7 @@ void c_emit_function(GenContext *c, Decl *fn)
 	{
 		return;
 	}
+	c->name_scope++;
 
 	Signature *sig      = &fn->func_decl.signature;
 	const char *fn_name = c_get_decl_name(fn);
@@ -536,6 +572,30 @@ void c_emit_function(GenContext *c, Decl *fn)
 	memset(c->local_fault_vars.entries, 0, (c->local_fault_vars.mask + 1) * sizeof(HTEntry *));
 	memset(c->declared_vars.entries, 0, (c->declared_vars.mask + 1) * sizeof(HTEntry *));
 
+	if (fn->func_decl.attr_naked)
+	{
+		// A naked function may only hold asm statements: no parameter copies, locals, blocks or return. Sema allows
+		// nothing else that emits code.
+		const char **names = NULL;
+		for (int i = 0; i < (int)vec_size(sig->params); i++) vec_add(names, str_printf("___var_%d", c_create_variable(c)));
+		const char *no_params[1] = { NULL };
+		const char *signature    = c_signature_str(c, sig, fn_name, (CSigOpts){ .names = names ? names : no_params });
+		bool is_weak             = fn->is_weak || decl_should_weaken(fn);
+		c_emit_line(c, fn->loc);
+		PRINTF("%s%s%s%s {\n", c_function_attrs(fn, true), c_decl_export_attrs(fn, true),
+		       c_fn_is_internal(fn) ? "static " : (is_weak ? "__c3_weak_fn " : ""), signature);
+		Ast *body = astptrzero(fn->func_decl.body);
+		for (AstId current = body ? body->compound_stmt.first_stmt : 0; current;)
+		{
+			Ast *stmt = ast_next(&current);
+			if (stmt->ast_kind == AST_ASM_BLOCK_STMT) c_emit_stmt(c, stmt);
+		}
+		PRINT("}\n");
+		if (compiler.build.debug_info != DEBUG_INFO_NONE) PRINT(C_LINE_RESET);
+		PRINT("\n");
+		return;
+	}
+
 	ByteBuffer body_buf;
 	byte_buffer_init(&body_buf, 0);
 	ByteBuffer *prev_buf = c->buffer;
@@ -550,12 +610,18 @@ void c_emit_function(GenContext *c, Decl *fn)
 		{
 			d = c_decl_unwrap(d);
 			htable_set(&c->local_vars, d, c_id_to_ptr(vid));
+			c_name_variable(c, vid, d->name, false);
 			if (IS_OPTIONAL(d))
 			{
 				c_get_decl_fault_var(c, d);
 			}
 		}
-		if (c_type_is_resolved(ptype) && type_size(ptype) == 0)
+		if (c_param_by_ref(ptype))
+		{
+			c_register_function_local(c, vid, ptype, false, d);
+			PRINTF("__c3_memcpy(&___var_%d, ___ref_%d, sizeof(%s));\n", vid, vid, c_type_name(c, ptype));
+		}
+		else if (c_type_is_resolved(ptype) && type_size(ptype) == 0)
 		{
 			c_register_function_local(c, vid, ptype, false, d);
 		}
@@ -569,7 +635,7 @@ void c_emit_function(GenContext *c, Decl *fn)
 		}
 	}
 
-	if (strcmp(fn_name, "main") == 0 || strcmp(fn_name, "WinMain") == 0 || strcmp(fn_name, "wWinMain") == 0)
+	if (fn == compiler.context.main)
 	{
 		PRINT("\t__c3_init_runtime();\n");
 	}
@@ -642,14 +708,8 @@ void c_emit_function(GenContext *c, Decl *fn)
 		}
 	}
 
-	if (fn->func_decl.attr_init || fn->func_decl.attr_finalizer)
-	{
-		uint32_t prio    = fn->func_decl.priority ? fn->func_decl.priority : MAX_PRIORITY;
-		int base_prio    = fn->func_decl.attr_init ? 102 : 101;
-		int c_prio       = base_prio + (int)((prio - 1) * (65535 - base_prio) / (MAX_PRIORITY - 1));
-		const char *attr = fn->func_decl.attr_init ? "constructor" : "destructor";
-		PRINTF("#if defined(__GNUC__) || defined(__clang__)\n__attribute__((%s(%d)))\n#endif\n", attr, c_prio);
-	}
+	bool is_structor = fn->func_decl.attr_init || fn->func_decl.attr_finalizer;
+	uint32_t prio    = fn->func_decl.priority ? fn->func_decl.priority : MAX_PRIORITY;
 
 	bool is_weak       = fn->is_weak || decl_should_weaken(fn);
 	const char **names = NULL;
@@ -657,12 +717,13 @@ void c_emit_function(GenContext *c, Decl *fn)
 	{
 		Decl *rd       = d ? c_decl_unwrap(d) : NULL;
 		VariableId vid = c_ptr_to_id(htable_get(&c->local_vars, rd));
-		vec_add(names, str_printf("___var_%d", vid));
+		vec_add(names, str_printf(c_param_by_ref(c_decl_type(d)) ? "___ref_%d" : "___var_%d", vid));
 	}
 	// A NULL list means unnamed parameters, but ___ret_out still needs its name without parameters.
 	const char *no_params[1] = { NULL };
 	const char *signature    = c_signature_str(c, sig, fn_name, (CSigOpts){ .names = names ? names : no_params, .is_main = c_fn_is_main(fn) });
-	PRINTF("%s%s%s {\n", c_decl_export_attrs(fn, true), c_fn_is_internal(fn) ? "static " : (is_weak ? "__c3_weak_fn " : ""), signature);
+	c_emit_line(c, fn->loc);
+	PRINTF("%s%s%s%s {\n", c_function_attrs(fn, true), c_decl_export_attrs(fn, true), c_fn_is_internal(fn) ? "static " : (is_weak ? "__c3_weak_fn " : ""), signature);
 
 	c_emit_local_var_declarations(c);
 
@@ -671,5 +732,14 @@ void c_emit_function(GenContext *c, Decl *fn)
 		c_write_bytes(c, body_buf.bytes.ptr, body_buf.write_idx);
 	}
 	byte_buffer_free(&body_buf);
-	PRINT("}\n\n");
+	PRINT("}\n");
+	if (compiler.build.debug_info != DEBUG_INFO_NONE) PRINT(C_LINE_RESET);
+	if (is_structor)
+	{
+		// LLVM's sections for Windows, see __C3_INIT_ENTRY.
+		const char *section = prio == MAX_PRIORITY ? "XCU" : prio == 400 ? "XCL"
+		                    : str_printf("XC%c%05u", prio < 200 ? 'A' : prio < 400 ? 'C' : 'T', prio);
+		PRINTF("__C3_%s_ENTRY(%s, \".CRT$%s\")\n", fn->func_decl.attr_init ? "INIT" : "FINI", fn_name, section);
+	}
+	PRINT("\n");
 }
