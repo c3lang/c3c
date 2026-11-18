@@ -10088,6 +10088,11 @@ RETRY:;
 	}
 
 	if (!sema_analyse_expr(context, inner)) return false;
+	if (expr_is_deref(inner) && inner->unary_expr.expr->expr_kind == EXPR_SUBSCRIPT_ADDR && sema_expr_is_temporary(inner->unary_expr.expr))
+	{
+		if (failed_ref) return *failed_ref = true, false;
+		RETURN_SEMA_ERROR(exprptr(inner->unary_expr.expr->subscript_expr.expr), "To take the address of a temporary value, use '&&' instead of '&'.");
+	}
 
 	RESOLVED:
 
