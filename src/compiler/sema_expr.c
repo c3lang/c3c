@@ -4354,9 +4354,10 @@ static bool sema_expr_find_subscript_type_or_overload_for_subscript(SemaContext 
 		lookup->overload_method = NULL;
 		return true;
 	}
-	if (type_is_substruct(subscripted->type))
+	Type *no_optional = type_no_optional(subscripted->type);
+	if (type_is_substruct(no_optional))
 	{
-		Expr *embedded_struct = expr_access_inline_member(subscripted, subscripted->type->decl);
+		Expr *embedded_struct = expr_access_inline_member(subscripted, no_optional->decl);
 		lookup->subscripted = embedded_struct;
 		return sema_expr_find_subscript_type_or_overload_for_subscript(context, lookup);
 	}
