@@ -679,7 +679,7 @@ static void llvm_emit_mask_to_int(GenContext *c, BEValue *be_value, Expr *expr)
 	val = LLVMBuildBitCast(c->builder, val, LLVMIntTypeInContext(c->context, bits), "");
 	int target_bits = (int)next_highest_power_of_2(bits);
 	if (target_bits < 8) target_bits = 8;
-	if (target_bits < bits) val = LLVMBuildZExt(c->builder, val, llvm_get_type(c, expr->type), "");
+	if (target_bits > bits) val = LLVMBuildZExt(c->builder, val, llvm_get_type(c, expr->type), "");
 	llvm_value_set(be_value, val, expr->type);
 }
 
