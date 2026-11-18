@@ -3,7 +3,7 @@
 #include <math.h>
 #include <errno.h>
 
-UNUSED static int precision_bits(TypeKind kind)
+static int precision_bits(TypeKind kind)
 {
 	switch (kind)
 	{
@@ -22,7 +22,7 @@ UNUSED static int precision_bits(TypeKind kind)
 	}
 }
 
-UNUSED static int max_exponent(TypeKind kind)
+static int max_exponent(TypeKind kind)
 {
 	switch (kind)
 	{
@@ -41,7 +41,7 @@ UNUSED static int max_exponent(TypeKind kind)
 	}
 }
 
-UNUSED static int min_exponent(TypeKind kind)
+static int min_exponent(TypeKind kind)
 {
 	switch (kind)
 	{
@@ -60,6 +60,20 @@ UNUSED static int min_exponent(TypeKind kind)
 	}
 }
 
+
+Real float_round_to_type(Real d, TypeKind kind)
+{
+	if (d == 0 || !isfinite(d)) return d;
+	int exp;
+	frexp(d, &exp);
+	int bits = precision_bits(kind);
+	int quantum = exp - bits;
+	int min_quantum = min_exponent(kind) - bits + 1;
+	if (quantum < min_quantum) quantum = min_quantum;
+	Real rounded = ldexp(nearbyint(ldexp(d, -quantum)), quantum);
+	if (fabs(rounded) >= ldexp(1.0, max_exponent(kind) + 1)) return copysign(INFINITY, d);
+	return rounded;
+}
 
 Float float_add(Float op1, Float op2)
 {

@@ -648,7 +648,8 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool 
 		{
 			add_plain_arg("-rdynamic");
 		}
-		if (strip_unused() && compiler.build.type == TARGET_TYPE_EXECUTABLE) add_plain_arg("-Wl,--gc-sections");
+		// tcc's linker has no --gc-sections.
+		if (strip_unused() && compiler.build.type == TARGET_TYPE_EXECUTABLE && !cc_is_tcc(find_c_compiler())) add_plain_arg("-Wl,--gc-sections");
 		add_plain_arg("-pthread");
 		return;
 	}
@@ -816,7 +817,8 @@ static void linker_setup_bsd(const char ***args_ref, Linker linker_type, bool is
 		linking_add_link(&compiler.linking, "pthread");
 		linking_add_link(&compiler.linking, "execinfo");
 		if (compiler.build.debug_info == DEBUG_INFO_FULL) add_plain_arg("-rdynamic");
-		if (strip_unused() && compiler.build.type == TARGET_TYPE_EXECUTABLE) add_plain_arg("-Wl,--gc-sections");
+		// tcc's linker has no --gc-sections.
+		if (strip_unused() && compiler.build.type == TARGET_TYPE_EXECUTABLE && !cc_is_tcc(find_c_compiler())) add_plain_arg("-Wl,--gc-sections");
 		return;
 	}
 	if (compiler.build.bsd_sysroot)
@@ -1432,7 +1434,7 @@ const char *cc_compiler(const char *cc, const char *file, const char *out_name, 
 		           ? str_printf("%s/%s%s", dir, filename, get_object_extension())
 		           : str_printf("%s%s", filename, get_object_extension());
 	}
-	bool is_cl_exe = str_ends_with(cc, "cl.exe");
+	bool is_cl_exe = cc_is_msvc(cc);
 
 	const char **parts = NULL;
 	const char ***args_ref = &parts;

@@ -1871,6 +1871,7 @@ static inline void llvm_emit_initialize_reference_designated_bitstruct(GenContex
 		return;
 	}
 	LLVMTypeRef type = llvm_get_type(c, underlying_type);
+	bool is_byteswap = bitstruct_requires_byteswap(bitstruct);
 	LLVMValueRef data;
 	if (!splat)
 	{
@@ -1882,6 +1883,7 @@ static inline void llvm_emit_initialize_reference_designated_bitstruct(GenContex
 		llvm_emit_expr(c, &splat_val, splat);
 		llvm_value_rvalue(c, &splat_val);
 		data = splat_val.value;
+		if (is_byteswap) data = llvm_emit_bswap(c, data);
 	}
 	TypeSize bits = type_bit_size(underlying_type);
 
@@ -1896,10 +1898,7 @@ static inline void llvm_emit_initialize_reference_designated_bitstruct(GenContex
 		llvm_emit_expr(c, &val, designator->designator_expr.value);
 		data = llvm_emit_bitstruct_value_update(c, data, bits, type, member, llvm_load_value_store(c, &val));
 	}
-	if (bitstruct_requires_byteswap(bitstruct))
-	{
-		data = llvm_emit_bswap(c, data);
-	}
+	if (is_byteswap) data = llvm_emit_bswap(c, data);
 	llvm_store_raw(c, ref, data);
 }
 

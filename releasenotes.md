@@ -8,6 +8,7 @@
 - Unused compiler runtime functions are now removed by the linker, and executables linked with `cc` are dead stripped.
 - Compiler-rt may not contain thread locals, interfaces, `@dynamic` methods, `@init`/`@finalizer` functions or extern declarations. Its safety checks trap instead of calling the panic function.
 - Added `--compiler-rt-module` and the `compiler-rt-module` project option to override the compiler runtime module (default: `compiler_rt`).
+- The C backend supports MSVC (`cl.exe`) and tcc, supports `int128` on compilers without a 128-bit integer, gives `float16` and `bfloat` their 16-bit layout and rounding, cross compiles with any C compiler for the target, and maps debug info to C3 source lines and names.
 
 ### Fixes
 - `nextcase x` in a `@jump` switch read `x` after the defers of the case had run.
@@ -78,6 +79,15 @@
 - Corrected the FreeBSD `addrinfo` layout and `AF_MAX`/`PF_MAX` socket constants.
 - `@volatile_load` and `mem::load` could lose union bytes stored in padding.
 - Constant integer-to-float conversions could round twice and produce a different result from runtime conversion.
+- Backtraces showed "source unavailable" when `addr2line` printed a discriminator.
+- `float16` and `bfloat` conversions failed to link without libgcc, such as on Windows.
+- Programs using the stdlib failed to compile for `elf-aarch64`.
+- Printing crashed with a libc other than those of Linux, Darwin, the BSDs and Windows, such as newlib.
+- Constant casts to `float16` and `bfloat` were only rounded to `float` precision, so `(float)(float16)70000.0` stayed 70000 instead of infinity.
+- A runtime splat into a `@bigendian` bitstruct initializer, like `{ ...base, .f = true }`, produced wrong field values.
+- Taking `&` of a vector component of a temporary, like `&rv().y` or `&(c ? a : b).y`, was accepted and pointed into a copy.
+- Writing through a slice of a temporary array, like `ra()[0:2][0] = 1` or `&ra()[..][1]`, was accepted and changed a copy.
+- Calling a local optional function pointer, like `Fn? f = &twice; f(3);`, was rejected.
 - Refusing to link with the C compiler always claimed it was not found.
 - A failure of the built-in linker printed `(null)` as the error.
 - The RISC-V target replaced the given `--riscv-abi` with the one derived from the CPU.

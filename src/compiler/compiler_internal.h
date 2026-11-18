@@ -2395,6 +2395,7 @@ static inline SourceLoc extend_loc_with_token(SourceLoc *loc, SourceLoc *after)
 AttributeType attribute_by_name(const char *name);
 
 void type_setup(PlatformTarget *target);
+Real float_round_to_type(Real d, TypeKind kind);
 Float float_add(Float op1, Float op2);
 Float float_sub(Float op1, Float op2);
 Float float_mul(Float op1, Float op2);
@@ -4799,6 +4800,8 @@ INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d)
 	{
 		case TYPE_F16:
 		case TYPE_BF16:
+			real = float_round_to_type(d, kind);
+			break;
 		case TYPE_F32:
 			real = (float)d;
 			break;
@@ -5073,6 +5076,8 @@ INLINE ResolvedAttrData *decl_create_resolved_attributes(Decl *decl)
 }
 
 const char *find_c_compiler(void);
+bool cc_is_msvc(const char *cc);
+bool cc_is_tcc(const char *cc);
 
 void print_build_env(void);
 void print_asm(PlatformTarget *target);

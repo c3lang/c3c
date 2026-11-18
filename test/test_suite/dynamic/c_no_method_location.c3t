@@ -1,0 +1,16 @@
+// #target: linux-x64
+module nm;
+interface Shape
+{
+	fn int area() @optional;
+}
+struct Square (Shape) { int side; }
+fn int call(Shape sh) @export("nm_call")
+{
+	return sh.area();
+}
+
+/* #expect: nm.c
+
+if (__builtin_expect(!!(!__c3_dyn_resolve_nm__area((c3typeid_t)___var_2.typeid)), 0)) {
+(__c3_slice_uint8_t){(uint8_t*)"call", 4}, 9,

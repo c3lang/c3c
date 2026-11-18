@@ -713,7 +713,7 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 			}
 			{
 				Expr *parent = exprptr(expr->expr_kind == EXPR_SLICE ? expr->slice_expr.expr : expr->subscript_expr.expr);
-				if (parent->type && type_is_arraylike(type_flatten(parent->type)) && !sema_binary_is_expr_lvalue(context, top_expr, parent, failed_ref)) return false;
+				if (parent->type && (type_is_arraylike(type_flatten(parent->type)) || parent->expr_kind == EXPR_SLICE) && !sema_binary_is_expr_lvalue(context, top_expr, parent, failed_ref)) return false;
 			}
 			goto CHECK_OPTIONAL;
 		case EXPR_SUBSCRIPT_ASSIGN:
@@ -3770,7 +3770,7 @@ bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl
 			ASSERT_SPAN(expr, struct_var == NULL);
 			Expr *var = exprptr(expr->call_expr.function);
 			ASSERT_SPAN(expr, var);
-			return sema_expr_analyse_var_call(context, expr, var, decl->type->canonical,
+			return sema_expr_analyse_var_call(context, expr, var, type_no_optional(decl->type)->canonical,
 											  optional || IS_OPTIONAL(decl), no_match_ref);
 
 		}
@@ -10031,7 +10031,12 @@ static bool sema_expr_is_temporary(Expr *expr)
 		case EXPR_SUBSCRIPT_ADDR:
 		{
 			Expr *parent = exprptr(expr->subscript_expr.expr);
-			return type_is_arraylike(type_flatten(parent->type)) && sema_expr_is_temporary(parent);
+			return (type_is_arraylike(type_flatten(parent->type)) || parent->expr_kind == EXPR_SLICE) && sema_expr_is_temporary(parent);
+		}
+		case EXPR_SLICE:
+		{
+			Expr *parent = exprptr(expr->slice_expr.expr);
+			return (type_is_arraylike(type_flatten(parent->type)) || parent->expr_kind == EXPR_SLICE) && sema_expr_is_temporary(parent);
 		}
 		default:
 			return true;
@@ -10088,6 +10093,11 @@ RETRY:;
 	}
 
 	if (!sema_analyse_expr(context, inner)) return false;
+	if (expr_is_deref(inner) && inner->unary_expr.expr->expr_kind == EXPR_SUBSCRIPT_ADDR && sema_expr_is_temporary(inner->unary_expr.expr))
+	{
+		if (failed_ref) return *failed_ref = true, false;
+		RETURN_SEMA_ERROR(exprptr(inner->unary_expr.expr->subscript_expr.expr), "To take the address of a temporary value, use '&&' instead of '&'.");
+	}
 
 	RESOLVED:
 

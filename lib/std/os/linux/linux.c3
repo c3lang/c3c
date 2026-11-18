@@ -241,6 +241,8 @@ fn Backtrace? backtrace_line_parse(Allocator allocator, String string, String ob
 	String second = s.next() ?? NOT_FOUND~!;
 	int line = 0;
 	String source = "";
+	// addr2line may follow the line with " (discriminator N)".
+	if (try paren = second.index_of(" (")) second = second[:paren];
 	if (!second.contains("?") && second.contains(":"))
 	{
 		sz index = second.rindex_of_char(':')!;

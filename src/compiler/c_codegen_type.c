@@ -236,8 +236,8 @@ const char *c_type_name(GenContext *c, Type *type)
 		case TYPE_U32: return "uint32_t";
 		case TYPE_U64: return "uint64_t";
 		case TYPE_U128: return "__c3_uint128";
-		case TYPE_F16:
-		case TYPE_BF16:
+		case TYPE_F16: return "__c3_f16";
+		case TYPE_BF16: return "__c3_bf16";
 		case TYPE_F32: return "float";
 		case TYPE_F64:
 		case TYPE_F128: return "double";
@@ -274,7 +274,9 @@ const char *c_type_name(GenContext *c, Type *type)
 			{
 				len = 1;
 			}
-			return c_intern(str_printf("__c3_array_%s_%llu", c_sanitize_name(base), len));
+			// @simd vectors are over-aligned, so they can't share the array's definition.
+			const char *kind = type->type_kind == TYPE_SIMD_VECTOR ? "simd" : "array";
+			return c_intern(str_printf("__c3_%s_%s_%llu", kind, c_sanitize_name(base), len));
 		}
 		case TYPE_FUNC_PTR:
 		{
@@ -289,7 +291,7 @@ const char *c_type_name(GenContext *c, Type *type)
 const char *c_type_zero_literal(Type *t)
 {
 	t = c_safe_type_lower(t);
-	if (c_type_is_aggregate(t))
+	if (c_type_is_aggregate(t) || c_type_is_int128(t) || c_type_is_half(t))
 	{
 		return "{0}";
 	}
@@ -328,6 +330,108 @@ static bool c_emit_struct_or_union_forward_decl(GenContext *c, Type *type, const
 	return true;
 }
 
+// Whether a C3 name can't be a C identifier as is: a C keyword, a lowercase macro of the C headers, or a type
+// name like size_t. Such names get a trailing `_`; a macro missing here fails to compile.
+bool c_name_is_reserved(const char *name)
+{
+	static const char *reserved[] = {
+		"auto", "break", "case", "char", "const", "continue", "default", "do", "double", "else", "enum", "extern",
+		"float", "for", "goto", "if", "inline", "int", "long", "register", "restrict", "return", "short", "signed",
+		"sizeof", "static", "struct", "switch", "typedef", "union", "unsigned", "void", "volatile", "while", "bool",
+		"true", "false", "alignas", "alignof", "constexpr", "nullptr", "static_assert", "thread_local", "typeof",
+		"typeof_unqual", "asm", "errno", "stdin", "stdout", "stderr", "assert", "offsetof", "setjmp", "longjmp",
+		"va_start", "va_end", "va_arg", "va_copy", "alloca", "linux", "unix", "i386", "min", "max", "main" };
+	size_t len = strlen(name);
+	if (len > 2 && name[len - 2] == '_' && name[len - 1] == 't') return true;
+	for (size_t i = 0; i < ELEMENTLEN(reserved); i++)
+	{
+		if (strcmp(name, reserved[i]) == 0) return true;
+	}
+	return false;
+}
+
+// The C name of member `index` of `d`: its C3 name (c_name_is_reserved adds `_`), or __m<index> when anonymous.
+const char *c_member_name(Decl *d, int index)
+{
+	const char *name = d->strukt.members[index]->name;
+	if (!name) return c_intern(str_printf("__m%d", index));
+	return c_name_is_reserved(name) ? c_intern(str_printf("%s_", name)) : name;
+}
+
+// The alignment C gives the C form of `type`. It is above C3's for a bitstruct with a lower `@align`, or an array of one.
+AlignSize c_type_alignment(Type *type)
+{
+	type = c_safe_type_lower(type);
+	switch (type->type_kind)
+	{
+		case TYPE_BITSTRUCT:
+			return c_type_alignment(type->decl->strukt.container_type->type);
+		case TYPE_ARRAY:
+		case TYPE_VECTOR:
+		case TYPE_FLEXIBLE_ARRAY:
+			return c_type_alignment(type->array.base);
+		default:
+			return type_abi_alignment(type);
+	}
+}
+
+// The alignment C gives `d` from its members alone.
+static AlignSize c_struct_natural_alignment(Decl *d)
+{
+	AlignSize natural = 1;
+	FOREACH(Decl *, m, d->strukt.members)
+	{
+		if (m && c_type_alignment(m->type) > natural) natural = c_type_alignment(m->type);
+	}
+	return natural;
+}
+
+// Whether C must lay out `d` under `#pragma pack(1)`: it has unaligned members, or is less aligned than they are.
+bool c_struct_is_packed(Decl *d)
+{
+	return d->strukt.is_packed || d->alignment < c_struct_natural_alignment(d);
+}
+
+// Whether the C form of `type` has an alignment attribute, at any depth. On Windows `#pragma pack` can't lower that
+// alignment, so a packed struct keeps such members as bytes.
+static bool c_type_has_align_attr(Type *type)
+{
+	type = c_safe_type_lower(type);
+	switch (type->type_kind)
+	{
+		case TYPE_I128:
+		case TYPE_U128:
+		case TYPE_SIMD_VECTOR:
+			return true;
+		case TYPE_BITSTRUCT:
+			return c_type_has_align_attr(type->decl->strukt.container_type->type);
+		case TYPE_ARRAY:
+		case TYPE_VECTOR:
+		case TYPE_FLEXIBLE_ARRAY:
+			return c_type_has_align_attr(type->array.base);
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		{
+			Decl *d = type->decl;
+			if (c_struct_is_packed(d)) return d->alignment > 1;
+			if (d->alignment > c_struct_natural_alignment(d)) return true;
+			FOREACH(Decl *, m, d->strukt.members)
+			{
+				if (m && (m->alignment > c_type_alignment(m->type) || c_type_has_align_attr(m->type))) return true;
+			}
+			return false;
+		}
+		default:
+			return false;
+	}
+}
+
+// Whether `member` of `d` is kept as bytes in C, see c_type_has_align_attr.
+bool c_member_is_bytes(Decl *d, Decl *member)
+{
+	return c_struct_is_packed(d) && c_type_has_align_attr(member->type);
+}
+
 static bool c_emit_struct_or_union_decl(GenContext *c, Type *type, const char *keyword)
 {
 	const char *name = c_type_name(c, type);
@@ -360,13 +464,15 @@ static bool c_emit_struct_or_union_decl(GenContext *c, Type *type, const char *k
 		}
 	}
 
-	AlignSize align = d ? d->alignment : 0;
-	bool packed     = d ? d->strukt.is_packed : false;
-	if (packed)
-	{
-		PRINT("#pragma pack(push, 1)\n");
-	}
-	if (align)
+	// C gives a struct its members' alignment and offsets; attributes can only raise them. A packed struct is
+	// laid out byte by byte, with C3's gaps as explicit padding, because compilers disagree on aligned members
+	// under `#pragma pack`.
+	AlignSize align   = d->alignment;
+	AlignSize natural = c_struct_natural_alignment(d);
+	bool packed       = c_struct_is_packed(d);
+	bool checked = packed || align > natural;
+	if (packed) PRINT("#pragma pack(push, 1)\n");
+	if (packed ? align > 1 : align > natural)
 	{
 		PRINTF("%s __c3_aligned(%u) %s__ {\n", keyword, align, name);
 	}
@@ -391,20 +497,36 @@ static bool c_emit_struct_or_union_decl(GenContext *c, Type *type, const char *k
 			{
 				mt = type_char;
 			}
-			if (m->alignment && m->alignment > type_abi_alignment(mt))
+			// C99 flexible array member: sema keeps it last and never alone.
+			bool flexible     = mt->type_kind == TYPE_FLEXIBLE_ARRAY;
+			const char *mtn   = c_type_name(c, flexible ? mt->array.base : mt);
+			const char *dims  = flexible ? "[]" : "";
+			checked |= flexible;
+			if (packed && m->padding) PRINTF("\tuint8_t __pad%d[%u];\n", (int)i, m->padding);
+			if (packed && c_type_has_align_attr(mt))
 			{
-				PRINTF("\t__c3_aligned(%u) %s m%d;\n", m->alignment, c_type_name(c, mt), (int)i);
+				PRINTF("\tuint8_t %s[%s];\n", c_member_name(d, i), flexible ? "" : str_printf("%llu", (unsigned long long)type_size(mt)));
+			}
+			else if (!packed && m->alignment > c_type_alignment(mt))
+			{
+				PRINTF("\t__c3_aligned(%u) %s %s%s;\n", m->alignment, mtn, c_member_name(d, i), dims);
 			}
 			else
 			{
-				PRINTF("\t%s m%d;\n", c_type_name(c, mt), (int)i);
+				PRINTF("\t%s %s%s;\n", mtn, c_member_name(d, i), dims);
 			}
 		}
 	}
 	PRINT("};\n");
-	if (packed)
+	if (packed) PRINT("#pragma pack(pop)\n");
+	if (!checked) return true;
+	PRINTF("__C3_ASSERT_LAYOUT(sizeof(%s) == %llu, %s_size);\n", name, (unsigned long long)type_size(type), name);
+	PRINTF("__C3_ASSERT_LAYOUT(__C3_ALIGNOF(%s) == %u, %s_align);\n", name, align, name);
+	FOREACH_IDX(i, Decl *, m, d->strukt.members)
 	{
-		PRINT("#pragma pack(pop)\n");
+		if (!m) continue;
+		const char *member = c_member_name(d, i);
+		PRINTF("__C3_ASSERT_LAYOUT(offsetof(%s, %s) == %u, %s_%s);\n", name, member, m->offset, name, member);
 	}
 	return true;
 }
@@ -499,8 +621,10 @@ bool c_emit_type_decl(GenContext *c, Type *type)
 			return c_emit_struct_or_union_decl(c, type, "struct");
 		case TYPE_UNION:
 			return c_emit_struct_or_union_decl(c, type, "union");
-		case TYPE_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
+			// Emitted as `T m[]`: only the element type needs a definition.
+			return c_emit_type_decl(c, type->array.base);
+		case TYPE_ARRAY:
 		case TYPE_SIMD_VECTOR:
 		case TYPE_VECTOR:
 		{
@@ -513,20 +637,15 @@ bool c_emit_type_decl(GenContext *c, Type *type)
 
 			c_emit_type_decl(c, type->array.base);
 			const char *base_tname = c_type_name(c, type->array.base);
-			unsigned long long len = type->type_kind == TYPE_FLEXIBLE_ARRAY ? 0 : (unsigned long long)type->array.len;
-			if (len == 0 && type->type_kind != TYPE_FLEXIBLE_ARRAY)
-			{
-				len = 1;
-			}
-			AlignSize vec_align = type_abi_alignment(type);
-			const char *ext     = (len == 0) ? "__extension__ " : "";
+			unsigned long long len = type->array.len ? (unsigned long long)type->array.len : 1;
+			AlignSize vec_align    = type_abi_alignment(type);
 			if (vec_align > type_abi_alignment(type->array.base))
 			{
-				PRINTF("%sstruct __c3_aligned(%u) %s__ { %s ptr[%llu]; };\n", ext, vec_align, arr_name, base_tname, len);
+				PRINTF("struct __c3_aligned(%u) %s__ { %s ptr[%llu]; };\n", vec_align, arr_name, base_tname, len);
 			}
 			else
 			{
-				PRINTF("%sstruct %s__ { %s ptr[%llu]; };\n", ext, arr_name, base_tname, len);
+				PRINTF("struct %s__ { %s ptr[%llu]; };\n", arr_name, base_tname, len);
 			}
 			return true;
 		}

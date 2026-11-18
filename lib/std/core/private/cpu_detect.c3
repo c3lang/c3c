@@ -468,7 +468,6 @@ fn void aarch64_initialize_cpu_features()
 			add_feature_if_windows(SME_I16I64, PF_ARM_SME_I16I64_INSTRUCTIONS_AVAILABLE);
 		$default:
 			// Unsupported OS — features remain zero.
-			break;
 	$endswitch
 }
 

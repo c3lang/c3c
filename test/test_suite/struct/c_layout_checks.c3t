@@ -1,0 +1,66 @@
+// #target: linux-x64
+module lay;
+
+struct Natural @packed { char a; char b; ushort c; uint d; }
+struct Unaligned @packed { char a; uint b @align(2); char c; }
+struct Wide @align(16) { int a; }
+struct Plain { char a; int b; }
+struct Vecs { int[<4>] v; int[<4>] @simd s; int[4] a; }
+
+Natural g_natural @export("g_natural") = { 1, 2, 3, 4 };
+Unaligned g_unaligned @export("g_unaligned") = { 5, 6, 7 };
+Wide g_wide @export("g_wide");
+Plain g_plain @export("g_plain") = { 8, 9 };
+Vecs g_vecs @export("g_vecs");
+
+/* #expect: lay.c
+
+#pragma pack(push, 1)
+struct lay__Natural__ {
+	uint8_t a;
+	uint8_t b;
+	uint16_t c;
+	uint32_t d;
+};
+#pragma pack(pop)
+__C3_ASSERT_LAYOUT(sizeof(lay__Natural) == 8, lay__Natural_size);
+__C3_ASSERT_LAYOUT(__C3_ALIGNOF(lay__Natural) == 1, lay__Natural_align);
+__C3_ASSERT_LAYOUT(offsetof(lay__Natural, a) == 0, lay__Natural_a);
+__C3_ASSERT_LAYOUT(offsetof(lay__Natural, b) == 1, lay__Natural_b);
+__C3_ASSERT_LAYOUT(offsetof(lay__Natural, c) == 2, lay__Natural_c);
+__C3_ASSERT_LAYOUT(offsetof(lay__Natural, d) == 4, lay__Natural_d);
+#pragma pack(push, 1)
+struct __c3_aligned(2) lay__Unaligned__ {
+	uint8_t a;
+	uint8_t __pad1[1];
+	uint32_t b;
+	uint8_t c;
+};
+#pragma pack(pop)
+__C3_ASSERT_LAYOUT(sizeof(lay__Unaligned) == 8, lay__Unaligned_size);
+__C3_ASSERT_LAYOUT(__C3_ALIGNOF(lay__Unaligned) == 2, lay__Unaligned_align);
+__C3_ASSERT_LAYOUT(offsetof(lay__Unaligned, a) == 0, lay__Unaligned_a);
+__C3_ASSERT_LAYOUT(offsetof(lay__Unaligned, b) == 2, lay__Unaligned_b);
+__C3_ASSERT_LAYOUT(offsetof(lay__Unaligned, c) == 6, lay__Unaligned_c);
+struct __c3_aligned(16) lay__Wide__ {
+	int32_t a;
+};
+__C3_ASSERT_LAYOUT(sizeof(lay__Wide) == 16, lay__Wide_size);
+__C3_ASSERT_LAYOUT(__C3_ALIGNOF(lay__Wide) == 16, lay__Wide_align);
+__C3_ASSERT_LAYOUT(offsetof(lay__Wide, a) == 0, lay__Wide_a);
+struct lay__Plain__ {
+	uint8_t a;
+	int32_t b;
+};
+struct __c3_array_int32_t_4__ { int32_t ptr[4]; };
+struct __c3_aligned(16) __c3_simd_int32_t_4__ { int32_t ptr[4]; };
+struct lay__Vecs__ {
+	__c3_array_int32_t_4 v;
+	__c3_simd_int32_t_4 s;
+	__c3_array_int32_t_4 a;
+};
+lay__Natural g_natural = { .a = 1ULL, .b = 2ULL, .c = 3ULL, .d = 4ULL };
+lay__Unaligned g_unaligned = { .a = 5ULL, .b = 6ULL, .c = 7ULL };
+lay__Wide g_wide = {0};
+lay__Plain g_plain = { 8ULL, 9LL };
+lay__Vecs g_vecs = {0};

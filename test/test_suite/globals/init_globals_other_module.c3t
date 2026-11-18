@@ -1,0 +1,19 @@
+// #target: windows-x64
+module init_other;
+int[2] arr = { 1, 2 };
+const String STRING_NULL = (String)null[0..0];
+const String FOO = STRING_NULL;
+
+module init_main;
+import init_other;
+fn int main(String[] args) => init_other::FOO.len == 1 ? 0 : 1;
+
+/* #expect: init_other.c
+
+void __c3_init_globals_init_other(void) {
+
+/* #expect: init_main.c
+
+static void __c3_init_runtime(void) {
+	extern void __c3_init_globals_init_other(void);
+	__c3_init_globals_init_other();
