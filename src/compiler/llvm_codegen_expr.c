@@ -230,7 +230,7 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *ref_expr, Expr 
 		}
 	}
 
-	if (optional)
+	if (optional && c->current_block)
 	{
 		llvm_store_to_ptr_raw(c, optional, llvm_get_zero(c, type_fault), type_fault);
 	}
@@ -1620,6 +1620,7 @@ INLINE void llvm_emit_initialize_reference_bitstruct_array(GenContext *c, BEValu
 		Decl *member = bitstruct->strukt.members[i];
 		BEValue val;
 		llvm_emit_expr(c, &val, init);
+		RETURN_ON_EMPTY_BLOCK(ref);
 		llvm_emit_update_bitstruct_array(c, array_ptr, alignment, is_byteswap, member,
 		                                 llvm_load_value_store(c, &val));
 	}
@@ -1643,6 +1644,7 @@ static inline void llvm_emit_initialize_reference_bitstruct(GenContext *c, BEVal
 		Decl *member = bitstruct->strukt.members[i];
 		BEValue val;
 		llvm_emit_expr(c, &val, init);
+		RETURN_ON_EMPTY_BLOCK(ref);
 		data = llvm_emit_bitstruct_value_update(c, data, bits, type, member, llvm_load_value_store(c, &val));
 	}
 	if (bitstruct_requires_byteswap(bitstruct))
@@ -1841,6 +1843,7 @@ static inline void llvm_emit_initialize_reference_designated_bitstruct_array(Gen
 	{
 		BEValue splat_val;
 		llvm_emit_expr(c, &splat_val, splat);
+		RETURN_ON_EMPTY_BLOCK(ref);
 		llvm_store(c, ref, &splat_val);
 	}
 	else
@@ -1858,6 +1861,7 @@ static inline void llvm_emit_initialize_reference_designated_bitstruct_array(Gen
 		Decl *member = bitstruct->strukt.members[element->index];
 		BEValue val;
 		llvm_emit_expr(c, &val, designator->designator_expr.value);
+		RETURN_ON_EMPTY_BLOCK(ref);
 		llvm_emit_update_bitstruct_array(c, array_ptr, alignment, is_byteswap, member, llvm_load_value_store(c, &val));
 	}
 }
@@ -1881,6 +1885,7 @@ static inline void llvm_emit_initialize_reference_designated_bitstruct(GenContex
 	{
 		BEValue splat_val;
 		llvm_emit_expr(c, &splat_val, splat);
+		RETURN_ON_EMPTY_BLOCK(ref);
 		llvm_value_rvalue(c, &splat_val);
 		data = splat_val.value;
 		if (is_byteswap) data = llvm_emit_bswap(c, data);
@@ -1896,6 +1901,7 @@ static inline void llvm_emit_initialize_reference_designated_bitstruct(GenContex
 		Decl *member = bitstruct->strukt.members[element->index];
 		BEValue val;
 		llvm_emit_expr(c, &val, designator->designator_expr.value);
+		RETURN_ON_EMPTY_BLOCK(ref);
 		data = llvm_emit_bitstruct_value_update(c, data, bits, type, member, llvm_load_value_store(c, &val));
 	}
 	if (is_byteswap) data = llvm_emit_bswap(c, data);
