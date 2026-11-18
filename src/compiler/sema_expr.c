@@ -3770,7 +3770,7 @@ bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl
 			ASSERT_SPAN(expr, struct_var == NULL);
 			Expr *var = exprptr(expr->call_expr.function);
 			ASSERT_SPAN(expr, var);
-			return sema_expr_analyse_var_call(context, expr, var, decl->type->canonical,
+			return sema_expr_analyse_var_call(context, expr, var, type_no_optional(decl->type)->canonical,
 											  optional || IS_OPTIONAL(decl), no_match_ref);
 
 		}
