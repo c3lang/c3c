@@ -1,16 +1,16 @@
 <*
  float16 and bfloat conversions, which LLVM calls on targets without instructions for them.
  Only bitcasts touch the 16-bit types here: any arithmetic on them would call these functions.
+ Not on wasm, where LLVM crashes on them (bfloat, and float16 before LLVM 21).
 *>
-module compiler_rt;
+module compiler_rt @feat(!WASM);
 
 fn float __extendhfsf2(float16 a) @cname("__extendhfsf2") @weak => (float)half_to_double(bitcast(a, ushort), 10);
 fn double __extendhfdf2(float16 a) @cname("__extendhfdf2") @weak => half_to_double(bitcast(a, ushort), 10);
 fn float16 __truncsfhf2(float a) @cname("__truncsfhf2") @weak => bitcast(double_to_half(a, 10), float16);
 fn float16 __truncdfhf2(double a) @cname("__truncdfhf2") @weak => bitcast(double_to_half(a, 10), float16);
-// LLVM can't compile a bfloat value for wasm.
-fn bfloat __truncsfbf2(float a) @cname("__truncsfbf2") @weak @feat(!WASM) => bitcast(double_to_half(a, 7), bfloat);
-fn bfloat __truncdfbf2(double a) @cname("__truncdfbf2") @weak @feat(!WASM) => bitcast(double_to_half(a, 7), bfloat);
+fn bfloat __truncsfbf2(float a) @cname("__truncsfbf2") @weak => bitcast(double_to_half(a, 7), bfloat);
+fn bfloat __truncdfbf2(double a) @cname("__truncdfbf2") @weak => bitcast(double_to_half(a, 7), bfloat);
 
 <*
  The 16-bit float with a sign bit, `$mant` mantissa bits and the exponent in between, as a double.
