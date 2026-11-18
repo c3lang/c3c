@@ -2369,6 +2369,12 @@ bool cc_is_tcc(const char *cc)
 	return cc_is_named(cc, "tcc");
 }
 
+// Whether `cc` takes clang's --target.
+bool cc_is_clang(const char *cc)
+{
+	return strstr(cc, "clang") != NULL || strstr(cc, "zig") != NULL;
+}
+
 static bool is_posix(OsType os)
 {
 	switch (os)

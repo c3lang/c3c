@@ -816,6 +816,7 @@ static void linker_setup_bsd(const char ***args_ref, Linker linker_type, bool is
 		if (compiler.linking.link_math) linking_add_link(&compiler.linking, "m");
 		linking_add_link(&compiler.linking, "pthread");
 		linking_add_link(&compiler.linking, "execinfo");
+		if (compiler.build.bsd_sysroot) add_concat_quote_arg("--sysroot=", compiler.build.bsd_sysroot);
 		if (compiler.build.debug_info == DEBUG_INFO_FULL) add_plain_arg("-rdynamic");
 		// tcc's linker has no --gc-sections.
 		if (strip_unused() && compiler.build.type == TARGET_TYPE_EXECUTABLE && !cc_is_tcc(find_c_compiler())) add_plain_arg("-Wl,--gc-sections");
@@ -1008,6 +1009,12 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, int
 			break;
 		case LINKER_CC:
 			if (is_dylib) add_plain_arg("-shared");
+			// clang links for the host unless told the target. Darwin passes its own -target.
+			if (compiler.build.arch_os_target != default_target && !os_is_apple(compiler.platform.os)
+				&& cc_is_clang(find_c_compiler()))
+			{
+				add_plain_arg(str_printf("--target=%s", compiler.platform.target_triple));
+			}
 			break;
 		default:
 			UNREACHABLE

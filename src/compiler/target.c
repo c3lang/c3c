@@ -253,6 +253,11 @@ bool os_is_apple(OsType os_type)
 		   os_type == OS_TYPE_MACOSX || os_type == OS_TYPE_IOS;
 }
 
+bool os_is_bsd(OsType os_type)
+{
+	return os_type == OS_TYPE_FREEBSD || os_type == OS_TYPE_OPENBSD || os_type == OS_TYPE_NETBSD;
+}
+
 bool arch_is_wasm(ArchType type)
 {
 	return type == ARCH_TYPE_WASM32 || type == ARCH_TYPE_WASM64;
