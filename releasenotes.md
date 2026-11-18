@@ -8,6 +8,7 @@
 - Unused compiler runtime functions are now removed by the linker, and executables linked with `cc` are dead stripped.
 - Compiler-rt may not contain thread locals, interfaces, `@dynamic` methods, `@init`/`@finalizer` functions or extern declarations. Its safety checks trap instead of calling the panic function.
 - Added `--compiler-rt-module` and the `compiler-rt-module` project option to override the compiler runtime module (default: `compiler_rt`).
+- The C backend supports MSVC (`cl.exe`) and tcc, supports `int128` on compilers without a 128-bit integer, gives `float16` and `bfloat` their 16-bit layout and rounding, cross compiles with any C compiler for the target, and maps debug info to C3 source lines and names.
 
 ### Fixes
 - `nextcase x` in a `@jump` switch read `x` after the defers of the case had run.
@@ -78,6 +79,8 @@
 - Corrected the FreeBSD `addrinfo` layout and `AF_MAX`/`PF_MAX` socket constants.
 - `@volatile_load` and `mem::load` could lose union bytes stored in padding.
 - Constant integer-to-float conversions could round twice and produce a different result from runtime conversion.
+- Backtraces showed "source unavailable" when `addr2line` printed a discriminator.
+- `float16` and `bfloat` conversions failed to link without libgcc, such as on Windows.
 - Programs using the stdlib failed to compile for `elf-aarch64`.
 - Printing crashed with a libc other than those of Linux, Darwin, the BSDs and Windows, such as newlib.
 

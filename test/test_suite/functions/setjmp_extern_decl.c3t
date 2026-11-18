@@ -1,0 +1,11 @@
+// #target: windows-x64
+module setjmp_decl;
+import libc;
+
+libc::JmpBuf buf;
+fn int test() @export("setjmp_test") => libc::setjmp(&buf);
+
+/* #expect: setjmp_decl.c
+
+extern int32_t (__C3_EXT(_setjmp))(
+__C3_EXT(_setjmp)(

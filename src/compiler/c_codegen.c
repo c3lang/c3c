@@ -9,35 +9,65 @@ Design:
 - Sema makes every conversion an expression, so stores (c_emit_store) only copy and assert equal C types. Conversions
   live in their expressions: EXPR_RVALUE (pointer casts), EXPR_ADDR_CONVERSION, and per cast kind
   c_emit_scalar_convert / c_emit_reinterpret / c_emit_vec_recast.
-- Under --test the generated C is checked with the C compiler's -fsyntax-only, as LLVM verifies its IR.
+- int128 / uint128 values only go through the runtime's __c3_u128_* / __c3_i128_* helpers (c_codegen_int128.c), so
+  compilers without a 128-bit integer use a struct. -D__C3_NO_INT128 forces the struct on any compiler.
+- The generated C is the same whatever C compiler builds it: compiler differences go in c_runtime.h, never in codegen
+  keyed on --cc.
+- Supported compilers are gcc, clang and their derivatives (console SDKs, most embedded toolchains) and cl.exe; tcc
+  is best effort. Others get the GNU branch of c_runtime.h and GCC flags, plus C11 fallbacks where they cost little
+  (atomics). There is no plain C99 branch: thread locals are __thread, over-aligned structs use
+  __attribute__((aligned)), and __builtin_expect is used as is. A compiler without atomics builds no program, as
+  compiler_rt's __atomic_load etc. (kept for LLVM's libcalls) use them. C3 has no type-based aliasing (LLVM gets no
+  TBAA) and the C accesses memory through pointers of any type, so the C compiler must not apply C's strict aliasing
+  rules: gcc and clang get -fno-strict-aliasing, and cl.exe doesn't apply them (an int is reloaded after a store
+  through a float* at /O2).
+- With debug info, #line maps the C to the C3 source, for debuggers and backtraces (c_emit_line). Each C line of a
+  statement repeats its #line, as C numbers the lines after one onwards, and after a function the C file's own
+  numbering returns (c_write_mapped_lines).
+- C names are C3's, so debuggers show them. Codegen writes every variable as ___var_N and c_write_named_line gives
+  the ones with a C3 name name_: a plain name could hide a C function the same function calls. A repeated name gets
+  name__2, and a name the file also declares stays ___var_N. A struct member keeps its name, with a trailing `_` for a C keyword, header macro
+  or *_t name (c_name_is_reserved). Temporaries stay ___var_N, anonymous members are __mN.
+- Under --test the generated C is checked with the C compiler's -fsyntax-only (/Zs for cl, each file compiled for
+  tcc), as LLVM verifies its IR. A file list longer than cmd.exe takes goes in a response file.
+- The C is for --target: C3 picks the stdlib's platform code and every layout for it. Any --cc builds it, a cross
+  compiler for another target; __c3_runtime.h stops the build when the C compiler's architecture or OS differs, and
+  the C compiler also links. Explicit CPU options (--x86cpu, --cpu-flags on x86, --riscv-cpu, --riscv-abi) become
+  -march / -mabi, or /arch for cl.exe; without them the C compiler keeps its own default target.
+- The C compiler checks C3's layout at compile time (__C3_ASSERT_LAYOUT): the basic types in __c3_runtime.h, and every
+  struct whose layout comes from attributes (@packed, @align, flexible arrays) in its file.
+- A packed struct is laid out under #pragma pack(1), with C3's gaps as padding fields and designated initializers.
+  Members whose C type has an alignment attribute (int128, @simd, @align structs) are bytes, as #pragma pack can't
+  lower that alignment on Windows. Their constants are written as bytes; one holding an address is built with stores
+  at runtime (c_emit_const_stores). Loads and stores through an address less aligned than its C type (CValue.align)
+  go through memcpy, as LLVM loads with a lower alignment.
+- An extern C function is declared with C3's types, which differ from the C library's (`uint8_t *` for `char *`), so
+  C calls it through a name of its own, __C3_EXT(sym), bound to the symbol by an asm label (c_runtime.h); cl.exe and
+  wasm use the symbol itself.
+- Integer + - * << and negation wrap as in C3 without -fwrapv: signed types, and types C promotes to a signed int,
+  go through an unsigned type (c_int_wrap_type).
+- @init, @finalizer and runtime global initializers are constructors (__C3_INIT / __C3_INIT_ENTRY): GNU
+  constructor attributes, also on every prototype as gcc drops the priority otherwise, or MSVC's .CRT$XC* table with
+  LLVM's section names for Windows, where a finalizer registers itself with atexit.
+- Every C3 link unit emits the runtime and std definitions, so they merge: weak under GNU, and under cl
+  __declspec(selectany) data and __inline functions, which cl emits as pick-any COMDATs, as LLVM's weak_odr on Windows.
+- Function attributes (@inline, @noinline, @noreturn, @naked, @section) are c_runtime.h macros. @inline is
+  clang's always_inline and cl.exe's __forceinline only on the definition; gcc fails to compile an always_inline
+  call it can't inline, which LLVM's per-call always-inline never does. A naked function holds only its asm.
+- Atomics are the GNU __atomic builtins, always seq_cst. c_runtime.h maps them to tcc's <stdatomic.h>, MSVC
+  intrinsics or C11 <stdatomic.h>.
 
 Known issues:
 
-1. float16, bfloat and float128 lower to float/double. struct { float16 a, b; } is 4 bytes to c3c but 8 in C, so
-   mem::new_array(Pair, 4) overflows the heap (ASan-confirmed). Half-precision rounding is also lost.
+1. float128 lowers to double: 8 bytes in C but 16 to c3c, so the layout of a struct with one differs from c3c's,
+   and it has double's precision.
 
-2. @section and @noinline are dropped (verified in the emitted C). @inline, @naked and @noreturn look unhandled.
+2. cl.exe: inline assembly is emitted as GNU extended asm, which cl.exe rejects (#error). A compiler with neither
+   GNU constructors nor MSVC's .CRT$XC* table never runs @finalizer, and runs @init and runtime global initializers
+   only from an entry point (__c3_init_runtime), so a C3 static library linked into a C program gets none.
 
-3. A zero sized optional value (`Empty? f()`) gets no out pointer in C, while LLVM still passes one, so such a function
-   is not ABI compatible between the backends.
-
-4. The "No method" panic of a dynamic call reports the interface method, not the call site: the dispatcher is a shared
-   function without access to the caller's location.
-
-5. Code after an operand that always fails is still emitted; LLVM drops the dead block. Only the sema shape of a
-   rethrow of a wildcard optional is handled (EXPR_RETHROW).
-
-6. Remaining type fallbacks: c_ensure_cvalue_var (fallback_type, then int), c_emit_binary_expr (void expression
-   type), c_emit_bitstruct_container (uint container).
-
-7. The --test syntax check passes every generated file on one command line; untested against Windows length limits.
-
-8. cl.exe: no weak functions (__c3_weak_fn is empty), so std symbols of a static library clash with those of the
-   program. Runtime global initializers rely on __attribute__((constructor)); without it only the entry point's module
-   is initialized. Inline assembly is emitted as GNU extended asm, which cl.exe rejects (#error).
-
-9. TCC and cl.exe lower int128 to 64 bits. The TCC-only runtime code has bugs, by inspection: unsigned narrow
-   __c3_tcc_sub_overflow never writes *res, and "+r"((uint8_t)desired) isn't an lvalue.
+3. tcc miscompiles structs aligned to 32 or more passed by value (the callee reads zeros); not worked around, as the
+   C must not depend on the compiler.
 */
 
 static HTable c_decl_name_cache;
@@ -105,13 +135,6 @@ INLINE bool c_extname_is_asm(const char *extname)
 	return extname && extname[0] == '\x01';
 }
 
-static bool c_decl_has_asm_name(Decl *decl)
-{
-	if (!decl) return false;
-	decl = c_decl_unwrap(decl);
-	return decl->has_extname && c_extname_is_asm(decl->extname);
-}
-
 static const char *c_extname_identifier(const char *extname)
 {
 	if (c_extname_is_asm(extname))
@@ -137,6 +160,13 @@ const char *c_get_decl_asm_name(Decl *decl)
 		return decl->name;
 	}
 	return NULL;
+}
+
+// Whether `decl` is an extern C function, named __C3_EXT(sym) in C (c_runtime.h).
+static bool c_decl_is_ext_function(Decl *decl)
+{
+	return decl->is_extern && decl->decl_kind == DECL_FUNC && !(decl->has_extname && c_extname_is_asm(decl->extname))
+	       && c_get_decl_asm_name(decl);
 }
 
 // Export / import attributes LLVM sets on the symbol: wasm-import-name / wasm-import-module on extern functions and
@@ -175,10 +205,22 @@ const char *c_decl_export_attrs(Decl *decl, bool is_definition)
 	return attrs;
 }
 
+// The __C3_EXT_SYM of an extern C function, with the target's symbol prefix, or NULL.
+const char *c_decl_ext_symbol(Decl *decl)
+{
+	decl = c_decl_unwrap(decl);
+	if (!c_decl_is_ext_function(decl)) return NULL;
+	const char *prefix = compiler.platform.object_format == OBJ_FORMAT_MACHO ? "_" : "";
+	return str_printf("__C3_EXT_SYM(\"%s%s\")", prefix, c_get_decl_asm_name(decl));
+}
+
 bool c_decl_needs_asm_label(Decl *decl)
 {
 	const char *asm_name = c_get_decl_asm_name(decl);
-	return asm_name && (c_decl_has_asm_name(decl) || c_is_builtin_symbol_collision(asm_name));
+	if (!asm_name) return false;
+	decl = c_decl_unwrap(decl);
+	if (c_decl_is_ext_function(decl)) return false;
+	return (decl->has_extname && c_extname_is_asm(decl->extname)) || c_is_builtin_symbol_collision(asm_name);
 }
 
 // Macro copies share a source position; suffix later ones with _2, _3, ...
@@ -195,6 +237,10 @@ static const char *c_unique_positional_name(const char *name, Decl *decl)
 
 static const char *c_compute_decl_name(Decl *decl)
 {
+	if (c_decl_is_ext_function(decl))
+	{
+		return c_intern(str_printf("__C3_EXT(%s)", c_sanitize_name(c_get_decl_asm_name(decl))));
+	}
 	if (decl->is_extern)
 	{
 		const char *name = NULL;
@@ -273,6 +319,116 @@ void c_write_bytes(GenContext *c, const uint8_t *bytes, size_t len)
 	fwrite(bytes, 1, len, c->file);
 }
 
+void c_emit_line(GenContext *c, SourceLocId loc)
+{
+	SourceLoc *location = sourcelocptrzero(loc);
+	if (compiler.build.debug_info == DEBUG_INFO_NONE || !location || !location->row) return;
+	File *file = source_file_by_id(location->file_id);
+	if (!file) return;
+	PRINTF("#line %u \"", location->row);
+	for (const char *p = file->full_path; *p; p++)
+	{
+		if (*p == '\\' || *p == '"') PRINT("\\");
+		c_write_bytes(c, (const uint8_t *)p, 1);
+	}
+	PRINT("\"\n");
+}
+
+// Writes a C line, renaming each ___var_N in GenContext.var_names. A name the file also declares, like an extern
+// `dgemm_`, stays ___var_N, as it would hide the declaration.
+static void c_write_named_line(FILE *f, const char *start, size_t len, GenContext *c)
+{
+	static const char prefix[] = "___var_";
+	const size_t plen          = sizeof(prefix) - 1;
+	const char *end            = start + len;
+	const char *p              = start;
+	while (p < end)
+	{
+		const char *hit = p;
+		while ((hit = memchr(hit, '_', end - hit)) != NULL && ((size_t)(end - hit) < plen || memcmp(hit, prefix, plen) != 0)) hit++;
+		if (!hit) break;
+		const char *digits = hit + plen;
+		const char *after  = digits;
+		int id = 0;
+		while (after < end && char_is_digit(*after)) id = id * 10 + (*after++ - '0');
+		bool starts_word = hit == start || !char_is_alphanum_(hit[-1]);
+		const char *name = starts_word && after > digits ? htable_get(&c->var_names, c_id_to_ptr(id)) : NULL;
+		if (name && (htable_get(&c->decl_names, (void *)name) || htable_get(&c->emitted_global_decls, (void *)name))) name = NULL;
+		if (!name)
+		{
+			fwrite(p, 1, (size_t)(after - p), f);
+			p = after > hit ? after : hit + 1;
+			continue;
+		}
+		fwrite(p, 1, (size_t)(hit - p), f);
+		fputs(name, f);
+		p = after;
+	}
+	fwrite(p, 1, (size_t)(end - p), f);
+}
+
+// Writes `len` bytes of C with c_emit_line markers to `f`, where `line` C lines are already written. A marker names
+// its file only when that changes, every C line after it repeats its line number, as a C compiler numbers the lines
+// after a #line onwards, and C_LINE_RESET becomes the real line of the C file.
+static void c_write_mapped_lines(FILE *f, GenContext *c, const char *bytes, size_t len, uint32_t *line)
+{
+	const char *c_filename = c->c_filename;
+	const char *row  = NULL; // "#line N" of the C3 line being emitted, or NULL in the C file's own lines.
+	size_t row_len   = 0;
+	const char *file = NULL; // The quoted file the last #line named.
+	size_t file_len  = 0;
+	bool repeat      = false;
+	for (size_t i = 0; i < len;)
+	{
+		const char *start = bytes + i;
+		const char *nl    = memchr(start, '\n', len - i);
+		size_t line_len   = nl ? (size_t)(nl - start) + 1 : len - i;
+		i += line_len;
+		if (line_len < 6 || memcmp(start, "#line ", 6) != 0)
+		{
+			if (row && repeat)
+			{
+				fwrite(row, 1, row_len, f);
+				fputc('\n', f);
+				(*line)++;
+			}
+			repeat = true;
+			c_write_named_line(f, start, line_len, c);
+			(*line)++;
+			continue;
+		}
+		if (line_len == strlen(C_LINE_RESET) && memcmp(start, C_LINE_RESET, line_len) == 0)
+		{
+			if (!row) continue;
+			row  = NULL;
+			file = NULL;
+			fprintf(f, "#line %u \"", *line + 2);
+			for (const char *p = c_filename; *p; p++)
+			{
+				if (*p == '\\' || *p == '"') fputc('\\', f);
+				fputc(*p, f);
+			}
+			fputs("\"\n", f);
+			(*line)++;
+			continue;
+		}
+		// `#line N "file"\n` from c_emit_line.
+		const char *quote = memchr(start + 6, '"', line_len - 6);
+		size_t new_row_len = (size_t)(quote - 1 - start);
+		size_t new_file_len = line_len - 1 - (size_t)(quote - start);
+		bool same_file = file && new_file_len == file_len && memcmp(quote, file, file_len) == 0;
+		if (same_file && row && new_row_len == row_len && memcmp(start, row, row_len) == 0) continue;
+		row     = start;
+		row_len = new_row_len;
+		repeat  = false;
+		fwrite(start, 1, same_file ? row_len : line_len - 1, f);
+		fputc('\n', f);
+		(*line)++;
+		file     = quote;
+		file_len = new_file_len;
+	}
+}
+
 void c_print(GenContext *c, const char *str)
 {
 	if (!str)
@@ -280,11 +436,6 @@ void c_print(GenContext *c, const char *str)
 		return;
 	}
 	c_write_bytes(c, (const uint8_t *)str, strlen(str));
-}
-
-void c_print_byte(GenContext *c, uint8_t b)
-{
-	c_write_bytes(c, &b, 1);
 }
 
 void c_printf(GenContext *c, const char *fmt, ...)
@@ -339,7 +490,7 @@ void c_emit_string_literal(GenContext *c, const char *bytes, ArrayIndex len)
 			default:
 				if (b >= 32 && b < 127)
 				{
-					c_print_byte(c, b);
+					c_write_bytes(c, &b, 1);
 				}
 				else
 				{
@@ -420,14 +571,6 @@ void c_emit_panic(GenContext *c, const char *message, SourceLocId loc, Expr **ar
 	c_emit_panic_call(c, panic_fn_desc[PANIC_FN_ASSERT_VIOLATION].format, loc, message, str_printf("___var_%d", arr_var), num_args);
 }
 
-// Integers are widened to 64 bits when passed to a panic, as the LLVM backend does.
-static Type *c_panic_value_type(Type *type)
-{
-	type = c_safe_type_lower(type);
-	if (!type_is_integer(type) || type_bit_size(type) > 64) return type;
-	return type_is_unsigned(type) ? type_ulong : type_long;
-}
-
 // Emit a compiler generated panic. `texts` and `values` hold the counts given by `panic_fn_desc[id]`.
 void c_emit_panic_fn(GenContext *c, PanicFunction id, SourceLocId loc, const char **texts, CPanicValue *values)
 {
@@ -465,8 +608,10 @@ void c_emit_panic_fn(GenContext *c, PanicFunction id, SourceLocId loc, const cha
 				typeids[count++] = c_typeid_ref(c, type_string);
 			}
 		}
-		Type *type = c_panic_value_type(values[i].type);
-		PRINTF("%s __c3_panic_arg%d = (%s)(%s);\n", c_type_name(c, type), count, c_type_name(c, type), values[i].expr);
+		// Integers are widened to 64 bits, as the LLVM backend does.
+		Type *type = c_safe_type_lower(values[i].type);
+		if (type_is_integer(type) && type_bit_size(type) <= 64) type = type_is_unsigned(type) ? type_ulong : type_long;
+		PRINTF("%s __c3_panic_arg%d = %s;\n", c_type_name(c, type), count, c_scalar_convert_str(c, type, values[i].type, str_printf("(%s)", values[i].expr)));
 		typeids[count++] = c_typeid_ref(c, type);
 	}
 	if (value_count <= 1)
@@ -544,7 +689,10 @@ static void c_traverse_decl(GenContext *c, Decl *d, CDeclVisitor visitor, void *
 		return;
 	}
 	// A method of an interface that is itself unused can still be called through an interface inheriting from it.
-	if (!c_decl_is_live(d) && !(c->traverse_unused_interfaces && d->decl_kind == DECL_INTERFACE))
+	bool is_live = (!strip_unused() || d->is_live) &&
+	               !(d->decl_kind == DECL_FUNC && ((d->func_decl.attr_test && !compiler.build.build_test) ||
+	                                               (d->func_decl.attr_benchmark && !compiler.build.build_benchmark)));
+	if (!is_live && !(c->traverse_unused_interfaces && d->decl_kind == DECL_INTERFACE))
 	{
 		return;
 	}
@@ -738,7 +886,8 @@ static void visit_global_def(GenContext *c, Decl *d, void *ud)
 				continue;
 			}
 			htable_set(&c->emitted_global_defs, (void *)arr_name, (void *)1);
-			Type *ptype = p->type ? c_safe_type_lower(p->type) : type_int;
+			ASSERT(p->type);
+			Type *ptype = c_safe_type_lower(p->type);
 			c_emit_type_forward_decl(c, ptype);
 			PRINTF("const %s %s[%d] = {\n", c_type_name(c, ptype), arr_name, num_values);
 			for (int i = 0; i < num_values; i++)
@@ -781,33 +930,6 @@ static void c_try_emit_function_def(GenContext *c, Decl *decl, bool only_used)
 	}
 	htable_set(&c->emitted_func_defs, (void *)fname, (void *)1);
 	c_emit_function(c, decl);
-}
-
-static bool c_has_main_function(Module **modules, int mod_count)
-{
-	for (int m = 0; m < mod_count; m++)
-	{
-		Module *mod = modules[m];
-		if (!mod)
-		{
-			continue;
-		}
-		FOREACH(CompilationUnit *, unit, mod->units)
-		{
-			if (unit->main_function)
-			{
-				return true;
-			}
-			FOREACH(Decl *, decl, unit->functions)
-			{
-				if (decl && decl->name && strcmp(decl->name, "main") == 0)
-				{
-					return true;
-				}
-			}
-		}
-	}
-	return false;
 }
 
 static Decl **c_collect_and_sort_init_functions(void)
@@ -874,6 +996,36 @@ static void c_visit_function_defs(GenContext *c, Module **modules, int mod_count
 	}
 }
 
+// Globals of `modules` whose initializer isn't a C constant: they are assigned at startup, before @init.
+static Decl **c_collect_runtime_inits(Module **modules, int mod_count, bool only_used)
+{
+	Decl **runtime_inits = NULL;
+	for (int m = 0; m < mod_count; m++)
+	{
+		Module *mod = modules[m];
+		if (!mod || !vec_size(mod->units) || (compiler.build.emit_stdlib == EMIT_STDLIB_OFF && module_is_stdlib(mod))) continue;
+		FOREACH(CompilationUnit *, unit, mod->units)
+		{
+			FOREACH(Decl *, var, unit->vars)
+			{
+				if (!var || var->replacement || var->is_template) continue;
+				var = decl_raw(var);
+				if (!var || var->decl_kind != DECL_VAR || !c_is_file_global(var) || var->is_extern) continue;
+				if (only_used && !var->is_live) continue;
+				if (var->var.init_expr && !c_can_emit_static_initializer(var->var.init_expr)) vec_add(runtime_inits, var);
+			}
+		}
+	}
+	return runtime_inits;
+}
+
+// The startup initializer of a module's globals, or NULL when it has none.
+static const char *c_module_init_globals_name(Module *module)
+{
+	if (!c_module_has_live_code(module) || !c_collect_runtime_inits(&module, 1, strip_unused())) return NULL;
+	return str_printf("__c3_init_globals_%s", c_sanitize_name(module->name->module));
+}
+
 static GenContext *c_gen_module(Module *module, int num)
 {
 	(void)num;
@@ -928,6 +1080,10 @@ static GenContext *c_gen_module(Module *module, int num)
 	htable_init(&c->local_vars, 4096);
 	htable_init(&c->local_fault_vars, 4096);
 	htable_init(&c->declared_vars, 4096);
+	htable_init(&c->var_names, 4096);
+	htable_init(&c->used_var_names, 4096);
+	htable_init(&c->used_static_names, 1024);
+	c->name_scope = 1; // 0 is an unused name.
 	htable_init(&c->emitted_func_defs, 8192);
 	htable_init(&c->emitted_global_defs, 8192);
 	htable_init(&c->gen_decl, 4096);
@@ -969,41 +1125,10 @@ static GenContext *c_gen_module(Module *module, int num)
 	}
 	PRINT("\n/* FUNCTION BODIES */\n");
 
-	Decl **runtime_inits = NULL;
-	for (int m = 0; m < mod_count; m++)
-	{
-		Module *mod = modules[m];
-		if (!mod || !vec_size(mod->units) || (compiler.build.emit_stdlib == EMIT_STDLIB_OFF && module_is_stdlib(mod)))
-		{
-			continue;
-		}
+	Decl **runtime_inits = c_collect_runtime_inits(modules, mod_count, only_used);
 
-		FOREACH(CompilationUnit *, unit, mod->units)
-		{
-			FOREACH(Decl *, var, unit->vars)
-			{
-				if (!var || var->replacement || var->is_template)
-				{
-					continue;
-				}
-				var = decl_raw(var);
-				if (!var || var->decl_kind != DECL_VAR || !c_is_file_global(var) || var->is_extern)
-				{
-					continue;
-				}
-				if (only_used && !var->is_live)
-				{
-					continue;
-				}
-				if (var->var.init_expr && !c_can_emit_static_initializer(var->var.init_expr))
-				{
-					vec_add(runtime_inits, var);
-				}
-			}
-		}
-	}
-
-	const char *init_globals_name = str_printf("__c3_init_globals_%s", module ? c_sanitize_name(module->name->module) : "all");
+	const char *init_globals_name = module ? c_module_init_globals_name(module) : "__c3_init_globals_all";
+	const char *init_linkage      = !module ? "static " : (module_should_weaken(module) ? "__c3_weak_fn " : "");
 	if (vec_size(runtime_inits) > 0)
 	{
 		ByteBuffer body_buf;
@@ -1037,8 +1162,8 @@ static GenContext *c_gen_module(Module *module, int num)
 
 		c->buffer = prev_buf;
 
-		PRINT("#if defined(__GNUC__) || defined(__clang__)\n__attribute__((constructor(101)))\n#endif\n");
-		PRINTF("static void %s(void) {\n", init_globals_name);
+		PRINT("__C3_INIT(101)\n");
+		PRINTF("%svoid %s(void) {\n", init_linkage, init_globals_name);
 		PRINT("\tstatic bool initialized = false;\n");
 		PRINT("\tif (initialized) return;\n");
 		PRINT("\tinitialized = true;\n");
@@ -1050,21 +1175,30 @@ static GenContext *c_gen_module(Module *module, int num)
 			c_write_bytes(c, body_buf.bytes.ptr, body_buf.write_idx);
 		}
 		byte_buffer_free(&body_buf);
-		PRINT("}\n\n");
-	}
-	else
-	{
-		PRINTF("static void %s(void) {}\n\n", init_globals_name);
+		// Before every @init, which starts at .CRT$XCA00001.
+		PRINTF("}\n__C3_INIT_ENTRY(%s, \".CRT$XCA00000\")\n\n", init_globals_name);
 	}
 
-	if (c_has_main_function(modules, mod_count) || compiler.build.single_module == SINGLE_MODULE_ON)
+	Decl *main = compiler.context.main;
+	if (!module || (main && main->unit->module == module))
 	{
 		// Only called by the entry point of this file. Each link unit has its own.
 		PRINT("static void __c3_init_runtime(void) {\n");
 		PRINT("\tstatic bool initialized = false;\n");
 		PRINT("\tif (initialized) return;\n");
 		PRINT("\tinitialized = true;\n");
-		PRINTF("\t%s();\n", init_globals_name);
+		if (!module)
+		{
+			if (runtime_inits) PRINTF("\t%s();\n", init_globals_name);
+		}
+		else
+		{
+			FOREACH(Module *, m, compiler.context.module_list)
+			{
+				const char *name = c_module_init_globals_name(m);
+				if (name) PRINTF("\textern void %s(void);\n\t%s();\n", name, name);
+			}
+		}
 
 		Decl **init_funcs = c_collect_and_sort_init_functions();
 		int init_count    = vec_size(init_funcs);
@@ -1092,9 +1226,10 @@ static GenContext *c_gen_module(Module *module, int num)
 	c->dispatch_buffer  = NULL;
 	fputs("/* Generated by C3 Compiler */\n#include \"__c3_runtime.h\"\n\n", f);
 	ByteBuffer *parts[5] = { &type_decls, &type_defs, &decls, &dispatchers, &code };
+	uint32_t line         = 3;
 	for (int i = 0; i < 5; i++)
 	{
-		fwrite(parts[i]->bytes.ptr, 1, parts[i]->write_idx, f);
+		c_write_mapped_lines(f, c, (const char *)parts[i]->bytes.ptr, parts[i]->write_idx, &line);
 		byte_buffer_free(parts[i]);
 	}
 	c->c_file_size = (size_t)ftell(f);
@@ -1108,8 +1243,8 @@ static const char *c_backend_cflags = NULL;
 
 static const char *c_backend_build_cflags(const char *cc)
 {
-	bool is_cl    = str_ends_with(cc, "cl.exe");
-	bool is_tcc   = str_ends_with(cc, "tcc");
+	bool is_cl    = cc_is_msvc(cc);
+	bool is_tcc   = cc_is_tcc(cc);
 	bool is_clang = strstr(cc, "clang") != NULL || strstr(cc, "zig") != NULL;
 
 	scratch_buffer_clear();
@@ -1135,7 +1270,7 @@ static const char *c_backend_build_cflags(const char *cc)
 		{
 			scratch_buffer_append("-w -Wno-incompatible-pointer-types ");
 		}
-		scratch_buffer_append("-fno-builtin -fwrapv -fno-strict-aliasing ");
+		scratch_buffer_append("-fno-builtin -fno-strict-aliasing ");
 
 		if (is_clang && compiler.build.arch_os_target != default_target)
 		{
@@ -1181,6 +1316,54 @@ static const char *c_backend_build_cflags(const char *cc)
 					break;
 			}
 			break;
+	}
+
+	// The CPU the user chose, as LLVM gets it. Without a choice the C compiler keeps its own default target.
+	BuildTarget *build = &compiler.build;
+	bool is_x86        = compiler.platform.arch == ARCH_TYPE_X86_64 || compiler.platform.arch == ARCH_TYPE_X86;
+	if (is_x86 && build->feature.x86_cpu_set != X86CPU_DEFAULT && !is_tcc)
+	{
+		static const char *gnu_x86[] = {
+			[X86CPU_BASELINE] = "-march=x86-64 ", [X86CPU_SSSE3] = "-march=x86-64 -mssse3 ",
+			[X86CPU_SSE4] = "-march=x86-64-v2 ", [X86CPU_AVX1] = "-march=x86-64-v2 -mavx ",
+			[X86CPU_AVX2_V1] = "-march=x86-64-v3 ", [X86CPU_AVX2_V2] = "-march=x86-64-v3 ",
+			[X86CPU_AVX512] = "-march=x86-64-v4 ", [X86CPU_NATIVE] = "-march=native " };
+		// cl.exe's default is SSE2, and it has no SSSE3 or native level.
+		static const char *cl_x86[] = {
+			[X86CPU_SSE4] = "/arch:SSE4.2 ", [X86CPU_AVX1] = "/arch:AVX ", [X86CPU_AVX2_V1] = "/arch:AVX2 ",
+			[X86CPU_AVX2_V2] = "/arch:AVX2 ", [X86CPU_AVX512] = "/arch:AVX512 " };
+		const char *arch = (is_cl ? cl_x86 : gnu_x86)[build->feature.x86_cpu_set];
+		if (arch) scratch_buffer_append(arch);
+	}
+	if (is_x86 && build->cpu_flags && !is_cl && !is_tcc)
+	{
+		// LLVM's x86 feature names are gcc's: +avx2,-sse4.2 is -mavx2 -mno-sse4.2.
+		for (const char *f = build->cpu_flags; *f;)
+		{
+			const char *end = strchr(f, ',');
+			size_t len      = end ? (size_t)(end - f) : strlen(f);
+			if (len > 1 && (f[0] == '+' || f[0] == '-'))
+			{
+				scratch_buffer_printf("-m%s%.*s ", f[0] == '-' ? "no-" : "", (int)len - 1, f + 1);
+			}
+			f += len + (end ? 1 : 0);
+		}
+	}
+	bool is_riscv = compiler.platform.arch == ARCH_TYPE_RISCV32 || compiler.platform.arch == ARCH_TYPE_RISCV64;
+	if (is_riscv && !is_cl && !is_tcc)
+	{
+		const char *xlen = compiler.platform.arch == ARCH_TYPE_RISCV64 ? "64" : "32";
+		if (build->feature.riscv_cpu_set != RISCV_CPU_DEFAULT)
+		{
+			static const char *isa[] = { [RISCV_CPU_RVI] = "i", [RISCV_CPU_RVIMAC] = "imac", [RISCV_CPU_RVIMAFC] = "imafc",
+			                             [RISCV_CPU_RVGC] = "gc", [RISCV_CPU_RVGCV] = "gcv" };
+			scratch_buffer_printf("-march=rv%s%s ", xlen, isa[build->feature.riscv_cpu_set]);
+		}
+		if (build->feature.riscv_cpu_set != RISCV_CPU_DEFAULT || build->feature.riscv_abi != RISCV_ABI_DEFAULT)
+		{
+			int flen = compiler.platform.riscv.flen;
+			scratch_buffer_printf("-mabi=%s%s ", xlen[0] == '6' ? "lp64" : "ilp32", flen == 8 ? "d" : flen == 4 ? "f" : "");
+		}
 	}
 
 	if (compiler.build.debug_info == DEBUG_INFO_FULL)
@@ -1299,26 +1482,62 @@ static const char *c_backend_build_cflags(const char *cc)
 static const char *c_find_target_c_compiler(void)
 {
 	const char *cc = find_c_compiler();
-	if (compiler.build.arch_os_target != default_target && !strstr(cc, "clang") && !strstr(cc, "zig") &&
-	    compiler.platform.os != OS_TYPE_EMSCRIPTEN)
+	if (cc_is_msvc(cc))
 	{
-		error_exit("Cross compiling with the C backend requires clang, but the C compiler is '%s'. Use '--cc clang' or set C3C_CC.", cc);
+		// From any host, through msvc-wine.
+		if (compiler.platform.os == OS_TYPE_WIN32) return cc;
+		error_exit("'%s' only compiles for Windows, but the target is '%s'. Use '--target windows-x64' or '--target windows-aarch64'.",
+		           cc, compiler.platform.target_triple);
 	}
 	return cc;
 }
 
 // --test: the C counterpart of LLVM's IR verification. The generated C is checked by the C compiler that a build
 // would use, with the same flags, without producing objects.
+#define C_MAX_COMMAND_LINE 8000
+
 static void c_syntax_check(GenContext **gen_contexts)
 {
 	const char *cc = c_find_target_c_compiler();
-	bool is_cl     = str_ends_with(cc, "cl.exe");
+	bool is_cl     = cc_is_msvc(cc);
 	const char *flags = c_backend_build_cflags(cc);
+	const char *dir   = compiler.build.object_file_dir ? compiler.build.object_file_dir : ".";
+	if (cc_is_tcc(cc))
+	{
+		// tcc has no syntax-only mode (it ignores -fsyntax-only and links): each file is compiled instead.
+		const char *obj = file_append_path(dir, "__c3_syntax_check.o");
+		FOREACH(GenContext *, c, gen_contexts)
+		{
+			const char *cmd = str_printf("\"%s\" %s -c \"%s\" -o \"%s\"", cc, flags, c->c_filename, obj);
+			if (compiler.build.print_linking) puts(cmd);
+			if (system(cmd) != 0) error_exit("The generated C failed the syntax check: %s", cmd);
+		}
+		file_delete_file(obj);
+		return;
+	}
 	const char *cmd   = str_printf("\"%s\" %s %s", cc, is_cl ? "/Zs" : "-fsyntax-only", flags);
+	const char *files = "";
 	FOREACH(GenContext *, c, gen_contexts)
 	{
-		cmd = str_printf("%s \"%s\"", cmd, c->c_filename);
+		files = str_printf("%s \"%s\"", files, c->c_filename);
 	}
+	// cmd.exe takes at most 8191 characters, so a longer list goes in a response file, which every supported C
+	// compiler reads. Its paths use '/': gcc reads '\\' there as an escape.
+	if (strlen(cmd) + strlen(files) > C_MAX_COMMAND_LINE)
+	{
+		const char *rsp = file_append_path(dir, "__c3_syntax_check.rsp");
+		FILE *f         = fopen(rsp, "wb");
+		if (!f) error_exit("Failed to write '%s'.", rsp);
+		FOREACH(GenContext *, c, gen_contexts)
+		{
+			fputc('"', f);
+			for (const char *p = c->c_filename; *p; p++) fputc(*p == '\\' ? '/' : *p, f);
+			fputs("\"\n", f);
+		}
+		fclose(f);
+		files = str_printf(" \"@%s\"", rsp);
+	}
+	cmd = str_printf("%s%s", cmd, files);
 	if (compiler.build.print_linking) puts(cmd);
 	if (system(cmd) != 0)
 	{
