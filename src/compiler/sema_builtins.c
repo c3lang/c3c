@@ -89,6 +89,7 @@ static bool sema_check_alignment_expression(SemaContext *context, Expr *align, b
 	}
 	if (int_is_neg(align->const_expr.ixx)) RETURN_SEMA_ERROR(align, "Alignment must not be negative.");
 	if (!may_be_zero && align->const_expr.ixx.i.low == 0) RETURN_SEMA_ERROR(align, "Alignment must not be zero.");
+	if (align->const_expr.ixx.i.low > MAX_ALIGNMENT) RETURN_SEMA_ERROR(align, "Alignment must be less or equal to %lld.", (long long)MAX_ALIGNMENT);
 	return true;
 }
 
