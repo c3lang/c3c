@@ -92,6 +92,11 @@
 - An out-of-range constant float vector cast to integer elements wasn't caught when the element type was a typedef or the source a constant slice, causing miscompilation or crash.
 - Calling a function with a parameter after its varargs, like `fn void b(int... x, int a)`, with no arguments crashed the compiler.
 - A builtin alignment above 0x1000_0000, like `$$unaligned_store(p, 0, 2147483648, false)`, crashed the compiler.
+- Assigning to a macro method, like `x.hash = 0` or `(int){}.hash -= 0`, crashed the compiler.
+- Assigning to a function method, like `f.m = &other`, gave a confusing type error, and `$defined` of it was true.
+- An enum's `.ordinal` could be assigned to or have its address taken, like `c.ordinal = 2` or `&c.ordinal`.
+- Enum associated values could be assigned to, like `c.val = 3` or `c.arr[0] = 9`, crashing at runtime.
+- `$defined(&f.missing)` was a hard error instead of false.
 
 ### Stdlib changes
 - `atomic::fetch_add` and the other `fetch_*` macros now require the alignment to be at most `mem::MAX_MEMORY_ALIGNMENT`; `fetch_max` and `fetch_min` check it at all.

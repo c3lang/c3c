@@ -702,8 +702,26 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 			return true;
 		case EXPR_BITACCESS:
 		case EXPR_ACCESS_RESOLVED:
-			if (!sema_binary_is_expr_lvalue(context, top_expr, expr->access_resolved_expr.parent, failed_ref)) return false;
-			goto CHECK_OPTIONAL;
+		{
+			Decl *decl = expr->access_resolved_expr.ref;
+			switch (decl->decl_kind)
+			{
+				case DECL_MACRO:
+				case DECL_FUNC:
+					if (failed_ref) goto FAILED_REF;
+					RETURN_SEMA_ERROR(top_expr, "You cannot assign a value to %s.", decl_to_a_name(decl));
+				case DECL_VAR:
+					if (type_flatten(expr->access_resolved_expr.parent->type)->type_kind == TYPE_ENUM)
+					{
+						if (failed_ref) goto FAILED_REF;
+						RETURN_SEMA_ERROR(top_expr, "Associated enum values are constant and can't be assigned to.");
+					}
+					FALLTHROUGH;
+				default:
+					if (!sema_binary_is_expr_lvalue(context, top_expr, expr->access_resolved_expr.parent, failed_ref)) return false;
+					goto CHECK_OPTIONAL;
+			}
+		}
 		case EXPR_SUBSCRIPT:
 		case EXPR_SLICE:
 			if (expr_is_const_storage(expr))
@@ -7350,6 +7368,11 @@ CHECK_DEEPER:
 	}
 	if (kw == kw_ordinal && flat_kind == TYPE_ENUM)
 	{
+		if (expr->access_unresolved_expr.is_ref)
+		{
+			if (missing_ref) goto MISSING_REF;
+			RETURN_SEMA_ERROR(expr, "The ordinal is a value, it can't be assigned to or have its address taken.");
+		}
 		sema_expr_convert_enum_to_int(current_parent);
 		expr_replace(expr, current_parent);
 		return true;
@@ -8364,7 +8387,7 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 			break;
 	}
 
-	if (left->type->type_kind == TYPE_FLEXIBLE_ARRAY)
+	if (left->type && left->type->type_kind == TYPE_FLEXIBLE_ARRAY)
 	{
 		RETURN_SEMA_ERROR(left, "You can't assign to a flexible array member, but you may index into it and mutate it that way.");
 	}
@@ -10092,6 +10115,9 @@ RETRY:;
 			return true;
 		case EXPR_ACCESS_UNRESOLVED:
 			inner->access_unresolved_expr.is_ref = true;
+			inner->resolve_status = RESOLVE_RUNNING;
+			if (!sema_expr_analyse_access(context, inner, failed_ref)) return expr_poison(inner);
+			inner->resolve_status = RESOLVE_DONE;
 			break;
 		case EXPR_CT_IDENT:
 			RETURN_SEMA_ERROR(expr, "It's not possible to take the address of a compile time value.");
