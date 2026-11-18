@@ -1,10 +1,10 @@
 module always_failing_operand;
 faultdef BAD;
 
-fn int? rethrow_init() { int v = BAD~!; return v; }
+fn int? rethrow_init() { int v = BAD~!;  }
 fn int? rethrow_operand() { return 1 + BAD~!; }
-fn void? rethrow_statement(int* reached) { BAD~!; *reached = 1; }
-fn int? rethrow_element() { int[2] arr = { 1, BAD~! }; return arr[0]; }
+fn void? rethrow_statement(int* reached) { BAD~!; }
+fn int? rethrow_element() { int[2] arr = { 1, BAD~! };  }
 fn int? else_value() { int x = BAD~ ?? 5; return x; }
 fn int? optional_operand() { int? z = BAD~; return z + 1; }
 

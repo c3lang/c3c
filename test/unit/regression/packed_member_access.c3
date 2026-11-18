@@ -61,15 +61,19 @@ fn void packed_members() @test
 
 int target = 5;
 struct WideRef @align(16) { int* p; }
+
 struct HoldsRef @packed { char c; WideRef r; }
-HoldsRef g_ref = { 1, { &target } };
-union RefUnion @packed { char c; WideRef r; }
-RefUnion g_ref_union = { .r = { &target } };
+union RefUnion  @packed { char c; WideRef r; }
+
+HoldsRef g_ref @feat(!DARWIN) = { 1, { &target } };
+RefUnion g_ref_union  @feat(!DARWIN) = { .r = { &target } };
 
 fn void packed_member_address() @test
 {
+$if !$feat(DARWIN):
 	assert(g_ref.c == 1 && *g_ref.r.p == 5);
 	assert(*g_ref_union.r.p == 5);
 	HoldsRef local = { 2, { &target } };
 	assert(local.c == 2 && local.r.p == &target);
+$endif
 }
