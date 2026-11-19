@@ -9,6 +9,7 @@
 - Compiler-rt may not contain thread locals, interfaces, `@dynamic` methods, `@init`/`@finalizer` functions or extern declarations. Its safety checks trap instead of calling the panic function.
 - Added `--compiler-rt-module` and the `compiler-rt-module` project option to override the compiler runtime module (default: `compiler_rt`).
 - The C backend supports MSVC (`cl.exe`) and tcc, supports `int128` on compilers without a 128-bit integer, gives `float16` and `bfloat` their 16-bit layout and rounding, cross compiles with any C compiler for the target, and maps debug info to C3 source lines and names.
+- Added `--max-generic-instances` to limit the number of instances a single generic can implicitly spawn (default: 4096).
 
 ### Fixes
 - `nextcase x` in a `@jump` switch read `x` after the defers of the case had run.
@@ -104,6 +105,7 @@
 - `foreach` and `foreach_r` now reject a raw `defer` as their body, like `while` and `for`.
 - A method on a recursive alias, like `alias Aa = Aa; fn int Aa.x() {}`, made the compiler hang.
 - An error inside a lambda body didn't fail the surrounding code, so a `$for` containing such a lambda kept iterating up to the max limit.
+- Generic modules whose instances kept requesting new, deeper instances, like `alias Cc = Aa{ Aa{ Bb{ Ba } } };` inside module `a <Ba>`, made the compiler hang.
 
 ### Stdlib changes
 - `atomic::fetch_add` and the other `fetch_*` macros now require the alignment to be at most `mem::MAX_MEMORY_ALIGNMENT`; `fetch_max` and `fetch_min` check it at all.

@@ -633,6 +633,8 @@ typedef struct
 	const char *name_suffix;
 	const char *cname_suffix;
 	Decl **generated_decls;
+	DeclId spawn_root;
+	int spawn_count;
 } GenericInstanceDecl;
 
 typedef struct

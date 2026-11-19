@@ -218,6 +218,7 @@ static void usage(bool full)
 		print_opt("--max-vector-size <number>", "Set the maximum vector bit size to allow (default: 4096).");
 		print_opt("--max-stack-object-size <number>", "Set the maximum size of a stack object in KB (default: 128).");
 		print_opt("--max-macro-iterations <number>", "Set the maximum number of iterations in a macro loop (default: 1048575).");
+		print_opt("--max-generic-instances <number>", "Set the maximum number of generic instances a single instantiation may create (default: 4096).");
 		print_opt("--stack-probe=<option>", "Set the stack argument probing mode: none, call (default), inline.");
 		print_opt("--stack-probe-size <number>", "Set the stack size threshold for argument probing in bytes (default: 4096).");
 		print_opt("--stack-protector=<option>", "Set the stack protection level: none, basic (default), strong, all.");
@@ -1490,6 +1491,14 @@ static void parse_option(BuildOptions *options) // NOLINT
 				if (size < 1) error_exit("Expected a valid positive integer >= 128 for --max-macro-iterations");
 				if (size > MAX_MACRO_ITERATIONS) error_exit("Expected a valid positive integer <= %u for --max-macro-iterations.", (unsigned)MAX_MACRO_ITERATIONS);
 				options->max_macro_iterations = size;
+				return;
+			}
+			if (match_longopt("max-generic-instances")) // NOLINT
+			{
+				int size = (at_end() || next_is_opt()) ? 0 : atoi(next_arg()); // NOLINT
+				if (size < 1) error_exit("Expected a valid positive integer for --max-generic-instances.");
+				if (size > MAX_GENERIC_INSTANCES) error_exit("Expected a valid positive integer <= %u for --max-generic-instances.", (unsigned)MAX_GENERIC_INSTANCES);
+				options->max_generic_instances = size;
 				return;
 			}
 			if (match_longopt("max-vector-size")) // NOLINT
