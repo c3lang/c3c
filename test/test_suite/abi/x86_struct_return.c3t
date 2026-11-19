@@ -1,0 +1,64 @@
+// #target: linux-x86
+module test;
+import gen;
+
+struct Sf { float x; }
+struct Si { int x; }
+struct Sp { int* p; }
+
+fn Sf ret_float() => {};
+fn Si ret_int() => {};
+fn Sp ret_ptr() => {};
+
+fn void lambda_generic()
+{
+	var x = fn gen::Aa{float}() => {};
+	x();
+}
+
+module gen <Ba>;
+struct Aa { Ba x; }
+
+/* #expect: test.ll
+
+define void @test.ret_float(ptr noalias sret(%Sf) align 4 %0) #0 {
+entry:
+  %literal = alloca %Sf, align 4
+  store float 0.000000e+00, ptr %literal, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %0, ptr align 4 %literal, i32 4, i1 false)
+  ret void
+}
+
+define void @test.ret_int(ptr noalias sret(%Si) align 4 %0) #0 {
+entry:
+  %literal = alloca %Si, align 4
+  store i32 0, ptr %literal, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %0, ptr align 4 %literal, i32 4, i1 false)
+  ret void
+}
+
+define void @test.ret_ptr(ptr noalias sret(%Sp) align 4 %0) #0 {
+entry:
+  %literal = alloca %Sp, align 4
+  store ptr null, ptr %literal, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %0, ptr align 4 %literal, i32 4, i1 false)
+  ret void
+}
+
+define void @test.lambda_generic() #0 {
+entry:
+  %x = alloca ptr, align 4
+  %sretparam = alloca %"Aa{float}", align 4
+  store ptr @"test.lambda_generic$lambda1", ptr %x, align 4
+  %0 = load ptr, ptr %x, align 4
+  call void %0(ptr sret(%"Aa{float}") align 4 %sretparam)
+  ret void
+}
+
+define internal void @"test.lambda_generic$lambda1"(ptr noalias sret(%"Aa{float}") align 4 %0) #0 {
+entry:
+  %literal = alloca %"Aa{float}", align 4
+  store float 0.000000e+00, ptr %literal, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %0, ptr align 4 %literal, i32 4, i1 false)
+  ret void
+}
