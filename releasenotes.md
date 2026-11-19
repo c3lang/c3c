@@ -100,6 +100,8 @@
 - An optional vector or a bitstruct initialized with `unreachable()` before a runtime value, like `int[<2>]? x = { unreachable(), a() };`, crashed the compiler.
 - A macro whose body was only `return;` hit an assert in the compiler.
 - A named argument to a type property call, like `int::has_tag(x: 0)`, crashed the compiler.
+- A `defer` coming from a compile-time statement used as the body of an `if`, `while` or `for`, like `if (x) $if true: defer {} $endif`, crashed the compiler.
+- `foreach` and `foreach_r` now reject a raw `defer` as their body, like `while` and `for`.
 
 ### Stdlib changes
 - `atomic::fetch_add` and the other `fetch_*` macros now require the alignment to be at most `mem::MAX_MEMORY_ALIGNMENT`; `fetch_max` and `fetch_min` check it at all.

@@ -1390,6 +1390,7 @@ typedef struct
 {
 	AstId first_stmt;
 	AstId parent_defer;
+	bool is_loop_body;
 } AstCompoundStmt;
 
 typedef struct

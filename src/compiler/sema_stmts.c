@@ -1442,10 +1442,6 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 
 	Ast *body = astptr(statement->for_stmt.body);
 	ASSERT(body);
-	if (body->ast_kind == AST_DEFER_STMT)
-	{
-		RETURN_SEMA_ERROR(body, "Looping over a raw 'defer' is not allowed, was this a mistake?");
-	}
 	bool do_loop = statement->for_stmt.flow.skip_first;
 	if (body->ast_kind != AST_COMPOUND_STMT && do_loop)
 	{
@@ -1478,6 +1474,11 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 			success = sema_analyse_statement(context, body);
 			statement->for_stmt.flow.no_exit = context->active_scope.end_jump.active;
 			POP_BREAKCONT();
+			if (success && context->active_scope.defer_last != context->active_scope.defer_start)
+			{
+				SEMA_ERROR(body, "Looping over a raw 'defer' is not allowed, was this a mistake?");
+				success = false;
+			}
 
 			// End for body scope
 			context_pop_defers_and_replace_ast(context, body);
@@ -1982,6 +1983,7 @@ SKIP_OVERLOAD:;
 	ast_append(&succ, body_ast);
 	Ast *compound_stmt = new_ast(AST_COMPOUND_STMT, body_ast->loc);
 	compound_stmt->compound_stmt.first_stmt = first_stmt;
+	compound_stmt->compound_stmt.is_loop_body = true;
 	FlowCommon flow = statement->foreach_stmt.flow;
 	flow.skip_first = is_single_pass;
 	statement->for_stmt = (AstForStmt){ .init = exprid(init_expr),
@@ -2014,10 +2016,6 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 
 	Expr *cond = exprptr(statement->if_stmt.cond);
 	Ast *then = astptr(statement->if_stmt.then_body);
-	if (then->ast_kind == AST_DEFER_STMT)
-	{
-		RETURN_SEMA_ERROR(then, "An 'if' statement may not be followed by a raw 'defer' statement, this looks like a mistake.");
-	}
 	AstId else_id = statement->if_stmt.else_body;
 	Ast *else_body = else_id ? astptr(else_id) : NULL;
 	CondResult result = COND_MISSING;
@@ -2073,6 +2071,12 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 		{
 			if (result == COND_FALSE) context->active_scope.is_dead = true;
 			success = success && sema_analyse_statement(context, then);
+			if (context->active_scope.defer_last != context->active_scope.defer_start)
+			{
+				if (success) SEMA_ERROR(then, "An 'if' statement may not be followed by a raw 'defer' statement, this looks like a mistake.");
+				context->active_scope.defer_last = context->active_scope.defer_start;
+				success = false;
+			}
 			then_jump = context->active_scope.end_jump.active && !(statement->if_stmt.flow.label && statement->if_stmt.flow.has_break);
 		}
 		SCOPE_END;
@@ -2433,6 +2437,11 @@ static inline bool sema_analyse_compound_statement_no_scope(SemaContext *context
 			// Don't continue inside a macro, since we get too many "inlined" errors.
 			if (context->current_macro) break;
 		}
+	}
+	if (all_ok && compound_statement->compound_stmt.is_loop_body && context->active_scope.defer_last != context->active_scope.defer_start)
+	{
+		SEMA_ERROR(ast, "Looping over a raw 'defer' is not allowed, was this a mistake?");
+		all_ok = false;
 	}
 	AstId *next = ast ? &ast_last(ast)->next : &compound_statement->compound_stmt.first_stmt;
 	context_pop_defers(context, next);
