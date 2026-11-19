@@ -41,7 +41,7 @@ macro ulong constant_time_carry(ulong a, ulong b) @local
  Compute a Poly1305 message authentication code for the input with the given key (secret + nonce) value.
  Note that this construct SHOULD NOT be used with the 'Hmac' module; it is its own MAC package.
 
- @param[in] input
+ @param [in] input
  @param key
 *>
 fn char[TAG_SIZE] hash(char[] input, char[KEY_SIZE] key)

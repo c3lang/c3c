@@ -10,6 +10,7 @@
 - Added `--compiler-rt-module` and the `compiler-rt-module` project option to override the compiler runtime module (default: `compiler_rt`).
 - The C backend supports MSVC (`cl.exe`) and tcc, supports `int128` on compilers without a 128-bit integer, gives `float16` and `bfloat` their 16-bit layout and rounding, cross compiles with any C compiler for the target, and maps debug info to C3 source lines and names.
 - Added `--max-generic-instances` to limit the number of instances a single generic can implicitly spawn (default: 4096).
+- `[out]` or `[inout]` now detects more cases where pointers to constants were incorrectly used.
 
 ### Fixes
 - `nextcase x` in a `@jump` switch read `x` after the defers of the case had run.

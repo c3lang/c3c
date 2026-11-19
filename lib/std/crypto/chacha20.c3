@@ -112,7 +112,7 @@ fn void ChaCha20.init(&self, char[KEY_SIZE] key, char[NONCE_SIZE] nonce, uint co
 <*
  Transform some input data using the current context structure.
 
- @param[inout] data : `The data to transform (encrypt or decrypt).`
+ @param [inout] data : `The data to transform (encrypt or decrypt).`
 *>
 fn void ChaCha20.transform(&self, char[] data)
 {
@@ -173,7 +173,7 @@ fn void ChaCha20.destroy(&self) => mem::zero_volatile(@as_char_view(*self));
 <*
  Perform an in-place transformation of some data in a buffer, without cloning the data to a new buffer.
 
- @param[inout] data : `The data to transform (encrypt or decrypt).`
+ @param [inout] data : `The data to transform (encrypt or decrypt).`
  @param key : `The secret key used for the transformation operation.`
  @param nonce : `The one-time nonce to use for the transformation operation.`
  @param counter : `An optional counter value to adjust the stream's position.`
@@ -195,8 +195,8 @@ alias decrypt_mut = crypt;
 <*
  Perform a transformation of some data cloned from a source buffer.
 
- @param[&inout] allocator : `The memory allocator which controls allocation of the cloned input data.`
- @param[inout] data : `The data to transform (encrypt or decrypt).`
+ @param [&inout] allocator : `The memory allocator which controls allocation of the cloned input data.`
+ @param [in] data : `The data to transform (encrypt or decrypt).`
  @param key : `The secret key used for the transformation operation.`
  @param nonce : `The one-time nonce to use for the transformation operation.`
  @param counter : `An optional counter value to adjust the stream's position.`
@@ -217,7 +217,7 @@ alias decrypt = crypt_clone;
 <*
  Perform a transformation of some data cloned from a source buffer by the temp allocator.
 
- @param[inout] data : `The data to transform (encrypt or decrypt).`
+ @param [in] data : `The data to transform (encrypt or decrypt).`
  @param key : `The secret key used for the transformation operation.`
  @param nonce : `The one-time nonce to use for the transformation operation.`
  @param counter : `An optional counter value to adjust the stream's position.`

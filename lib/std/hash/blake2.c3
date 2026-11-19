@@ -237,9 +237,9 @@ alias b_512 = blake2b_512;
  Blake2b initialization method. Presents various options for customizing the hash output.
 
  @param out_len : "The desired output length from the hash function."
- @param[in] key : "An optional key value to use (keys the entire hash value to give HMAC-like functionality)."
- @param[in] salt : "An optional salt value to use when generating the hash."
- @param[in] personal : "An optional personalization value to use when generating the hash."
+ @param [in] key : "An optional key value to use (keys the entire hash value to give HMAC-like functionality)."
+ @param [in] salt : "An optional salt value to use when generating the hash."
+ @param [in] personal : "An optional personalization value to use when generating the hash."
 
  @require out_len > 0 && out_len <= BLAKE2B_OUTBYTES : "Blake2 output length must be within the proper range."
  @require !key.ptr || (key.len > 0 && key.len <= BLAKE2B_KEYBYTES) : "A specified key's length must be within the proper range."
@@ -258,7 +258,7 @@ fn void Blake2b._compress(&self, char[BLAKE2B_BLOCKBYTES] block) @inline
 <*
  Add more data to the hash context or stream.
 
- @param[in] data : "The data to ingest into the hash context."
+ @param [in] data : "The data to ingest into the hash context."
 *>
 fn void Blake2b.update(&self, char[] data)
 	=> common_update(self, BLAKE2B_BLOCKBYTES, data);
@@ -350,9 +350,9 @@ alias s_256 = blake2s_256;
  Blake2s initialization method. Presents various options
 
  @param out_len : "The desired output length from the hash function."
- @param[in] key : "An optional key value to use (keys the entire hash value to give HMAC-like functionality)."
- @param[in] salt : "An optional salt value to use when generating the hash."
- @param[in] personal : "An optional personalization value to use when generating the hash."
+ @param [in] key : "An optional key value to use (keys the entire hash value to give HMAC-like functionality)."
+ @param [in] salt : "An optional salt value to use when generating the hash."
+ @param [in] personal : "An optional personalization value to use when generating the hash."
 
  @require out_len > 0 && out_len <= BLAKE2S_OUTBYTES : "Blake2 output length must be within the proper range."
  @require !key.ptr || (key.len > 0 && key.len <= BLAKE2S_KEYBYTES) : "A specified key's length must be within the proper range."
@@ -371,7 +371,7 @@ fn void Blake2s._compress(&self, char[BLAKE2S_BLOCKBYTES] block) @inline
 <*
  Add more data to the hash context or stream.
 
- @param[in] data : "The data to ingest into the hash context."
+ @param [in] data : "The data to ingest into the hash context."
 *>
 fn void Blake2s.update(&self, char[] data)
 	=> common_update(self, BLAKE2S_BLOCKBYTES, data);

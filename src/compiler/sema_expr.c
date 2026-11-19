@@ -607,6 +607,7 @@ static bool expr_is_const_storage(Expr *expr)
 			case EXPR_BITACCESS:
 			case EXPR_ACCESS_RESOLVED:
 				expr = expr->access_resolved_expr.parent;
+				if (type_flatten(expr->type)->type_kind == TYPE_ENUM) return true;
 				continue;
 			case EXPR_SUBSCRIPT:
 			case EXPR_SUBSCRIPT_ADDR:
@@ -2751,12 +2752,20 @@ static inline bool sema_call_check_contract_param_match(SemaContext *context, De
 	{
 		RETURN_SEMA_ERROR(expr, "You may not pass null to the '&' parameter.");
 	}
-	if (expr->expr_kind == EXPR_UNARY && expr->unary_expr.expr->expr_kind == EXPR_IDENTIFIER)
+	
+	if (param->var.out_param)
 	{
-		if (expr->unary_expr.expr->ident_expr->var.kind == VARDECL_CONST && param->var.out_param)
+		if (expr_is_const_ref(expr))
 		{
-			SEMA_ERROR(expr, "A const parameter may not be passed into a function or macro as an 'out' or 'inout' argument.");
-			return false;
+			Decl *ref = expr->const_expr.global_ref;
+			if (ref->decl_kind == DECL_VAR && ref->var.kind == VARDECL_CONST) goto CONST_OUT_ERROR;
+		}
+		else
+		{
+			Expr *storage = NULL;
+			if (expr->expr_kind == EXPR_UNARY && expr->unary_expr.operator == UNARYOP_ADDR) storage = expr->unary_expr.expr;
+			if (expr->expr_kind == EXPR_SUBSCRIPT_ADDR || expr->expr_kind == EXPR_SLICE) storage = expr;
+			if (storage && !expr_is_const(storage) && expr_is_const_storage(storage)) goto CONST_OUT_ERROR;
 		}
 	}
 
@@ -2772,6 +2781,8 @@ static inline bool sema_call_check_contract_param_match(SemaContext *context, De
 		RETURN_SEMA_ERROR(expr, "An 'in' parameter may not be passed into a function or macro as an 'out' or 'inout' argument.");
 	}
 	return true;
+CONST_OUT_ERROR:;
+	RETURN_SEMA_ERROR(expr, "A const parameter may not be passed into a function or macro as an 'out' or 'inout' argument.");
 }
 
 static inline bool sema_has_require(DeclId doc_id)

@@ -26,7 +26,7 @@ fn void through_pointer(Col* cp)
 fn void subscript()
 {
 	Col c;
-	c.arr[0] = 9; // #error: Associated enum values are constant
+	c.arr[0] = 9; // #error: You cannot assign to an element of a constant
 }
 
 fn void field()
@@ -38,7 +38,7 @@ fn void field()
 fn void vector_element()
 {
 	Col c;
-	c.v[1] = 9; // #error: Associated enum values are constant
+	c.v[1] = 9; // #error: You cannot assign to an element of a constant
 }
 
 fn void valid(Col* cp)
