@@ -110,6 +110,7 @@
 - Declaring a `@noinit` variable of a struct that contains a slice of itself, like `struct Aa { Aa[] x; }`, crashed the compiler. A `@noinit` slice of a `@mustinit` type is now allowed, since a slice doesn't hold its elements.
 - On 32-bit x86, returning a struct with a single `float` or `double` field crashed the compiler.
 - On linux-x86 and netbsd-x86 (32 bit), small structs were incorrectly returned in registers, breaking C ABI.
+- A struct literal built from compile-time values in a macro, like `(Aa){ $nodes[0].a }`, could keep a stale reference to a compile-time variable and crash the compiler when it was later reassigned.
 
 ### Stdlib changes
 - `atomic::fetch_add` and the other `fetch_*` macros now require the alignment to be at most `mem::MAX_MEMORY_ALIGNMENT`; `fetch_max` and `fetch_min` check it at all.
