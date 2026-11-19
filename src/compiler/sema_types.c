@@ -448,6 +448,8 @@ INLINE bool sema_resolve_typefrom(SemaContext *context, TypeInfo *type_info, Res
 
 bool sema_unresolved_type_is_generic(SemaContext *context, TypeInfo *type_info)
 {
+	Decl *seen = NULL;
+	int steps = 0;
 	RETRY:
 	if (type_info->kind == TYPE_INFO_GENERIC) return true;
 	if (type_info->resolve_status == RESOLVE_DONE) return false;
@@ -457,6 +459,10 @@ bool sema_unresolved_type_is_generic(SemaContext *context, TypeInfo *type_info)
 	if (!decl) return false;
 	if (decl->decl_kind != DECL_TYPE_ALIAS) return false;
 	if (decl->resolve_status == RESOLVE_DONE) return false;
+	// Brent's method to detect recursion.
+	if (decl == seen) return false;
+	steps++;
+	if ((steps & (steps - 1)) == 0) seen = decl;
 	if (decl->type_alias_decl.is_func) return false;
 	Expr *expr = decl->type_alias_decl.type_expr;
 	if (expr->expr_kind != EXPR_TYPEINFO) return false;
