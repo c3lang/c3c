@@ -11718,6 +11718,7 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 		Decl *decl_cached = sema_find_cached_lambda(context, flat, decl, ct_lambda_parameters);
 		if (decl_cached)
 		{
+			if (!decl_ok(decl_cached)) return false;
 			expr->type = type_get_func_ptr(decl_cached->type);
 			expr_rewrite_const_ref(expr, decl_cached);
 			return true;
@@ -11834,11 +11835,14 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 		decl->resolve_status = RESOLVE_DONE;
 		SemaContext lambda_context;
 		sema_context_init(&lambda_context, context->unit);
-		if (sema_analyse_function_body(&lambda_context, decl, context->macro_call_depth))
-		{
-			vec_add(unit->lambdas, decl);
-		}
+		bool success = sema_analyse_function_body(&lambda_context, decl, context->macro_call_depth);
 		sema_context_destroy(&lambda_context);
+		if (!success)
+		{
+			if (multiple) vec_add(original->func_decl.generated_lambda, decl);
+			return decl_poison(decl);
+		}
+		vec_add(unit->lambdas, decl);
 	}
 
 	expr->type = type_get_func_ptr(decl->type);

@@ -103,6 +103,7 @@
 - A `defer` coming from a compile-time statement used as the body of an `if`, `while` or `for`, like `if (x) $if true: defer {} $endif`, crashed the compiler.
 - `foreach` and `foreach_r` now reject a raw `defer` as their body, like `while` and `for`.
 - A method on a recursive alias, like `alias Aa = Aa; fn int Aa.x() {}`, made the compiler hang.
+- An error inside a lambda body didn't fail the surrounding code, so a `$for` containing such a lambda kept iterating up to the max limit.
 
 ### Stdlib changes
 - `atomic::fetch_add` and the other `fetch_*` macros now require the alignment to be at most `mem::MAX_MEMORY_ALIGNMENT`; `fetch_max` and `fetch_min` check it at all.
