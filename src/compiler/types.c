@@ -538,7 +538,6 @@ Type *type_is_must_init(Type *type)
 			type = type->optional;
 			goto RETRY;
 		case TYPE_ARRAY:
-		case TYPE_SLICE:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_INFERRED_ARRAY:
 		case ALL_VECTORS:

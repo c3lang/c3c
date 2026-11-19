@@ -63,3 +63,16 @@ typedef InVecB = float;
 InVecA[<4>] k @noinit; // #error: InVecA[<4>]' contains the type 'InVecA' which requires initialization ('@mustinit');
 InVecB[<4>] l @noinit;
 
+
+// slices don't hold their elements, so they never require initialization
+typedef MustInitInt @mustinit = int;
+MustInitInt[] m @noinit;
+struct HasSlice { MustInitInt[] s; }
+HasSlice n @noinit;
+struct SelfSlice { SelfSlice[] x; }
+SelfSlice o @noinit;
+struct LoopA { LoopB[] x; }
+struct LoopB { LoopA x; }
+LoopB p @noinit;
+struct LoopC { LoopC[] x; MustInitInt mi; }
+LoopC q @noinit; // #error: 'LoopC' contains the type 'MustInitInt' which requires initialization ('@mustinit')
