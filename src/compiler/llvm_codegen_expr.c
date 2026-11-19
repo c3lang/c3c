@@ -1773,7 +1773,9 @@ static void llvm_emit_initialize_designated_element(GenContext *c, BEValue *ref,
 					break;
 				}
 				LLVMValueRef current_val = llvm_load_value(c, &value);
+				if (is_byteswap) current_val = llvm_emit_bswap(c, current_val);
 				current_val = llvm_emit_bitstruct_value_update(c, current_val, type_bit_size(underlying_type), bitstruct_type, member, val);
+				if (is_byteswap) current_val = llvm_emit_bswap(c, current_val);
 				llvm_store_raw(c, &value, current_val);
 				break;
 			}
