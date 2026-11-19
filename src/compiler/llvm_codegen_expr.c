@@ -1810,7 +1810,7 @@ static void llvm_emit_initialize_designated_element(GenContext *c, BEValue *ref,
 				llvm_value_set_address(c,
 				                       &value,
 				                       ref->value,
-				                       member_type, type_min_alignment(offset, decl_alignment));
+				                       member_type, type_min_alignment(ref->alignment, decl_alignment));
 			}
 			else
 			{

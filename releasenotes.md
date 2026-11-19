@@ -106,6 +106,7 @@
 - A method on a recursive alias, like `alias Aa = Aa; fn int Aa.x() {}`, made the compiler hang.
 - An error inside a lambda body didn't fail the surrounding code, so a `$for` containing such a lambda kept iterating up to the max limit.
 - Generic modules whose instances kept requesting new, deeper instances, like `alias Cc = Aa{ Aa{ Bb{ Ba } } };` inside module `a <Ba>`, made the compiler hang.
+- Initializing a union member with a runtime value inside a `@packed` struct or union, like `(Ba){ { .b = a } }`, used the member's own alignment and hit an assert in the compiler.
 
 ### Stdlib changes
 - `atomic::fetch_add` and the other `fetch_*` macros now require the alignment to be at most `mem::MAX_MEMORY_ALIGNMENT`; `fetch_max` and `fetch_min` check it at all.
