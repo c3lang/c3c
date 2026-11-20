@@ -1531,8 +1531,9 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 	return success;
 }
 
-static bool sema_foreach_slice_param_contract(SemaContext *context, Expr *enumerator, Decl *var, bool value_by_ref)
+static bool sema_foreach_param_contract(SemaContext *context, Expr *enumerator, Decl *var, bool value_by_ref)
 {
+	if (enumerator->expr_kind == EXPR_UNARY && enumerator->unary_expr.operator == UNARYOP_DEREF) enumerator = enumerator->unary_expr.expr;
 	if (enumerator->expr_kind != EXPR_IDENTIFIER) return true;
 	Decl *decl = enumerator->ident_expr;
 	if (decl->decl_kind != DECL_VAR) return true;
@@ -1783,10 +1784,10 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	Expr *len_call = NULL;
 	ArrayIndex array_len = 0;
 	Type *flat = type_flatten(enumerator->type);
+	if (!len && !sema_foreach_param_contract(context, enumerator, var, value_by_ref)) return false;
 	if (!len && flat->type_kind == TYPE_SLICE)
 	{
 		// Foo[] __slice$ = s; Foo* __enum$ = __slice$.ptr;
-		if (!sema_foreach_slice_param_contract(context, enumerator, var, value_by_ref)) return false;
 		Decl *slice = decl_new_generated_var(enumerator->type, VARDECL_LOCAL, enumerator->loc);
 		vec_add(expressions, expr_generate_decl(slice, enumerator));
 		Expr *ptr = expr_new_expr(EXPR_PTR_ACCESS, enumerator);

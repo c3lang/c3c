@@ -26,7 +26,7 @@ fn int main()
 {
 	const Abc Y = { 3 };
 	int* z = &X.a;
-	*z = 31;
+	*z = 31; // #error: 'z' points to constant data, which may not be assigned to
 	X.update(1);
 	X.update_fail(2); // #error: const parameter may not
 	X.a = 32; // #error: cannot assign to a constant

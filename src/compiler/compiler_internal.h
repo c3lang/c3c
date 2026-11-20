@@ -477,6 +477,7 @@ typedef struct VarDecl_
 	bool copy_const : 1;
 	bool defaulted : 1;
 	bool safe_infer : 1;
+	bool points_to_const : 1;
 	union
 	{
 		Expr *init_expr;

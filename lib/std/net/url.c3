@@ -289,7 +289,7 @@ fn UrlQueryValues parse_query(Allocator allocator, String query)
  Add copies of the key and value strings to the UrlQueryValues map. These
  copies are freed when the UrlQueryValues map is freed.
 
- @param [in] self
+ @param [&inout] self
  @param key
  @param value
  @return "a UrlQueryValues map"
