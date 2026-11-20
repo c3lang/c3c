@@ -14,6 +14,7 @@ excuse
 	FAILED_TO_BIND_STDERR,
 	FAILED_TO_START_PROCESS,
 	FAILED_TO_INITIALIZE_ACTIONS,
+	FAILED_TO_SET_WORKING_DIRECTORY,
 	PROCESS_JOIN_FAILED,
 	PROCESS_TERMINATION_FAILED,
 	READ_FAILED
@@ -67,9 +68,10 @@ const ProcessStdio INHERIT = { .action = INHERIT };
 const ProcessStdio DEFAULT = { .action = DEFAULT };
 macro ProcessStdio bind(RawFd fd) => { .action = BIND, .fd = fd };
 
-fn String? run_capture_stdout(char[] buffer, String[] command_line, SpawnOptions options = {}, String[] environment = {})
+fn String? run_capture_stdout(char[] buffer, String[] command_line, SpawnOptions options = {}, String[] environment = {},
+            String working_directory = "")
 {
-	Process process = process::spawn(command_line, options, environment)!;
+	Process process = process::spawn(command_line, options, environment, DEFAULT, DEFAULT, DEFAULT, working_directory)!;
 	defer (void)process.destroy();
 	process.join()!;
 	sz len = process.read_stdout(buffer.ptr, buffer.len)!;
@@ -78,9 +80,10 @@ fn String? run_capture_stdout(char[] buffer, String[] command_line, SpawnOptions
 }
 
 fn int? run(String[] command_line, SpawnOptions options = {}, String[] environment = {},
-            ProcessStdio in = DEFAULT, ProcessStdio out = DEFAULT, ProcessStdio err = DEFAULT)
+            ProcessStdio in = DEFAULT, ProcessStdio out = DEFAULT, ProcessStdio err = DEFAULT,
+            String working_directory = "")
 {
-	Process process = process::spawn(command_line, options, environment, in, out, err)!;
+	Process process = process::spawn(command_line, options, environment, in, out, err, working_directory)!;
 	defer (void)process.destroy();
 	return process.join()!;
 }
@@ -90,7 +93,8 @@ fn int? run(String[] command_line, SpawnOptions options = {}, String[] environme
  @require !environment || !(options & INHERIT_ENV)
 *>
 fn Process? spawn(String[] command_line, SpawnOptions options = {}, String[] environment = {},
-                  ProcessStdio in = DEFAULT, ProcessStdio out = DEFAULT, ProcessStdio err = DEFAULT) @feat(WIN32, POSIX)
+                  ProcessStdio in = DEFAULT, ProcessStdio out = DEFAULT, ProcessStdio err = DEFAULT,
+                  String working_directory = "") @feat(WIN32, POSIX)
 {
 	update_default(&in, &out, &err, !!(options & INHERIT_STDIO));
 
@@ -216,6 +220,7 @@ $if env::WIN32:
 			env.append("\0");
 			used_environment = env.str_view().to_wstring(smem)!;
 		}
+		WString cwd2 = working_directory.len ? working_directory.to_wstring(smem)! : null;
 	
 		if (!win32::createProcessW(
 			null,
@@ -225,7 +230,7 @@ $if env::WIN32:
 			1,                      // handles are inherited
 			flags,                  // creation flags
 			used_environment,       // environment
-			null,                   // use parent dir
+			cwd2,                    // null uses the parent's dir
 			&start_info,            // startup info ptr
 			&process_info)) return FAILED_TO_START_PROCESS~;
 	};
@@ -251,16 +256,27 @@ $if env::WIN32:
 		.is_alive = true,
 	};
 $else
-	Posix_spawn_file_actions_t actions;
-	if (posix::spawn_file_actions_init(&actions)) return FAILED_TO_INITIALIZE_ACTIONS~;
-	defer posix::spawn_file_actions_destroy(&actions);
-
 	// We should set FD_CLOEXEC to prevent leaking pipe handles between concurrent spawns
 	const int F_SETFD = 2;
 	const int FD_CLOEXEC = 1;
 
-	CInt[2] stdinfd, stdoutfd, stderrfd;
+	CInt[2] stdinfd = { -1, -1 };
+	CInt[2] stdoutfd = { -1, -1 };
+	CInt[2] stderrfd = { -1, -1 };
 	CFile stdin, stdout, stderr;
+	// Don't leak the pipes if we fail before handing them over.
+	defer catch
+	{
+		foreach (fd : (CInt[6]){ stdinfd[0], stdinfd[1], stdoutfd[0], stdoutfd[1], stderrfd[0], stderrfd[1] })
+		{
+			if (fd >= 0) libc::close(fd);
+		}
+	}
+
+	// What the child gets as stdin, stdout and stderr: BIND dups the fd, anything else inherits.
+	ProcessStdio child_in = INHERIT;
+	ProcessStdio child_out = INHERIT;
+	ProcessStdio child_err = INHERIT;
 
 	switch (in.action)
 	{
@@ -270,9 +286,9 @@ $else
 			if (posix::pipe(&stdinfd)) return FAILED_TO_OPEN_STDIN~;
 			os::fcntl((NativeSocket)stdinfd[0], F_SETFD, FD_CLOEXEC);
 			os::fcntl((NativeSocket)stdinfd[1], F_SETFD, FD_CLOEXEC);
-			if (posix::spawn_file_actions_adddup2(&actions, stdinfd[0], libc::STDIN_FD)) return FAILED_TO_OPEN_STDIN~;
+			child_in = bind(stdinfd[0]);
 		case BIND:
-			if (posix::spawn_file_actions_adddup2(&actions, in.fd, libc::STDIN_FD)) return FAILED_TO_BIND_STDIN~;
+			child_in = in;
 		case INHERIT:
 			break;
 	}
@@ -291,16 +307,17 @@ $else
 				((NativeSocket)stdoutfd[0]).set_non_blocking(true)!;
 				((NativeSocket)stdoutfd[1]).set_non_blocking(true)!;
 			}
-			if (posix::spawn_file_actions_adddup2(&actions, stdoutfd[1], libc::STDOUT_FD)) return FAILED_TO_OPEN_STDOUT~;
+			child_out = bind(stdoutfd[1]);
 		case BIND:
-			if (posix::spawn_file_actions_adddup2(&actions, out.fd, libc::STDOUT_FD)) return FAILED_TO_BIND_STDOUT~;
+			child_out = out;
 		case INHERIT:
 			break;
 	}
 
 	if (options & STDERR_TO_STDOUT)
 	{
-		if (posix::spawn_file_actions_adddup2(&actions, libc::STDOUT_FD, libc::STDERR_FD)) return FAILED_TO_OPEN_STDERR~;
+		// Applied after stdout is bound, so stderr follows it.
+		child_err = bind(libc::STDOUT_FD);
 	}
 	else
 	{
@@ -318,9 +335,9 @@ $else
 					((NativeSocket)stderrfd[0]).set_non_blocking(true)!;
 					((NativeSocket)stderrfd[1]).set_non_blocking(true)!;
 				}
-				if (posix::spawn_file_actions_adddup2(&actions, stderrfd[1], libc::STDERR_FD)) return FAILED_TO_OPEN_STDERR~;
+				child_err = bind(stderrfd[1]);
 			case BIND:
-				if (posix::spawn_file_actions_adddup2(&actions, err.fd, libc::STDERR_FD)) return FAILED_TO_BIND_STDERR~;
+				child_err = err;
 			case INHERIT:
 				break;
 		}
@@ -331,13 +348,19 @@ $else
 	{
 		ZString* command_line_copy = copy_command_line(mem, command_line);
 		ZString* used_environment = options & INHERIT_ENV ? posix::environ : copy_env(mem, environment);
-		if (options & NO_PATH_SEARCH)
+		ZString cwd = working_directory.len ? working_directory.zstr_copy(mem) : null;
+		bool path_search = !(options & NO_PATH_SEARCH);
+
+		// Like libuv: prefer posix_spawn, but if a working directory is requested and
+		// the libc has no posix_spawn_file_actions_addchdir, fall back to fork + chdir + exec.
+		SpawnFileActionsAddchdirFn addchdir = cwd ? posix::spawn_file_actions_addchdir : null;
+		if (cwd && !addchdir)
 		{
-			if (posix::spawn(&child, command_line_copy[0], &actions, null, command_line_copy, used_environment)) return FAILED_TO_START_PROCESS~;
+			child = spawn_fork(command_line_copy, used_environment, cwd, path_search, child_in, child_out, child_err)!;
 		}
 		else
 		{
-			if (posix::spawnp(&child, command_line_copy[0], &actions, null, command_line_copy, used_environment)) return FAILED_TO_START_PROCESS~;
+			child = spawn_posix(command_line_copy, used_environment, cwd, addchdir, path_search, child_in, child_out, child_err)!;
 		}
 	};
 
@@ -376,9 +399,121 @@ $else
 $endif
 }
 
+fn Pid_t? spawn_posix(ZString* argv, ZString* envp, ZString cwd, SpawnFileActionsAddchdirFn addchdir, bool path_search,
+                      ProcessStdio in = DEFAULT, ProcessStdio out = DEFAULT, ProcessStdio err = DEFAULT) @local @feat(POSIX)
+{
+	Posix_spawn_file_actions_t actions;
+	if (posix::spawn_file_actions_init(&actions)) return FAILED_TO_INITIALIZE_ACTIONS~;
+	defer posix::spawn_file_actions_destroy(&actions);
 
+	// The path is copied into the actions.
+	if (cwd && addchdir(&actions, cwd)) return FAILED_TO_SET_WORKING_DIRECTORY~;
+	// Order matters: err may be bound to STDOUT_FD, so it must come after out.
+	if (in.action == BIND && posix::spawn_file_actions_adddup2(&actions, in.fd, libc::STDIN_FD)) return FAILED_TO_BIND_STDIN~;
+	if (out.action == BIND && posix::spawn_file_actions_adddup2(&actions, out.fd, libc::STDOUT_FD)) return FAILED_TO_BIND_STDOUT~;
+	if (err.action == BIND && posix::spawn_file_actions_adddup2(&actions, err.fd, libc::STDERR_FD)) return FAILED_TO_BIND_STDERR~;
 
+	Pid_t child;
+	CInt result = path_search
+		? posix::spawnp(&child, argv[0], &actions, null, argv, envp)
+		: posix::spawn(&child, argv[0], &actions, null, argv, envp);
+	if (result) return FAILED_TO_START_PROCESS~;
+	return child;
+}
 
+// Which step failed in the forked child, sent back to the parent over the error pipe.
+constset ForkStage : inline CInt @local @feat(POSIX)
+{
+	BIND_STDIN = 1,
+	BIND_STDOUT = 2,
+	BIND_STDERR = 3,
+	CHDIR = 4,
+	EXEC = 5,
+}
+
+fn Pid_t? spawn_fork(ZString* argv, ZString* envp, ZString cwd, bool path_search,
+                     ProcessStdio in = DEFAULT, ProcessStdio out = DEFAULT, ProcessStdio err = DEFAULT) @local @feat(POSIX)
+{
+	const int F_SETFD = 2;
+	const int FD_CLOEXEC = 1;
+
+	CInt[2] error_pipe;
+	if (posix::pipe(&error_pipe)) return FAILED_TO_START_PROCESS~;
+	os::fcntl((NativeSocket)error_pipe[0], F_SETFD, FD_CLOEXEC);
+	os::fcntl((NativeSocket)error_pipe[1], F_SETFD, FD_CLOEXEC);
+	defer libc::close(error_pipe[0]);
+
+	// Block signals so none of our handlers run in the child before it execs.
+	Sigset_t all_signals, old_mask;
+	libc::sigfillset(&all_signals);
+	libc::sigprocmask(libc::SIG_SETMASK, &all_signals, &old_mask);
+
+	Pid_t pid = posix::fork();
+	if (pid == 0)
+	{
+		fork_child(argv, envp, cwd, path_search, &old_mask, error_pipe[1], in, out, err);
+		libc::_exit(127);
+	}
+
+	libc::sigprocmask(libc::SIG_SETMASK, &old_mask, null);
+	libc::close(error_pipe[1]);
+	if (pid < 0) return FAILED_TO_START_PROCESS~;
+
+	CInt stage;
+	sz read;
+	do
+	{
+		read = libc::read(error_pipe[0], &stage, CInt::size);
+	} while (read < 0 && libc::errno() == EINTR);
+
+	// EOF: the pipe was closed by a successful exec.
+	if (read == 0) return pid;
+
+	// The child failed before exec, reap it.
+	CInt status;
+	while (posix::waitpid(pid, &status, 0) < 0 && libc::errno() == EINTR) {}
+
+	if (read != CInt::size) return FAILED_TO_START_PROCESS~;
+	switch ((ForkStage)stage)
+	{
+		case BIND_STDIN: return FAILED_TO_BIND_STDIN~;
+		case BIND_STDOUT: return FAILED_TO_BIND_STDOUT~;
+		case BIND_STDERR: return FAILED_TO_BIND_STDERR~;
+		case CHDIR: return FAILED_TO_SET_WORKING_DIRECTORY~;
+		default: return FAILED_TO_START_PROCESS~;
+	}
+}
+
+fn void fork_child(ZString* argv, ZString* envp, ZString cwd, bool path_search, Sigset_t* signal_mask, CInt error_fd,
+                   ProcessStdio in = DEFAULT, ProcessStdio out = DEFAULT, ProcessStdio err = DEFAULT) @local @feat(POSIX)
+{
+	// Order matters: err may be bound to STDOUT_FD, so it must come after out.
+	if (in.action == BIND && posix::dup2(in.fd, libc::STDIN_FD) < 0) return fork_child_fail(error_fd, BIND_STDIN);
+	if (out.action == BIND && posix::dup2(out.fd, libc::STDOUT_FD) < 0) return fork_child_fail(error_fd, BIND_STDOUT);
+	if (err.action == BIND && posix::dup2(err.fd, libc::STDERR_FD) < 0) return fork_child_fail(error_fd, BIND_STDERR);
+
+	if (posix::chdir(cwd)) return fork_child_fail(error_fd, CHDIR);
+
+	// Same as libuv: execvp searches the PATH of the child's environment.
+	posix::environ = envp;
+	libc::sigprocmask(libc::SIG_SETMASK, signal_mask, null);
+	if (path_search)
+	{
+		posix::execvp(argv[0], argv);
+	}
+	else
+	{
+		posix::execv(argv[0], argv);
+	}
+	fork_child_fail(error_fd, EXEC);
+}
+
+fn void fork_child_fail(CInt error_fd, ForkStage stage) @local @feat(POSIX)
+{
+	CInt value = (CInt)stage;
+	while (libc::write(error_fd, &value, CInt::size) < 0 && libc::errno() == EINTR) {}
+	libc::_exit(127);
+}
 
 fn CInt? Process.join(&self) @feat(POSIX)
 {

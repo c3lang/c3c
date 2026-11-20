@@ -14,10 +14,18 @@ struct Posix_spawnattr_t
 	void*[42] opaque;
 }
 
+alias SpawnFileActionsAddchdirFn = fn CInt(Posix_spawn_file_actions_t* file_actions, ZString path);
+
 extern fn CInt posix_spawn_file_actions_init(Posix_spawn_file_actions_t *file_actions);
 extern fn CInt posix_spawn_file_actions_destroy(Posix_spawn_file_actions_t *file_actions);
 extern fn CInt posix_spawn_file_actions_addclose(Posix_spawn_file_actions_t *file_actions, CInt fd);
 extern fn CInt posix_spawn_file_actions_adddup2(Posix_spawn_file_actions_t *file_actions, CInt fd, CInt newfd);
+SpawnFileActionsAddchdirFn spawn_file_actions_addchdir;
+
+extern fn Pid_t fork();
+extern fn CInt execv(ZString path, ZString* argv);
+extern fn CInt execvp(ZString file, ZString* argv);
+extern fn CInt dup2(CInt fd, CInt newfd);
 
 extern fn CInt get_nprocs();
 extern fn CInt get_nprocs_conf();
@@ -188,4 +196,10 @@ macro void* stack_instruction(PosixUContext_t* uc)
 		$default:
 			return null;
 	$endswitch
+}
+
+fn void init_posix() @init @local
+{
+	spawn_file_actions_addchdir = libc::dlsym(libc::RTLD_DEFAULT, "posix_spawn_file_actions_addchdir");
+	if (!spawn_file_actions_addchdir) spawn_file_actions_addchdir = libc::dlsym(libc::RTLD_DEFAULT, "posix_spawn_file_actions_addchdir_np");
 }
