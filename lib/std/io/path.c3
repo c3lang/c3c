@@ -144,6 +144,54 @@ macro bool? rmdir(path)
 }
 
 <*
+ Create a symbolic link at `link` pointing to `target`.
+
+ On Windows, creating symbolic links may require Developer Mode or elevated privileges.
+
+ @param target : `The path the link should point to, may be relative to the directory of the link`
+ @param link : `The path of the symbolic link to create`
+ @require @is_pathlike(target) : "Expected a Path or String as target"
+ @require @is_pathlike(link) : "Expected a Path or String as link"
+ @return? INVALID_PATH : `if either path was invalid`
+ @return? io::ALREADY_EXISTS : `if something already exists at the link path`
+ @return? io::NO_PERMISSION : `if the link could not be created due to missing permissions`
+*>
+macro void? symlink(target, link)
+{
+	@pool()
+	{
+		$if $Typeof(target) == String:
+			Path t = tnew(target)!;
+		$else
+			Path t = target;
+		$endif
+		$if $Typeof(link) == String:
+			Path l = tnew(link)!;
+		$else
+			Path l = link;
+		$endif
+		return _symlink(t, l);
+	};
+}
+
+<*
+ Read the target of a symbolic link, without resolving it.
+
+ @param link : `The symbolic link to read`
+ @return `The target of the link`
+ @return? INVALID_PATH : `if the link path was empty or invalid`
+ @return? io::FILE_NOT_VALID : `if the path is not a symbolic link`
+ @return? io::FILE_NOT_FOUND : `if the path does not exist`
+*>
+fn Path? readlink(Allocator allocator, Path link)
+{
+	if (!link) return INVALID_PATH~;
+	return os::native_readlink(allocator, link);
+}
+
+fn Path? treadlink(Path link) => readlink(tmem, link) @inline;
+
+<*
  Like [rmdir] but deletes a directory even if it contains items.
 *>
 fn void? rmtree(Path path)
@@ -582,6 +630,12 @@ fn bool? _mkdir(Path path, bool recursive = false, MkdirPermissions permissions 
 	if (!is_dir(path.parent()) ?? false) return io::CANNOT_READ_DIR~;
 
 	return os::native_mkdir(path, permissions);
+}
+
+fn void? _symlink(Path target, Path link) @private
+{
+	if (!target || !link) return INVALID_PATH~;
+	return os::native_symlink(target, link);
 }
 
 fn bool? _rmdir(Path path) @private
