@@ -1004,7 +1004,7 @@ Expr *expr_new_const_initializer(SourceLocId loc, Type *type, ConstInitializer *
 	return expr;
 }
 
-Expr *expr_new_const_bool(int loc, Type *type, bool value)
+Expr *expr_new_const_bool(SourceLocId loc, Type *type, bool value)
 {
 	Expr *expr = expr_calloc();
 	expr->expr_kind = EXPR_CONST;

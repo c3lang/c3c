@@ -1531,6 +1531,24 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 	return success;
 }
 
+static bool sema_foreach_slice_param_contract(SemaContext *context, Expr *enumerator, Decl *var, bool value_by_ref)
+{
+	if (enumerator->expr_kind != EXPR_IDENTIFIER) return true;
+	Decl *decl = enumerator->ident_expr;
+	if (decl->decl_kind != DECL_VAR) return true;
+	if (value_by_ref)
+	{
+		var->var.in_param = decl->var.in_param;
+		var->var.out_param = decl->var.out_param;
+		return true;
+	}
+	if (decl->var.out_param && !decl->var.in_param)
+	{
+		RETURN_SEMA_ERROR(enumerator, "'out' parameters may not be read.");
+	}
+	return true;
+}
+
 /**
  * foreach_stmt ::= foreach
  * @param context
@@ -1566,7 +1584,6 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	// Conditional scope start
 	SCOPE_START(statement->loc)
 	{
-
 		// In the case of foreach (int x : { 1, 2, 3 }) we will infer the int[] type, so pick out the number of elements.
 		Type *inferred_type = variable_type_info ? type_get_inferred_array(type_no_optional(variable_type_info->type)) : NULL;
 
@@ -1628,12 +1645,13 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	{
 		RETURN_SEMA_ERROR(enumerator, "It is not possible to enumerate over a flexible array member.", type_quoted_error_string(enumerator->type));
 	}
+
 	// Check that we can even index this expression, this will dig into the flattened type.
 	Type *value_type = type_get_indexed_type(enumerator->type);
 
 	// However, if we have something distinct, that flattens to a pointer, we should never take the
 	// the underlying pointee type.
-	if (canonical->type_kind == TYPE_TYPEDEF && type_flatten(canonical)->type_kind == TYPE_POINTER)
+	if (type_is_distinct_like(canonical) && type_flatten(canonical)->type_kind == TYPE_POINTER)
 	{
 		value_type = NULL;
 	}
@@ -1646,9 +1664,10 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	Type *index_type = type_sz;
 	bool is_enum_iterator = false;
 	bool need_deref = false;
+
 	// Now we lower the foreach...
-	// If we can't find a value, or this is distinct, then we assume there is an overload.
-	if (!value_type || canonical->type_kind == TYPE_TYPEDEF)
+	// If we can't find a value, or it has a subscript overload we assume it has an overload
+	if (!value_type || sema_type_has_subscript_overloads(canonical))
 	{
 		// Get the overload for .len
 		len = sema_find_untyped_operator(enumerator->type, OVERLOAD_LEN, NULL);
@@ -1660,16 +1679,17 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		// If we don't have .len, or there is neither by val nor by ref
 		if (!len || (!by_val && !by_ref))
 		{
-			// If we found an underlying type we can iterate over, use that.
-			if (value_type) goto SKIP_OVERLOAD;
-
-			// Otherwise this is an error.
-			RETURN_SEMA_ERROR(enumerator, "It's not possible to enumerate an expression of type %s.", type_quoted_error_string(original_type));
+			if (!sema_type_has_subscript_overloads(canonical))
+			{
+				RETURN_SEMA_ERROR(enumerator, "It's not possible to enumerate an expression of type %s.", type_quoted_error_string(original_type));
+			}
+			RETURN_SEMA_ERROR(enumerator, "%s can't be used with 'foreach', since it has no %s.", type_quoted_error_string(original_type),
+			                  len ? "'@operator([])' or '@operator(&[])'" : "'@operator(len)'");
 		}
 		// If we want the value "by ref" and there isn't a &[], then this is an error.
 		if (!by_ref && value_by_ref)
 		{
-			RETURN_SEMA_ERROR(enumerator, "%s does not support 'foreach' by reference, but you iterate by value.", type_quoted_error_string(enumerator->type));
+			RETURN_SEMA_ERROR(enumerator, "%s has no '@operator(&[])', so 'foreach' can only iterate it by value.", type_quoted_error_string(enumerator->type));
 		}
 
 		// If there was an error in either of those declarations,
@@ -1706,8 +1726,6 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 			value_type = value_type->pointer;
 		}
 	}
-
-SKIP_OVERLOAD:;
 
 	// Get the type of the variable, if available (e.g. foreach (Foo x : y) has a type
 	TypeInfo *type_info = vartype(var);
@@ -1759,58 +1777,55 @@ SKIP_OVERLOAD:;
 		}
 	}
 
-
-	// We either have "foreach (x : some_var)" or "foreach (x : some_call())"
-	// So we grab the former by address (implicit &) and the latter as the value.
-	// Generate the temp as needed.
 	ASSERT(enumerator->resolve_status == RESOLVE_DONE);
+	Decl *temp;
 	bool is_addr = false;
-	Decl *temp = NULL;
-	if (enumerator->expr_kind == EXPR_IDENTIFIER)
-	{
-		decl_write(enumerator->ident_expr);
-		temp = enumerator->ident_expr;
-	}
-	else
-	{
-		if (expr_may_ref(enumerator))
-		{
-			is_addr = true;
-			expr_insert_addr(enumerator);
-		}
-		// Store either "Foo* __enum$ = &some_var;" or "Foo __enum$ = some_call()"
-		temp = decl_new_generated_var(enumerator->type, VARDECL_LOCAL, enumerator->loc);
-		vec_add(expressions, expr_generate_decl(temp, enumerator));
-	}
-
-	// Create @__enum$.len() or @(*__enum$).len()
-	Expr *enum_val = expr_variable(temp);
-	enum_val->loc = enumerator->loc;
-	if (is_addr && !sema_expr_rewrite_insert_deref(context, enum_val)) return false;
-	Type *enumerator_type = type_flatten(enum_val->type);
-	Expr *len_call;
+	Expr *len_call = NULL;
 	ArrayIndex array_len = 0;
-	if (len)
+	Type *flat = type_flatten(enumerator->type);
+	if (!len && flat->type_kind == TYPE_SLICE)
 	{
-		len_call = expr_new(EXPR_CALL, enumerator->loc);
-		if (!sema_insert_method_call(context, len_call, len, enum_val, NULL, false)) return false;
+		// Foo[] __slice$ = s; Foo* __enum$ = __slice$.ptr;
+		if (!sema_foreach_slice_param_contract(context, enumerator, var, value_by_ref)) return false;
+		Decl *slice = decl_new_generated_var(enumerator->type, VARDECL_LOCAL, enumerator->loc);
+		vec_add(expressions, expr_generate_decl(slice, enumerator));
+		Expr *ptr = expr_new_expr(EXPR_PTR_ACCESS, enumerator);
+		expr_rewrite_ptr_access(ptr, expr_variable(slice), type_get_ptr(flat->array.base));
+		temp = decl_new_generated_var(ptr->type, VARDECL_LOCAL, enumerator->loc);
+		vec_add(expressions, expr_generate_decl(temp, ptr));
+		len_call = expr_new_expr(EXPR_SLICE_LEN, enumerator);
+		expr_rewrite_slice_len(len_call, expr_variable(slice), type_sz);
 	}
 	else
 	{
-		switch (enumerator_type->type_kind)
+		// Store either "Foo* __enum$ = &some_var;" or "Foo __enum$ = some_call()"
+		if (enumerator->expr_kind == EXPR_IDENTIFIER)
 		{
-			case TYPE_ARRAY:
-			case VECTORS:
-				array_len = enumerator_type->array.len;
-				len_call = NULL;
-				break;
-			case TYPE_SLICE:
-				if (!sema_analyse_expr_rvalue(context, enum_val)) return false;
-				len_call = expr_new_expr(EXPR_SLICE_LEN, enumerator);
-				expr_rewrite_slice_len(len_call, enum_val, type_sz);
-				break;
-			default:
-				UNREACHABLE
+			decl_write(enumerator->ident_expr);
+			temp = enumerator->ident_expr;
+		}
+		else
+		{
+			if (expr_may_ref(enumerator))
+			{
+				is_addr = true;
+				expr_insert_addr(enumerator);
+			}
+			temp = decl_new_generated_var(enumerator->type, VARDECL_LOCAL, enumerator->loc);
+			vec_add(expressions, expr_generate_decl(temp, enumerator));
+		}
+		// Create @__enum$.len() or @(*__enum$).len()
+		Expr *enum_val = expr_variable(temp);
+		enum_val->loc = enumerator->loc;
+		if (is_addr && !sema_expr_rewrite_insert_deref(context, enum_val)) return false;
+		if (len)
+		{
+			len_call = expr_new(EXPR_CALL, enumerator->loc);
+			if (!sema_insert_method_call(context, len_call, len, enum_val, NULL, false)) return false;
+		}
+		else
+		{
+			array_len = flat->array.len;
 		}
 	}
 	bool is_single_pass = array_len == 1;
@@ -1953,7 +1968,7 @@ SKIP_OVERLOAD:;
 	value_declare_ast->declare_stmt = var;
 
 	Expr *subscript = expr_new(EXPR_SUBSCRIPT, var->loc);
-	enum_val = expr_variable(temp);
+	Expr *enum_val = expr_variable(temp);
 	enum_val->loc = enumerator->loc;
 	if (is_addr && !sema_expr_rewrite_insert_deref(context, enum_val)) return false;
 	subscript->subscript_expr.expr = exprid(enum_val);

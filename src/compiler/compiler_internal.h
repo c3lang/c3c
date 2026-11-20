@@ -714,6 +714,7 @@ typedef struct
 
 typedef struct
 {
+	bool has_subscript_overloads;
 	DeclId overloads[OVERLOADS_COUNT + 1];
 	DeclTable method_table;
 	Decl **methods;
@@ -2633,7 +2634,7 @@ Expr *expr_new(ExprKind kind, SourceLocId start);
 Expr *expr_new_loc(ExprKind kind, SourceLoc *start);
 Expr *expr_new_const_int(SourceLocId loc, Type *type, uint64_t v);
 Expr *expr_new_const_float(SourceLocId loc, Type *type, Real v);
-Expr *expr_new_const_bool(int loc, Type *type, bool value);
+Expr *expr_new_const_bool(SourceLocId loc, Type *type, bool value);
 Expr *expr_new_const_typeid(SourceLocId loc, Type *type);
 Expr *expr_new_const_string(SourceLocId loc, const char *string);
 Expr *expr_new_const_null(SourceLocId loc, Type *type);
@@ -3452,6 +3453,10 @@ static inline void methods_add(Methods *methods, Decl *method)
 	OperatorOverload operator = method->func_decl.operator;
 	if (operator)
 	{
+		if (operator >= OVERLOAD_SUBSCRIPTS_FIRST && operator <= OVERLOAD_SUBSCRIPTS_LAST)
+		{
+			methods->has_subscript_overloads = true;
+		}
 		int len = vec_size(method->func_decl.signature.params);
 		if (operator == OVERLOAD_MINUS && len == 1)
 		{

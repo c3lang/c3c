@@ -94,33 +94,33 @@ entry:
   %8 = insertvalue %"int[][]" undef, ptr %literal, 0
   %9 = insertvalue %"int[][]" %8, i64 5, 1
   store %"int[][]" %9, ptr %tcases, align 8
-  %ptradd8 = getelementptr inbounds i8, ptr %tcases, i64 8
-  %10 = load i64, ptr %ptradd8, align 8
+  %10 = load %"int[][]", ptr %tcases, align 8
+  %11 = extractvalue %"int[][]" %10, 0
+  %12 = extractvalue %"int[][]" %10, 1
   store i64 0, ptr %.anon, align 8
   br label %loop.cond
 
 loop.cond:                                        ; preds = %loop.body, %entry
-  %11 = load i64, ptr %.anon, align 8
-  %lt = icmp slt i64 %11, %10
+  %13 = load i64, ptr %.anon, align 8
+  %lt = icmp slt i64 %13, %12
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %12 = load ptr, ptr %tcases, align 8
-  %13 = load i64, ptr %.anon, align 8
-  %ptroffset = getelementptr inbounds [16 x i8], ptr %12, i64 %13
+  %14 = load i64, ptr %.anon, align 8
+  %ptroffset = getelementptr inbounds [16 x i8], ptr %11, i64 %14
   call void @llvm.memcpy.p0.p0.i64(ptr align 8 %tc, ptr align 8 %ptroffset, i64 16, i1 false)
   call void @llvm.memcpy.p0.p0.i64(ptr align 8 %list, ptr align 8 %tc, i64 16, i1 false)
-  %ptradd9 = getelementptr inbounds i8, ptr %list, i64 8
-  %14 = load i64, ptr %ptradd9, align 8
-  store i64 %14, ptr %len, align 8
-  %15 = load i64, ptr %len, align 8
-  %sub = sub i64 %15, 1
+  %ptradd8 = getelementptr inbounds i8, ptr %list, i64 8
+  %15 = load i64, ptr %ptradd8, align 8
+  store i64 %15, ptr %len, align 8
+  %16 = load i64, ptr %len, align 8
+  %sub = sub i64 %16, 1
   %lo = load ptr, ptr %list, align 8
-  %ptradd10 = getelementptr inbounds i8, ptr %list, i64 8
-  %hi = load i64, ptr %ptradd10, align 8
+  %ptradd9 = getelementptr inbounds i8, ptr %list, i64 8
+  %hi = load i64, ptr %ptradd9, align 8
   call void @"test_generic.sort$sa$int$fn$int$int$$int$$"(ptr %lo, i64 %hi, i64 0, i64 %sub, ptr @sort_test.cmp_int_value)
-  %16 = load i64, ptr %.anon, align 8
-  %addnsw = add nsw i64 %16, 1
+  %17 = load i64, ptr %.anon, align 8
+  %addnsw = add nsw i64 %17, 1
   store i64 %addnsw, ptr %.anon, align 8
   br label %loop.cond
 
@@ -164,33 +164,33 @@ entry:
   %8 = insertvalue %"int[][]" undef, ptr %literal, 0
   %9 = insertvalue %"int[][]" %8, i64 5, 1
   store %"int[][]" %9, ptr %tcases, align 8
-  %ptradd8 = getelementptr inbounds i8, ptr %tcases, i64 8
-  %10 = load i64, ptr %ptradd8, align 8
+  %10 = load %"int[][]", ptr %tcases, align 8
+  %11 = extractvalue %"int[][]" %10, 0
+  %12 = extractvalue %"int[][]" %10, 1
   store i64 0, ptr %.anon, align 8
   br label %loop.cond
 
 loop.cond:                                        ; preds = %loop.body, %entry
-  %11 = load i64, ptr %.anon, align 8
-  %lt = icmp slt i64 %11, %10
+  %13 = load i64, ptr %.anon, align 8
+  %lt = icmp slt i64 %13, %12
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %12 = load ptr, ptr %tcases, align 8
-  %13 = load i64, ptr %.anon, align 8
-  %ptroffset = getelementptr inbounds [16 x i8], ptr %12, i64 %13
+  %14 = load i64, ptr %.anon, align 8
+  %ptroffset = getelementptr inbounds [16 x i8], ptr %11, i64 %14
   call void @llvm.memcpy.p0.p0.i64(ptr align 8 %tc, ptr align 8 %ptroffset, i64 16, i1 false)
   call void @llvm.memcpy.p0.p0.i64(ptr align 8 %list, ptr align 8 %tc, i64 16, i1 false)
-  %ptradd9 = getelementptr inbounds i8, ptr %list, i64 8
-  %14 = load i64, ptr %ptradd9, align 8
-  store i64 %14, ptr %len, align 8
-  %15 = load i64, ptr %len, align 8
-  %sub = sub i64 %15, 1
+  %ptradd8 = getelementptr inbounds i8, ptr %list, i64 8
+  %15 = load i64, ptr %ptradd8, align 8
+  store i64 %15, ptr %len, align 8
+  %16 = load i64, ptr %len, align 8
+  %sub = sub i64 %16, 1
   %lo = load ptr, ptr %list, align 8
-  %ptradd10 = getelementptr inbounds i8, ptr %list, i64 8
-  %hi = load i64, ptr %ptradd10, align 8
+  %ptradd9 = getelementptr inbounds i8, ptr %list, i64 8
+  %hi = load i64, ptr %ptradd9, align 8
   call void @"test_generic.sort$sa$int$fn$int$int$$int$$"(ptr %lo, i64 %hi, i64 0, i64 %sub, ptr @sort_test.cmp_int_value2)
-  %16 = load i64, ptr %.anon, align 8
-  %addnsw = add nsw i64 %16, 1
+  %17 = load i64, ptr %.anon, align 8
+  %addnsw = add nsw i64 %17, 1
   store i64 %addnsw, ptr %.anon, align 8
   br label %loop.cond
 

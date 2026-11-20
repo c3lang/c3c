@@ -2101,6 +2101,14 @@ static bool sema_analyse_operator_common(SemaContext *context, Decl *method, Typ
 	return true;
 }
 
+bool sema_type_has_subscript_overloads(Type *type)
+{
+	type = type_no_optional(type)->canonical;
+	if (!type_may_have_sub_elements(type)) return false;
+	Decl *def = type->decl;
+	if (!def->method_table) return false;
+	return def->method_table->has_subscript_overloads;
+}
 
 Decl *sema_find_untyped_operator(Type *type, OperatorOverload operator_overload, Decl *skipped)
 {

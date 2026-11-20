@@ -21,27 +21,27 @@ entry:
   store ptr %0, ptr %args, align 8
   %ptradd = getelementptr inbounds i8, ptr %args, i64 8
   store i64 %1, ptr %ptradd, align 8
-  %ptradd1 = getelementptr inbounds i8, ptr %args, i64 8, !dbg !28
-  %2 = load i64, ptr %ptradd1, align 8, !dbg !28
+  %2 = load %"char[][]", ptr %args, align 8, !dbg !28
+  %3 = extractvalue %"char[][]" %2, 0, !dbg !28
+  %4 = extractvalue %"char[][]" %2, 1, !dbg !28
   store i64 0, ptr %.anon, align 8, !dbg !28
   br label %loop.cond, !dbg !28
 
 loop.cond:                                        ; preds = %loop.body, %entry
-  %3 = load i64, ptr %.anon, align 8, !dbg !28
-  %lt = icmp slt i64 %3, %2, !dbg !28
+  %5 = load i64, ptr %.anon, align 8, !dbg !28
+  %lt = icmp slt i64 %5, %4, !dbg !28
   br i1 %lt, label %loop.body, label %loop.exit, !dbg !28
 
 loop.body:                                        ; preds = %loop.cond
-  %4 = load ptr, ptr %args, align 8, !dbg !34
-  %5 = load i64, ptr %.anon, align 8, !dbg !34
-  %ptroffset = getelementptr inbounds [16 x i8], ptr %4, i64 %5, !dbg !34
+  %6 = load i64, ptr %.anon, align 8, !dbg !34
+  %ptroffset = getelementptr inbounds [16 x i8], ptr %3, i64 %6, !dbg !34
   call void @llvm.memcpy.p0.p0.i64(ptr align 8 %a, ptr align 8 %ptroffset, i64 16, i1 false), !dbg !34
-  %ptradd2 = getelementptr inbounds i8, ptr %a, i64 8, !dbg !39
-  %6 = load i64, ptr %ptradd2, align 8, !dbg !39
-  %trunc = trunc i64 %6 to i32, !dbg !39
+  %ptradd1 = getelementptr inbounds i8, ptr %a, i64 8, !dbg !39
+  %7 = load i64, ptr %ptradd1, align 8, !dbg !39
+  %trunc = trunc i64 %7 to i32, !dbg !39
   store i32 %trunc, ptr %x, align 4, !dbg !39
-  %7 = load i64, ptr %.anon, align 8, !dbg !28
-  %addnsw = add nsw i64 %7, 1, !dbg !28
+  %8 = load i64, ptr %.anon, align 8, !dbg !28
+  %addnsw = add nsw i64 %8, 1, !dbg !28
   store i64 %addnsw, ptr %.anon, align 8, !dbg !28
   br label %loop.cond, !dbg !28
 

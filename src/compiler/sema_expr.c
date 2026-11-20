@@ -2029,9 +2029,18 @@ INLINE Expr **sema_splat_arraylike_insert(SemaContext *context, Expr **args, Exp
 
 static inline ArrayIndex sema_len_from_expr(Expr *expr)
 {
-	Type *type = type_flatten(expr->type);
+	CanonicalType *type = expr->type->canonical;
+RETRY:;
 	switch (type->type_kind)
 	{
+		case TYPE_OPTIONAL:
+			type = type->optional->canonical;
+			goto RETRY;
+		case TYPE_TYPEDEF:
+		case TYPE_CONSTSET:
+			if (sema_type_has_subscript_overloads(type)) return -1;
+			type = type_flatten(type);
+			goto RETRY;
 		case VECTORS:
 		case TYPE_ARRAY:
 			return (ArrayIndex)type->array.len;
@@ -2273,7 +2282,7 @@ SPLAT_NORMAL:;
 									  type_quoted_error_string(inner->type));
 			}
 			ArrayIndex len = is_struct ? 0 : sema_len_from_expr(inner);
-			if (!is_struct && len == -1) RETURN_SEMA_ERROR(arg, "Splat may not be used with raw varargs if the length is not known, but if you slice it to a constant length it will work (e.g '...val[:2]')");
+			if (!is_struct && len == -1) RETURN_SEMA_ERROR(arg, "Only a value with a length known at compile time can be splatted, but if you slice it to a constant length it will work (e.g. '...val[:2]').");
 			if (!is_struct && len == 0 && !expr_is_const(arg))
 			{
 				RETURN_SEMA_ERROR(arg, "A non-constant zero size splat cannot be used with raw varargs.");
@@ -4385,6 +4394,13 @@ static bool sema_expr_find_subscript_type_or_overload_for_subscript(SemaContext 
 	}
 	// Otherwise, see if we have an indexed type.
 	Expr *subscripted = lookup->subscripted;
+	Type *no_optional = type_no_optional(subscripted->type)->canonical;
+
+	// If there is a subscript overload it blocks further overloads.
+	if (sema_type_has_subscript_overloads(no_optional))
+	{
+		return false;
+	}
 	Type *inner_type = type_get_indexed_type(subscripted->type);
 	if (inner_type)
 	{
@@ -4392,7 +4408,6 @@ static bool sema_expr_find_subscript_type_or_overload_for_subscript(SemaContext 
 		lookup->overload_method = NULL;
 		return true;
 	}
-	Type *no_optional = type_no_optional(subscripted->type);
 	if (type_is_substruct(no_optional))
 	{
 		Expr *embedded_struct = expr_access_inline_member(subscripted, no_optional->decl);
@@ -7341,17 +7356,29 @@ CHECK_DEEPER:
 	if (kw == kw_len)
 	{
 		ArrayIndex index = sema_len_from_expr(current_parent);
+
 		if (index > -1)
 		{
 			expr_rewrite_const_int(expr, type_sz, index);
 			return true;
 		}
-		if (flat_kind == TYPE_SLICE)
+		switch (flat_kind)
 		{
-			expr_rewrite_slice_len(expr, current_parent, type_sz);
-			return true;
+			case TYPE_SLICE:
+				if (!sema_type_has_subscript_overloads(type))
+				{
+					expr_rewrite_slice_len(expr, current_parent, type_sz);
+					return true;
+				}
+				break;
+			case TYPE_ARRAY:
+			case TYPE_VECTOR:
+			case TYPE_SIMD_VECTOR:
+				ASSERT(sema_type_has_subscript_overloads(type));
+				break;
+			default:
+				break;
 		}
-		assert(flat_kind != TYPE_ARRAY && !type_kind_is_real_vector(flat_kind));
 	}
 	if (flat_kind == TYPE_TYPEID)
 	{
@@ -7360,7 +7387,7 @@ CHECK_DEEPER:
 	}
 	if (type_kind_is_real_vector(flat_kind))
 	{
-		int len = strlen(kw);
+		int len = (int)strlen(kw);
 		if (sema_kw_is_swizzle(kw, len))
 		{
 			return sema_expr_analyse_swizzle(context, expr, current_parent, flat_type, kw, len);
@@ -7746,7 +7773,7 @@ bool sema_expand_vasplat_exprs(SemaContext *context, Expr ***exprs_ptr, Decl ***
 				if (len == -1)
 				{
 					RETURN_SEMA_ERROR(arg,
-						"Splat may not be used with if the length is not known, but if you slice it to a constant length it will work (e.g '...val[:2]')");
+						"Only a value with a length known at compile time can be splatted, but if you slice it to a constant length it will work (e.g. '...val[:2]').");
 				}
 				if (len == 0 && !expr_is_const(arg))
 				{
@@ -11922,7 +11949,9 @@ RETRY:
 			expr_rewrite_const_int(expr, type_sz, vec_size(expr->const_expr.untyped_list));
 			return true;
 		case TYPE_TYPEDEF:
-			canonical = canonical->decl->distinct->type;
+		case TYPE_CONSTSET:
+			if (sema_type_has_subscript_overloads(canonical)) goto FAIL;
+			canonical = type_flatten(canonical);
 			goto RETRY;
 		case TYPE_ARRAY:
 		case VECTORS:
@@ -11932,7 +11961,7 @@ RETRY:
 			expr_rewrite_slice_len(expr, inner, type_sz);
 			return true;
 		case TYPE_STRUCT:
-			if (canonical->decl->is_substruct)
+			if (canonical->decl->is_substruct && !sema_type_has_subscript_overloads(canonical))
 			{
 				Expr *expr_access = expr_access_inline_member(copy_expr_single(expr), canonical->decl);
 				*expr = *expr_access;
@@ -11941,6 +11970,7 @@ RETRY:
 			}
 			FALLTHROUGH;
 		default:
+FAIL:
 			if (missing_ref)
 			{
 				*missing_ref = true;

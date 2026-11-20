@@ -112,39 +112,35 @@ entry:
   %url = alloca %"char[]", align 8
   %summary = alloca %Summary, align 8
   %result = alloca %Summary, align 8
-  %0 = load i64, ptr getelementptr inbounds (i8, ptr @main.URLS, i64 8), align 8
+  %0 = load %"char[][]", ptr @main.URLS, align 8
+  %1 = extractvalue %"char[][]" %0, 0
+  %2 = extractvalue %"char[][]" %0, 1
   store i64 0, ptr %.anon, align 8
   br label %loop.cond
 
-loop.cond:                                        ; preds = %checkok2, %entry
-  %1 = load i64, ptr %.anon, align 8
-  %lt = icmp slt i64 %1, %0
+loop.cond:                                        ; preds = %checkok, %entry
+  %3 = load i64, ptr %.anon, align 8
+  %lt = icmp slt i64 %3, %2
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %2 = load i64, ptr getelementptr inbounds (i8, ptr @main.URLS, i64 8), align 8
-  %3 = load ptr, ptr @main.URLS, align 8
   %4 = load i64, ptr %.anon, align 8
-  %5 = icmp uge i64 %4, %2
-  br i1 %5, label %panic, label %checkok
+  %ptroffset = getelementptr inbounds [16 x i8], ptr %1, i64 %4
+  %5 = ptrtoint ptr %ptroffset to i64
+  %6 = and i64 %5, 7
+  %7 = icmp ne i64 %6, 0
+  br i1 %7, label %panic, label %checkok
 
 checkok:                                          ; preds = %loop.body
-  %ptroffset = getelementptr inbounds [16 x i8], ptr %3, i64 %4
-  %6 = ptrtoint ptr %ptroffset to i64
-  %7 = and i64 %6, 7
-  %8 = icmp ne i64 %7, 0
-  br i1 %8, label %panic1, label %checkok2
-
-checkok2:                                         ; preds = %checkok
   call void @llvm.memcpy.p0.p0.i64(ptr align 8 %url, ptr align 8 %ptroffset, i64 16, i1 false)
   %lo = load ptr, ptr %url, align 8
   %ptradd = getelementptr inbounds i8, ptr %url, i64 8
   %hi = load i64, ptr %ptradd, align 8
-  %9 = call ptr @test.readAndBuildSummary(ptr %lo, i64 %hi)
-  store ptr %9, ptr %result, align 8
+  %8 = call ptr @test.readAndBuildSummary(ptr %lo, i64 %hi)
+  store ptr %8, ptr %result, align 8
   call void @llvm.memcpy.p0.p0.i64(ptr align 8 %summary, ptr align 8 %result, i64 8, i1 false)
-  %10 = load i64, ptr %.anon, align 8
-  %addnsw = add nsw i64 %10, 1
+  %9 = load i64, ptr %.anon, align 8
+  %addnsw = add nsw i64 %9, 1
   store i64 %addnsw, ptr %.anon, align 8
   br label %loop.cond
 
@@ -152,10 +148,6 @@ loop.exit:                                        ; preds = %loop.cond
   ret void
 
 panic:                                            ; preds = %loop.body
-  call void @std.core.runtime.panics.index.long.long(ptr @.panic_str, ptr @.panic_str.1, i32 33, i64 %4, i64 %2) #4
-  unreachable
-
-panic1:                                           ; preds = %checkok
-  call void @std.core.runtime.panics.unaligned.long.long(ptr @.panic_str, ptr @.panic_str.1, i32 33, i64 8, i64 %7) #4
+  call void @std.core.runtime.panics.unaligned.long.long(ptr @.panic_str, ptr @.panic_str.1, i32 33, i64 8, i64 %6) #4
   unreachable
 }

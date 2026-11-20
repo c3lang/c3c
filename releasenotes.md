@@ -11,6 +11,8 @@
 - The C backend supports MSVC (`cl.exe`) and tcc, supports `int128` on compilers without a 128-bit integer, gives `float16` and `bfloat` their 16-bit layout and rounding, cross compiles with any C compiler for the target, and maps debug info to C3 source lines and names.
 - Added `--max-generic-instances` to limit the number of instances a single generic can implicitly spawn (default: 4096).
 - `[out]` or `[inout]` now detects more cases where pointers to constants were incorrectly used.
+- A type that declares any of the `[]`, `&[]`, `[]=` or `len` overloads no longer falls back to its underlying type for the ones it lacks: `foreach`, indexing, `lengthof` and `.len` require the overload they need, e.g. `foreach` over a typedef slice with only `[]` is an error. Typedefs and constsets without these overloads still use their underlying type.
+- `foreach` errors now name the missing overload.
 
 ### Fixes
 - `nextcase x` in a `@jump` switch read `x` after the defers of the case had run.
@@ -112,6 +114,9 @@
 - On 32-bit x86, returning a struct with a single `float` or `double` field crashed the compiler.
 - On linux-x86 and netbsd-x86 (32 bit), small structs were incorrectly returned in registers, breaking C ABI.
 - A struct literal built from compile-time values in a macro, like `(Aa){ $nodes[0].a }`, could keep a stale reference to a compile-time variable and crash the compiler when it was later reassigned.
+- `foreach` over a slice variable re-read the slice on every iteration, so reassigning the variable in the loop body, like `foos = foos[1..]`, changed the elements visited and could index out of bounds. The slice is now evaluated once.
+- Writing through a `foreach (&p : s)` loop variable to an `[in]` slice parameter, or reading through it from an `[out]` one, was not detected.
+- `foreach` over a constset of pointers crashed the compiler.
 
 ### Stdlib changes
 - `atomic::fetch_add` and the other `fetch_*` macros now require the alignment to be at most `mem::MAX_MEMORY_ALIGNMENT`; `fetch_max` and `fetch_min` check it at all.
