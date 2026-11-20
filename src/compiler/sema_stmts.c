@@ -1582,6 +1582,13 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 			default: RETURN_SEMA_ERROR(var, "%s is not a valid type for '%s', only runtime types with a known size may be used.", type_quoted_error_string(variable_type_info->type), var->name);
 		}
 	}
+	if (value_by_ref && enumerator->expr_kind == EXPR_UNARY && enumerator->unary_expr.operator == UNARYOP_DEREF)
+	{
+		Expr *pointer = enumerator->unary_expr.expr;
+		if (!sema_analyse_expr_rvalue(context, pointer)) return false;
+		Type *flat = type_flatten(pointer->type);
+		enumerator->unary_expr.no_read = flat->type_kind == TYPE_POINTER && type_is_arraylike(type_flatten(flat->pointer));
+	}
 	// Conditional scope start
 	SCOPE_START(statement->loc)
 	{

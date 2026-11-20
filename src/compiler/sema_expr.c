@@ -10707,7 +10707,11 @@ static inline bool sema_expr_analyse_taddr(SemaContext *context, Expr *expr, boo
 			RETURN_SEMA_ERROR(expr, "It is not possible to take the address from a value of type %s.",
 							  type_quoted_error_string(type));
 	}
-	if (context->call_env.kind == CALL_ENV_FUNCTION && expr_is_const_storage(inner, false))
+	if (context->call_env.kind != CALL_ENV_FUNCTION)
+	{
+		if (expr_is_const_storage(inner, false)) sema_cast_const(inner);
+	}
+	else if (expr_is_const_storage(inner, false))
 	{
 		Decl *temp = decl_new_generated_var(type, VARDECL_LOCAL, inner->loc);
 		expr_rewrite_two(inner, expr_generate_decl(temp, expr_copy(inner)), expr_variable(temp));

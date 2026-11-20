@@ -134,3 +134,33 @@ fn void out_arr_ptr_write(int[3]* s)
 {
 	foreach (i, &p : s) *p = (int)i;
 }
+
+<* @param [out] s *>
+fn void out_explicit_deref_write(int[3]* s)
+{
+	foreach (i, &p : *s) *p = (int)i;
+}
+
+<* @param [out] s *>
+fn void out_explicit_deref_read(int[3]* s)
+{
+	foreach (&p : *s) { int y = *p; } // #error: 'out' parameters may not be read
+}
+
+<* @param [out] s *>
+fn void out_explicit_deref_value(int[3]* s)
+{
+	foreach (x : *s) {} // #error: 'out' parameters may not be read
+}
+
+<* @param [out] s *>
+fn void out_explicit_deref_slice(int[]* s)
+{
+	foreach (&p : *s) *p = 1; // #error: 'out' parameters may not be read
+}
+
+<* @param [out] s *>
+fn void out_explicit_deref_vector(int[<3>]* s)
+{
+	foreach (&p : *s) *p = 1;
+}
