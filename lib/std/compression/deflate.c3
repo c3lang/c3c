@@ -235,7 +235,9 @@ fn void? Deflater.scan_matches(&self, bool final)
 				int chain_len = 0;
 				uint curr = match_head;
 
-				while (curr != 0xFFFFFFFF && strstart - curr < WINDOW_SIZE && chain_len < chain)
+				// After a window slide, pos can be under WINDOW_SIZE, so cap lookback to input[0].
+				uint max_dist = pos < WINDOW_SIZE ? (uint)pos : WINDOW_SIZE - 1;
+				while (curr != 0xFFFFFFFF && strstart - curr <= max_dist && chain_len < chain)
 				{
 					chain_len++;
 					sz curr_rel = (sz)(curr - win_offset);

@@ -1,6 +1,6 @@
 module deflate_test @test;
 
-import std::compression::deflate, std::io, std::math;
+import std::compression::deflate, std::io, std::math, std::math::random;
 
 fn void test_deflate_basic()
 {
@@ -774,5 +774,28 @@ fn void test_deflate_level_streaming_small_writes()
 		char[] out = deflate::decompress(mem, writer.array_view())!!;
 		defer free(out.ptr);
 		assert((String)out == (String)original, "Data mismatch");
+	}
+}
+
+// Put identical 3-byte sequences at distance WINDOW_SIZE - 1 across a window slide.
+// When the scan reaches the second one, pos is WINDOW_SIZE - 2 and the first one
+// has already been shifted out of the window buffer.
+fn void test_deflate_match_before_window_start()
+{
+	const sz WS = 32768;
+	char[] original = mem::new_array(char, WS * 3);
+	defer free(original.ptr);
+	DefaultRandom r;
+	random::seed(&r, 1234);
+	foreach (&c : original) *c = (char)(r.next_int() % 200);
+	original[WS - 1 : 3] = (char[3]){ 250, 251, 252 }[..];
+	original[2 * WS - 2 : 3] = (char[3]){ 250, 251, 252 }[..];
+	for (int level = deflate::MIN_LEVEL; level <= deflate::MAX_LEVEL; level++)
+	{
+		char[] compressed = deflate::compress(mem, original, level)!!;
+		defer free(compressed.ptr);
+		char[] out = deflate::decompress(mem, compressed)!!;
+		defer free(out.ptr);
+		assert(out == original, "Data mismatch at level %d", level);
 	}
 }
