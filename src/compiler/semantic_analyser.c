@@ -589,7 +589,7 @@ RESOLVE_LAMBDA:;
 				{
 					scratch_buffer_clear();
 					scratch_buffer_append_module(module, false);
-					scratch_buffer_printf(".taddr%d", unclaimed++);
+					scratch_buffer_printf(".$taddr%d", unclaimed++);
 					var->name = var->extname = scratch_buffer_copy();
 				}
 				vec_add(unit->vars, var);

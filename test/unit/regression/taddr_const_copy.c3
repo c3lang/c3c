@@ -62,3 +62,34 @@ fn void taddr_in_constants_is_shared() @test
 	*g_tv = 60;
 	assert(*g_tv == 60 && g_tv == g_tv);
 }
+
+int g_any_target = 41;
+any* g_any = &&(any)&g_any_target;
+
+fn void taddr_of_runtime_constant_global() @test
+{
+	assert(g_any == g_any && *(int*)g_any.ptr == 41);
+}
+
+const any C_ANY = &g_any_target;
+any* g_any_copy = &&C_ANY;
+
+fn void taddr_of_any_constant_global() @test
+{
+	assert(*(int*)g_any_copy.ptr == 41);
+}
+
+int*[3] g_nested = { &&5, NESTED_B[0], NESTED_B[1] };
+const int*[2] NESTED_B = { &&7, &&8 };
+constset TaddrSet : int* { TA = &&3, TB = &&4 }
+int taddr0 = 77;
+enum Tv2 : (int* p) { A { &&9 } }
+fn int Tv2.taddr0(self) => 42;
+
+fn void taddr_owner_claims_only_its_own() @test
+{
+	*g_nested[0] = 99;
+	assert(*g_nested[0] == 99 && g_nested[1] == NESTED_B[0] && *NESTED_B[1] == 8);
+	assert((int*)TaddrSet.TA == (int*)TaddrSet.TA && *(int*)TaddrSet.TB == 4 && taddr0 == 77);
+	assert(*Tv2.A.p == 9 && Tv2.A.taddr0() == 42);
+}

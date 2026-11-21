@@ -81,21 +81,11 @@ void llvm_value_addr(GenContext *c, BEValue *value)
 {
 	llvm_value_fold_optional(c, value);
 	if (value->kind == BE_ADDRESS) return;
-	if (llvm_is_global_eval(c))
-	{
-		LLVMValueRef val = llvm_load_value_store(c, value);
-		LLVMValueRef ref = llvm_add_global_raw(c, ".taddr", LLVMTypeOf(val), 0);
-		llvm_set_private_declaration(ref);
-		LLVMSetInitializer(ref, val);
-		llvm_value_set_address_abi_aligned(c, value, ref, value->type);
-	}
-	else
-	{
-		RETURN_ON_EMPTY_BLOCK(value);
-		BEValue temp = llvm_emit_alloca_b(c, value->type, "taddr");
-		llvm_store(c, &temp, value);
-		*value = temp;
-	}
+	ASSERT(!llvm_is_global_eval(c));
+	RETURN_ON_EMPTY_BLOCK(value);
+	BEValue temp = llvm_emit_alloca_b(c, value->type, "taddr");
+	llvm_store(c, &temp, value);
+	*value = temp;
 }
 
 void llvm_value_rvalue(GenContext *c, BEValue *value)

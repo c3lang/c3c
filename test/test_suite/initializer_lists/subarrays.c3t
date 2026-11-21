@@ -55,8 +55,8 @@ fn int main()
 @subarrays.arrbar = local_unnamed_addr global %"Bar[]" { ptr @.__const_slice, i64 2 }, align 8
 @.__const_slice.4 = private unnamed_addr global [2 x i32] [i32 1, i32 2], align 4
 @subarrays.xd = local_unnamed_addr global %"int[]" { ptr @.__const_slice.4, i64 2 }, align 8
-@subarrays.fofeo = local_unnamed_addr global ptr @subarrays.fofeo.taddr0, align 8
-@subarrays.fofeo.taddr0 = internal global [2 x i32] [i32 3, i32 4], align 4
+@subarrays.fofeo = local_unnamed_addr global ptr @"subarrays.fofeo.$taddr0", align 8
+@"subarrays.fofeo.$taddr0" = internal global [2 x i32] [i32 3, i32 4], align 4
 @.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 @.__const = private unnamed_addr constant [3 x i32] [i32 1, i32 2, i32 3], align 4
 @.__const.5 = private unnamed_addr constant [3 x i32] [i32 123, i32 234, i32 567], align 4

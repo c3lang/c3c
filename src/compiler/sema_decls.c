@@ -8,7 +8,7 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, Decl *decl);
 static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl);
-static void sema_fixup_global_temps_after_generation(CompilationUnit *unit, Decl *owner, bool writable);
+static void sema_fixup_global_temps_after_generation(CompilationUnit *unit, int start, Decl *owner, bool writable);
 static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, Decl **decls, Decl *current, int current_index);
 static inline bool sema_analyse_method(SemaContext *context, Decl *decl);
 static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param, Type *parent_type, bool is_dynamic);
@@ -1901,6 +1901,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		if (!sema_set_alignment(context, param->type, &param->alignment, true)) return false;
 		param->resolve_status = RESOLVE_DONE;
 	}
+	int taddr_start = vec_size(context->compilation_unit->generated_globals);
 	for (int i = 0; i < enums; i++)
 	{
 		Decl *enum_value = enum_values[i];
@@ -1932,21 +1933,21 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		}
 		enum_value->resolve_status = RESOLVE_DONE;
 	}
-	sema_fixup_global_temps_after_generation(context->unit, decl, false);
+	sema_fixup_global_temps_after_generation(context->compilation_unit, taddr_start, decl, false);
 	return success;
 ERR:
 	sema_decl_stack_restore(state);
 	return false;
 }
 
-static void sema_fixup_global_temps_after_generation(CompilationUnit *unit, Decl *owner, bool writable)
+static void sema_fixup_global_temps_after_generation(CompilationUnit *unit, int start, Decl *owner, bool writable)
 {
-	int index = 0;
-	FOREACH(Decl *, var, unit->generated_globals)
+	for (int i = start; i < vec_size(unit->generated_globals); i++)
 	{
+		Decl *var = unit->generated_globals[i];
 		if (var->name) continue;
 		scratch_buffer_set_extern_decl_name(owner, true);
-		scratch_buffer_printf(".taddr%d", index++);
+		scratch_buffer_printf(".$taddr%d", i - start);
 		var->name = var->extname = scratch_buffer_copy();
 		var->is_templated = owner->is_templated;
 		var->instance_id = owner->instance_id;
@@ -2055,6 +2056,7 @@ static inline bool sema_analyse_constset(SemaContext *context, Decl *decl, bool 
 		ASSERT(enum_value->decl_kind == DECL_ENUM_CONSTANT);
 	}
 	decl->resolve_status = RESOLVE_DONE;
+	int taddr_start = vec_size(context->compilation_unit->generated_globals);
 	for (int i = 0; i < enums; i++)
 	{
 		Decl *enum_value = enum_values[i];
@@ -2062,6 +2064,7 @@ static inline bool sema_analyse_constset(SemaContext *context, Decl *decl, bool 
 		if (!sema_analyse_const_enum_constant_val(context, enum_value)) return decl_poison(decl);
 		enum_value->resolve_status = RESOLVE_DONE;
 	}
+	sema_fixup_global_temps_after_generation(context->compilation_unit, taddr_start, decl, false);
 	return success;
 }
 
@@ -5470,6 +5473,7 @@ static bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, 
 
 		CallEnvKind env_kind = context->call_env.kind;
 		if (is_static) context->call_env.kind = CALL_ENV_FUNCTION_STATIC;
+		int taddr_start = vec_size(context->compilation_unit->generated_globals);
 		decl->in_init = true;
 
 		Decl *generic = declptrzero(type_find_generic(decl->type));
@@ -5484,7 +5488,7 @@ static bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, 
 		if (!success && check_defined) return false;
 		decl->in_init = false;
 		context->call_env.kind = env_kind;
-		sema_fixup_global_temps_after_generation(context->unit, decl, decl->var.kind != VARDECL_CONST);
+		sema_fixup_global_temps_after_generation(context->compilation_unit, taddr_start, decl, decl->var.kind != VARDECL_CONST);
 		if (infer_len)
 		{
 			if (!success) return decl_poison(decl);
