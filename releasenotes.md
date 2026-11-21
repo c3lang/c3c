@@ -129,6 +129,7 @@
 - New easings module `std::math::ease`, with functions mapping `t` in [0, 1] to [0, 1]: Penner's easings (adding `quart` and `quint`), `smoothstep`, `smootherstep`, CSS-style `steps` and `cubic_bezier`, and `@clamped` for inputs outside [0, 1].
 - `std::math::easing` deprecated in favour of `std::math::ease`.
 - `math::lerp` is now public, and `math::inverse_lerp` added.
+- `math::uuid` now supports uuid version 7, and parsing uuids from strings.
 
 ## 0.8.6 Change list
 - `File.write` declared its buffer `[out]` instead of `[in]`, and `UrlQueryValues.add` declared `self` `[in]` although it modifies it.
