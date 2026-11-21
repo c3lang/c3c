@@ -16,6 +16,7 @@ int zero = 0;
 int minus_one = -1;
 int ten = 10;
 uint uten = 10;
+int global_int;
 ulong huge = 0x8000_0000_0000_0000;
 VoidFn null_fn = null;
 int* null_ptr = null;
@@ -112,6 +113,30 @@ fn void test_indexing() @test @feat(!(WIN32 & AARCH64)) @feat(!WASM) @feat(SAFE_
 	@expect_panic("Negative indexing (-1)") { (void)slice[minus_one..]; };
 	@expect_panic("End index out of bounds (end index of 10 exceeds size of 3)") { (void)slice[0..ten]; };
 	@expect_panic("Slice copy length mismatch (3 != 2).") { slice[..] = array[:(usz)(zero + 2)]; };
+	@expect_panic("Negative array indexing (index was -7)") { (void)array[^ten]; };
+	@expect_panic("Negative array indexing (index was -7)") { array[^ten] = 1; };
+	@expect_panic("Negative array indexing (index was -7)") { (void)&array[^ten]; };
+	@expect_panic("Array index out of bounds (array had size 3, index was 4)") { (void)array[^minus_one]; };
+	@expect_panic("Negative array indexing (index was -7)") { slice[^ten] = 1; };
+	@expect_panic("Array index out of bounds (array had size 3, index was 4)") { (void)slice[^minus_one]; };
+}
+
+fn void test_vector_indexing() @test @feat(!(WIN32 & AARCH64)) @feat(!WASM) @feat(SAFE_MODE)
+{
+	int[<3>] v = { 1, 2, 3 };
+	@expect_panic("Array index out of bounds (array had size 3, index was 10)") { (void)v[ten]; };
+	@expect_panic("Negative array indexing (index was -1)") { (void)v[minus_one]; };
+	@expect_panic("Array index out of bounds (array had size 3, index was 10)") { v[ten] = 7; };
+	@expect_panic("Array index out of bounds (array had size 3, index was 10)") { v[uten] += 7; };
+	@expect_panic("Array index out of bounds (array had size 3, index was 10)") { v[ten]++; };
+	@expect_panic("Negative array indexing (index was -7)") { (void)v[^ten]; };
+	@expect_panic("Negative array indexing (index was -7)") { v[^ten] = 7; };
+	@expect_panic("Negative array indexing (index was -7)") { v[^ten] += 7; };
+	@expect_panic("Negative array indexing (index was -7)") { v[^ten]++; };
+	@expect_panic("Negative array indexing (index was -7)") { (void)&v[^ten]; };
+	sz addr = (sz)(uptr)&global_int;
+	@expect_panic(string::tformat("Array index out of bounds (array had size 3, index was %d)", addr)) { v[(sz)(uptr)&global_int]++; };
+	assert(v == { 1, 2, 3 });
 }
 
 fn void test_other() @test @feat(!(WIN32 & AARCH64)) @feat(!WASM) @feat(SAFE_MODE)
