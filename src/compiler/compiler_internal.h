@@ -1795,6 +1795,7 @@ struct CompilationUnit_
 	Decl **ct_echos;
 	Decl **ct_includes;
 	Decl **vars;
+	Decl **generated_globals;
 	Decl **macros;
 	Decl **methods_to_register;
 	Decl **methods;

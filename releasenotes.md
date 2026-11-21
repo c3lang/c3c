@@ -122,6 +122,7 @@
 - `&&` on a typed constant, like `&&CA` for a `const int[3] CA`, returned the constant's own read-only storage instead of a temporary copy, also in global and `static` initializers.
 - Slicing a typed constant with a runtime range, like `CA[i..]` or `CS[i..]` no longer creates a copy.
 - Indexing a vector with a runtime index, like `v[i]`, `v[i] = x`, `v[i] += x` or `v[i]++`, had no bounds check in safe mode.
+- `&&` in an enum associated value or a constant, like `enum Ff : (int* p) { A { &&3 } }`, created a new copy on every use.
 
 ### Stdlib changes
 - `atomic::fetch_add` and the other `fetch_*` macros now require the alignment to be at most `mem::MAX_MEMORY_ALIGNMENT`; `fetch_max` and `fetch_min` check it at all.

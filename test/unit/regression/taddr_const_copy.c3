@@ -48,3 +48,17 @@ fn void address_into_const_slice_is_not_a_copy() @test
 	int[] t = CS[i..];
 	assert(&CS[1] == &v[1] && &CS[1] == &CS[i] && &t[0] == &v[1]);
 }
+
+struct PtrBox { int* p; }
+enum Tv : (int* p, PtrBox b) { A { &&3, { &&4 } } }
+const int* HP = &&5;
+int* g_tv = &&6;
+
+fn void taddr_in_constants_is_shared() @test
+{
+	Tv t = Tv.A;
+	assert(Tv.A.p == Tv.A.p && Tv.A.p == t.p && Tv.A.b.p == t.b.p && HP == HP);
+	assert(*Tv.A.p == 3 && *Tv.A.b.p == 4 && *HP == 5);
+	*g_tv = 60;
+	assert(*g_tv == 60 && g_tv == g_tv);
+}

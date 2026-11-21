@@ -53,19 +53,19 @@ fn int main()
 @"$ct.subarrays.Bar" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.__const_slice = private unnamed_addr global [2 x %Bar] [%Bar { i32 3, i32 4 }, %Bar { i32 8, i32 9 }], align 16
 @subarrays.arrbar = local_unnamed_addr global %"Bar[]" { ptr @.__const_slice, i64 2 }, align 8
-@.__const_slice.3 = private unnamed_addr global [2 x i32] [i32 1, i32 2], align 4
-@subarrays.xd = local_unnamed_addr global %"int[]" { ptr @.__const_slice.3, i64 2 }, align 8
-@.taddr = private unnamed_addr global [2 x i32] [i32 3, i32 4], align 4
-@subarrays.fofeo = local_unnamed_addr global ptr @.taddr, align 8
+@.__const_slice.4 = private unnamed_addr global [2 x i32] [i32 1, i32 2], align 4
+@subarrays.xd = local_unnamed_addr global %"int[]" { ptr @.__const_slice.4, i64 2 }, align 8
+@subarrays.fofeo = local_unnamed_addr global ptr @subarrays.fofeo.taddr0, align 8
+@subarrays.fofeo.taddr0 = internal global [2 x i32] [i32 3, i32 4], align 4
 @.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 @.__const = private unnamed_addr constant [3 x i32] [i32 1, i32 2, i32 3], align 4
-@.__const.4 = private unnamed_addr constant [3 x i32] [i32 123, i32 234, i32 567], align 4
-@.str.5 = private unnamed_addr constant [7 x i8] c"Start:\00", align 1
-@.str.6 = private unnamed_addr constant [26 x i8] c"X len: %d mid element %d\0A\00", align 1
-@.str.7 = private unnamed_addr constant [18 x i8] c"Y mid element %d\0A\00", align 1
-@.str.8 = private unnamed_addr constant [25 x i8] c"Fofeo second element %d\0A\00", align 1
-@.__const.9 = private unnamed_addr constant { i32, [4 x i8] } { i32 1, [4 x i8] undef }, align 8
-@.str.10 = private unnamed_addr constant [3 x i8] c"Ok\00", align 1
+@.__const.5 = private unnamed_addr constant [3 x i32] [i32 123, i32 234, i32 567], align 4
+@.str.6 = private unnamed_addr constant [7 x i8] c"Start:\00", align 1
+@.str.7 = private unnamed_addr constant [26 x i8] c"X len: %d mid element %d\0A\00", align 1
+@.str.8 = private unnamed_addr constant [18 x i8] c"Y mid element %d\0A\00", align 1
+@.str.9 = private unnamed_addr constant [25 x i8] c"Fofeo second element %d\0A\00", align 1
+@.__const.10 = private unnamed_addr constant { i32, [4 x i8] } { i32 1, [4 x i8] undef }, align 8
+@.str.11 = private unnamed_addr constant [3 x i8] c"Ok\00", align 1
 
 define i32 @main() #0 {
 entry:
@@ -103,10 +103,10 @@ entry:
   %4 = insertvalue %"int[]" undef, ptr %literal, 0
   %5 = insertvalue %"int[]" %4, i64 3, 1
   store %"int[]" %5, ptr %x, align 8
-  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %literal2, ptr align 4 @.__const.4, i64 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %literal2, ptr align 4 @.__const.5, i64 12, i1 false)
   store ptr %literal2, ptr %y, align 8
   %6 = call ptr @std.io.stdout()
-  %7 = call i64 @std.io.File.write(ptr %retparam, ptr %6, ptr @.str.5, i64 6)
+  %7 = call i64 @std.io.File.write(ptr %retparam, ptr %6, ptr @.str.6, i64 6)
   %not_err = icmp eq i64 %7, 0
   br i1 %not_err, label %after_check, label %assign_optional
 
@@ -164,16 +164,16 @@ voiderr:                                          ; preds = %noerr_block15, %gua
   %13 = load ptr, ptr %x, align 8
   %ptradd17 = getelementptr inbounds i8, ptr %13, i64 4
   %14 = load i32, ptr %ptradd17, align 4
-  %15 = call i32 (ptr, ...) @printf(ptr @.str.6, i32 %trunc, i32 %14)
+  %15 = call i32 (ptr, ...) @printf(ptr @.str.7, i32 %trunc, i32 %14)
   %16 = load ptr, ptr %y, align 8
   %ptradd18 = getelementptr inbounds i8, ptr %16, i64 4
   %17 = load i32, ptr %ptradd18, align 4
-  %18 = call i32 (ptr, ...) @printf(ptr @.str.7, i32 %17)
+  %18 = call i32 (ptr, ...) @printf(ptr @.str.8, i32 %17)
   %19 = load ptr, ptr @subarrays.fofeo, align 8
   %ptradd19 = getelementptr inbounds i8, ptr %19, i64 4
   %20 = load i32, ptr %ptradd19, align 4
-  %21 = call i32 (ptr, ...) @printf(ptr @.str.8, i32 %20)
-  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %ffe, ptr align 8 @.__const.9, i64 8, i1 false)
+  %21 = call i32 (ptr, ...) @printf(ptr @.str.9, i32 %20)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 8 %ffe, ptr align 8 @.__const.10, i64 8, i1 false)
   store i32 0, ptr %azz, align 4
   store i8 0, ptr %xy, align 1
   %22 = load i8, ptr %xy, align 1
@@ -182,7 +182,7 @@ voiderr:                                          ; preds = %noerr_block15, %gua
 
 if.else:                                          ; preds = %voiderr
   %24 = call ptr @std.io.stdout()
-  %25 = call i64 @std.io.File.write(ptr %retparam23, ptr %24, ptr @.str.10, i64 2)
+  %25 = call i64 @std.io.File.write(ptr %retparam23, ptr %24, ptr @.str.11, i64 2)
   %not_err24 = icmp eq i64 %25, 0
   br i1 %not_err24, label %after_check26, label %assign_optional25
 

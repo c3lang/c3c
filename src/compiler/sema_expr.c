@@ -10705,6 +10705,20 @@ static inline bool sema_expr_analyse_taddr(SemaContext *context, Expr *expr, boo
 	if (context->call_env.kind != CALL_ENV_FUNCTION)
 	{
 		if (expr_is_const_storage(inner, false)) sema_cast_const(inner);
+		// Generate global && temps.
+		if (!context->call_env.in_no_eval && sema_cast_const(inner))
+		{
+			Decl *decl = decl_new_generated_var(type, VARDECL_CONST, expr->loc);
+			decl->var.init_expr = inner;
+			decl->var.is_addr = true;
+			decl->unit = context->unit;
+			decl->visibility = VISIBLE_LOCAL;
+			decl->resolve_status = RESOLVE_DONE;
+			vec_add(context->unit->generated_globals, decl);
+			expr_rewrite_const_ref(expr, decl);
+			expr->type = type_get_ptr_recurse(type);
+			return true;
+		}
 	}
 	else if (expr_is_const_storage(inner, false))
 	{
