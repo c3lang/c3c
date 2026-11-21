@@ -6,6 +6,8 @@ struct CsvReader
 {
 	InStream stream;
 	String separator;
+	char quote;
+	CsvQuoteParsing parsing;
 }
 
 struct CsvRow (Printable)
@@ -33,11 +35,27 @@ fn String CsvRow.get_col(&self, sz col) @operator([])
 	return self.list[col];
 }
 
-fn void CsvReader.init(&self, InStream stream, String separator = ",")
+enum CsvQuoteParsing : char
+{
+	NONE,
+	REMOVE_QUOTES,
+}
+
+<*
+ @param stream : "The stream to read from"
+ @param [in] separator : "The separator string, by default ','"
+ @param quote_parsing : "How quotes are parsed"
+ @param quote_character : `The quote character by default '"'`
+ @require separator.len > 0
+*>
+fn void CsvReader.init(&self, InStream stream, String separator = ",", CsvQuoteParsing quote_parsing = NONE, char quote_character = '"')
 {
 	self.stream = stream;
 	self.separator = separator;
+	self.quote = quote_character;
+	self.parsing = quote_parsing;
 }
+
 <*
  @param [&inout] allocator
 *>
@@ -45,7 +63,7 @@ fn CsvRow? CsvReader.read_row(self, Allocator allocator)
 {
 	String row = io::readline(allocator, self.stream)!;
 	defer catch alloc::free(allocator, row);
-	String[] list = row.split(allocator, self.separator);
+	String[] list = split_row(allocator, row, self.separator, self.parsing, self.quote);
 	return { list, row, allocator };
 }
 
@@ -69,7 +87,7 @@ fn void? CsvReader.skip_row(self) @maydiscard => @pool()
 	(void)io::treadline(self.stream);
 }
 
-macro void? @each_row(InStream stream, String separator = ",", int max_rows = int::max; @body(String[] row)) @maydiscard
+macro void? @each_row(InStream stream, String separator = ",", int max_rows = int::max, CsvQuoteParsing quote_parsing = NONE, char quote_character = '"'; @body(String[] row)) @maydiscard
 {
 	while (max_rows--)
 	{
@@ -81,15 +99,56 @@ macro void? @each_row(InStream stream, String separator = ",", int max_rows = in
 				if (err == io::EOF) return;
 				return err~;
 			}
-			@body(s.split(mem, separator));
+			@body(split_row(mem, s, separator, quote_parsing, quote_character));
 		};
 	}
 }
 
 macro void? CsvReader.@each_row(self, int rows = int::max; @body(String[] row)) @maydiscard
 {
-	return @each_row(self.stream, self.separator, rows; row)
+	return @each_row(self.stream, self.separator, rows, self.parsing, self.quote; row)
 	{
 		@body(row);
 	};
+}
+
+fn String[] split_row(Allocator allocator, String row, String separator, CsvQuoteParsing parsing, char quote_character) @private
+{
+	if (parsing == NONE) return row.split(allocator, separator);
+	String[] list = alloc::alloc_array(allocator, String, row.count(separator) + 1);
+	sz fields, start, w;
+	bool in_quotes;
+	for (sz r = 0; r < row.len; r++)
+	{
+		char c = row[r];
+		if (in_quotes)
+		{
+			if (c == quote_character)
+			{
+				if (r + 1 == row.len || row[r + 1] != quote_character)
+				{
+					in_quotes = false;
+					continue;
+				}
+				r++;
+			}
+			row[w++] = c;
+			continue;
+		}
+		if (c == quote_character && w == start)
+		{
+			in_quotes = true;
+			continue;
+		}
+		if (row[r..].starts_with(separator))
+		{
+			list[fields++] = row[start:w - start];
+			r += separator.len - 1;
+			start = w;
+			continue;
+		}
+		row[w++] = c;
+	}
+	list[fields++] = row[start:w - start];
+	return list[:fields];
 }
