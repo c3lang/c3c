@@ -101,7 +101,6 @@ bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr, bool *failed_ref
 
 bool sema_analyse_expr(SemaContext *context, Expr *expr);
 Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl);
-bool expr_refers_to_const(Expr *expr, bool literal_is_const);
 void expr_set_to_ref(Expr *expr);
 bool sema_analyse_ct_expr(SemaContext *context, Expr *expr);
 Decl *sema_find_typed_operator(SemaContext *context, OperatorOverload operator_overload, SourceLocId loc, Expr *lhs, Expr *rhs, bool *reverse);

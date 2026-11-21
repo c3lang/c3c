@@ -5493,7 +5493,6 @@ static bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, 
 	}
 	EXIT_OK:;
 	decl->resolve_status = RESOLVE_DONE;
-	if (decl->var.kind == VARDECL_LOCAL && decl->var.init_expr && decl_ok(decl)) decl->var.points_to_const = expr_refers_to_const(decl->var.init_expr, false);
 	// Patch the external name for local consts and static variables.
 	if ((decl->var.kind == VARDECL_CONST || is_static) && !decl->extname && context->call_env.kind == CALL_ENV_FUNCTION)
 	{

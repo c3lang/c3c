@@ -635,7 +635,7 @@ static bool expr_is_const_storage(Expr *expr, bool literal_is_const)
 	}
 }
 
-bool expr_refers_to_const(Expr *expr, bool literal_is_const)
+static bool expr_refers_to_const(Expr *expr)
 {
 	switch (expr->expr_kind)
 	{
@@ -645,16 +645,15 @@ bool expr_refers_to_const(Expr *expr, bool literal_is_const)
 		case EXPR_IDENTIFIER:
 		{
 			Decl *decl = expr->ident_expr;
-			if (decl->decl_kind != DECL_VAR) return false;
-			return decl->var.points_to_const || (decl->var.kind == VARDECL_CONST && type_flatten(decl->type)->type_kind == TYPE_SLICE);
+			if (decl->decl_kind != DECL_VAR || decl->var.kind != VARDECL_CONST || !decl->var.init_expr) return false;
+			return type_flatten(decl->type)->type_kind == TYPE_SLICE && expr_is_const(decl->var.init_expr) && !sema_type_has_subscript_overloads(decl->type);
 		}
 		case EXPR_PTR_ACCESS:
-			return expr_refers_to_const(expr->inner_expr, literal_is_const);
+			return expr_refers_to_const(expr->inner_expr);
 		case EXPR_UNARY:
-			if (expr->unary_expr.operator == UNARYOP_DEREF) return expr_refers_to_const(expr->unary_expr.expr, literal_is_const);
 			if (expr->unary_expr.operator != UNARYOP_ADDR) return false;
 			expr = expr->unary_expr.expr;
-			if (expr->expr_kind == EXPR_UNARY && expr->unary_expr.operator == UNARYOP_DEREF) return expr_refers_to_const(expr->unary_expr.expr, literal_is_const);
+			if (expr->expr_kind == EXPR_UNARY && expr->unary_expr.operator == UNARYOP_DEREF) return expr_refers_to_const(expr->unary_expr.expr);
 			break;
 		case EXPR_SUBSCRIPT_ADDR:
 		case EXPR_SLICE:
@@ -663,9 +662,9 @@ bool expr_refers_to_const(Expr *expr, bool literal_is_const)
 			return false;
 	}
 	if (expr_is_const(expr)) return false;
-	if (expr_is_const_storage(expr, literal_is_const)) return true;
-	if (expr->expr_kind == EXPR_SLICE) return expr_refers_to_const(exprptr(expr->slice_expr.expr), literal_is_const);
-	return expr->expr_kind == EXPR_SUBSCRIPT_ADDR && expr_refers_to_const(exprptr(expr->subscript_expr.expr), literal_is_const);
+	if (expr_is_const_storage(expr, true)) return true;
+	if (expr->expr_kind == EXPR_SLICE) return expr_refers_to_const(exprptr(expr->slice_expr.expr));
+	return expr->expr_kind == EXPR_SUBSCRIPT_ADDR && expr_refers_to_const(exprptr(expr->subscript_expr.expr));
 }
 
 static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Expr *expr, bool *failed_ref)
@@ -758,16 +757,16 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		}
 		case EXPR_SUBSCRIPT:
 		case EXPR_SLICE:
-			if (expr_is_const_storage(expr, true))
+		{
+			Expr *parent = exprptr(expr->expr_kind == EXPR_SLICE ? expr->slice_expr.expr : expr->subscript_expr.expr);
+			if (expr_is_const_storage(expr, true) || (parent->expr_kind == EXPR_IDENTIFIER && expr_refers_to_const(parent)))
 			{
 				if (failed_ref) goto FAILED_REF;
 				RETURN_SEMA_ERROR(top_expr, "You cannot assign to an element of a constant.");
 			}
-			{
-				Expr *parent = exprptr(expr->expr_kind == EXPR_SLICE ? expr->slice_expr.expr : expr->subscript_expr.expr);
-				if (parent->type && (type_is_arraylike(type_flatten(parent->type)) || parent->expr_kind == EXPR_SLICE) && !sema_binary_is_expr_lvalue(context, top_expr, parent, failed_ref)) return false;
-			}
+			if (parent->type && (type_is_arraylike(type_flatten(parent->type)) || parent->expr_kind == EXPR_SLICE) && !sema_binary_is_expr_lvalue(context, top_expr, parent, failed_ref)) return false;
 			goto CHECK_OPTIONAL;
+		}
 		case EXPR_SUBSCRIPT_ASSIGN:
 			goto CHECK_OPTIONAL;
 		case EXPR_CONST:
@@ -1033,7 +1032,6 @@ CHECK_INNER:
 	if (inner->expr_kind != EXPR_IDENTIFIER) return true;
 	Decl *decl = inner->ident_expr;
 	if (decl->decl_kind != DECL_VAR) return true;
-	if (decl->var.points_to_const) RETURN_SEMA_ERROR(inner, "'%s' points to constant data, which may not be assigned to.", decl->name);
 	if (!decl->var.in_param || decl->var.out_param) return true;
 	RETURN_SEMA_ERROR(inner, "'in' parameters may not be assigned to.");
 }
@@ -2086,6 +2084,7 @@ RETRY:;
 		default:
 			return -1;
 	}
+	if (expr->expr_kind == EXPR_IDENTIFIER && expr->ident_expr->decl_kind == DECL_VAR && expr->ident_expr->var.kind == VARDECL_CONST) expr = copy_expr_single(expr);
 	if (sema_cast_const(expr))
 	{
 		return sema_len_from_const(expr);
@@ -2797,7 +2796,7 @@ static inline bool sema_call_check_contract_param_match(SemaContext *context, De
 		RETURN_SEMA_ERROR(expr, "You may not pass null to the '&' parameter.");
 	}
 	
-	if (param->var.out_param && expr_refers_to_const(expr, true)) goto CONST_OUT_ERROR;
+	if (param->var.out_param && expr_refers_to_const(expr)) goto CONST_OUT_ERROR;
 
 	if (expr->expr_kind != EXPR_IDENTIFIER) return true;
 	Decl *ident = expr->ident_expr;
@@ -5243,7 +5242,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 	Range *range = &expr->slice_expr.range;
 	if (!sema_expr_analyse_range(context, range, length, env, type)) return false;
 	if (range->is_optional) optional = true;
-	if (sema_cast_const(subscripted) && range->range_type == RANGE_CONST_RANGE)
+	if (range->range_type == RANGE_CONST_RANGE && sema_cast_const(subscripted))
 	{
 		switch (subscripted->const_expr.const_kind)
 		{
@@ -8160,10 +8159,6 @@ static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *lef
 	{
 		sema_rewrap_var(context, left->ident_expr);
 		return true;
-	}
-	if (left->expr_kind == EXPR_IDENTIFIER && left->ident_expr->decl_kind == DECL_VAR && !expr_refers_to_const(right, false))
-	{
-		left->ident_expr->var.points_to_const = false;
 	}
 	if (left->expr_kind == EXPR_SUBSCRIPT_ASSIGN)
 	{
@@ -12644,7 +12639,6 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 				expr->type = type_void;
 				return true;
 			}
-			if (decl->var.kind == VARDECL_LOCAL && decl->var.init_expr) decl->var.points_to_const = expr_refers_to_const(decl->var.init_expr, false);
 			expr->type = decl->type;
 			return true;
 		}

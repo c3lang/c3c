@@ -117,10 +117,10 @@
 - `foreach` over a slice variable re-read the slice on every iteration, so reassigning the variable in the loop body, like `foos = foos[1..]`, changed the elements visited and could index out of bounds. The slice is now evaluated once.
 - Writing through a `foreach (&p : s)` loop variable to an `[in]` slice parameter, or reading through it from an `[out]` one, was not detected.
 - `foreach` over a constset of pointers crashed the compiler.
-- Writes into a typed constant through a local pointer or slice initialized from it, like `int* p = &CA[0]; *p = 5;` or `int[] s = CS; s[0] = 5;`, or through a `foreach (&x : CA)` loop variable, were not detected.
 - Assigning to an element of a dereferenced `[in]` pointer to an array, like `(*s)[0] = 1`, was not detected.
 - `foreach (&v : *p)` with an `[out]` pointer `p` to an array incorrectly reported that `p` was read.
 - `&&` on a typed constant, like `&&CA` for a `const int[3] CA`, returned the constant's own read-only storage instead of a temporary copy, also in global and `static` initializers.
+- Slicing a typed constant with a runtime range, like `CA[i..]` or `CS[i..]` no longer creates a copy.
 
 ### Stdlib changes
 - `atomic::fetch_add` and the other `fetch_*` macros now require the alignment to be at most `mem::MAX_MEMORY_ALIGNMENT`; `fetch_max` and `fetch_min` check it at all.

@@ -40,3 +40,11 @@ fn void global_taddr_of_constant_is_a_copy() @test
 	assert((*g_arr)[0] == 10 && *g_elem == 20 && *g_member == 70 && g_slice.len == 0 && g_assoc.x == 50 && *s_elem == 30);
 	assert(CA[0] == 1 && CA[1] == 2 && CA[2] == 3 && CP.x == 7 && CS.len == 2 && Foo.A.pt.x == 5);
 }
+
+fn void address_into_const_slice_is_not_a_copy() @test
+{
+	int i = 1;
+	int[] v = CS;
+	int[] t = CS[i..];
+	assert(&CS[1] == &v[1] && &CS[1] == &CS[i] && &t[0] == &v[1]);
+}
