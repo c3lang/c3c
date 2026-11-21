@@ -28,6 +28,11 @@
 #include "llvm/Transforms/Instrumentation/HWAddressSanitizer.h"
 #include "llvm/Transforms/Scalar/EarlyCSE.h"
 #include "llvm/Transforms/Scalar/GVN.h"
+#include "llvm/TargetParser/Triple.h"
+#include "llvm/TargetParser/X86TargetParser.h"
+#include "llvm/TargetParser/RISCVTargetParser.h"
+#include "llvm/TargetParser/AArch64TargetParser.h"
+#include "llvm/TargetParser/ARMTargetParser.h"
 #include "llvm/Transforms/Scalar/JumpThreading.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Analysis/GlobalsModRef.h"
@@ -440,6 +445,175 @@ bool llvm_link_wasm(const char **args, int arg_count, const char** error_string)
 bool llvm_link_mingw(const char **args, int arg_count, const char** error_string)
 {
 	return llvm_link(MINGW, args, arg_count, error_string);
+}
+
+int llvm_cpu_get_features(const char *arch_or_triple, const char *cpu, LLVMFeatureCallback callback, void *user_data)
+{
+	llvm::Triple triple(arch_or_triple);
+	switch (triple.getArch())
+	{
+		case llvm::Triple::x86_64:
+		case llvm::Triple::x86:
+		{
+			llvm::SmallVector<llvm::StringRef, 64> features;
+			llvm::X86::getFeaturesForCPU(cpu, features, false);
+			for (auto &f : features)
+			{
+				std::string s(f);
+				callback(s.c_str(), user_data);
+			}
+			return (int)features.size();
+		}
+		case llvm::Triple::riscv64:
+		case llvm::Triple::riscv32:
+		{
+			llvm::SmallVector<std::string, 64> features;
+			llvm::RISCV::getFeaturesForCPU(cpu, features);
+			for (auto &f : features)
+			{
+				callback(f.c_str(), user_data);
+			}
+			return (int)features.size();
+		}
+		case llvm::Triple::aarch64:
+		case llvm::Triple::aarch64_be:
+		case llvm::Triple::aarch64_32:
+		{
+			auto cpu_info = llvm::AArch64::parseCpu(cpu);
+			if (!cpu_info) return 0;
+			llvm::AArch64::ExtensionSet ext;
+			ext.addCPUDefaults(*cpu_info);
+			std::vector<llvm::StringRef> features;
+			ext.toLLVMFeatureList(features);
+			for (auto &f : features)
+			{
+				std::string s(f);
+				const char *name = s.c_str();
+				if (name[0] == '+') name++;
+				callback(name, user_data);
+			}
+			return (int)features.size();
+		}
+		default:
+			return 0;
+	}
+}
+
+int llvm_cpu_fill_list(const char *arch_or_triple, LLVMCpuCallback callback, void *user_data)
+{
+	llvm::Triple triple(arch_or_triple);
+	switch (triple.getArch())
+	{
+		case llvm::Triple::x86_64:
+		{
+			llvm::SmallVector<llvm::StringRef, 128> cpus;
+			llvm::X86::fillValidCPUArchList(cpus, true);
+			for (auto &c : cpus)
+			{
+				std::string s(c);
+				callback(s.c_str(), user_data);
+			}
+			return (int)cpus.size();
+		}
+		case llvm::Triple::x86:
+		{
+			llvm::SmallVector<llvm::StringRef, 128> cpus;
+			llvm::X86::fillValidCPUArchList(cpus, false);
+			for (auto &c : cpus)
+			{
+				std::string s(c);
+				callback(s.c_str(), user_data);
+			}
+			return (int)cpus.size();
+		}
+		case llvm::Triple::riscv64:
+		{
+			llvm::SmallVector<llvm::StringRef, 64> cpus;
+			llvm::RISCV::fillValidCPUArchList(cpus, true);
+			for (auto &c : cpus)
+			{
+				std::string s(c);
+				callback(s.c_str(), user_data);
+			}
+			return (int)cpus.size();
+		}
+		case llvm::Triple::riscv32:
+		{
+			llvm::SmallVector<llvm::StringRef, 64> cpus;
+			llvm::RISCV::fillValidCPUArchList(cpus, false);
+			for (auto &c : cpus)
+			{
+				std::string s(c);
+				callback(s.c_str(), user_data);
+			}
+			return (int)cpus.size();
+		}
+		case llvm::Triple::aarch64:
+		case llvm::Triple::aarch64_be:
+		case llvm::Triple::aarch64_32:
+		{
+			llvm::SmallVector<llvm::StringRef, 64> cpus;
+			llvm::AArch64::fillValidCPUArchList(cpus);
+			for (auto &c : cpus)
+			{
+				std::string s(c);
+				callback(s.c_str(), user_data);
+			}
+			return (int)cpus.size();
+		}
+		case llvm::Triple::arm:
+		case llvm::Triple::armeb:
+		case llvm::Triple::thumb:
+		case llvm::Triple::thumbeb:
+		{
+			llvm::SmallVector<llvm::StringRef, 64> cpus;
+			llvm::ARM::fillValidCPUArchList(cpus);
+			for (auto &c : cpus)
+			{
+				std::string s(c);
+				callback(s.c_str(), user_data);
+			}
+			return (int)cpus.size();
+		}
+		case llvm::Triple::wasm32:
+		case llvm::Triple::wasm64:
+		{
+			callback("bleeding-edge", user_data);
+			return 1;
+		}
+		default:
+			return 0;
+	}
+}
+
+bool llvm_cpu_is_valid(const char *arch_or_triple, const char *cpu)
+{
+	llvm::Triple triple(arch_or_triple);
+	switch (triple.getArch())
+	{
+		case llvm::Triple::x86_64:
+			return llvm::X86::parseArchX86(cpu, true) != llvm::X86::CK_None;
+		case llvm::Triple::x86:
+			return llvm::X86::parseArchX86(cpu, false) != llvm::X86::CK_None;
+		case llvm::Triple::riscv64:
+			return llvm::RISCV::parseCPU(cpu, true);
+		case llvm::Triple::riscv32:
+			return llvm::RISCV::parseCPU(cpu, false);
+		case llvm::Triple::aarch64:
+		case llvm::Triple::aarch64_be:
+		case llvm::Triple::aarch64_32:
+			return llvm::AArch64::parseCpu(cpu).has_value();
+		case llvm::Triple::arm:
+		case llvm::Triple::armeb:
+		case llvm::Triple::thumb:
+		case llvm::Triple::thumbeb:
+			return llvm::ARM::parseCPUArch(cpu) != llvm::ARM::ArchKind::INVALID;
+		case llvm::Triple::wasm32:
+		case llvm::Triple::wasm64:
+			return strcmp(cpu, "generic") == 0 || strcmp(cpu, "bleeding-edge") == 0;
+		default:
+			return false;
+	}
 }
 
 

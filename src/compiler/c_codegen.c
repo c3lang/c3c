@@ -1321,19 +1321,52 @@ static const char *c_backend_build_cflags(const char *cc)
 	// The CPU the user chose, as LLVM gets it. Without a choice the C compiler keeps its own default target.
 	BuildTarget *build = &compiler.build;
 	bool is_x86        = compiler.platform.arch == ARCH_TYPE_X86_64 || compiler.platform.arch == ARCH_TYPE_X86;
-	if (is_x86 && build->feature.x86_cpu_set != X86CPU_DEFAULT && !is_tcc)
+	if (is_x86 && !is_cl && !is_tcc)
 	{
-		static const char *gnu_x86[] = {
-			[X86CPU_BASELINE] = "-march=x86-64 ", [X86CPU_SSSE3] = "-march=x86-64 -mssse3 ",
-			[X86CPU_SSE4] = "-march=x86-64-v2 ", [X86CPU_AVX1] = "-march=x86-64-v2 -mavx ",
-			[X86CPU_AVX2_V1] = "-march=x86-64-v3 ", [X86CPU_AVX2_V2] = "-march=x86-64-v3 ",
-			[X86CPU_AVX512] = "-march=x86-64-v4 ", [X86CPU_NATIVE] = "-march=native " };
-		// cl.exe's default is SSE2, and it has no SSSE3 or native level.
-		static const char *cl_x86[] = {
-			[X86CPU_SSE4] = "/arch:SSE4.2 ", [X86CPU_AVX1] = "/arch:AVX ", [X86CPU_AVX2_V1] = "/arch:AVX2 ",
-			[X86CPU_AVX2_V2] = "/arch:AVX2 ", [X86CPU_AVX512] = "/arch:AVX512 " };
-		const char *arch = (is_cl ? cl_x86 : gnu_x86)[build->feature.x86_cpu_set];
-		if (arch) scratch_buffer_append(arch);
+		if (build->cpu && strcmp(build->cpu, "generic") != 0)
+		{
+			scratch_buffer_printf("-march=%s ", build->cpu);
+		}
+		else if (build->feature.x86_cpu_set != X86CPU_DEFAULT)
+		{
+			static const char *gnu_x86[] = {
+				[X86CPU_BASELINE] = "-march=x86-64 ", [X86CPU_SSSE3] = "-march=x86-64 -mssse3 ",
+				[X86CPU_SSE4] = "-march=x86-64-v2 ", [X86CPU_AVX1] = "-march=x86-64-v2 -mavx ",
+				[X86CPU_AVX2_V1] = "-march=x86-64-v3 ", [X86CPU_AVX2_V2] = "-march=x86-64-v3 ",
+				[X86CPU_AVX512] = "-march=x86-64-v4 ", [X86CPU_NATIVE] = "-march=native " };
+			const char *arch = gnu_x86[build->feature.x86_cpu_set];
+			if (arch) scratch_buffer_append(arch);
+		}
+	}
+	else if (is_x86 && is_cl)
+	{
+		if (build->cpu && strcmp(build->cpu, "generic") != 0)
+		{
+			if (cpu_features_contains(&compiler.platform.x64.features, X86_FEAT_AVX512F))
+			{
+				scratch_buffer_append("/arch:AVX512 ");
+			}
+			else if (cpu_features_contains(&compiler.platform.x64.features, X86_FEAT_AVX2))
+			{
+				scratch_buffer_append("/arch:AVX2 ");
+			}
+			else if (cpu_features_contains(&compiler.platform.x64.features, X86_FEAT_AVX))
+			{
+				scratch_buffer_append("/arch:AVX ");
+			}
+			else if (cpu_features_contains(&compiler.platform.x64.features, X86_FEAT_SSE4_2))
+			{
+				scratch_buffer_append("/arch:SSE4.2 ");
+			}
+		}
+		else if (build->feature.x86_cpu_set != X86CPU_DEFAULT)
+		{
+			static const char *cl_x86[] = {
+				[X86CPU_SSE4] = "/arch:SSE4.2 ", [X86CPU_AVX1] = "/arch:AVX ", [X86CPU_AVX2_V1] = "/arch:AVX2 ",
+				[X86CPU_AVX2_V2] = "/arch:AVX2 ", [X86CPU_AVX512] = "/arch:AVX512 " };
+			const char *arch = cl_x86[build->feature.x86_cpu_set];
+			if (arch) scratch_buffer_append(arch);
+		}
 	}
 	if (is_x86 && build->cpu_flags && !is_cl && !is_tcc)
 	{
@@ -1353,7 +1386,11 @@ static const char *c_backend_build_cflags(const char *cc)
 	if (is_riscv && !is_cl && !is_tcc)
 	{
 		const char *xlen = compiler.platform.arch == ARCH_TYPE_RISCV64 ? "64" : "32";
-		if (build->feature.riscv_cpu_set != RISCV_CPU_DEFAULT)
+		if (build->cpu && strcmp(build->cpu, "generic") != 0)
+		{
+			scratch_buffer_printf("-mcpu=%s ", build->cpu);
+		}
+		else if (build->feature.riscv_cpu_set != RISCV_CPU_DEFAULT)
 		{
 			static const char *isa[] = { [RISCV_CPU_RVI] = "i", [RISCV_CPU_RVIMAC] = "imac", [RISCV_CPU_RVIMAFC] = "imafc",
 			                             [RISCV_CPU_RVGC] = "gc", [RISCV_CPU_RVGCV] = "gcv" };
@@ -1364,6 +1401,11 @@ static const char *c_backend_build_cflags(const char *cc)
 			int flen = compiler.platform.riscv.flen;
 			scratch_buffer_printf("-mabi=%s%s ", xlen[0] == '6' ? "lp64" : "ilp32", flen == 8 ? "d" : flen == 4 ? "f" : "");
 		}
+	}
+	bool is_aarch64 = compiler.platform.arch == ARCH_TYPE_AARCH64 || compiler.platform.arch == ARCH_TYPE_AARCH64_BE;
+	if (is_aarch64 && build->cpu && strcmp(build->cpu, "generic") != 0 && !is_cl && !is_tcc)
+	{
+		scratch_buffer_printf("-mcpu=%s ", build->cpu);
 	}
 
 	if (compiler.build.debug_info == DEBUG_INFO_FULL)

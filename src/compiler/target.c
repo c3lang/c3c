@@ -10,7 +10,6 @@
 #include "utils/hostinfo.h"
 #endif
 
-static bool cpu_features_contains(CpuFeatures *cpu_features, int feature);
 static ObjectFormatType object_format_from_os(OsType os, ArchType arch_type);
 static int arch_pointer_bit_width(OsType os, ArchType arch);
 static int arch_int_register_bit_width(OsType os, ArchType arch);
@@ -31,6 +30,9 @@ static void x86_features_add_feature(CpuFeatures *cpu_features, X86Feature featu
 static void cpu_features_add_feature_single(CpuFeatures *cpu_features, int feature);
 static void cpu_features_set_to_features(CpuFeatures enabled_features, CpuFeatures cpu_defaults, const bool *skip, const char *list[], int last);
 static void update_cpu_features(const char *features, CpuFeatures *cpu_features, const char **feature_names, int feature_count);
+#if LLVM_AVAILABLE
+static bool aarch64features_from_named_cpu(CpuFeatures *cpu_features, const char *cpu_name);
+#endif
 
 const CpuFeatures cpu_feature_zero = { { 0, 0} };
 
@@ -367,20 +369,65 @@ static bool os_target_signed_c_char_type(OsType os, ArchType arch)
 	}
 }
 
-static inline void target_setup_aarch64_abi(void)
+static inline void target_setup_aarch64_abi(BuildTarget *target)
 {
 	compiler.platform.aarch64.is_darwin_pcs = os_is_apple(compiler.platform.os);
 	compiler.platform.aarch64.is_aapcs = !compiler.platform.aarch64.is_darwin_pcs && compiler.platform.os != OS_TYPE_WIN32;
 	compiler.platform.abi = ABI_AARCH64;
-	// TODO improve Aarch64 functionality support.
+	bool is_native = target->arch_os_target == default_target;
 	CpuFeatures features = cpu_feature_zero;
-	cpu_features_add_feature_single(&features, AARCH64_FEAT_CRC);
-	cpu_features_add_feature_single(&features, AARCH64_FEAT_LSE);
-	cpu_features_add_feature_single(&features, AARCH64_FEAT_RDM);
-	cpu_features_add_feature_single(&features, AARCH64_FEAT_FP_ARMV8);
-	cpu_features_add_feature_single(&features, AARCH64_FEAT_NEON);
+	bool used_named_cpu = false;
+	CpuFeatures default_features = cpu_feature_zero;
+
+#if LLVM_AVAILABLE
+	if (target->cpu && strcmp(target->cpu, "generic") != 0)
+	{
+		if (strcmp(target->cpu, "native") == 0)
+		{
+			if (!is_native)
+			{
+				error_exit("'--cpu native' is only supported when compiling for the host platform.");
+			}
+			const char *host_cpu = LLVMGetHostCPUName();
+			if (!aarch64features_from_named_cpu(&features, host_cpu))
+			{
+				error_exit("Failed to detect AArch64 host CPU.");
+			}
+			compiler.platform.cpu = host_cpu;
+			default_features = features;
+			used_named_cpu = true;
+		}
+		else if (aarch64features_from_named_cpu(&features, target->cpu))
+		{
+			compiler.platform.cpu = target->cpu;
+			default_features = features;
+			used_named_cpu = true;
+		}
+		else
+		{
+			error_exit("Unknown CPU '%s'. Use --list-cpus to see supported CPUs.", target->cpu);
+		}
+	}
+#endif
+
+	if (!used_named_cpu)
+	{
+		cpu_features_add_feature_single(&features, AARCH64_FEAT_CRC);
+		cpu_features_add_feature_single(&features, AARCH64_FEAT_LSE);
+		cpu_features_add_feature_single(&features, AARCH64_FEAT_RDM);
+		cpu_features_add_feature_single(&features, AARCH64_FEAT_FP_ARMV8);
+		cpu_features_add_feature_single(&features, AARCH64_FEAT_NEON);
+	}
+
 	update_cpu_features(compiler.build.cpu_flags, &features, aarch64_feature_name, AARCH64_FEATURE_LAST);
-	cpu_features_set_to_features(features, cpu_feature_zero, NULL, aarch64_feature_name, AARCH64_FEATURE_LAST);
+	if (used_named_cpu)
+	{
+		cpu_features_set_to_features(features, default_features, NULL, aarch64_feature_name, AARCH64_FEATURE_LAST);
+	}
+	else
+	{
+		cpu_features_set_to_features(features, cpu_feature_zero, NULL, aarch64_feature_name, AARCH64_FEATURE_LAST);
+	}
 }
 
 static inline void target_setup_arm_abi(void)
@@ -533,14 +580,70 @@ static X86Feature x86feature_from_slice(StringSlice slice)
 	return -1;
 }
 
-static bool cpu_features_contains(CpuFeatures *cpu_features, int feature)
+#if LLVM_AVAILABLE
+typedef struct
 {
-	if (feature < 64)
+	CpuFeatures *features;
+	const char **feature_names;
+	int feature_count;
+} FeatureCollectCtx;
+
+static void arch_feature_collect_callback(const char *feature, void *user_data)
+{
+	FeatureCollectCtx *ctx = (FeatureCollectCtx *)user_data;
+	for (int i = 0; i <= ctx->feature_count; i++)
 	{
-		return !!((cpu_features->bits[0]) & (1ULL << feature));
+		ASSERT(ctx->feature_names[i]);
+		if (strcmp(feature, ctx->feature_names[i]) == 0)
+		{
+			cpu_features_add_feature_single(ctx->features, i);
+			return;
+		}
 	}
-	return !!((cpu_features->bits[1]) & (1ULL << (feature - 64)));
 }
+
+static void x86_feature_collect_callback(const char *feature, void *user_data)
+{
+	FeatureCollectCtx *ctx = (FeatureCollectCtx *)user_data;
+	for (int i = 0; i <= ctx->feature_count; i++)
+	{
+		ASSERT(ctx->feature_names[i]);
+		if (strcmp(feature, ctx->feature_names[i]) == 0)
+		{
+			x86_features_add_feature(ctx->features, (X86Feature)i);
+			return;
+		}
+	}
+}
+
+static bool x86features_from_named_cpu(CpuFeatures *cpu_features, const char *cpu_name)
+{
+	if (!llvm_cpu_is_valid("x86_64", cpu_name)) return false;
+	*cpu_features = cpu_feature_zero;
+	FeatureCollectCtx ctx = { cpu_features, x86_feature_name, X86_FEATURE_LAST };
+	llvm_cpu_get_features("x86_64", cpu_name, x86_feature_collect_callback, &ctx);
+	return true;
+}
+
+static bool riscvfeatures_from_named_cpu(CpuFeatures *cpu_features, const char *cpu_name, bool is_64bit)
+{
+	const char *arch = is_64bit ? "riscv64" : "riscv32";
+	if (!llvm_cpu_is_valid(arch, cpu_name)) return false;
+	*cpu_features = cpu_feature_zero;
+	FeatureCollectCtx ctx = { cpu_features, riscv_feature_name, RISCV_FEATURE_LAST };
+	llvm_cpu_get_features(arch, cpu_name, arch_feature_collect_callback, &ctx);
+	return true;
+}
+
+static bool aarch64features_from_named_cpu(CpuFeatures *cpu_features, const char *cpu_name)
+{
+	if (!llvm_cpu_is_valid("aarch64", cpu_name)) return false;
+	*cpu_features = cpu_feature_zero;
+	FeatureCollectCtx ctx = { cpu_features, aarch64_feature_name, AARCH64_FEATURE_LAST };
+	llvm_cpu_get_features("aarch64", cpu_name, arch_feature_collect_callback, &ctx);
+	return true;
+}
+#endif
 
 static CpuFeatures x86_features_from_cpu(X86CpuSet set)
 {
@@ -614,10 +717,15 @@ static void cpu_features_set_to_features(CpuFeatures enabled_features, CpuFeatur
 	compiler.platform.features = scratch_buffer_copy();
 }
 
+static void x86features_diff_to_scratch(CpuFeatures enabled_features, CpuFeatures default_features)
+{
+	static bool x64features_skip[X86_FEATURE_LAST + 1] = { [X86_FEAT_AVX5124FMAPS] = true, [X86_FEAT_AVX5124VNNIW] = true };
+	cpu_features_set_to_features(enabled_features, default_features, x64features_skip, x86_feature_name, X86_FEATURE_LAST);
+}
+
 static void x86features_as_diff_to_scratch(CpuFeatures enabled_features, X86CpuSet set)
 {
-	static bool x64features_skip[X86_FEATURE_LAST + 1] = { [X86_FEAT_AVX5124FMAPS] = true, [X86_FEAT_AVX5124VNNIW] = true};
-	cpu_features_set_to_features(enabled_features, x86_features_from_cpu(set), x64features_skip, x86_feature_name, X86_FEATURE_LAST);
+	x86features_diff_to_scratch(enabled_features, x86_features_from_cpu(set));
 }
 
 static void x86_features_add_feature(CpuFeatures *cpu_features, X86Feature feature)
@@ -1084,24 +1192,60 @@ static X86CpuSet x64_cpu_default(void)
 static inline void target_setup_x64_abi(BuildTarget *target)
 {
 	compiler.platform.abi = ABI_X64;
-	X86CpuSet cpu_set;
 	compiler.platform.x64.is_win64 = compiler.platform.os == OS_TYPE_WIN32;
 	bool is_native = target->arch_os_target == default_target;
-	if (!is_native && target->feature.x86_cpu_set == X86CPU_NATIVE) target->feature.x86_cpu_set = X86CPU_DEFAULT;
-	if (target->feature.x86_cpu_set != X86CPU_DEFAULT)
+
+	CpuFeatures cpu_features;
+	X86CpuSet cpu_set = X86CPU_DEFAULT;
+	bool used_named_cpu = false;
+
+#if LLVM_AVAILABLE
+	if (target->cpu && strcmp(target->cpu, "generic") != 0)
 	{
-		cpu_set = target->feature.x86_cpu_set;
+		if (target->feature.x86_cpu_set != X86CPU_DEFAULT)
+		{
+			OUTF("Warning: Both --cpu ('%s') and --x86cpu ('%s') were specified; --cpu takes precedence.\n",
+			     target->cpu, x86_cpu_set[target->feature.x86_cpu_set]);
+		}
+		if (strcmp(target->cpu, "native") == 0)
+		{
+			if (!is_native)
+			{
+				error_exit("'--cpu native' is only supported when compiling for the host platform.");
+			}
+			compiler.platform.cpu = x86_cpu_from_set(X86CPU_NATIVE);
+			x86_features_from_host(&cpu_features);
+			used_named_cpu = true;
+		}
+		else if (x86features_from_named_cpu(&cpu_features, target->cpu))
+		{
+			compiler.platform.cpu = target->cpu;
+			used_named_cpu = true;
+		}
+		else
+		{
+			error_exit("Unknown CPU '%s'. Use --list-cpus to see supported CPUs.", target->cpu);
+		}
 	}
-	else
+#endif
+
+	if (!used_named_cpu)
 	{
-		cpu_set = is_native ? x64_cpu_default() : X86CPU_AVX1;
-		if (cpu_set > X86CPU_AVX1) cpu_set = X86CPU_AVX1;
-		INFO_LOG("Set default CPU as %s\n", x86_cpu_set[cpu_set]);
+		if (!is_native && target->feature.x86_cpu_set == X86CPU_NATIVE) target->feature.x86_cpu_set = X86CPU_DEFAULT;
+		if (target->feature.x86_cpu_set != X86CPU_DEFAULT)
+		{
+			cpu_set = target->feature.x86_cpu_set;
+		}
+		else
+		{
+			cpu_set = is_native ? x64_cpu_default() : X86CPU_AVX1;
+			if (cpu_set > X86CPU_AVX1) cpu_set = X86CPU_AVX1;
+			INFO_LOG("Set default CPU as %s\n", x86_cpu_set[cpu_set]);
+		}
+		compiler.platform.cpu = x86_cpu_from_set(cpu_set);
+		x86features_from_cpu(&cpu_features, cpu_set);
 	}
 
-	compiler.platform.cpu = x86_cpu_from_set(cpu_set);
-	CpuFeatures cpu_features;
-	x86features_from_cpu(&cpu_features, cpu_set);
 	x64features_limit_from_capability(&cpu_features, target->feature.x86_vector_capability);
 	if (target->feature.soft_float == SOFT_FLOAT_YES) compiler.platform.x64.soft_float = true;
 	if (target->feature.pass_win64_simd_as_arrays == WIN64_SIMD_ARRAY) compiler.platform.x64.win64_simd_as_array = true;
@@ -1109,7 +1253,23 @@ static inline void target_setup_x64_abi(BuildTarget *target)
 
 	update_cpu_features(compiler.build.cpu_flags, &cpu_features, x86_feature_name, X86_FEATURE_LAST);
 
-	x86features_as_diff_to_scratch(cpu_features, cpu_set);
+	if (used_named_cpu)
+	{
+		if (strcmp(target->cpu, "native") == 0)
+		{
+			x86features_as_diff_to_scratch(cpu_features, X86CPU_NATIVE);
+		}
+		else
+		{
+			CpuFeatures default_features;
+			x86features_from_named_cpu(&default_features, target->cpu);
+			x86features_diff_to_scratch(cpu_features, default_features);
+		}
+	}
+	else
+	{
+		x86features_as_diff_to_scratch(cpu_features, cpu_set);
+	}
 
 	if (compiler.platform.environment_type == ENV_TYPE_GNU)
 	{
@@ -1333,6 +1493,52 @@ static ArchType arch_from_llvm_string(StringSlice slice)
 	return ARCH_TYPE_UNKNOWN;
 #undef STRCASE
 	// TODO parse arm & bpf names
+}
+
+static int cmp_cpu_str(const void *a, const void *b)
+{
+	return strcmp(*(const char **)a, *(const char **)b);
+}
+
+typedef struct
+{
+	const char **cpus;
+} CpuListCtx;
+
+static void collect_cpu_callback(const char *cpu, void *user_data)
+{
+	CpuListCtx *ctx = (CpuListCtx *)user_data;
+	vec_add(ctx->cpus, str_dup(cpu));
+}
+
+void print_all_cpus(ArchOsTarget target)
+{
+#if !LLVM_AVAILABLE
+	printf("CPU listing is only available when compiled with LLVM.\n");
+#else
+	if (target == ARCH_OS_TARGET_DEFAULT) target = default_target;
+	const char *target_name = (target >= 0 && target <= ARCH_OS_TARGET_LAST) ? arch_os_target[target] : "unknown";
+	char *triple = arch_to_target_triple(target, LINUX_LIBC_GNU);
+	printf("Available CPUs for target '%s':\n", target_name);
+	printf("   generic (default: architecture baseline)\n");
+	if (target == default_target)
+	{
+		const char *host_cpu = LLVMGetHostCPUName();
+		printf("   native  (host CPU: %s)\n", host_cpu && host_cpu[0] ? host_cpu : "auto-detected");
+	}
+	CpuListCtx ctx = { NULL };
+	llvm_cpu_fill_list(triple, collect_cpu_callback, &ctx);
+	int count = vec_size(ctx.cpus);
+	if (count == 0) return;
+	qsort(ctx.cpus, count, sizeof(const char *), cmp_cpu_str);
+	for (int i = 0; i < count; i++)
+	{
+		if (strcmp(ctx.cpus[i], "generic") == 0) continue;
+		if (strcmp(ctx.cpus[i], "native") == 0) continue;
+		if (i > 0 && strcmp(ctx.cpus[i], ctx.cpus[i - 1]) == 0) continue;
+		printf("   %s\n", ctx.cpus[i]);
+	}
+#endif
 }
 
 static EnvironmentType environment_type_from_llvm_string(StringSlice env)
@@ -2060,6 +2266,17 @@ void *llvm_target_machine_create(void)
 static void target_setup_wasm_abi(BuildTarget *target)
 {
 	compiler.platform.abi = ABI_WASM;
+	if (target->cpu && strcmp(target->cpu, "generic") != 0)
+	{
+		if (strcmp(target->cpu, "bleeding-edge") == 0)
+		{
+			compiler.platform.cpu = "bleeding-edge";
+		}
+		else
+		{
+			error_exit("Unknown CPU '%s'. Use --list-cpus to see supported CPUs.", target->cpu);
+		}
+	}
 	CpuFeatures features = cpu_feature_zero;
 	cpu_features_add_feature_single(&features, WASM_FEAT_BULK_MEMORY);
 #if LLVM_VERSION_MAJOR > 19
@@ -2079,37 +2296,97 @@ static void target_setup_wasm_abi(BuildTarget *target)
 static void target_setup_riscv_abi(BuildTarget *target)
 {
 	compiler.platform.riscv.xlen = arch_pointer_bit_width(compiler.platform.os, compiler.platform.arch) / 8; // pointer width
+	bool is_64bit = compiler.platform.arch == ARCH_TYPE_RISCV64;
 	RiscvCpuSet cpu = target->feature.riscv_cpu_set;
 	compiler.platform.abi = ABI_RISCV;
 	CpuFeatures features = cpu_feature_zero;
-	if (compiler.platform.arch == ARCH_TYPE_RISCV64)
+	bool used_named_cpu = false;
+	CpuFeatures default_features = cpu_feature_zero;
+
+#if LLVM_AVAILABLE
+	if (target->cpu && strcmp(target->cpu, "generic") != 0)
 	{
-		cpu_features_add_feature_single(&features, RISCV_FEAT_64BIT);
-		if (cpu == RISCV_CPU_DEFAULT) cpu = RISCV_CPU_RVGC;
+		if (target->feature.riscv_cpu_set != RISCV_CPU_DEFAULT)
+		{
+			OUTF("Warning: Both --cpu ('%s') and --riscv-cpu were specified; --cpu takes precedence.\n", target->cpu);
+		}
+		if (strcmp(target->cpu, "native") == 0)
+		{
+			if (compiler.platform.arch != target_host_arch())
+			{
+				error_exit("'--cpu native' is only supported when compiling for the host platform.");
+			}
+			const char *host_cpu = LLVMGetHostCPUName();
+			if (!riscvfeatures_from_named_cpu(&features, host_cpu, is_64bit))
+			{
+				error_exit("Failed to detect RISC-V host CPU.");
+			}
+			compiler.platform.cpu = host_cpu;
+			default_features = features;
+			used_named_cpu = true;
+		}
+		else if (riscvfeatures_from_named_cpu(&features, target->cpu, is_64bit))
+		{
+			compiler.platform.cpu = target->cpu;
+			default_features = features;
+			used_named_cpu = true;
+		}
+		else
+		{
+			error_exit("Unknown CPU '%s'. Use --list-cpus to see supported CPUs.", target->cpu);
+		}
 	}
-	else
+#endif
+
+	if (!used_named_cpu)
 	{
-		cpu_features_add_feature_single(&features, RISCV_FEAT_32BIT);
-		if (cpu == RISCV_CPU_DEFAULT) cpu = RISCV_CPU_RVI;
+		if (is_64bit)
+		{
+			cpu_features_add_feature_single(&features, RISCV_FEAT_64BIT);
+			if (cpu == RISCV_CPU_DEFAULT) cpu = RISCV_CPU_RVGC;
+		}
+		else
+		{
+			cpu_features_add_feature_single(&features, RISCV_FEAT_32BIT);
+			if (cpu == RISCV_CPU_DEFAULT) cpu = RISCV_CPU_RVI;
+		}
 	}
 	INFO_LOG("RISC-V Setup: cpu=%d, current_abi=%d", (int)cpu, (int)target->feature.riscv_abi);
 	if (target->feature.riscv_abi == RISCV_ABI_DEFAULT)
 	{
-		switch (cpu)
+		if (used_named_cpu)
 		{
-			case RISCV_CPU_DEFAULT:
-				UNREACHABLE_VOID
-			case RISCV_CPU_RVI:
-			case RISCV_CPU_RVIMAC:
-				target->feature.riscv_abi = RISCV_ABI_INT_ONLY;
-				break;
-			case RISCV_CPU_RVIMAFC:
-				target->feature.riscv_abi = RISCV_ABI_FLOAT;
-				break;
-			case RISCV_CPU_RVGC:
-			case RISCV_CPU_RVGCV:
+			if (cpu_features_contains(&features, RISCV_FEAT_D))
+			{
 				target->feature.riscv_abi = RISCV_ABI_DOUBLE;
-				break;
+			}
+			else if (cpu_features_contains(&features, RISCV_FEAT_F))
+			{
+				target->feature.riscv_abi = RISCV_ABI_FLOAT;
+			}
+			else
+			{
+				target->feature.riscv_abi = RISCV_ABI_INT_ONLY;
+			}
+		}
+		else
+		{
+			switch (cpu)
+			{
+				case RISCV_CPU_DEFAULT:
+					UNREACHABLE_VOID
+				case RISCV_CPU_RVI:
+				case RISCV_CPU_RVIMAC:
+					target->feature.riscv_abi = RISCV_ABI_INT_ONLY;
+					break;
+				case RISCV_CPU_RVIMAFC:
+					target->feature.riscv_abi = RISCV_ABI_FLOAT;
+					break;
+				case RISCV_CPU_RVGC:
+				case RISCV_CPU_RVGCV:
+					target->feature.riscv_abi = RISCV_ABI_DOUBLE;
+					break;
+			}
 		}
 	}
 	switch (target->feature.riscv_abi)
@@ -2122,50 +2399,62 @@ static void target_setup_riscv_abi(BuildTarget *target)
 			compiler.platform.riscv.flen = 4 * target->feature.riscv_abi;
 			break;
 	}
-	cpu_features_add_feature_single(&features, RISCV_FEAT_I);
-	switch (cpu)
+
+	if (!used_named_cpu)
 	{
-		case RISCV_CPU_DEFAULT:
-			UNREACHABLE_VOID
-		case RISCV_CPU_RVI:
-			break;
-		case RISCV_CPU_RVGCV:
-			cpu_features_add_feature_single(&features, RISCV_FEAT_V);
-			cpu_features_add_feature_single(&features, RISCV_FEAT_ZFA);
-			FALLTHROUGH;
-		case RISCV_CPU_RVGC:
-			cpu_features_add_feature_single(&features, RISCV_FEAT_D);
-			cpu_features_add_feature_single(&features, RISCV_FEAT_ZICSR);
-			cpu_features_add_feature_single(&features, RISCV_FEAT_ZIFENCEI);
-			cpu_features_add_feature_single(&features, RISCV_FEAT_ZBA);
-			cpu_features_add_feature_single(&features, RISCV_FEAT_ZBB);
-			cpu_features_add_feature_single(&features, RISCV_FEAT_ZBS);
-			FALLTHROUGH;
-		case RISCV_CPU_RVIMAFC:
+		cpu_features_add_feature_single(&features, RISCV_FEAT_I);
+		switch (cpu)
+		{
+			case RISCV_CPU_DEFAULT:
+				UNREACHABLE_VOID
+			case RISCV_CPU_RVI:
+				break;
+			case RISCV_CPU_RVGCV:
+				cpu_features_add_feature_single(&features, RISCV_FEAT_V);
+				cpu_features_add_feature_single(&features, RISCV_FEAT_ZFA);
+				FALLTHROUGH;
+			case RISCV_CPU_RVGC:
+				cpu_features_add_feature_single(&features, RISCV_FEAT_D);
+				cpu_features_add_feature_single(&features, RISCV_FEAT_ZICSR);
+				cpu_features_add_feature_single(&features, RISCV_FEAT_ZIFENCEI);
+				cpu_features_add_feature_single(&features, RISCV_FEAT_ZBA);
+				cpu_features_add_feature_single(&features, RISCV_FEAT_ZBB);
+				cpu_features_add_feature_single(&features, RISCV_FEAT_ZBS);
+				FALLTHROUGH;
+			case RISCV_CPU_RVIMAFC:
+				cpu_features_add_feature_single(&features, RISCV_FEAT_F);
+				FALLTHROUGH;
+			case RISCV_CPU_RVIMAC:
+				cpu_features_add_feature_single(&features, RISCV_FEAT_M);
+				cpu_features_add_feature_single(&features, RISCV_FEAT_A);
+				cpu_features_add_feature_single(&features, RISCV_FEAT_C);
+				break;
+		}
+
+		if (target->feature.riscv_abi >= RISCV_ABI_FLOAT)
+		{
 			cpu_features_add_feature_single(&features, RISCV_FEAT_F);
-			FALLTHROUGH;
-		case RISCV_CPU_RVIMAC:
-			cpu_features_add_feature_single(&features, RISCV_FEAT_M);
-			cpu_features_add_feature_single(&features, RISCV_FEAT_A);
-			cpu_features_add_feature_single(&features, RISCV_FEAT_C);
-			break;
+			cpu_features_add_feature_single(&features, RISCV_FEAT_ZICSR);
+		}
+		if (target->feature.riscv_abi >= RISCV_ABI_DOUBLE)
+		{
+			cpu_features_add_feature_single(&features, RISCV_FEAT_D);
+		}
+#if LLVM_VERSION_MAJOR < 18
+		// Not supported prior to LLVM 18
+		cpu_features_remove_feature(&features, RISCV_FEAT_I);
+#endif
 	}
 
-	if (target->feature.riscv_abi >= RISCV_ABI_FLOAT)
-	{
-		cpu_features_add_feature_single(&features, RISCV_FEAT_F);
-		cpu_features_add_feature_single(&features, RISCV_FEAT_ZICSR);
-	}
-	if (target->feature.riscv_abi >= RISCV_ABI_DOUBLE)
-	{
-		cpu_features_add_feature_single(&features, RISCV_FEAT_D);
-	}
-#if LLVM_VERSION_MAJOR < 18
-	// Not supported prior to LLVM 18
-	cpu_features_remove_feature(&features, RISCV_FEAT_I);
-#endif
 	update_cpu_features(target->cpu_flags, &features, riscv_feature_name, RISCV_FEATURE_LAST);
-	cpu_features_set_to_features(features, cpu_feature_zero, NULL, riscv_feature_name, RISCV_FEATURE_LAST);
+	if (used_named_cpu)
+	{
+		cpu_features_set_to_features(features, default_features, NULL, riscv_feature_name, RISCV_FEATURE_LAST);
+	}
+	else
+	{
+		cpu_features_set_to_features(features, cpu_feature_zero, NULL, riscv_feature_name, RISCV_FEATURE_LAST);
+	}
 }
 
 static void update_cpu_features(const char *features, CpuFeatures *cpu_features, const char **feature_names, int feature_count)
@@ -2344,7 +2633,7 @@ void target_setup(BuildTarget *build_target)
 			break;
 		case ARCH_TYPE_AARCH64:
 		case ARCH_TYPE_AARCH64_BE:
-			target_setup_aarch64_abi();
+			target_setup_aarch64_abi(build_target);
 			break;
 		case ARCH_TYPE_XTENSA:
 			compiler.platform.abi = ABI_XTENSA;

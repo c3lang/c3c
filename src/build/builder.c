@@ -612,6 +612,7 @@ BUILD:
 	set_if_updated(target->stack_protector, options->stack_protector);
 
 	OVERRIDE_IF_SET(output_dir);
+	OVERRIDE_IF_SET(cpu);
 	OVERRIDE_IF_SET(no_compress);
 	OVERRIDE_IF_SET(panicfn);
 	OVERRIDE_IF_SET(testfn);

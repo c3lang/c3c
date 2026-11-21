@@ -8,6 +8,7 @@
 - Unused compiler runtime functions are now removed by the linker, and executables linked with `cc` are dead stripped.
 - Compiler-rt may not contain thread locals, interfaces, `@dynamic` methods, `@init`/`@finalizer` functions or extern declarations. Its safety checks trap instead of calling the panic function.
 - Added `--compiler-rt-module` and the `compiler-rt-module` project option to override the compiler runtime module (default: `compiler_rt`).
+- Added `--cpu` to set the target CPU microarchitecture, and `--list-cpus` to list available CPUs for the target.
 - The C backend supports MSVC (`cl.exe`) and tcc, supports `int128` on compilers without a 128-bit integer, gives `float16` and `bfloat` their 16-bit layout and rounding, cross compiles with any C compiler for the target, and maps debug info to C3 source lines and names.
 - Added `--max-generic-instances` to limit the number of instances a single generic can implicitly spawn (default: 4096).
 - `[out]` or `[inout]` now detects more cases where pointers to constants were incorrectly used.

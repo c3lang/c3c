@@ -185,6 +185,7 @@ typedef struct
 } PlatformTarget;
 
 ArchType target_host_arch(void);
+void print_all_cpus(ArchOsTarget target);
 
 static inline bool is_pie_pic(RelocModel reloc)
 {
@@ -200,6 +201,15 @@ static inline bool is_pie_pic(RelocModel reloc)
 			return true;
 	}
 	UNREACHABLE
+}
+
+static inline bool cpu_features_contains(const CpuFeatures *cpu_features, int feature)
+{
+	if (feature < 64)
+	{
+		return !!((cpu_features->bits[0]) & (1ULL << feature));
+	}
+	return !!((cpu_features->bits[1]) & (1ULL << (feature - 64)));
 }
 
 

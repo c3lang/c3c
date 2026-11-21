@@ -89,6 +89,13 @@ void LLVMSetNoSanitizeAddress(LLVMValueRef Global);
 unsigned LLVMGetFunctionInstructionCount(LLVMValueRef function);
 unsigned LLVMGetModuleInstructionCount(LLVMModuleRef module);
 
+typedef void (*LLVMFeatureCallback)(const char *feature, void *user_data);
+typedef void (*LLVMCpuCallback)(const char *cpu, void *user_data);
+
+int llvm_cpu_get_features(const char *arch_or_triple, const char *cpu, LLVMFeatureCallback callback, void *user_data);
+int llvm_cpu_fill_list(const char *arch_or_triple, LLVMCpuCallback callback, void *user_data);
+bool llvm_cpu_is_valid(const char *arch_or_triple, const char *cpu);
+
 #ifdef __cplusplus
 }
 #endif

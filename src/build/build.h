@@ -248,6 +248,7 @@ typedef struct BuildOptions_
 	const char *target_select;
 	const char *path;
 	const char *vendor_download_path;
+	const char *cpu;
 	const char *template;
 	const char **unchecked_directories;
 	LinkerType linker_type;
@@ -381,6 +382,7 @@ typedef struct BuildOptions_
 	bool print_linking;
 	bool print_env;
 	bool print_asm;
+	bool print_cpus;
 	bool build_benchmark;
 	bool build_test;
 } BuildOptions;
@@ -697,6 +699,7 @@ void fetch_macsdk(BuildOptions *options);
 void fetch_sdk(BuildOptions *options);
 char *fetch_android_ndk(BuildOptions *options);
 BuildOptions parse_arguments(int argc, const char *argv[]);
+void print_all_cpus(ArchOsTarget target);
 ArchOsTarget arch_os_target_from_string(const char *target);
 bool command_accepts_files(CompilerCommand command);
 bool command_passes_args(CompilerCommand command);

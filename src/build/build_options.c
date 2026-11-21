@@ -204,6 +204,7 @@ static void usage(bool full)
 		print_opt("--compiler-rt-module <name>", "Override the compiler runtime module (default: compiler_rt).");
 		PRINTF("");
 		print_opt("--reloc=<option>", "Relocation model: none, pic, PIC, pie, PIE.");
+		print_opt("--cpu <name>", "Set target CPU microarchitecture, e.g. 'haswell', 'znver4'.");
 		print_opt("--cpu-flags <string>", "Add/remove cpu flags from the default, e.g. '+a,-b'.");
 		print_opt("--x86cpu=<option>", "Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native.");
 		print_opt("--x86vec=<option>", "Set max type of vector use: none, mmx, sse, avx, avx512, default.");
@@ -236,6 +237,7 @@ static void usage(bool full)
 		print_opt("--list-project-properties", "List all available keys used in project.json files.");
 		print_opt("--list-manifest-properties", "List all available keys used in manifest.json files.");
 		print_opt("--list-targets", "List all architectures the compiler supports.");
+		print_opt("--list-cpus", "List all supported CPUs for the selected target (or host target).");
 		print_opt("--list-type-properties", "List all type properties.");
 		print_opt("--list-asm", "List all asm instructions for the current target.");
 		PRINTF("");
@@ -1464,6 +1466,19 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->stack_protector = parse_opt_select(StackProtector, argopt, stack_protector);
 				return;
 			}
+			if (str_start_with(&current_arg[2], "cpu="))
+			{
+				const char *val = &current_arg[6];
+				if (!val[0]) error_exit("error: --cpu needs a CPU name.");
+				options->cpu = val;
+				return;
+			}
+			if (match_longopt("cpu"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --cpu needs a CPU name.");
+				options->cpu = next_arg();
+				return;
+			}
 			if (match_longopt("cpu-flags"))
 			{
 				if (at_end()) error_exit("error: --cpu-flags expected a comma-separated list, like '+a,-b,+x'.");
@@ -1651,6 +1666,11 @@ static void parse_option(BuildOptions *options) // NOLINT
 			{
 				print_all_targets();
 				exit_compiler(COMPILER_SUCCESS_EXIT);
+			}
+			if (match_longopt("list-cpus"))
+			{
+				options->print_cpus = true;
+				return;
 			}
 			if (match_longopt("emit-llvm"))
 			{
@@ -2150,6 +2170,11 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		case COMMAND_PROJECT:
 		case COMMAND_FETCH_SDK:
 			break;
+	}
+	if (build_options.print_cpus)
+	{
+		print_all_cpus(build_options.arch_os_target_override);
+		exit_compiler(COMPILER_SUCCESS_EXIT);
 	}
 	if (build_options.command == COMMAND_MISSING)
 	{
