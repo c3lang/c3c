@@ -5518,8 +5518,7 @@ static bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, 
 	// Patch the external name for local consts and static variables.
 	if ((decl->var.kind == VARDECL_CONST || is_static) && !decl->extname && context->call_env.kind == CALL_ENV_FUNCTION)
 	{
-		scratch_buffer_clear();
-		scratch_buffer_append(context->call_env.current_function->name);
+		scratch_buffer_set_extern_decl_name(context->call_env.current_function, true);
 		scratch_buffer_append_char('.');
 		scratch_buffer_append(decl->name);
 		decl->extname = scratch_buffer_copy();

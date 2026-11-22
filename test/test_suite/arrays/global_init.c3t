@@ -34,7 +34,7 @@ fn void main() {
 @"test.x.17.$taddr1" = internal global i8 99, align 1
 @.str = private unnamed_addr constant [4 x i8] c"for\00", align 1
 @"test.x.17.$taddr2" = internal global %"char[]" { ptr @.str, i64 3 }, align 8
-@main.x = internal unnamed_addr global [3 x %any] [%any { ptr @"test.x.17.$taddr0", i64 ptrtoint (ptr @"$ct.int" to i64) }, %any { ptr @"test.x.17.$taddr1", i64 ptrtoint (ptr @"$ct.char" to i64) }, %any { ptr @"test.x.17.$taddr2", i64 ptrtoint (ptr @"$ct.String" to i64) }], align 16
+@test.main.x = internal unnamed_addr global [3 x %any] [%any { ptr @"test.x.17.$taddr0", i64 ptrtoint (ptr @"$ct.int" to i64) }, %any { ptr @"test.x.17.$taddr1", i64 ptrtoint (ptr @"$ct.char" to i64) }, %any { ptr @"test.x.17.$taddr2", i64 ptrtoint (ptr @"$ct.String" to i64) }], align 16
 
 define void @test.main() #0 {
 entry:

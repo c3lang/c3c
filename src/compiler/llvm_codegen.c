@@ -619,7 +619,13 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	if (llvm_use_debug_variables(c))
 	{
 		SourceLoc *loc = sourcelocptrzero(decl->loc);
-		const char *linkage_name = name[0] == '\x01' ? name + 1 : name;
+		const char *linkage_name = "";
+		if (decl->has_extname || decl->is_export || decl->var.is_static || decl->var.is_temp)
+		{
+			size_t actual_len;
+			const char *actual_name = LLVMGetValueName2(global_ref, &actual_len);
+			linkage_name = actual_name[0] == '\x01' ? actual_name + 1 : actual_name;
+		}
 		decl->var.backend_debug_ref = LLVMDIBuilderCreateGlobalVariableExpression(
 				c->debug.builder,
 				c->debug.file.debug_file,

@@ -112,7 +112,7 @@ entry:
   %url = alloca %"char[]", align 8
   %summary = alloca %Summary, align 8
   %result = alloca %Summary, align 8
-  %0 = load %"char[][]", ptr @main.URLS, align 8
+  %0 = load %"char[][]", ptr @test.main.URLS, align 8
   %1 = extractvalue %"char[][]" %0, 0
   %2 = extractvalue %"char[][]" %0, 1
   store i64 0, ptr %.anon, align 8

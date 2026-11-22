@@ -47,8 +47,8 @@ macro get_static_ref() {
 
 /* #expect: foo.ll
 
-@bar.x = internal unnamed_addr global i8 0, align 1
-@bar2.x = internal global i8 0, align 1
+@foo.bar.x = internal unnamed_addr global i8 0, align 1
+@foo.bar2.x = internal global i8 0, align 1
 
 define void @foo.bar() #0 {
 entry:
@@ -57,13 +57,13 @@ entry:
 
 define ptr @foo.bar2() #0 {
 entry:
-  ret ptr @bar2.x
+  ret ptr @foo.bar2.x
 }
 
 // #expect: test.ll
 
-@bar.x = internal unnamed_addr global i8 0, align 1
-@bar2.x = internal global i8 0, align 1
+@test.bar.x = internal unnamed_addr global i8 0, align 1
+@test.bar2.x = internal global i8 0, align 1
 
 define void @test.bar() #0 {
 entry:
@@ -72,5 +72,5 @@ entry:
 
 define ptr @test.bar2() #0 {
 entry:
-  ret ptr @bar2.x
+  ret ptr @test.bar2.x
 }

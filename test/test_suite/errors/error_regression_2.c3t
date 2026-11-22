@@ -677,7 +677,7 @@ entry:
   %retparam = alloca i8, align 1
   %blockret = alloca i64, align 8
   %f = alloca i64, align 8
-  %0 = load %"char[][]", ptr @main.URLS, align 8
+  %0 = load %"char[][]", ptr @test.main.URLS, align 8
   %1 = extractvalue %"char[][]" %0, 0
   %2 = extractvalue %"char[][]" %0, 1
   store i64 0, ptr %.anon, align 8

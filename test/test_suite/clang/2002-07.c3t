@@ -315,9 +315,9 @@ fn int strcmp(char *s1, char *s2) {
 @foo.remaining = internal unnamed_addr global i32 0, align 4
 @foo.ext = local_unnamed_addr global ptr null, align 8
 @foo.globalQuad = local_unnamed_addr global %Quad { i32 4, %SubStruct { i16 1, i16 2 }, ptr null, i8 3, i32 156 }, align 8
-@foo.foo.10 = internal unnamed_addr global i32 0, align 4
+@foo.foo.foo = internal unnamed_addr global i32 0, align 4
 @.str = private unnamed_addr constant [7 x i8] c"<none>\00", align 1
-@.str.11 = private unnamed_addr constant [14 x i8] c"Hello world!\0A\00", align 1
+@.str.10 = private unnamed_addr constant [14 x i8] c"Hello world!\0A\00", align 1
 
 declare ptr @malloc(i32) #0
 
@@ -328,9 +328,9 @@ entry:
 
 define void @foo.foo() #0 {
 entry:
-  %0 = load i32, ptr @foo.foo.10, align 4
+  %0 = load i32, ptr @foo.foo.foo, align 4
   %add = add i32 %0, 1
-  store i32 %add, ptr @foo.foo.10, align 4
+  store i32 %add, ptr @foo.foo.foo, align 4
   %1 = call ptr @malloc(i32 12)
   store ptr %1, ptr @foo.data, align 8
   ret void
@@ -830,7 +830,7 @@ declare i32 @externFunc(i64, ptr, i16 signext, i8 zeroext) #0
 define i32 @main(i32 %0, ptr %1) #0 {
 entry:
   %i = alloca i32, align 4
-  %2 = call i32 @puts(ptr @.str.11)
+  %2 = call i32 @puts(ptr @.str.10)
   %trunc = trunc i32 %0 to i16
   %3 = call i32 @externFunc(i64 -1, ptr null, i16 signext %trunc, i8 zeroext 2)
   store i32 0, ptr %i, align 4
