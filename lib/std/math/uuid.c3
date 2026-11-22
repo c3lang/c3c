@@ -62,7 +62,7 @@ fn Uuid generate_v4_from_random(Random random)
 @return "A version 7 UUID from the default random"
 @ensure return.version() == 7
 *>
-fn Uuid generate_v7()
+fn Uuid generate_v7() @feat(LIBC)
 {
 	random::init_default_random();
 	return generate_v7_from_random(&random::default_random);
@@ -72,7 +72,7 @@ fn Uuid generate_v7()
 @return "A version 7 UUID from the given random"
 @ensure return.version() == 7
 *>
-fn Uuid generate_v7_from_random(Random random)
+fn Uuid generate_v7_from_random(Random random) @feat(LIBC)
 {
 	Uuid uuid @noinit;
 

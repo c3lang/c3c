@@ -17,7 +17,7 @@ fn void test_generate_v4()
 	}
 }
 
-fn void test_generate_v7()
+fn void test_generate_v7() @feat(LIBC)
 {
 	DefaultRandom rand;
 	random::seed_entropy(&rand);
