@@ -39,7 +39,7 @@ fn int main()
 @"$ct.statics.Bar" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.__const = private unnamed_addr constant [1 x %Bar] [%Bar { i32 1, i32 2 }], align 4
 @.__const_slice = private unnamed_addr global [1 x %Bar] [%Bar { i32 1, i32 2 }], align 4
-@test.c = internal unnamed_addr global %"Bar[]" { ptr @.__const_slice, i64 1 }, align 8
+@statics.test.c = internal unnamed_addr global %"Bar[]" { ptr @.__const_slice, i64 1 }, align 8
 @.str = private unnamed_addr constant [7 x i8] c"%d %d\0A\00", align 1
 
 ; Function Attrs:
@@ -53,7 +53,7 @@ entry:
   store %"Bar[]" %1, ptr %b, align 8
   %2 = load ptr, ptr %b, align 8
   %ptradd = getelementptr inbounds i8, ptr %2, i64 4
-  %3 = load ptr, ptr @test.c, align 8
+  %3 = load ptr, ptr @statics.test.c, align 8
   %ptradd1 = getelementptr inbounds i8, ptr %3, i64 4
   %4 = load i32, ptr %ptradd, align 4
   %5 = load i32, ptr %ptradd1, align 4
@@ -63,7 +63,7 @@ entry:
   %8 = load i32, ptr %ptradd2, align 4
   %add = add i32 %8, 1
   store i32 %add, ptr %ptradd2, align 4
-  %9 = load ptr, ptr @test.c, align 8
+  %9 = load ptr, ptr @statics.test.c, align 8
   %ptradd3 = getelementptr inbounds i8, ptr %9, i64 4
   %10 = load i32, ptr %ptradd3, align 4
   %add4 = add i32 %10, 1

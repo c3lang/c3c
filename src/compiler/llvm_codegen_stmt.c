@@ -49,9 +49,7 @@ void llvm_emit_local_static(GenContext *c, Decl *decl, BEValue *value)
 	if (IS_OPTIONAL(decl))
 	{
 		LLVMTypeRef fault = llvm_get_type(c, type_fault);
-		scratch_buffer_append(c->cur_func.name);
-		scratch_buffer_append_char('.');
-		scratch_buffer_append(decl->name);
+		scratch_buffer_set_extern_decl_name(decl, true);
 		scratch_buffer_append(".f");
 		decl->var.optional_ref = llvm_add_global_raw(c, scratch_buffer_to_string(), fault, 0);
 	}

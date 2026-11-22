@@ -11,6 +11,8 @@
 - The C backend supports MSVC (`cl.exe`) and tcc, supports `int128` on compilers without a 128-bit integer, gives `float16` and `bfloat` their 16-bit layout and rounding, cross compiles with any C compiler for the target, and maps debug info to C3 source lines and names.
 - Added `--max-generic-instances` to limit the number of instances a single generic can implicitly spawn (default: 4096).
 - `[out]` or `[inout]` now detects more cases where pointers to constants were incorrectly used.
+- A type that declares any of the `[]`, `&[]`, `[]=` or `len` overloads no longer falls back to its underlying type for the ones it lacks: `foreach`, indexing, `lengthof` and `.len` require the overload they need, e.g. `foreach` over a typedef slice with only `[]` is an error. Typedefs and constsets without these overloads still use their underlying type.
+- `foreach` errors now name the missing overload.
 
 ### Fixes
 - `nextcase x` in a `@jump` switch read `x` after the defers of the case had run.
@@ -112,6 +114,18 @@
 - On 32-bit x86, returning a struct with a single `float` or `double` field crashed the compiler.
 - On linux-x86 and netbsd-x86 (32 bit), small structs were incorrectly returned in registers, breaking C ABI.
 - A struct literal built from compile-time values in a macro, like `(Aa){ $nodes[0].a }`, could keep a stale reference to a compile-time variable and crash the compiler when it was later reassigned.
+- `foreach` over a slice variable re-read the slice on every iteration, so reassigning the variable in the loop body, like `foos = foos[1..]`, changed the elements visited and could index out of bounds. The slice is now evaluated once.
+- Writing through a `foreach (&p : s)` loop variable to an `[in]` slice parameter, or reading through it from an `[out]` one, was not detected.
+- `foreach` over a constset of pointers crashed the compiler.
+- Assigning to an element of a dereferenced `[in]` pointer to an array, like `(*s)[0] = 1`, was not detected.
+- `foreach (&v : *p)` with an `[out]` pointer `p` to an array incorrectly reported that `p` was read.
+- `&&` on a typed constant, like `&&CA` for a `const int[3] CA`, returned the constant's own read-only storage instead of a temporary copy, also in global and `static` initializers.
+- Slicing a typed constant with a runtime range, like `CA[i..]` or `CS[i..]` no longer creates a copy.
+- Indexing a vector with a runtime index, like `v[i]`, `v[i] = x`, `v[i] += x` or `v[i]++`, had no bounds check in safe mode.
+- `&&` in an enum associated value or a constant, like `enum Ff : (int* p) { A { &&3 } }`, created a new copy on every use.
+- Regression: warning on MacOS for panic functions when linking. #3678
+- Global variables could not be found by name in gdb. #3664
+- Debug info for the second `static` of a macro expanded twice in one function referred to the first one's symbol.
 
 ### Stdlib changes
 - `atomic::fetch_add` and the other `fetch_*` macros now require the alignment to be at most `mem::MAX_MEMORY_ALIGNMENT`; `fetch_max` and `fetch_min` check it at all.
@@ -121,8 +135,10 @@
 - `std::math::easing` deprecated in favour of `std::math::ease`.
 - `math::lerp` is now public, and `math::inverse_lerp` added.
 - `math::uuid` now supports uuid version 7, and parsing uuids from strings.
+- `std::encoding::csv` can remove quotes from quoted fields.
 
 ## 0.8.6 Change list
+- `File.write` declared its buffer `[out]` instead of `[in]`, and `UrlQueryValues.add` declared `self` `[in]` although it modifies it.
 
 ### Changes / improvements
 - `@asmname` allows defining external names like `@cname` but without normal name mangling.

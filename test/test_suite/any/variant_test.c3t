@@ -195,27 +195,27 @@ entry:
   store ptr %0, ptr %y, align 8
   %ptradd = getelementptr inbounds i8, ptr %y, i64 8
   store i64 %1, ptr %ptradd, align 8
-  %ptradd1 = getelementptr inbounds i8, ptr %y, i64 8
-  %2 = load i64, ptr %ptradd1, align 8
+  %2 = load %"any[]", ptr %y, align 8
+  %3 = extractvalue %"any[]" %2, 0
+  %4 = extractvalue %"any[]" %2, 1
   store i64 0, ptr %.anon, align 8
   br label %loop.cond
 
 loop.cond:                                        ; preds = %loop.body, %entry
-  %3 = load i64, ptr %.anon, align 8
-  %lt = icmp slt i64 %3, %2
+  %5 = load i64, ptr %.anon, align 8
+  %lt = icmp slt i64 %5, %4
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %4 = load ptr, ptr %y, align 8
-  %5 = load i64, ptr %.anon, align 8
-  %ptroffset = getelementptr inbounds [16 x i8], ptr %4, i64 %5
+  %6 = load i64, ptr %.anon, align 8
+  %ptroffset = getelementptr inbounds [16 x i8], ptr %3, i64 %6
   call void @llvm.memcpy.p0.p0.i64(ptr align 8 %element, ptr align 8 %ptroffset, i64 16, i1 false)
   %lo = load i64, ptr %element, align 8
-  %ptradd2 = getelementptr inbounds i8, ptr %element, i64 8
-  %hi = load ptr, ptr %ptradd2, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %element, i64 8
+  %hi = load ptr, ptr %ptradd1, align 8
   call void @foo.test(i64 %lo, ptr %hi)
-  %6 = load i64, ptr %.anon, align 8
-  %addnsw = add nsw i64 %6, 1
+  %7 = load i64, ptr %.anon, align 8
+  %addnsw = add nsw i64 %7, 1
   store i64 %addnsw, ptr %.anon, align 8
   br label %loop.cond
 

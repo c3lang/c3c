@@ -207,7 +207,7 @@ fn sz? File.read(&self, char[] buffer) @dynamic
 }
 
 <*
- @param [out] buffer
+ @param [in] buffer
  @require self.file != null : `File must be initialized`
 *>
 fn sz? File.write(&self, char[] buffer) @dynamic

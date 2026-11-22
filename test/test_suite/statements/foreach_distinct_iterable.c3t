@@ -9,7 +9,7 @@ fn char TypeA.get(self, sz i) @operator([]) {
 
 fn sz TypeA.len(self) @operator(len)
 {
-	return self.len;
+	return ((char[])self).len;
 }
 
 fn int main() {
