@@ -2216,11 +2216,13 @@ LLVMMetadataRef llvm_get_debug_file(GenContext *c, FileId file_id)
 		if (file.file_id == file_id) return file.debug_file; // NOLINT
 	}
 	File *f = source_file_by_id(file_id);
+	const char *dir = f->dir_path;
+	if (!dir[0]) dir = compiler.base_dir;
 	LLVMMetadataRef file = LLVMDIBuilderCreateFile(c->debug.builder,
 												   f->name,
 												   strlen(f->name),
-												   f->dir_path,
-												   strlen(f->dir_path));
+												   dir,
+												   strlen(dir));
 	DebugFile debug_file = { .file_id = file_id, .debug_file = file };
 	vec_add(c->debug.debug_files, debug_file);
 	return file;

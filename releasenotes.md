@@ -123,6 +123,7 @@
 - Slicing a typed constant with a runtime range, like `CA[i..]` or `CS[i..]` no longer creates a copy.
 - Indexing a vector with a runtime index, like `v[i]`, `v[i] = x`, `v[i] += x` or `v[i]++`, had no bounds check in safe mode.
 - `&&` in an enum associated value or a constant, like `enum Ff : (int* p) { A { &&3 } }`, created a new copy on every use.
+- Regression: warning on MacOS for panic functions when linking. #3678
 
 ### Stdlib changes
 - `atomic::fetch_add` and the other `fetch_*` macros now require the alignment to be at most `mem::MAX_MEMORY_ALIGNMENT`; `fetch_max` and `fetch_min` check it at all.
