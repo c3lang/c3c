@@ -36,6 +36,14 @@ fn Time Uuid.time_v7(&self)
 }
 
 <*
+This is a deprecated alias for generate_v4, maintained for backwards
+compatibility.
+@return "A version 4 UUID from the default random"
+@ensure return.version() == 4
+*>
+fn Uuid generate() => generate_v4();
+
+<*
 @return "A version 4 UUID from the default random"
 @ensure return.version() == 4
 *>
@@ -44,6 +52,14 @@ fn Uuid generate_v4()
 	random::init_default_random();
 	return generate_v4_from_random(&random::default_random);
 }
+
+<*
+This is a deprecated alias for generate_v4_from_random, maintained for backwards
+compatibility.
+@return "A version 4 UUID from the given random"
+@ensure return.version() == 4
+*>
+fn Uuid generate_from_random(Random random) => generate_v4_from_random(random);
 
 <*
 @return "A version 4 UUID from the given random"
