@@ -30,7 +30,8 @@ fn void test_generate_v7() @feat(LIBC)
 
 	for (int i = 0; i < uuids.len - 1; i += 1)
 	{
-		test::le(uuids[i].time_v7(), uuids[i + 1].time_v7());
+		test::lt(uuids[i].time_v7(), uuids[i + 1].time_v7());
+		test::lt(uuids[i], uuids[i + 1]);
 	}
 }
 

@@ -35,6 +35,19 @@ fn Time Uuid.time_v7(&self)
 	return (Time)(msecond_timestamp * 1000);
 }
 
+fn bool Uuid.lt(self, Uuid other) @operator(<) => self.compare_to(other) < 0;
+
+<*
+@return "negative if self < other, 0 if equal, positive if self > other"
+*>
+fn int Uuid.compare_to(self, Uuid other)
+{
+	$for var $i = 0; $i < Uuid::len; $i += 1:
+		if (self[$i] != other[$i]) return self[$i] - other[$i];
+	$endfor
+	return 0;
+}
+
 <*
 This is a deprecated alias for generate_v4, maintained for backwards
 compatibility.
