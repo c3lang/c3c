@@ -22,14 +22,20 @@ entry:
   %a = alloca %any, align 8
   %x = alloca i8, align 1
   %z = alloca %any, align 8
-  store %any zeroinitializer, ptr %a, align 8
+  store ptr null, ptr %a, align 8
+  %ptradd = getelementptr inbounds i8, ptr %a, i64 8
+  store i64 0, ptr %ptradd, align 8
   %0 = load ptr, ptr %a, align 8
   %eq = icmp eq ptr %0, null
   %1 = zext i1 %eq to i8
   store i8 %1, ptr %x, align 1
-  store %any { ptr null, i64 ptrtoint (ptr @"$ct.void" to i64) }, ptr %a, align 8
+  store ptr null, ptr %a, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %a, i64 8
+  store i64 ptrtoint (ptr @"$ct.void" to i64), ptr %ptradd1, align 8
   %2 = load %any, ptr %a, align 8
   store %any %2, ptr %z, align 8
-  store %any { ptr null, i64 ptrtoint (ptr @"$ct.void" to i64) }, ptr %z, align 8
+  store ptr null, ptr %z, align 8
+  %ptradd2 = getelementptr inbounds i8, ptr %z, i64 8
+  store i64 ptrtoint (ptr @"$ct.void" to i64), ptr %ptradd2, align 8
   ret void
 }

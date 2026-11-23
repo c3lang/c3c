@@ -572,7 +572,9 @@ loop.exit8:                                       ; preds = %loop.cond2
   store %"int[]" %"$$temp17", ptr %indirectarg18, align 8
   %48 = call i32 @test.sum_us(ptr align 8 %indirectarg18)
   %49 = call i32 (ptr, ...) @printf(ptr @.str.19, i32 %48)
-  store %"int[]" zeroinitializer, ptr %indirectarg19, align 8
+  store ptr null, ptr %indirectarg19, align 8
+  %ptradd20 = getelementptr inbounds i8, ptr %indirectarg19, i64 8
+  store i64 0, ptr %ptradd20, align 8
   %50 = call i32 @test.sum_us(ptr align 8 %indirectarg19)
   %51 = call i32 (ptr, ...) @printf(ptr @.str.20, i32 %50)
   store ptr null, ptr %a1, align 8

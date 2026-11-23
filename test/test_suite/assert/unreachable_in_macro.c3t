@@ -47,7 +47,9 @@ end_block:                                        ; preds = %if.exit
 
 if.then:                                          ; preds = %end_block
   %1 = call ptr @std.io.stdout()
-  store %"char[]" { ptr @.str, i64 5 }, ptr %indirectarg, align 8
+  store ptr @.str, ptr %indirectarg, align 8
+  %ptradd = getelementptr inbounds i8, ptr %indirectarg, i64 8
+  store i64 5, ptr %ptradd, align 8
   %2 = call i64 @std.io.File.write(ptr %retparam, ptr %1, ptr align 8 %indirectarg)
   %not_err = icmp eq i64 %2, 0
   br i1 %not_err, label %after_check, label %assign_optional

@@ -24,8 +24,12 @@ entry:
   %is_gen1 = alloca i8, align 1
   %is_gen2 = alloca i8, align 1
   %is_gen3 = alloca i8, align 1
-  store %"char[]" { ptr @.str, i64 6 }, ptr %s, align 8
-  store %"char[]" { ptr @.str.1, i64 28 }, ptr %name, align 8
+  store ptr @.str, ptr %s, align 8
+  %ptradd = getelementptr inbounds i8, ptr %s, i64 8
+  store i64 6, ptr %ptradd, align 8
+  store ptr @.str.1, ptr %name, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %name, i64 8
+  store i64 28, ptr %ptradd1, align 8
   store i8 1, ptr %is_gen1, align 1
   store i8 0, ptr %is_gen2, align 1
   store i8 0, ptr %is_gen3, align 1

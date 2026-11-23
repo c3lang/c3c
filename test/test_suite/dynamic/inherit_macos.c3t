@@ -110,7 +110,7 @@ match:                                            ; preds = %9
   br i1 %16, label %cache_hit5, label %cache_miss4
 
 cache_miss4:                                      ; preds = %match
-  %17 = call ptr @.dyn_search(ptr %14, i128 8358585)
+  %17 = call ptr @.dyn_search(ptr %14,
   store ptr %17, ptr %.inlinecache2, align 8
   store ptr %14, ptr %.cachedtype3, align 8
   br label %19

@@ -1269,8 +1269,8 @@ static inline void llvm_emit_access_addr(GenContext *c, BEValue *be_value, Expr 
 		Decl *member = expr->access_resolved_expr.ref;
 
 		llvm_value_rvalue(c, be_value);
-		if (!flat_type->decl->backend_ref) llvm_get_typeid(c, parent->type);
-		ASSERT(member->backend_ref);
+		llvm_get_typeid(c, flat_type);
+		ASSERT(llvm_decl_current_ref(member));
 		AlignSize align = LLVMGetAlignment(member->backend_ref);
 		AlignSize alignment;
 		ByteSize size = llvm_abi_size(c, llvm_get_type(c, member->type));
@@ -7219,12 +7219,17 @@ void llvm_emit_vec_to_array(GenContext *c, BEValue *value, Type *type)
 {
 	// Emit the load, in this case we know this is not an optional.
 	assert(value->kind != BE_ADDRESS_OPTIONAL);
+	Type *to_type = type_lowering(type);
+	if (value->kind == BE_ADDRESS && type_kind_is_real_vector(type_flatten(value->type)->type_kind) && to_type->array.base != type_bool)
+	{
+		value->type = to_type;
+		return;
+	}
 	LLVMValueRef val = llvm_load_value_store(c, value);
 
 	// Determine the type of conversion
 	LLVMTypeRef type_ptr = LLVMTypeOf(val);
 	LLVMTypeKind type_kind = LLVMGetTypeKind(type_ptr);
-	Type *to_type = type_lowering(type);
 	switch (type_kind)
 	{
 		case LLVMArrayTypeKind:
@@ -7261,6 +7266,7 @@ static inline void llvm_emit_vector_to_array(GenContext *c, BEValue *value, Expr
 	llvm_emit_expr(c, value, expr->inner_expr);
 	llvm_value_fold_optional(c, value);
 	RETURN_ON_EMPTY_BLOCK(value);
+	llvm_value_rvalue(c, value);
 	llvm_emit_vec_to_array(c, value, expr->type);
 }
 

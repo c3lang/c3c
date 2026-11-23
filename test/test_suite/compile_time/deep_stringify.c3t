@@ -17,6 +17,8 @@ fn void main()
 
 entry:
   %a = alloca %"char[]", align 8
-  store %"char[]" { ptr @.str, i64 23 }, ptr %a, align 8
+  store ptr @.str, ptr %a, align 8
+  %ptradd = getelementptr inbounds i8, ptr %a, i64 8
+  store i64 23, ptr %ptradd, align 8
   ret void
 }

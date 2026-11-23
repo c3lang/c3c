@@ -13,7 +13,67 @@ INLINE bool llvm_should_expand_vector_store(GenContext *c, ArrayIndex len, LLVMV
 		&& size < aligned_offset(size, alignment);
 }
 
+static bool llvm_is_small_integer_struct(GenContext *c, LLVMTypeRef strukt, unsigned member_count)
+{
+	if (member_count > 4) return false;
+	for (unsigned i = 0; i < member_count; i++)
+	{
+		LLVMTypeRef field_type = LLVMStructGetTypeAtIndex(strukt, i);
+		LLVMTypeKind kind = LLVMGetTypeKind(field_type);
+		if (kind != LLVMPointerTypeKind
+			&& (kind != LLVMIntegerTypeKind || field_type == c->bool_type)) return false;
+	}
+	return true;
+}
+
+LLVMValueRef llvm_store_split_fields(GenContext *c, LLVMValueRef pointer, LLVMValueRef value, AlignSize alignment)
+{
+	LLVMTypeRef type = LLVMTypeOf(value);
+	if (LLVMGetTypeKind(type) != LLVMStructTypeKind) return NULL;
+	unsigned count = LLVMCountStructElementTypes(type);
+	if (!llvm_is_small_integer_struct(c, type, count)) return NULL;
+	LLVMValueRef fields[4] = { NULL };
+	if (LLVMIsConstant(value))
+	{
+		for (unsigned i = 0; i < count; i++)
+		{
+			if (!(fields[i] = LLVMGetAggregateElement(value, i))) return NULL;
+		}
+	}
+	else
+	{
+		LLVMValueRef base = value;
+		while (LLVMIsAInsertValueInst(base))
+		{
+			if (LLVMGetNumIndices(base) != 1) return NULL;
+			unsigned index = LLVMGetIndices(base)[0];
+			if (!fields[index]) fields[index] = LLVMGetOperand(base, 1);
+			base = LLVMGetOperand(base, 0);
+		}
+		if (!LLVMIsUndef(base) && !LLVMIsPoison(base)) return NULL;
+	}
+	LLVMValueRef store = NULL;
+	for (unsigned i = 0; i < count; i++)
+	{
+		if (!fields[i] || LLVMIsUndef(fields[i])) continue;
+		AlignSize field_alignment;
+		LLVMValueRef ptr = llvm_emit_struct_gep_raw(c, pointer, type, (int)i, alignment, &field_alignment);
+		store = llvm_store_to_ptr_raw_aligned_single(c, ptr, fields[i], field_alignment);
+	}
+	return store;
+}
+
 LLVMValueRef llvm_store_to_ptr_raw_aligned(GenContext *c, LLVMValueRef pointer, LLVMValueRef value, AlignSize alignment)
+{
+	if (c->split_aggregates && LLVMIsConstant(value))
+	{
+		LLVMValueRef store = llvm_store_split_fields(c, pointer, value, alignment);
+		if (store) return store;
+	}
+	return llvm_store_to_ptr_raw_aligned_single(c, pointer, value, alignment);
+}
+
+LLVMValueRef llvm_store_to_ptr_raw_aligned_single(GenContext *c, LLVMValueRef pointer, LLVMValueRef value, AlignSize alignment)
 {
 	ASSERT(alignment > 0);
 	LLVMTypeRef type = LLVMTypeOf(value);
@@ -68,7 +128,7 @@ bool llvm_temp_as_address(Type *type)
 	}
 }
 
-LLVMValueRef llvm_store_to_ptr_aligned(GenContext *c, LLVMValueRef destination, BEValue *value, AlignSize alignment)
+static LLVMValueRef llvm_store_to_ptr_aligned_internal(GenContext *c, LLVMValueRef destination, BEValue *value, AlignSize alignment, bool split)
 {
 	// If we have an address but not an aggregate, do a load.
 	ASSERT(alignment);
@@ -83,13 +143,14 @@ LLVMValueRef llvm_store_to_ptr_aligned(GenContext *c, LLVMValueRef destination, 
 		case BE_BOOLVECTOR:
 			value->value = LLVMBuildSExt(c->builder, value->value, llvm_get_type(c, value->type), "");
 			value->kind = BE_VALUE;
-			return llvm_store_to_ptr_raw_aligned(c, destination, value->value, alignment);
+			return llvm_store_to_ptr_raw_aligned_single(c, destination, value->value, alignment);
 		case BE_BOOLEAN:
 			value->value = LLVMBuildZExt(c->builder, value->value, c->byte_type, "");
 			value->kind = BE_VALUE;
 			FALLTHROUGH;
 		case BE_VALUE:
-			return llvm_store_to_ptr_raw_aligned(c, destination, value->value, alignment);
+			return split ? llvm_store_to_ptr_raw_aligned(c, destination, value->value, alignment)
+			             : llvm_store_to_ptr_raw_aligned_single(c, destination, value->value, alignment);
 		case BE_ADDRESS_OPTIONAL:
 			UNREACHABLE
 		case BE_ADDRESS:
@@ -98,12 +159,30 @@ LLVMValueRef llvm_store_to_ptr_aligned(GenContext *c, LLVMValueRef destination, 
 	UNREACHABLE
 }
 
+LLVMValueRef llvm_store_to_ptr_aligned(GenContext *c, LLVMValueRef destination, BEValue *value, AlignSize alignment)
+{
+	return llvm_store_to_ptr_aligned_internal(c, destination, value, alignment, true);
+}
+
+LLVMValueRef llvm_store_to_ptr_aligned_single(GenContext *c, LLVMValueRef destination, BEValue *value, AlignSize alignment)
+{
+	return llvm_store_to_ptr_aligned_internal(c, destination, value, alignment, false);
+}
+
 LLVMValueRef llvm_store(GenContext *c, BEValue *destination, BEValue *value)
 {
 	if (value->type == type_void) return NULL;
 	ASSERT(!type_is_void(value->type));
 	ASSERT(llvm_value_is_addr(destination));
 	return llvm_store_to_ptr_aligned(c, destination->value, value, destination->alignment);
+}
+
+LLVMValueRef llvm_store_single(GenContext *c, BEValue *destination, BEValue *value)
+{
+	if (value->type == type_void) return NULL;
+	ASSERT(!type_is_void(value->type));
+	ASSERT(llvm_value_is_addr(destination));
+	return llvm_store_to_ptr_aligned_single(c, destination->value, value, destination->alignment);
 }
 
 LLVMValueRef llvm_load(GenContext *c, LLVMTypeRef type, LLVMValueRef pointer, AlignSize alignment, const char *name)

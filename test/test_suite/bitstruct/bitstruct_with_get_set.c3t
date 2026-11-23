@@ -37,12 +37,12 @@ entry:
   %error_var26 = alloca i64, align 8
   %varargslots27 = alloca [1 x %any], align 16
   %taddr28 = alloca %"char[]", align 8
-  %retparam29 = alloca i64, align 8
-  %error_var36 = alloca i64, align 8
-  %varargslots37 = alloca [1 x %any], align 16
-  %taddr39 = alloca i32, align 4
-  %retparam40 = alloca i64, align 8
-  %retparam47 = alloca i64, align 8
+  %retparam30 = alloca i64, align 8
+  %error_var37 = alloca i64, align 8
+  %varargslots38 = alloca [1 x %any], align 16
+  %taddr40 = alloca i32, align 4
+  %retparam41 = alloca i64, align 8
+  %retparam48 = alloca i64, align 8
   %3 = load i64, ptr %1, align 8
   store i64 %3, ptr %value, align 8
   %4 = call i64 @std.io.Formatter.print(ptr %retparam, ptr %2, ptr @.str, i64 2)
@@ -65,7 +65,9 @@ noerr_block:                                      ; preds = %after_check
   %6 = load i64, ptr %retparam, align 8
   store i64 %6, ptr %total, align 8
   %7 = load i64, ptr %total, align 8
-  store %"char[]" { ptr @.str.2, i64 1 }, ptr %taddr, align 8
+  store ptr @.str.2, ptr %taddr, align 8
+  %ptradd = getelementptr inbounds i8, ptr %taddr, i64 8
+  store i64 1, ptr %ptradd, align 8
   %8 = insertvalue %any undef, ptr %taddr, 0
   %9 = insertvalue %any %8, i64 ptrtoint (ptr @"$ct.String" to i64), 1
   store %any %9, ptr %varargslots, align 16
@@ -140,75 +142,77 @@ noerr_block24:                                    ; preds = %after_check22
   %add25 = add i64 %20, %23
   store i64 %add25, ptr %total, align 8
   %24 = load i64, ptr %total, align 8
-  store %"char[]" { ptr @.str.6, i64 1 }, ptr %taddr28, align 8
+  store ptr @.str.6, ptr %taddr28, align 8
+  %ptradd29 = getelementptr inbounds i8, ptr %taddr28, i64 8
+  store i64 1, ptr %ptradd29, align 8
   %25 = insertvalue %any undef, ptr %taddr28, 0
   %26 = insertvalue %any %25, i64 ptrtoint (ptr @"$ct.String" to i64), 1
   store %any %26, ptr %varargslots27, align 16
-  %27 = call i64 @std.io.Formatter.printf(ptr %retparam29, ptr %2, ptr @.str.5, i64 4, ptr %varargslots27, i64 1)
-  %not_err30 = icmp eq i64 %27, 0
-  br i1 %not_err30, label %after_check32, label %assign_optional31
+  %27 = call i64 @std.io.Formatter.printf(ptr %retparam30, ptr %2, ptr @.str.5, i64 4, ptr %varargslots27, i64 1)
+  %not_err31 = icmp eq i64 %27, 0
+  br i1 %not_err31, label %after_check33, label %assign_optional32
 
-assign_optional31:                                ; preds = %noerr_block24
+assign_optional32:                                ; preds = %noerr_block24
   store i64 %27, ptr %error_var26, align 8
-  br label %guard_block33
+  br label %guard_block34
 
-after_check32:                                    ; preds = %noerr_block24
-  br label %noerr_block34
+after_check33:                                    ; preds = %noerr_block24
+  br label %noerr_block35
 
-guard_block33:                                    ; preds = %assign_optional31
+guard_block34:                                    ; preds = %assign_optional32
   %28 = load i64, ptr %error_var26, align 8
   store i64 %28, ptr %reterr, align 8
   br label %err_retblock
 
-noerr_block34:                                    ; preds = %after_check32
-  %29 = load i64, ptr %retparam29, align 8
-  %add35 = add i64 %24, %29
-  store i64 %add35, ptr %total, align 8
+noerr_block35:                                    ; preds = %after_check33
+  %29 = load i64, ptr %retparam30, align 8
+  %add36 = add i64 %24, %29
+  store i64 %add36, ptr %total, align 8
   %30 = load i64, ptr %total, align 8
   %31 = load i64, ptr %value, align 8
   %lshrl = lshr i64 %31, 5
   %32 = and i64 63, %lshrl
-  %trunc38 = trunc i64 %32 to i32
-  store i32 %trunc38, ptr %taddr39, align 4
-  %33 = insertvalue %any undef, ptr %taddr39, 0
+  %trunc39 = trunc i64 %32 to i32
+  store i32 %trunc39, ptr %taddr40, align 4
+  %33 = insertvalue %any undef, ptr %taddr40, 0
   %34 = insertvalue %any %33, i64 ptrtoint (ptr @"$ct.uint" to i64), 1
-  store %any %34, ptr %varargslots37, align 16
-  %35 = call i64 @std.io.Formatter.printf(ptr %retparam40, ptr %2, ptr @.str.7, i64 2, ptr %varargslots37, i64 1)
-  %not_err41 = icmp eq i64 %35, 0
-  br i1 %not_err41, label %after_check43, label %assign_optional42
+  store %any %34, ptr %varargslots38, align 16
+  %35 = call i64 @std.io.Formatter.printf(ptr %retparam41, ptr %2, ptr @.str.7, i64 2, ptr %varargslots38, i64 1)
+  %not_err42 = icmp eq i64 %35, 0
+  br i1 %not_err42, label %after_check44, label %assign_optional43
 
-assign_optional42:                                ; preds = %noerr_block34
-  store i64 %35, ptr %error_var36, align 8
-  br label %guard_block44
+assign_optional43:                                ; preds = %noerr_block35
+  store i64 %35, ptr %error_var37, align 8
+  br label %guard_block45
 
-after_check43:                                    ; preds = %noerr_block34
-  br label %noerr_block45
+after_check44:                                    ; preds = %noerr_block35
+  br label %noerr_block46
 
-guard_block44:                                    ; preds = %assign_optional42
-  %36 = load i64, ptr %error_var36, align 8
+guard_block45:                                    ; preds = %assign_optional43
+  %36 = load i64, ptr %error_var37, align 8
   store i64 %36, ptr %reterr, align 8
   br label %err_retblock
 
-noerr_block45:                                    ; preds = %after_check43
-  %37 = load i64, ptr %retparam40, align 8
-  %add46 = add i64 %30, %37
-  store i64 %add46, ptr %total, align 8
+noerr_block46:                                    ; preds = %after_check44
+  %37 = load i64, ptr %retparam41, align 8
+  %add47 = add i64 %30, %37
+  store i64 %add47, ptr %total, align 8
   %38 = load i64, ptr %total, align 8
-  %39 = call i64 @std.io.Formatter.print(ptr %retparam47, ptr %2, ptr @.str.8, i64 2)
-  %not_err48 = icmp eq i64 %39, 0
-  br i1 %not_err48, label %after_check50, label %assign_optional49
+  %39 = call i64 @std.io.Formatter.print(ptr %retparam48, ptr %2, ptr @.str.8, i64 2)
+  %not_err49 = icmp eq i64 %39, 0
+  br i1 %not_err49, label %after_check51, label %assign_optional50
 
-assign_optional49:                                ; preds = %noerr_block45
+assign_optional50:                                ; preds = %noerr_block46
   store i64 %39, ptr %reterr, align 8
   br label %err_retblock
 
-after_check50:                                    ; preds = %noerr_block45
-  %40 = load i64, ptr %retparam47, align 8
-  %add51 = add i64 %38, %40
-  store i64 %add51, ptr %0, align 8
+after_check51:                                    ; preds = %noerr_block46
+  %40 = load i64, ptr %retparam48, align 8
+  %add52 = add i64 %38, %40
+  store i64 %add52, ptr %0, align 8
   ret i64 0
 
-err_retblock:                                     ; preds = %assign_optional49, %guard_block44, %guard_block33, %guard_block23, %guard_block15, %guard_block6, %guard_block
+err_retblock:                                     ; preds = %assign_optional50, %guard_block45, %guard_block34, %guard_block23, %guard_block15, %guard_block6, %guard_block
   %41 = load i64, ptr %reterr, align 8
   ret i64 %41
 }

@@ -61,6 +61,8 @@ static void llvm_set_module_string_attribute(GenContext *c, LLVMModuleFlagBehavi
 	LLVMAddModuleFlag(c->module, flag_behavior, attribute, strlen(attribute), val);
 }
 
+uint16_t llvm_generation = 0;
+
 void gencontext_begin_module(GenContext *c)
 {
 	ASSERT(!c->module && "Expected no module");
@@ -78,38 +80,9 @@ void gencontext_begin_module(GenContext *c)
 
 	LLVMSetTarget(c->module, compiler.platform.target_triple);
 
-	// Setup all types. Not thread-safe, but at this point in time we can assume a single context.
-	// We need to remove the context from the cache after this.
-	// This would seem to indicate that we should change Type / actual type.
-
 	c->ast_alloca_addr_space = compiler.platform.alloca_address_space;
-	FOREACH(Type *, type, compiler.context.type)
-	{
-		type->backend_type = NULL;
-		type->backend_debug_type = NULL;
-		type->backend_typeid = NULL;
-		switch (type->type_kind)
-		{
-			case TYPE_ENUM:
-			{
-				FOREACH(Decl *, value, type->decl->enums.values)
-				{
-					value->backend_ref = NULL;
-				}
-				FALLTHROUGH;
-			}
-			case TYPE_STRUCT:
-			case TYPE_UNION:
-			case TYPE_TYPEDEF:
-				type->decl->backend_ref = NULL;
-				break;
-			case TYPE_FUNC_RAW:
-				//REMINDER("Clear func when it has reflection");
-				break;
-			default:
-				break;
-		}
-	}
+	c->split_aggregates = compiler.platform.arch == ARCH_TYPE_X86_64 || compiler.platform.arch == ARCH_TYPE_X86;
+	if (++llvm_generation == 0) error_exit("Too many modules.");
 	c->bool_type = LLVMInt1TypeInContext(c->context);
 	c->byte_type = LLVMInt8TypeInContext(c->context);
 	c->ptr_type = LLVMPointerType(c->byte_type, 0);
@@ -131,7 +104,6 @@ void gencontext_begin_module(GenContext *c)
 	c->memcmp_function = NULL;
 	LLVMTypeRef memcmp_types[3] = {c->ptr_type, c->ptr_type, c->size_type };
 	c->memcmp_function_type = LLVMFunctionType(cint_type, memcmp_types, 3, false);
-	if (c->panic_var) c->panic_var->backend_ref = NULL;
 	bool is_win = compiler.build.arch_os_target == WINDOWS_X64 || compiler.build.arch_os_target == WINDOWS_AARCH64;
 	bool is_codeview = compiler.build.feature.win_debug != WIN_DEBUG_DWARF && is_win;
 	if (is_codeview)

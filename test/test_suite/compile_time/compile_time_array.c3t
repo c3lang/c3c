@@ -23,6 +23,8 @@ entry:
   %x = alloca i32, align 4
   %z = alloca %"char[]", align 8
   store i32 1, ptr %x, align 4
-  store %"char[]" { ptr @.str, i64 1 }, ptr %z, align 8
+  store ptr @.str, ptr %z, align 8
+  %ptradd = getelementptr inbounds i8, ptr %z, i64 8
+  store i64 1, ptr %ptradd, align 8
   ret void
 }

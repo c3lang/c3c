@@ -612,10 +612,10 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	}
 
 
-	LLVMValueRef old = decl->backend_ref;
+	LLVMValueRef old = llvm_decl_current_ref(decl);
 	scratch_buffer_set_extern_decl_name(decl, true);
 	char *name = scratch_buffer_copy();
-	LLVMValueRef global_ref = decl->backend_ref = llvm_add_global_raw(c, name, LLVMTypeOf(init_value), decl->alignment);
+	LLVMValueRef global_ref = llvm_decl_set_ref(decl, llvm_add_global_raw(c, name, LLVMTypeOf(init_value), decl->alignment));
 	if (llvm_use_debug_variables(c))
 	{
 		SourceLoc *loc = sourcelocptrzero(decl->loc);
@@ -1245,12 +1245,12 @@ void llvm_add_global_decl(GenContext *c, Decl *decl)
 	if (same_module)
 	{
 		// If we initialize it later, we must use a temp name.
-		decl->backend_ref = llvm_add_global_raw(c, ".tempglobal", type, decl->alignment);
+		llvm_decl_set_ref(decl, llvm_add_global_raw(c, ".tempglobal", type, decl->alignment));
 	}
 	else
 	{
 		scratch_buffer_set_extern_decl_name(decl, true);
-		decl->backend_ref = llvm_add_global_raw(c, scratch_buffer_to_string(), type, decl->alignment);
+		llvm_decl_set_ref(decl, llvm_add_global_raw(c, scratch_buffer_to_string(), type, decl->alignment));
 	}
 	if (decl->var.kind == VARDECL_CONST)
 	{
@@ -1527,18 +1527,38 @@ static LLVMValueRef llvm_create_fault(GenContext *c, Decl *decl)
 		LLVMSetInitializer(fault, llvm_emit_string_const(c, new_name, scratch_buffer_to_string()));
 	}
 	llvm_set_linkonce(c, fault);
-	decl->backend_ref = fault;
-	return fault;
+	return llvm_decl_set_ref(decl, fault);
+}
+
+static bool llvm_decl_has_global_ref(Decl *decl)
+{
+	switch (decl->decl_kind)
+	{
+		case DECL_FUNC:
+		case DECL_FAULT:
+			return true;
+		case DECL_VAR:
+			switch (decl->var.kind)
+			{
+				case VARDECL_GLOBAL:
+				case VARDECL_CONST:
+				case VARDECL_UNWRAPPED:
+					return true;
+				case VARDECL_LOCAL:
+					return decl->var.is_static;
+				default:
+					return false;
+			}
+		default:
+			return false;
+	}
 }
 
 LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 {
 	ASSERT(!decl->is_value);
-	LLVMValueRef backend_ref = decl->backend_ref;
-	if (backend_ref)
-	{
-		if (!LLVMIsAGlobalValue(backend_ref) || LLVMGetGlobalParent(backend_ref) == c->module) return backend_ref;
-	}
+	LLVMValueRef backend_ref = llvm_decl_has_global_ref(decl) ? llvm_decl_current_ref(decl) : decl->backend_ref;
+	if (backend_ref) return backend_ref;
 	switch (decl->decl_kind)
 	{
 		case DECL_ERASED:
@@ -1547,7 +1567,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 		case DECL_VAR:
 			if (decl->var.kind == VARDECL_UNWRAPPED)
 			{
-				return decl->backend_ref = llvm_get_ref(c, decl->var.alias);
+				return llvm_decl_set_ref(decl, llvm_get_ref(c, decl->var.alias));
 			}
 			ASSERT_SPAN(decl, decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
 			llvm_add_global_decl(c, decl);
@@ -1558,16 +1578,16 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			scratch_buffer_set_extern_decl_name(decl, true);
 			if (decl->name == kw_memcmp && c->memcmp_function)
 			{
-				backend_ref = decl->backend_ref = c->memcmp_function;
+				backend_ref = llvm_decl_set_ref(decl, c->memcmp_function);
 			}
 			else
 			{
 				const char *name = scratch_buffer_to_string();
 				if (decl->is_extern && (backend_ref = LLVMGetNamedFunction(c->module, name))) // NOLINT
 				{
-					return decl->backend_ref = backend_ref;
+					return llvm_decl_set_ref(decl, backend_ref);
 				}
-				backend_ref = decl->backend_ref = LLVMAddFunction(c->module, name, type);
+				backend_ref = llvm_decl_set_ref(decl, LLVMAddFunction(c->module, name, type));
 			}
 			llvm_append_function_attributes(c, decl);
 			llvm_set_decl_linkage(c, decl, true);

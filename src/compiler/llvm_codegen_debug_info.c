@@ -76,10 +76,8 @@ static inline LLVMMetadataRef llvm_get_debug_struct(GenContext *c, Type *type, c
 														 c->debug.runtime_version,
 														 NULL, // VTable
 														 external_name, external_name_len);
-	if (type->backend_debug_type)
-	{
-		LLVMMetadataReplaceAllUsesWith(type->backend_debug_type, real);
-	}
+	LLVMMetadataRef forward = llvm_get_cached_backend_debug_type(type);
+	if (forward) LLVMMetadataReplaceAllUsesWith(forward, real);
 	return real;
 }
 
@@ -321,29 +319,30 @@ DebugScope llvm_debug_create_lexical_scope(GenContext *context, SourceLocId loca
 
 static LLVMMetadataRef llvm_debug_typeid_type(GenContext *context, Type *type)
 {
-	return type->backend_debug_type = LLVMDIBuilderCreateBasicType(context->debug.builder,
+	return llvm_set_backend_debug_type(type, LLVMDIBuilderCreateBasicType(context->debug.builder,
 	                                                               "typeid",
 	                                                               strlen("typeid"),
 	                                                               type_bit_size(type_voidptr),
 	                                                               (LLVMDWARFTypeEncoding)DW_ATE_address,
-	                                                               LLVMDIFlagZero);
+	                                                               LLVMDIFlagZero));
 
 }
 static LLVMMetadataRef llvm_debug_simple_type(GenContext *context, Type *type, int dwarf_code)
 {
-	return type->backend_debug_type = LLVMDIBuilderCreateBasicType(context->debug.builder,
+	return llvm_set_backend_debug_type(type, LLVMDIBuilderCreateBasicType(context->debug.builder,
 																   type->name,
 																   strlen(type->name),
 																   type->builtin.bitsize,
 																   (LLVMDWARFTypeEncoding)dwarf_code,
-																   LLVMDIFlagZero);
+																   LLVMDIFlagZero));
 
 }
 
 static LLVMMetadataRef llvm_debug_pointer_type(GenContext *c, Type *type)
 {
 	LLVMMetadataRef inner = llvm_get_debug_type(c, type->pointer);
-	if (type->backend_debug_type) return type->backend_debug_type;
+	LLVMMetadataRef cached = llvm_get_cached_backend_debug_type(type);
+	if (cached) return cached;
 	return LLVMDIBuilderCreatePointerType(c->debug.builder,
 										  inner,
 										  type_bit_size(type),
@@ -356,7 +355,7 @@ static LLVMMetadataRef llvm_debug_enum_type(GenContext *c, Type *type, LLVMMetad
 	Decl *decl = type->decl;
 
 	LLVMMetadataRef forward = llvm_debug_forward_comp(c, type, "temp_enum", decl->loc, scope, LLVMDIFlagZero);
-	type->backend_debug_type = forward;
+	llvm_set_backend_debug_type(type, forward);
 
 	Type *enum_real_type = decl->enums.type_info->type->canonical;
 
@@ -393,7 +392,7 @@ static LLVMMetadataRef llvm_debug_raw_enum_type(GenContext *c, Type *type, LLVMM
 	// FIXME TODO
 
 	LLVMMetadataRef forward = llvm_debug_forward_comp(c, type, "temp_enum", decl->loc, scope, LLVMDIFlagZero);
-	type->backend_debug_type = forward;
+	llvm_set_backend_debug_type(type, forward);
 
 	Type *enum_real_type = decl->enums.type_info->type->canonical;
 
@@ -437,7 +436,7 @@ static LLVMMetadataRef llvm_debug_structlike_type(GenContext *c, Type *type, LLV
 
 	// Create a forward reference in case of recursive data.
 	LLVMMetadataRef forward = llvm_debug_forward_comp(c, type, "temp", decl->loc, scope, flags);
-	type->backend_debug_type = forward;
+	llvm_set_backend_debug_type(type, forward);
 
 	LLVMMetadataRef *elements = NULL;
 	Decl **members = decl->strukt.members;
@@ -489,7 +488,7 @@ static LLVMMetadataRef llvm_debug_structlike_type(GenContext *c, Type *type, LLV
 static LLVMMetadataRef llvm_debug_slice_type(GenContext *c, Type *type)
 {
 	LLVMMetadataRef forward = llvm_debug_forward_comp(c, type, type->name, 0, NULL, LLVMDIFlagZero);
-	type->backend_debug_type = forward;
+	llvm_set_backend_debug_type(type, forward);
 
 	LLVMMetadataRef elements[2] = {
 			llvm_get_debug_member(c, type_get_ptr(type->array.base), "ptr", 0, 0, forward, LLVMDIFlagZero),
@@ -502,7 +501,7 @@ static LLVMMetadataRef llvm_debug_any_type(GenContext *c, Type *type)
 {
 	LLVMMetadataRef forward = llvm_debug_forward_comp(c, type, type->name, 0, NULL, LLVMDIFlagZero);
 
-	type->backend_debug_type = forward;
+	llvm_set_backend_debug_type(type, forward);
 
 	LLVMMetadataRef elements[2] = {
 			llvm_get_debug_member(c, type_voidptr, "ptr", 0, 0, forward, LLVMDIFlagZero),
@@ -528,9 +527,9 @@ static LLVMMetadataRef llvm_debug_array_type(GenContext *c, Type *type)
 		vec_add(ranges, LLVMDIBuilderGetOrCreateSubrange(c->debug.builder, 0, current_type->canonical->array.len));
 		current_type = current_type->canonical->array.base;
 	}
-	if (!current_type->backend_debug_type)
+	if (!llvm_get_cached_backend_debug_type(current_type))
 	{
-		type->backend_debug_type = llvm_debug_forward_comp(c, type, type->name, 0, NULL, LLVMDIFlagZero);
+		llvm_set_backend_debug_type(type, llvm_debug_forward_comp(c, type, type->name, 0, NULL, LLVMDIFlagZero));
 	}
 	LLVMMetadataRef real = LLVMDIBuilderCreateArrayType(
 			c->debug.builder,
@@ -539,10 +538,8 @@ static LLVMMetadataRef llvm_debug_array_type(GenContext *c, Type *type)
 			llvm_get_debug_type(c, current_type),
 			ranges, vec_size(ranges));
 
-	if (type->backend_debug_type)
-	{
-		LLVMMetadataReplaceAllUsesWith(type->backend_debug_type, real);
-	}
+	LLVMMetadataRef forward = llvm_get_cached_backend_debug_type(type);
+	if (forward) LLVMMetadataReplaceAllUsesWith(forward, real);
 	return real;
 }
 
@@ -562,19 +559,20 @@ static LLVMMetadataRef llvm_debug_typedef_type(GenContext *c, Type *type)
 	Type *original_type = type->type_kind == TYPE_ALIAS ? type->canonical : decl->distinct->type;
 
 	// Use forward references in case we haven't resolved the original type, since we could have this:
-	if (!type->canonical->backend_debug_type)
+	if (!llvm_get_cached_backend_debug_type(type->canonical))
 	{
-		type->backend_debug_type = llvm_debug_forward_comp(c, type, type->name, decl->loc, NULL, LLVMDIFlagZero);
+		llvm_set_backend_debug_type(type, llvm_debug_forward_comp(c, type, type->name, decl->loc, NULL, LLVMDIFlagZero));
 	}
 	LLVMMetadataRef real = LLVMDIBuilderCreateTypedef(c->debug.builder,
 													  llvm_get_debug_type(c, original_type),
 													  decl->name, strlen(decl->name),
 													  c->debug.file.debug_file, sourceloc_row_1(decl->loc),
 													  c->debug.file.debug_file, (uint32_t)type_abi_alignment(type) * 8);
-	if (type->backend_debug_type)
+	LLVMMetadataRef forward = llvm_get_cached_backend_debug_type(type);
+	if (forward)
 	{
-		LLVMMetadataReplaceAllUsesWith(type->backend_debug_type, real);
-		type->backend_debug_type = real;
+		LLVMMetadataReplaceAllUsesWith(forward, real);
+		llvm_set_backend_debug_type(type, real);
 	}
 	return real;
 }
@@ -606,7 +604,8 @@ static LLVMMetadataRef llvm_debug_func_type(GenContext *c, Type *type)
 		llvm_get_debug_type(c, param->type);
 	}
 	// 2. We might be done!
-	if (type->backend_debug_type) return type->backend_debug_type;
+	LLVMMetadataRef cached = llvm_get_cached_backend_debug_type(type);
+	if (cached) return cached;
 
 	// 3. Otherwise generate:
 	LLVMMetadataRef params[MAX_PARAMS + 1];
@@ -622,7 +621,8 @@ static LLVMMetadataRef llvm_debug_func_type(GenContext *c, Type *type)
 	}
 
 	// 4. We might be done again!
-	if (type->backend_debug_type) return type->backend_debug_type;
+	cached = llvm_get_cached_backend_debug_type(type);
+	if (cached) return cached;
 
 	return LLVMDIBuilderCreateSubroutineType(c->debug.builder,
 	                                                         c->debug.file.debug_file,
@@ -633,10 +633,8 @@ static LLVMMetadataRef llvm_debug_func_type(GenContext *c, Type *type)
 
 static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *type, LLVMMetadataRef scope)
 {
-	if (type->backend_debug_type)
-	{
-		return type->backend_debug_type;
-	}
+	LLVMMetadataRef cached = llvm_get_cached_backend_debug_type(type);
+	if (cached) return cached;
 	// Consider special handling of UTF8 arrays.
 	switch (type->type_kind)
 	{
@@ -648,7 +646,7 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 		{
 			LLVMMetadataRef inner = llvm_get_debug_type(c, type_lowering(type));
 			if (LLVMDIIsTemporary(inner)) return inner;
-			return type->backend_debug_type = inner;
+			return llvm_set_backend_debug_type(type, inner);
 		}
 		case TYPE_BOOL:
 			return llvm_debug_simple_type(c, type, DW_ATE_boolean);
@@ -673,36 +671,36 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 		case TYPE_F128:
 			return llvm_debug_simple_type(c, type, DW_ATE_float);
 		case VECTORS:
-			return type->backend_debug_type = llvm_debug_vector_type(c, type);
+			return llvm_set_backend_debug_type(type, llvm_debug_vector_type(c, type));
 		case TYPE_VOID:
 			return NULL;
 		case TYPE_TYPEID:
-			return type->backend_debug_type = llvm_debug_typeid_type(c, type);
+			return llvm_set_backend_debug_type(type, llvm_debug_typeid_type(c, type));
 		case TYPE_POINTER:
 		case TYPE_FUNC_PTR:
-			return type->backend_debug_type = llvm_debug_pointer_type(c, type);
+			return llvm_set_backend_debug_type(type, llvm_debug_pointer_type(c, type));
 		case TYPE_ENUM:
-			return type->backend_debug_type = llvm_debug_enum_type(c, type, scope);
+			return llvm_set_backend_debug_type(type, llvm_debug_enum_type(c, type, scope));
 		case TYPE_CONSTSET:
-			return type->backend_debug_type = llvm_debug_raw_enum_type(c, type, scope);
+			return llvm_set_backend_debug_type(type, llvm_debug_raw_enum_type(c, type, scope));
 		case TYPE_FUNC_RAW:
-			return type->backend_debug_type = llvm_debug_func_type(c, type);
+			return llvm_set_backend_debug_type(type, llvm_debug_func_type(c, type));
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-			return type->backend_debug_type = llvm_debug_structlike_type(c, type, scope);
+			return llvm_set_backend_debug_type(type, llvm_debug_structlike_type(c, type, scope));
 		case TYPE_TYPEDEF:
 		case TYPE_ALIAS:
-			return type->backend_debug_type = llvm_debug_typedef_type(c, type);
+			return llvm_set_backend_debug_type(type, llvm_debug_typedef_type(c, type));
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_ARRAY:
-			return type->backend_debug_type = llvm_debug_array_type(c, type);
+			return llvm_set_backend_debug_type(type, llvm_debug_array_type(c, type));
 		case TYPE_SLICE:
-			return type->backend_debug_type = llvm_debug_slice_type(c, type);
+			return llvm_set_backend_debug_type(type, llvm_debug_slice_type(c, type));
 		case TYPE_ANYFAULT:
-			return type->backend_debug_type = llvm_debug_errunion_type(c, type);
+			return llvm_set_backend_debug_type(type, llvm_debug_errunion_type(c, type));
 		case TYPE_INTERFACE:
 		case TYPE_ANY:
-			return type->backend_debug_type = llvm_debug_any_type(c, type);
+			return llvm_set_backend_debug_type(type, llvm_debug_any_type(c, type));
 	}
 	UNREACHABLE
 }

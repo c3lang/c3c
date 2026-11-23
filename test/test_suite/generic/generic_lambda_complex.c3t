@@ -166,20 +166,25 @@ fn void main()
 }
 
 /* #expect: text_test.ll
+
 define void @text_test.main() #0 {
 entry:
   %foo_tmpl = alloca %"char[]", align 8
   %ft = alloca %"TextTemplate{Foo}", align 8
   %error_var = alloca i64, align 8
   %indirectarg = alloca %"char[]", align 8
-  %error_var1 = alloca i64, align 8
-  store %"char[]" { ptr @.str, i64 21 }, ptr %foo_tmpl, align 8
+  %error_var3 = alloca i64, align 8
+  store ptr @.str, ptr %foo_tmpl, align 8
+  %ptradd = getelementptr inbounds i8, ptr %foo_tmpl, i64 8
+  store i64 21, ptr %ptradd, align 8
   call void @llvm.memset.p0.i64(ptr align 8 %ft, i8 0, i64 72, i1 false)
   %0 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocators.current_temp)
   %lo = load ptr, ptr %foo_tmpl, align 8
-  %ptradd = getelementptr inbounds i8, ptr %foo_tmpl, i64 8
-  %hi = load i64, ptr %ptradd, align 8
-  store %"char[]" { ptr @.str.2, i64 2 }, ptr %indirectarg, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %foo_tmpl, i64 8
+  %hi = load i64, ptr %ptradd1, align 8
+  store ptr @.str.2, ptr %indirectarg, align 8
+  %ptradd2 = getelementptr inbounds i8, ptr %indirectarg, i64 8
+  store i64 2, ptr %ptradd2, align 8
   %1 = call i64 @"abc.TextTemplate$text_test.Foo$.init"(ptr %ft, ptr %lo, i64 %hi, ptr @.str.1, i64 2, ptr byval(%"char[]") align 8 %indirectarg, ptr byval(%any) align 8 %0)
   %not_err = icmp eq i64 %1, 0
   br i1 %not_err, label %after_check, label %assign_optional
@@ -198,18 +203,21 @@ panic_block:                                      ; preds = %assign_optional
 
 noerr_block:                                      ; preds = %after_check
   %3 = call i64 @"abc.TextTemplate$text_test.Foo$.free"(ptr %ft)
-  %not_err2 = icmp eq i64 %3, 0
-  br i1 %not_err2, label %after_check4, label %assign_optional3
-assign_optional3:                                 ; preds = %noerr_block
-  store i64 %3, ptr %error_var1, align 8
-  br label %panic_block5
-after_check4:                                     ; preds = %noerr_block
-  br label %noerr_block6
-panic_block5:                                     ; preds = %assign_optional3
-  %4 = load i64, ptr %error_var1, align 8
+  %not_err4 = icmp eq i64 %3, 0
+  br i1 %not_err4, label %after_check6, label %assign_optional5
+
+assign_optional5:                                 ; preds = %noerr_block
+  store i64 %3, ptr %error_var3, align 8
+  br label %panic_block7
+
+after_check6:                                     ; preds = %noerr_block
+  br label %noerr_block8
+
+panic_block7:                                     ; preds = %assign_optional5
+  %4 = load i64, ptr %error_var3, align 8
   call void @std.core.runtime.panics.unwrap.fault(ptr @.panic_str, ptr @.panic_str.3, i32 162, i64 %4) #4
   unreachable
 
-noerr_block6:                                     ; preds = %after_check4
+noerr_block8:                                     ; preds = %after_check6
   ret void
 }

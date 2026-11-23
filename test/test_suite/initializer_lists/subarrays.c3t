@@ -49,6 +49,7 @@ fn int main()
 %"Bar[]" = type { ptr, i64 }
 %"int[]" = type { ptr, i64 }
 %Baz = type { double }
+
 @"$ct.subarrays.Baz" = linkonce global %.introspect { i8 11, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @"$ct.subarrays.Bar" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.__const_slice = private unnamed_addr global [2 x %Bar] [%Bar { i32 3, i32 4 }, %Bar { i32 8, i32 9 }], align 16
@@ -241,8 +242,12 @@ if.exit:                                          ; preds = %voiderr42, %voiderr
   %ptradd43 = getelementptr inbounds i8, ptr %b, i64 4
   store i32 0, ptr %ptradd43, align 4
   call void @llvm.memset.p0.i64(ptr align 8 %z, i8 0, i64 8, i1 false)
-  store %"int[]" zeroinitializer, ptr %sub, align 8
-  store %"Bar[]" zeroinitializer, ptr %foo, align 8
+  store ptr null, ptr %sub, align 8
+  %ptradd44 = getelementptr inbounds i8, ptr %sub, i64 8
+  store i64 0, ptr %ptradd44, align 8
+  store ptr null, ptr %foo, align 8
+  %ptradd45 = getelementptr inbounds i8, ptr %foo, i64 8
+  store i64 0, ptr %ptradd45, align 8
   call void @llvm.memset.p0.i64(ptr align 16 %baz, i8 0, i64 24, i1 false)
   ret i32 1
 }

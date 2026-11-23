@@ -16,7 +16,9 @@ define i32 @main() #0 {
 entry:
   %x = alloca %"char[]", align 8
   %text = alloca i8, align 1
-  store %"char[]" { ptr @.bytes, i64 4 }, ptr %x, align 8
+  store ptr @.bytes, ptr %x, align 8
+  %ptradd = getelementptr inbounds i8, ptr %x, i64 8
+  store i64 4, ptr %ptradd, align 8
   %0 = load %"char[]", ptr %x, align 8
   %1 = extractvalue %"char[]" %0, 1
   %2 = extractvalue %"char[]" %0, 0

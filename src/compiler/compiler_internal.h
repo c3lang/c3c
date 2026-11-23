@@ -324,6 +324,9 @@ struct Type_
 {
 	TypeKind type_kind;
 	bool is_live;
+	uint16_t backend_type_gen;
+	uint16_t backend_typeid_gen;
+	uint16_t backend_debug_gen;
 	Module *traced_module;
 	CanonicalType *canonical;
 	const char *name;
@@ -759,6 +762,7 @@ typedef struct Decl_
 	bool is_templated : 1;
 	bool is_method_checked : 1;
 	bool is_used : 1;
+	uint16_t backend_gen;
 	union
 	{
 		void *backend_ref;
