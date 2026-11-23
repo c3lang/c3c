@@ -1397,6 +1397,7 @@ typedef struct
 {
 	AstId first_stmt;
 	AstId parent_defer;
+	SourceLocId end_loc;
 	bool is_loop_body;
 } AstCompoundStmt;
 

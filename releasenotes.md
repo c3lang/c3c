@@ -128,6 +128,7 @@
 - Regression: warning on MacOS for panic functions when linking. #3678
 - Global variables could not be found by name in gdb. #3664
 - Debug info for the second `static` of a macro expanded twice in one function referred to the first one's symbol.
+- Typeid now has updated debug info. The end of a statement now gets a location.
 
 ### Stdlib changes
 - `atomic::fetch_add` and the other `fetch_*` macros now require the alignment to be at most `mem::MAX_MEMORY_ALIGNMENT`; `fetch_max` and `fetch_min` check it at all.

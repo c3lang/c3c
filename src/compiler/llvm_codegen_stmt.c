@@ -24,6 +24,7 @@ void llvm_emit_compound_stmt(GenContext *c, Ast *ast)
 
 	// Emit the statement chain
 	llvm_emit_statement_chain(c, ast->compound_stmt.first_stmt);
+	if (ast->compound_stmt.end_loc && c->current_block) EMIT_SPAN(c, ast->compound_stmt.end_loc);
 
 	// Pop lexical scope.
 	DEBUG_POP_LEXICAL_SCOPE(c);

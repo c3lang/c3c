@@ -36,11 +36,11 @@ if.then:                                          ; preds = %entry
   store i32 0, ptr %x, align 4, !dbg !19
   call void (ptr, ...) @printf(ptr @.str), !dbg !21
   store i32 1, ptr %x, align 4, !dbg !22
-  br label %loop.exit, !dbg !22
+  br label %loop.exit, !dbg !24
 if.exit:                                          ; preds = %entry
-  store i32 0, ptr %x, align 4, !dbg !24
-  call void (ptr, ...) @printf(ptr @.str.1), !dbg !26
-  store i32 1, ptr %x, align 4, !dbg !27
-  br label %loop.exit, !dbg !27
+  store i32 0, ptr %x, align 4, !dbg !25
+  call void (ptr, ...) @printf(ptr @.str.1), !dbg !27
+  store i32 1, ptr %x, align 4, !dbg !28
+  br label %loop.exit, !dbg !30
 loop.exit:                                        ; preds = %if.exit, %if.then
-  ret void, !dbg !27
+  ret void, !dbg !31

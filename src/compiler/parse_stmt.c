@@ -1581,6 +1581,7 @@ Ast* parse_compound_stmt(ParseContext *c)
 		ASSIGN_AST_OR_RET(Ast *stmt, parse_stmt(c), poisoned_ast);
 		ast_append(&next, stmt);
 	}
+	ast->compound_stmt.end_loc = make_loc(c->prev_span);
 	RANGE_EXTEND_PREV(ast);
 	return ast;
 }

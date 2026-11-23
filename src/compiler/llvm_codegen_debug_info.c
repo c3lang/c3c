@@ -222,6 +222,17 @@ void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, int index, LLVMMe
 		llvm_emit_debug_value(c, parameter->backend_value, parameter->var.backend_debug_ref, row, col, scope);
 		return;
 	}
+	if (LLVMIsAArgument(parameter->backend_ref) && compiler.build.optlevel == OPTIMIZATION_NONE)
+	{
+		LLVMValueRef addr = llvm_emit_alloca(c, c->ptr_type, type_alloca_alignment(type_voidptr), "");
+		LLVMBuildStore(c->builder, parameter->backend_ref, addr);
+		uint64_t deref = DW_OP_deref;
+		LLVMDIBuilderInsertDeclareRecordAtEnd(c->debug.builder, addr, parameter->var.backend_debug_ref,
+		                                      LLVMDIBuilderCreateExpression(c->debug.builder, &deref, 1),
+		                                      llvm_create_debug_location_with_inline(c, row, col, scope),
+		                                      LLVMGetInsertBlock(c->builder));
+		return;
+	}
 	llvm_emit_debug_declare(c, parameter->backend_ref, parameter->var.backend_debug_ref, row, col, scope);
 
 }
@@ -320,12 +331,10 @@ DebugScope llvm_debug_create_lexical_scope(GenContext *context, SourceLocId loca
 
 static LLVMMetadataRef llvm_debug_typeid_type(GenContext *context, Type *type)
 {
-	return llvm_set_backend_debug_type(type, LLVMDIBuilderCreateBasicType(context->debug.builder,
-	                                                               "typeid",
-	                                                               strlen("typeid"),
-	                                                               type_bit_size(type_voidptr),
-	                                                               (LLVMDWARFTypeEncoding)DW_ATE_address,
-	                                                               LLVMDIFlagZero));
+	return llvm_set_backend_debug_type(type, LLVMDIBuilderCreateTypedef(context->debug.builder,
+	                                                               llvm_get_debug_type(context, type_voidptr),
+	                                                               "typeid", strlen("typeid"),
+	                                                               NULL, 0, NULL, 0));
 
 }
 static LLVMMetadataRef llvm_debug_simple_type(GenContext *context, Type *type, int dwarf_code)
