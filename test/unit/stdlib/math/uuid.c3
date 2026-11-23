@@ -6,30 +6,25 @@ import std::thread;
 
 fn void test_generate_v4()
 {
-	DefaultRandom rand;
-	random::seed_entropy(&rand);
-	Uuid[20] uuids;
-	foreach (&uuid : uuids)
+	for (int i = 0; i < 10; i += 1)
 	{
-		*uuid = uuid::generate_v4_from_random(&rand);
-		test::eq(uuid.variant() & 0b1100, 8);
-		test::eq(uuid.version(), 4);
+		Uuid id = uuid::generate_v4();
+		test::eq(id.variant() & 0b1100, 8);
+		test::eq(id.version(), 4);
 	}
 }
 
 fn void test_generate_v7() @feat(LIBC)
 {
-	DefaultRandom rand;
-	random::seed_entropy(&rand);
 	Uuid[20] uuids;
-	foreach (&uuid : uuids)
+	foreach (&id : uuids)
 	{
 		Time time_before = time::os::native_timestamp();
-		*uuid = uuid::generate_v7_from_random(&rand);
-		Duration time_diff = uuid.time_v7() - time_before;
+		*id = uuid::generate_v7();
+		Duration time_diff = id.time_v7() - time_before;
 		test::le(math::abs(time_diff), time::ms(1));
-		test::eq(uuid.variant() & 0b1100, 8);
-		test::eq(uuid.version(), 7);
+		test::eq(id.variant() & 0b1100, 8);
+		test::eq(id.version(), 7);
 		thread::sleep_ms(1);
 	}
 
