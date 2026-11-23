@@ -762,7 +762,7 @@ typedef struct Decl_
 	bool is_templated : 1;
 	bool is_method_checked : 1;
 	bool is_used : 1;
-	uint16_t backend_gen;
+	uint16_t backend_gen : 16;
 	union
 	{
 		void *backend_ref;
