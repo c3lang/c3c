@@ -1986,6 +1986,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		expr_rewrite_enum_from_ord(index_expr, index_type);
 	}
 	subscript->subscript_expr.index.expr = exprid(index_expr);
+	subscript->subscript_expr.no_check = !len;
 	if (value_by_ref || need_deref)
 	{
 		Expr *addr = expr_new(EXPR_UNARY, subscript->loc);
