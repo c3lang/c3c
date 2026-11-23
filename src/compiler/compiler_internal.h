@@ -730,6 +730,7 @@ typedef struct Decl_
 	DeclKind decl_kind : 7;
 	ResolveStatus resolve_status : 3;
 	Visibility visibility : 3;
+	unsigned backend_gen : 16;
 	bool has_tag : 1;
 	bool is_extern : 1;
 	bool is_substruct : 1;
@@ -762,7 +763,6 @@ typedef struct Decl_
 	bool is_templated : 1;
 	bool is_method_checked : 1;
 	bool is_used : 1;
-	uint16_t backend_gen : 16;
 	union
 	{
 		void *backend_ref;
