@@ -107,6 +107,10 @@ extern fn CInt sigaction(CInt signum, Sigaction *action, Sigaction *oldaction) @
 extern fn CInt sigaction(CInt signum, Sigaction *action, Sigaction *oldaction) @cname("__sigaction_siginfo") @feat(NETBSD);
 extern fn CInt sigemptyset(Sigset_t* set) @feat(!NETBSD);
 extern fn CInt sigemptyset(Sigset_t* set) @cname("__sigemptyset14") @feat(NETBSD);
+extern fn CInt sigfillset(Sigset_t* set) @feat(!NETBSD);
+extern fn CInt sigfillset(Sigset_t* set) @cname("__sigfillset14") @feat(NETBSD);
+extern fn CInt sigprocmask(CInt how, Sigset_t* set, Sigset_t* oldset) @feat(!NETBSD);
+extern fn CInt sigprocmask(CInt how, Sigset_t* set, Sigset_t* oldset) @cname("__sigprocmask14") @feat(NETBSD);
 
 const CInt SIGHUP = 1;
 const CInt SIGQUIT = 3;
@@ -130,5 +134,7 @@ const CInt SIGVTALRM = 26;
 const CInt SIGWINCH = 28;
 const CInt SIGUSR1 = BSD_FLAVOR_SIG ? 30 : 10;
 const CInt SIGUSR2 = BSD_FLAVOR_SIG ? 31 : 12;
+const CInt SIG_SETMASK = BSD_FLAVOR_SIG ? 3 : 2;
+
 
 const bool BSD_FLAVOR_SIG @local = env::DARWIN || env::BSD_FAMILY;

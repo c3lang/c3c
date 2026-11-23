@@ -281,3 +281,67 @@ fn void test_pipe_bind_stdout_to_stdin() @test @feat(WIN32)
 	a.destroy();
 	b.destroy();
 }
+
+fn void test_working_directory() @test
+{
+	char[256] buffer;
+	$if env::WIN32:
+		String dir = "C:\\Windows";
+		String[] command = { "cmd.exe", "/c", "cd" };
+	$else
+		String dir = "/";
+		String[] command = { "pwd" };
+	$endif
+	String out = process::run_capture_stdout(buffer[..], command, INHERIT_ENV, working_directory: dir)!!;
+	assert(out.trim().compare_to_ignore_case(dir) == 0, "Expected '%s', got '%s'", dir, out);
+}
+
+fn void test_working_directory_stdio() @test
+{
+	char[256] buffer;
+	$if env::WIN32:
+		String dir = "C:\\Windows";
+		String[] command = { "cmd.exe", "/c", "cd&(echo err)1>&2" };
+		String expected = "C:\\Windows\r\nerr\r\n";
+	$else
+		String dir = "/tmp";
+		String[] command = { "sh", "-c", "pwd; echo err >&2" };
+		String expected = "/tmp\nerr\n";
+	$endif
+	String out = process::run_capture_stdout(buffer[..], command, INHERIT_ENV | STDERR_TO_STDOUT, working_directory: dir)!!;
+	assert(out.compare_to_ignore_case(expected) == 0, "Got '%s'", out);
+}
+
+fn void test_working_directory_missing() @test
+{
+	char[256] buffer;
+	$if env::WIN32:
+		String[] command = { "cmd.exe", "/c", "cd" };
+		String dir = "C:\\does\\not\\exist";
+	$else
+		String[] command = { "pwd" };
+		String dir = "/does/not/exist";
+	$endif
+	if (catch err = process::run_capture_stdout(buffer[..], command, INHERIT_ENV, working_directory: dir))
+	{
+		assert(err == FAILED_TO_SET_WORKING_DIRECTORY || err == FAILED_TO_START_PROCESS, "Unexpected %s", err);
+		return;
+	}
+	assert(false, "Expected failure");
+}
+
+fn void test_working_directory_bad_command() @test
+{
+	char[256] buffer;
+	$if env::WIN32:
+		String dir = "C:\\";
+	$else
+		String dir = "/";
+	$endif
+	if (catch err = process::run_capture_stdout(buffer[..], { "this-command-does-not-exist-c3" }, INHERIT_ENV, working_directory: dir))
+	{
+		assert(err == FAILED_TO_START_PROCESS, "Unexpected %s", err);
+		return;
+	}
+	assert(false, "Expected failure");
+}
