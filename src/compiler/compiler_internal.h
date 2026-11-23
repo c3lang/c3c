@@ -7,7 +7,7 @@
 #include "../build/build.h"
 #include "compiler.h"
 #include "target.h"
-#include "utils/malloc.h"
+#include "../utils/malloc.h"
 #include "subprocess.h"
 #include <float.h>
 
@@ -2228,6 +2228,8 @@ extern const PanicFunctionDescriptor panic_fn_desc[PANIC_FN_COUNT];
 
 extern File stdin_file;
 
+extern const char **args;
+extern int arg_count;
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 extern const char *builtin_list[NUMBER_OF_BUILTINS];
 extern const char *builtin_defines[NUMBER_OF_BUILTIN_DEFINES];
@@ -2892,6 +2894,8 @@ void c_abi_func_create(Signature *sig, FunctionPrototype *proto, Expr **vaargs);
 
 bool token_is_any_type(TokenType type);
 const char *token_type_to_string(TokenType type);
+
+void *types_struct(size_t* size);
 
 #define IS_OPTIONAL(element_) (type_is_optional((element_)->type))
 #define IS_RESOLVED(element_) ((element_)->resolve_status == RESOLVE_DONE)
