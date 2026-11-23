@@ -14,6 +14,7 @@
 - A type that declares any of the `[]`, `&[]`, `[]=` or `len` overloads no longer falls back to its underlying type for the ones it lacks: `foreach`, indexing, `lengthof` and `.len` require the overload they need, e.g. `foreach` over a typedef slice with only `[]` is an error. Typedefs and constsets without these overloads still use their underlying type.
 - `foreach` errors now name the missing overload.
 - `foreach` over an array or vector no longer emits a bounds check for each element in safe mode.
+- Improved debug info with paths on types.
 
 ### Fixes
 - `nextcase x` in a `@jump` switch read `x` after the defers of the case had run.

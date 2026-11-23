@@ -14,6 +14,7 @@ static LLVMMetadataRef llvm_debug_forward_comp(GenContext *c, Type *type, const 
 static LLVMMetadataRef llvm_debug_simple_type(GenContext *context, Type *type, int dwarf_code);
 static LLVMMetadataRef llvm_debug_func_type(GenContext *c, Type *type);
 static LLVMMetadataRef llvm_debug_structlike_type(GenContext *c, Type *type, LLVMMetadataRef scope);
+static LLVMMetadataRef llvm_debug_decl_scope(GenContext *c, Decl *decl, LLVMMetadataRef scope);
 static LLVMMetadataRef llvm_debug_pointer_type(GenContext *c, Type *type);
 static LLVMMetadataRef llvm_debug_vector_type(GenContext *c, Type *type);
 static LLVMMetadataRef llvm_debug_typedef_type(GenContext *c, Type *type);
@@ -353,6 +354,7 @@ static LLVMMetadataRef llvm_debug_pointer_type(GenContext *c, Type *type)
 static LLVMMetadataRef llvm_debug_enum_type(GenContext *c, Type *type, LLVMMetadataRef scope)
 {
 	Decl *decl = type->decl;
+	scope = llvm_debug_decl_scope(c, decl, scope);
 
 	LLVMMetadataRef forward = llvm_debug_forward_comp(c, type, "temp_enum", decl->loc, scope, LLVMDIFlagZero);
 	llvm_set_backend_debug_type(type, forward);
@@ -389,6 +391,7 @@ static LLVMMetadataRef llvm_debug_enum_type(GenContext *c, Type *type, LLVMMetad
 static LLVMMetadataRef llvm_debug_raw_enum_type(GenContext *c, Type *type, LLVMMetadataRef scope)
 {
 	Decl *decl = type->decl;
+	scope = llvm_debug_decl_scope(c, decl, scope);
 	// FIXME TODO
 
 	LLVMMetadataRef forward = llvm_debug_forward_comp(c, type, "temp_enum", decl->loc, scope, LLVMDIFlagZero);
@@ -431,6 +434,7 @@ static LLVMMetadataRef llvm_debug_raw_enum_type(GenContext *c, Type *type, LLVMM
 static LLVMMetadataRef llvm_debug_structlike_type(GenContext *c, Type *type, LLVMMetadataRef scope)
 {
 	Decl *decl = type->decl;
+	scope = llvm_debug_decl_scope(c, decl, scope);
 
 	LLVMDIFlags flags = 0;
 
@@ -499,7 +503,8 @@ static LLVMMetadataRef llvm_debug_slice_type(GenContext *c, Type *type)
 
 static LLVMMetadataRef llvm_debug_any_type(GenContext *c, Type *type)
 {
-	LLVMMetadataRef forward = llvm_debug_forward_comp(c, type, type->name, 0, NULL, LLVMDIFlagZero);
+	LLVMMetadataRef scope = type->type_kind == TYPE_INTERFACE ? llvm_debug_decl_scope(c, type->decl, NULL) : NULL;
+	LLVMMetadataRef forward = llvm_debug_forward_comp(c, type, type->name, 0, scope, LLVMDIFlagZero);
 
 	llvm_set_backend_debug_type(type, forward);
 
@@ -507,7 +512,7 @@ static LLVMMetadataRef llvm_debug_any_type(GenContext *c, Type *type)
 			llvm_get_debug_member(c, type_voidptr, "ptr", 0, 0, forward, LLVMDIFlagZero),
 			llvm_get_debug_member(c, type_typeid, "type", type_size(type_voidptr), 0, forward, LLVMDIFlagZero)
 	};
-	return llvm_get_debug_struct(c, type, type->name, elements, 2, 0, NULL, LLVMDIFlagZero);
+	return llvm_get_debug_struct(c, type, type->name, elements, 2, 0, scope, LLVMDIFlagZero);
 }
 
 static LLVMMetadataRef llvm_debug_errunion_type(GenContext *c, Type *type)
@@ -567,7 +572,7 @@ static LLVMMetadataRef llvm_debug_typedef_type(GenContext *c, Type *type)
 													  llvm_get_debug_type(c, original_type),
 													  decl->name, strlen(decl->name),
 													  c->debug.file.debug_file, sourceloc_row_1(decl->loc),
-													  c->debug.file.debug_file, (uint32_t)type_abi_alignment(type) * 8);
+													  llvm_debug_decl_scope(c, decl, c->debug.file.debug_file), (uint32_t)type_abi_alignment(type) * 8);
 	LLVMMetadataRef forward = llvm_get_cached_backend_debug_type(type);
 	if (forward)
 	{
@@ -630,6 +635,22 @@ static LLVMMetadataRef llvm_debug_func_type(GenContext *c, Type *type)
 	                                                         index, 0);
 }
 
+
+static LLVMMetadataRef llvm_debug_decl_scope(GenContext *c, Decl *decl, LLVMMetadataRef scope)
+{
+	if (!decl->name || decl->is_extern || decl->extname || !decl->unit || !decl->unit->module) return scope;
+	if (decl->unit == compiler.context.core_unit) return scope;
+	const char *path = decl->unit->module->name->module;
+	LLVMMetadataRef ns = NULL;
+	while (true)
+	{
+		const char *sep = strstr(path, "::");
+		size_t len = sep ? (size_t)(sep - path) : strlen(path);
+		ns = LLVMDIBuilderCreateNameSpace(c->debug.builder, ns, path, len, false);
+		if (!sep) return ns;
+		path = sep + 2;
+	}
+}
 
 static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *type, LLVMMetadataRef scope)
 {
