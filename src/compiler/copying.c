@@ -899,6 +899,7 @@ static ResolvedAttrData *copy_attrs_resolved(CopyStruct *c, ResolvedAttrData *da
 			.section = data->section,
 			.wasm_module = data->wasm_module,
 			.overload = data->overload,
+			.source = copy_attributes(c, data->source),
 	};
 	return copy;
 }

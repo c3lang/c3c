@@ -372,6 +372,11 @@
 			color: var(--hl-str);
 		}
 
+		.attr-list {
+			font-weight: normal;
+			color: var(--fg);
+		}
+
 		.c3-attribute,
 		.c3-comment {
 			color: var(--hl-comment);
@@ -2187,6 +2192,23 @@
 
 
 
+		function renderAttrs(attrs) {
+			if (!attrs || attrs.length === 0) return '';
+			const html = attrs.map(a => {
+				const args = a.args ? `(${a.args.map(escapeHtml).join(', ')})` : '';
+				const name = a.uid
+					? `<a href="#" onclick="navigateTo('${a.uid}'); return false;" class="c3-attribute type-link" title="${a.uid}">${escapeHtml(a.name)}</a>`
+					: `<span class="c3-attribute">${escapeHtml(a.name)}</span>`;
+				return `${name}${args}`;
+			}).join(' ');
+			return `<span class="attr-list">${html}</span>`;
+		}
+
+		function withAttrs(html, attrs) {
+			const a = renderAttrs(attrs);
+			return a ? `${html} ${a}` : html;
+		}
+
 		function renderParams(params) {
 			const dMembers = params || [];
 			return dMembers.map(m => {
@@ -2196,15 +2218,11 @@
 				}
 				// Shorthand reference receiver: &self, &mutex, etc.
 				if (m.is_ref) {
-					let res = `<span class="c3-variable">&${m.name}</span>`;
-					if (m.attributes) res += ` <span class="c3-attribute">${m.attributes.join(' ')}</span>`;
-					return res;
+					return withAttrs(`<span class="c3-variable">&${m.name}</span>`, m.attributes);
 				}
 				// Shorthand by-value receiver: self
 				if (m.name === 'self') {
-					let res = `<span class="c3-variable">self</span>`;
-					if (m.attributes) res += ` <span class="c3-attribute">${m.attributes.join(' ')}</span>`;
-					return res;
+					return withAttrs(`<span class="c3-variable">self</span>`, m.attributes);
 				}
 				const isUntypedVararg = m.is_vararg && m.type && m.type.name === 'any...';
 				if (isUntypedVararg) {
@@ -2213,7 +2231,7 @@
 				const type = m.type ? renderTypeName(m.type) : '';
 				const name = m.name ? `<span class="c3-variable">${m.name}</span>` : '';
 				let res = type ? (name ? `${type} ${name}` : type) : name;
-				if (m.attributes) res += ` <span class="c3-attribute">${m.attributes.join(' ')}</span>`;
+				res = withAttrs(res, m.attributes);
 				if (m.default_value) res += ` = <span class="c3-variable">${m.default_value}</span>`;
 				return res;
 			}).reduce((acc, current, index) => {
@@ -2224,17 +2242,21 @@
 		}
 
 		function buildSignature(d) {
+			const sig = buildSignatureBase(d);
+			return sig ? withAttrs(sig, d.attributes) : sig;
+		}
+
+		function buildSignatureBase(d) {
 			const localName = getLocalName(d.uid);
 
 			if (d.kind === 'function' || d.kind === 'macro' || d.kind === 'method' || d.kind === 'macro_method') {
 				const keyword = (d.kind === 'macro' || d.kind === 'macro_method') ? 'macro' : 'fn';
 				const params = renderParams(d.members);
 				const ret = d.return_type ? renderTypeName(d.return_type) : 'void';
-				const attrs = (d.attributes || []).map(a => `<span class="c3-attribute">${a}</span>`).join(' ');
 				const genericSuffix = (d.generic_parameters && d.generic_parameters.length > 0)
 					? ` <span class="c3-type">&lt;${d.generic_parameters.join(', ')}&gt;</span>`
 					: '';
-				return `<span class="c3-keyword">${keyword}</span> ${ret} <span class="c3-function">${localName}</span>(${params})${genericSuffix}${attrs ? ' ' + attrs : ''}`;
+				return `<span class="c3-keyword">${keyword}</span> ${ret} <span class="c3-function">${localName}</span>(${params})${genericSuffix}`;
 			}
 
 			if (d.kind === 'alias') {
@@ -2314,10 +2336,7 @@
 			}
 
 			if (d.attributes) {
-				d.attributes.forEach(a => html += `<span class="badge">${a}</span>`);
-			}
-			if (d.custom_attrs) {
-				d.custom_attrs.forEach(a => html += `<span class="badge c3-attribute">@${a.name}</span>`);
+				d.attributes.forEach(a => html += `<span class="badge c3-attribute">${escapeHtml(a.name)}</span>`);
 			}
 			html += `</div>`;
 
@@ -2446,7 +2465,7 @@
 
 				if (m.kind === 'struct' || m.kind === 'union' || m.kind === 'bitstruct') {
 					let kindName = m.kind;
-					let nameStr = m.name ? ` <span class="c3-variable">${m.name}</span>` : '';
+					let nameStr = withAttrs(m.name ? ` <span class="c3-variable">${m.name}</span>` : '', m.attributes);
 					rowHtml += `<tr>`;
 					rowHtml += `<td class="col-type monospace" colspan="2">${prefix}<span class="c3-keyword">${kindName}</span>${nameStr}</td>`;
 					rowHtml += `<td class="doc-text">${desc}</td>`;
@@ -2465,7 +2484,7 @@
 						valStr = `<span class="c3-number">${escapeHtml(String(m.value))}</span>`;
 					}
 					rowHtml += `<tr>
-						<td class="col-name monospace bold c3-enum_constant">${prefix}${m.name || ''}</td>
+						<td class="col-name monospace bold c3-enum_constant">${prefix}${withAttrs(m.name || '', m.attributes)}</td>
 						<td class="col-type monospace">${valStr}</td>
 						<td class="doc-text">${desc}</td>
 					</tr>`;
@@ -2476,9 +2495,9 @@
 					if (vd.kind === 'interface') {
 						let paramsStr = m.params ? renderParams(m.params) : '';
 						nameStr += '(' + paramsStr + ')';
-						if (m.is_optional) {
-							attrHtml = `<span class="c3-keyword">@optional</span>`;
-						}
+						attrHtml = renderAttrs(m.attributes);
+					} else {
+						nameStr = withAttrs(nameStr, m.attributes);
 					}
 					rowHtml += `<tr>
 						${isFunc && hasAnyContract ? `<td class="col-mod">${modHtml}</td>` : ''}
@@ -2518,7 +2537,7 @@
 						}
 						
 						html += `<tr>
-							<td class="col-name monospace bold c3-enum_constant">${m.name || ''}</td>
+							<td class="col-name monospace bold c3-enum_constant">${withAttrs(m.name || '', m.attributes)}</td>
 							<td class="col-type monospace"><span class="c3-number">${escapeHtml(String(ordinal))}</span></td>`;
 						params.forEach((p, i) => {
 							let v = assoc_vals[i];

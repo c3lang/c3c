@@ -405,6 +405,7 @@ typedef struct
 	const char *section;
 	const char *wasm_module;
 	SourceLocId overload;
+	Attr **source;
 } ResolvedAttrData;
 
 typedef struct
