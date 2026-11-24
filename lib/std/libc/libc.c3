@@ -71,7 +71,7 @@ alias Off_t = env::WIN32 || env::EMSCRIPTEN ? long : sz;
 
 module libc @feat(LIBC);
 
-extern fn void abort();
+extern fn void abort() @noreturn;
 extern fn CInt abs(CInt n);
 extern fn ZString asctime(Tm* timeptr);
 extern fn ZString asctime_r(Tm* timeptr, char* buf) @feat(!WIN32);
@@ -86,8 +86,8 @@ extern fn Clock_t clock();
 extern fn CInt close(CInt fd) @feat(!WIN32);
 extern fn double difftime(Time_t time1, Time_t time2) @feat(!WIN32);
 extern fn DivResult div(CInt numer, CInt denom);
-extern fn void exit(CInt status);
-extern fn void _exit(CInt status) @cname("_Exit");
+extern fn void exit(CInt status) @noreturn;
+extern fn void _exit(CInt status) @cname("_Exit") @noreturn;
 extern fn CInt fclose(CFile stream);
 extern fn CFile fdopen(Fd fd, ZString mode) @feat(!WIN32);
 extern fn CInt feof(CFile stream);
@@ -121,8 +121,8 @@ extern fn CLong labs(CLong x);
 extern fn LongDivResult ldiv(CLong number, CLong denom);
 extern fn Tm* localtime(Time_t* timer);
 extern fn Tm* localtime_r(Time_t* timer, Tm* result) @feat(!WIN32) @feat(!NETBSD);
-extern fn void longjmp(JmpBuf* buffer, CInt value) @feat(!NETBSD) @feat(!EMSCRIPTEN);
-extern fn void longjmp(JmpBuf* buffer, CInt value) @cname("__longjmp14") @feat(NETBSD);
+extern fn void longjmp(JmpBuf* buffer, CInt value) @feat(!NETBSD) @feat(!EMSCRIPTEN) @noreturn;
+extern fn void longjmp(JmpBuf* buffer, CInt value) @cname("__longjmp14") @feat(NETBSD) @noreturn;
 extern fn void* malloc(usz size);
 extern fn void* memchr(void* str, CInt c, usz n);
 extern fn CInt memcmp(void* buf1, void* buf2, usz count);
@@ -152,8 +152,8 @@ extern fn CInt setjmp(JmpBuf* buffer) @feat(!WIN32) @feat(!NETBSD) @feat(!EMSCRI
 extern fn CInt setjmp(JmpBuf* buffer) @cname("__setjmp14") @feat(NETBSD);
 extern fn void setvbuf(CFile stream, char* buf, CInt type, usz size);
 extern fn SignalFunction signal(CInt sig, SignalFunction function);
-extern fn void siglongjmp(SigJmpBuf* buffer, CInt value) @feat(!WIN32) @feat(!NETBSD) @feat(!EMSCRIPTEN);
-extern fn void siglongjmp(SigJmpBuf* buffer, CInt value) @cname("__siglongjmp14") @feat(NETBSD);
+extern fn void siglongjmp(SigJmpBuf* buffer, CInt value) @feat(!WIN32) @feat(!NETBSD) @feat(!EMSCRIPTEN) @noreturn;
+extern fn void siglongjmp(SigJmpBuf* buffer, CInt value) @cname("__siglongjmp14") @feat(NETBSD) @noreturn;
 extern fn CInt sigsetjmp(SigJmpBuf* buffer, CInt savemask) @feat(!WIN32) @feat(!NETBSD) @feat(!EMSCRIPTEN) @feat(!LINUX);
 extern fn CInt sigsetjmp(SigJmpBuf* buffer, CInt savemask) @cname("__sigsetjmp14") @feat(NETBSD);
 extern fn CInt sigsetjmp(SigJmpBuf* buffer, CInt savemask) @cname("__sigsetjmp") @feat(LINUX);
@@ -233,8 +233,8 @@ module libc @feat(EMSCRIPTEN);
 import std::os;
 fn int setjmp(JmpBuf* ptr) => 0;
 fn int sigsetjmp(SigJmpBuf* ptr, CInt val) => 0;
-fn void longjmp(JmpBuf* ptr, int i) => os::exit(i);
-fn void siglongjmp(SigJmpBuf* ptr, CInt i) => os::exit(i);
+fn void longjmp(JmpBuf* ptr, int i) @noreturn => os::exit(i);
+fn void siglongjmp(SigJmpBuf* ptr, CInt i) @noreturn => os::exit(i);
 
 
 module libc @feat(NETBSD, OPENBSD);
@@ -280,12 +280,12 @@ module libc @feat(NO_LIBC);
 import std::core::mem;
 
 
-fn void longjmp(JmpBuf* buffer, CInt value) @weak @cname("longjmp") @nostrip
+fn void longjmp(JmpBuf* buffer, CInt value) @weak @cname("longjmp") @nostrip @noreturn
 {
 	unreachable("longjmp unavailable");
 }
 
-fn void siglongjmp(SigJmpBuf* buffer, CInt value) @weak @cname("siglongjmp") @nostrip
+fn void siglongjmp(SigJmpBuf* buffer, CInt value) @weak @cname("siglongjmp") @nostrip @noreturn
 {
 	unreachable("longjmp unavailable");
 }

@@ -54,6 +54,7 @@ typedef struct
 {
 	bool enable_stacktrace;
 	bool emit_expr_loc;
+	LLVMMetadataRef frozen_loc;
 	int runtime_version;
 	LLVMDIBuilderRef builder;
 

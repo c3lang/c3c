@@ -247,6 +247,11 @@ LLVMMetadataRef llvm_create_debug_location(GenContext *c, SourceLocId location)
 void llvm_emit_debug_location(GenContext *c, SourceLocId location)
 {
 	if (llvm_is_global_eval(c)) return;
+	if (c->debug.frozen_loc)
+	{
+		if (!LLVMGetCurrentDebugLocation2(c->builder)) LLVMSetCurrentDebugLocation2(c->builder, c->debug.frozen_loc);
+		return;
+	}
 	// Avoid re-emitting the same location.
 	LLVMMetadataRef oldloc = LLVMGetCurrentDebugLocation2(c->builder);
 	if (oldloc && c->last_emitted_loc == location) return;

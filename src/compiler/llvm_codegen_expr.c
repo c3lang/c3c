@@ -11,6 +11,7 @@ static inline LLVMValueRef llvm_const_high_bitmask(GenContext *c, LLVMTypeRef ty
 static inline LLVMValueRef llvm_const_low_bitmask(GenContext *c, LLVMTypeRef type, int type_bits, int low_bits);
 static inline LLVMValueRef llvm_update_vector(GenContext *c, LLVMValueRef vector, LLVMValueRef value, ArrayIndex index);
 static inline void llvm_emit_expression_list_expr(GenContext *c, BEValue *be_value, Expr *expr);
+static void llvm_emit_call_contracts(GenContext *c, Expr *expr);
 static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id_ptr, const char *selector);
 static inline void llvm_emit_bitassign_array(GenContext *c, LLVMValueRef result, BEValue parent, Decl *parent_decl, Decl *member);
 static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Expr *expr);
@@ -6106,7 +6107,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 
 	if (safe_mode_enabled())
 	{
-		llvm_emit_statement_chain(c, expr->call_expr.function_contracts);
+		llvm_emit_call_contracts(c, expr);
 	}
 
 	if (!llvm_get_current_block_if_in_use(c))
@@ -7021,6 +7022,22 @@ static void llvm_emit_default_arg(GenContext *c, BEValue *value, Expr *expr)
 	{
 		llvm_emit_folded_in_block(c, value, expr->default_arg_expr.inner);
 	}
+}
+
+static void llvm_emit_call_contracts(GenContext *c, Expr *expr)
+{
+	AstId contracts = expr->call_expr.function_contracts;
+	if (!contracts) return;
+	if (!llvm_use_debug(c) || c->debug.frozen_loc)
+	{
+		llvm_emit_statement_chain(c, contracts);
+		return;
+	}
+	llvm_emit_debug_location(c, expr->loc);
+	c->debug.frozen_loc = LLVMGetCurrentDebugLocation2(c->builder);
+	llvm_emit_statement_chain(c, contracts);
+	c->debug.frozen_loc = NULL;
+	llvm_emit_debug_location(c, expr->loc);
 }
 
 void llvm_emit_expr_global_value(GenContext *c, BEValue *value, Expr *expr)

@@ -1,0 +1,83 @@
+// #target: macos-x64
+// #debuginfo: yes
+// #safe: yes
+module test;
+
+<*
+ @require x > 0 && x < 100
+*>
+fn int foo(int x) => x;
+
+fn int test(int a)
+{
+	int z = foo(a);
+	return z;
+}
+
+macro bool @positive(x) { int tmp = x * 2; return tmp > 0; }
+
+<*
+ @require @positive(x)
+*>
+fn int bar(int x) => x;
+
+fn int test2(int a)
+{
+	return bar(a);
+}
+
+/* #expect: test.ll
+
+define i32 @test.test(i32 %0) #0 !dbg !19 {
+entry:
+  %a = alloca i32, align 4
+  %z = alloca i32, align 4
+  store i32 %0, ptr %a, align 4
+    #dbg_declare(ptr %a, !20, !DIExpression(), !21)
+    #dbg_declare(ptr %z, !22, !DIExpression(), !23)
+  %1 = load i32, ptr %a, align 4, !dbg !24
+  %gt = icmp sgt i32 %1, 0, !dbg !25
+  br i1 %gt, label %and.rhs, label %and.phi, !dbg !25
+and.rhs:                                          ; preds = %entry
+  %lt = icmp slt i32 %1, 100, !dbg !25
+  br label %and.phi, !dbg !25
+and.phi:                                          ; preds = %and.rhs, %entry
+  %val = phi i1 [ false, %entry ], [ %lt, %and.rhs ], !dbg !25
+  br i1 %val, label %assert_ok, label %assert_fail, !dbg !25
+assert_fail:                                      ; preds = %and.phi
+  call void @std.core.runtime.panics.require(ptr @.panic_str, ptr @.panic_str.3, i32 10, ptr @.panic_str.2) #2, !dbg !25
+  unreachable, !dbg !25
+assert_ok:                                        ; preds = %and.phi
+  %2 = call i32 @test.foo(i32 %1), !dbg !25
+  store i32 %2, ptr %z, align 4, !dbg !25
+  %3 = load i32, ptr %z, align 4, !dbg !26
+  ret i32 %3, !dbg !26
+}
+
+define i32 @test.test2(i32 %0) #0 !dbg !43 {
+entry:
+  %a = alloca i32, align 4
+  %x = alloca i32, align 4
+  %tmp = alloca i32, align 4
+  store i32 %0, ptr %a, align 4
+    #dbg_declare(ptr %a, !44, !DIExpression(), !45)
+  %1 = load i32, ptr %a, align 4, !dbg !46
+    #dbg_declare(ptr %x, !47, !DIExpression(), !49)
+  store i32 %1, ptr %x, align 4
+    #dbg_declare(ptr %tmp, !51, !DIExpression(), !52)
+  %2 = load i32, ptr %x, align 4, !dbg !50
+  %mul = mul i32 %2, 2, !dbg !50
+  store i32 %mul, ptr %tmp, align 4, !dbg !50
+  %3 = load i32, ptr %tmp, align 4, !dbg !50
+  %gt = icmp sgt i32 %3, 0, !dbg !50
+  br i1 %gt, label %assert_ok, label %assert_fail, !dbg !50
+assert_fail:                                      ; preds = %entry
+  call void @std.core.runtime.panics.require(ptr @.panic_str, ptr @.panic_str.6, i32 23, ptr @.panic_str.5) #2, !dbg !50
+  unreachable, !dbg !50
+assert_ok:                                        ; preds = %entry
+  %4 = call i32 @test.bar(i32 %1), !dbg !50
+  ret i32 %4, !dbg !50
+}
+
+!25 = !DILocation(line: 10, column: 10, scope: !19)
+!50 = !DILocation(line: 23, column: 9, scope: !43)
