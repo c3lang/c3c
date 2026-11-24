@@ -212,6 +212,9 @@ static void write_const_value_json(FILE *file, Expr *expr)
 	{
 		switch (expr->const_expr.const_kind)
 		{
+			case CONST_REF:
+				if (expr->const_expr.global_ref->decl_kind == DECL_VAR && expr->const_expr.global_ref->var.is_temp) break;
+				FALLTHROUGH;
 			case CONST_INTEGER:
 			case CONST_FLOAT:
 			case CONST_BOOL:
@@ -219,9 +222,6 @@ static void write_const_value_json(FILE *file, Expr *expr)
 			case CONST_ENUM:
 			case CONST_FAULT:
 			case CONST_TYPEID:
-			case CONST_REF:
-				if (expr->const_expr.global_ref->decl_kind == DECL_VAR && expr->const_expr.global_ref->var.is_temp) break;
-				FALLTHROUGH;
 			case CONST_POINTER:
 				scratch_buffer_clear();
 				expr_const_to_scratch_buffer(&expr->const_expr);
