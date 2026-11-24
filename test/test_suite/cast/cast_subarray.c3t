@@ -20,9 +20,13 @@ entry:
   %xyz = alloca %"int[]", align 8
   %xyz2 = alloca %"int[]", align 8
   %literal = alloca [2 x i32], align 4
-  store %"int*[]" zeroinitializer, ptr %abc, align 8
+  store ptr null, ptr %abc, align 8
+  %ptradd = getelementptr inbounds i8, ptr %abc, i64 8
+  store i64 0, ptr %ptradd, align 8
   call void @llvm.memcpy.p0.p0.i64(ptr align 8 %bcd, ptr align 8 %abc, i64 16, i1 false)
-  store %"int[]" zeroinitializer, ptr %cde, align 8
+  store ptr null, ptr %cde, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %cde, i64 8
+  store i64 0, ptr %ptradd1, align 8
   call void @llvm.memcpy.p0.p0.i64(ptr align 8 %xyz, ptr align 8 %cde, i64 16, i1 false)
   call void @llvm.memcpy.p0.p0.i64(ptr align 4 %literal, ptr align 4 @.__const, i64 8, i1 false)
   %0 = insertvalue %"int[]" undef, ptr %literal, 0

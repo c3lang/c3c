@@ -34,6 +34,13 @@ void c_emit_local_decl(GenContext *c, Decl *decl, CValue *value)
 	c_emit_type_forward_decl(c, var_type);
 	VariableId vid        = c_get_or_create_decl_var(c, decl);
 	const char *fault_ref = c_decl_fault_ref(c, decl);
+	// In its block only when nothing can point to it: C ends its storage there, while C3 code may use a view of a
+	// macro's local after the macro (@as_char_view), as LLVM keeps every local for the whole function.
+	if (!decl->var.is_addr && !c_type_is_aggregate(var_type))
+	{
+		c_declare_local_here(c, vid);
+		c_declare_local_here(c, c_ptr_to_id(htable_get(&c->local_fault_vars, decl_raw(decl))));
+	}
 	if (value)
 	{
 		// Used as an expression the decl is its variable; an optional one is checked when the value is read.
@@ -666,21 +673,20 @@ static void c_emit_return(GenContext *c, Ast *stmt)
 	}
 }
 
-// The returned value. Sema converts it to the function's value type `cur_ret_t`.
-static const char *c_return_value_str(GenContext *c, bool has_ret, CValue ret_val, Type *cur_ret_t)
-{
-	const char *cur_tname = c_type_name(c, cur_ret_t);
-	if (!has_ret || ret_val.var == 0) return str_printf("(%s)%s", cur_tname, c_type_zero_literal(cur_ret_t));
-	ASSERT(ret_val.kind == CV_VALUE && strcmp(cur_tname, c_type_name(c, c_safe_type_lower(ret_val.type))) == 0);
-	return str_printf("___var_%d", ret_val.var);
-}
-
 static void c_emit_return_value(GenContext *c, bool has_ret, CValue ret_val)
 {
 	CRet ret = c->cur_ret;
 	if (ret.value)
 	{
-		PRINTF("%s%s;\n", ret.optional ? "*___ret_out = " : "return ", c_return_value_str(c, has_ret, ret_val, ret.value));
+		// Sema converts the value to the function's value type.
+		const char *tname = c_type_name(c, ret.value);
+		const char *value = str_printf("(%s)%s", tname, c_type_zero_literal(ret.value));
+		if (has_ret && ret_val.var)
+		{
+			ASSERT(ret_val.kind == CV_VALUE && strcmp(tname, c_type_name(c, c_safe_type_lower(ret_val.type))) == 0);
+			value = str_printf("___var_%d", ret_val.var);
+		}
+		PRINTF("%s%s;\n", ret.optional ? "*___ret_out = " : "return ", value);
 	}
 	if (ret.optional)
 	{
@@ -944,6 +950,7 @@ void c_emit_stmt(GenContext *c, Ast *stmt)
 	{
 		return;
 	}
+	c_emit_line(c, stmt->loc);
 
 	switch (stmt->ast_kind)
 	{

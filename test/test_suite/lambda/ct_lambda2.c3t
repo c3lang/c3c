@@ -69,16 +69,79 @@ define i32 @main() #0 {
 }
 
 define internal void @"test.main$lambda1"() #0 {
-  store %"char[]" { ptr @.str.1, i64 6 }, ptr %taddr1, align 8
+  %0 = insertvalue %any undef, ptr %taddr, 0
+  %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %1, ptr %varargslots, align 16
+  store ptr @.str.1, ptr %taddr1, align 8
+  %ptradd = getelementptr inbounds i8, ptr %taddr1, i64 8
+  store i64 6, ptr %ptradd, align 8
+  %2 = insertvalue %any undef, ptr %taddr1, 0
+  %3 = insertvalue %any %2, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  %ptradd2 = getelementptr inbounds i8, ptr %varargslots, i64 16
+  store %any %3, ptr %ptradd2, align 16
 define internal void @"test.main$lambda2"() #0 {
-  store %"char[]" { ptr @.str.3, i64 3 }, ptr %taddr1, align 8
+  %0 = insertvalue %any undef, ptr %taddr, 0
+  %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %1, ptr %varargslots, align 16
+  store ptr @.str.3, ptr %taddr1, align 8
+  %ptradd = getelementptr inbounds i8, ptr %taddr1, i64 8
+  store i64 3, ptr %ptradd, align 8
+  %2 = insertvalue %any undef, ptr %taddr1, 0
+  %3 = insertvalue %any %2, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  %ptradd2 = getelementptr inbounds i8, ptr %varargslots, i64 16
+  store %any %3, ptr %ptradd2, align 16
 define internal void @"test.main$lambda3"() #0 {
-  store %"char[]" { ptr @.str.5, i64 3 }, ptr %taddr1, align 8
+  %0 = insertvalue %any undef, ptr %taddr, 0
+  %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %1, ptr %varargslots, align 16
+  store ptr @.str.5, ptr %taddr1, align 8
+  %ptradd = getelementptr inbounds i8, ptr %taddr1, i64 8
+  store i64 3, ptr %ptradd, align 8
+  %2 = insertvalue %any undef, ptr %taddr1, 0
+  %3 = insertvalue %any %2, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  %ptradd2 = getelementptr inbounds i8, ptr %varargslots, i64 16
+  store %any %3, ptr %ptradd2, align 16
 define internal void @"test.main$lambda4"() #0 {
-  store %"char[]" { ptr @.str.7, i64 6 }, ptr %taddr1, align 8
+  %0 = insertvalue %any undef, ptr %taddr, 0
+  %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %1, ptr %varargslots, align 16
+  store ptr @.str.7, ptr %taddr1, align 8
+  %ptradd = getelementptr inbounds i8, ptr %taddr1, i64 8
+  store i64 6, ptr %ptradd, align 8
+  %2 = insertvalue %any undef, ptr %taddr1, 0
+  %3 = insertvalue %any %2, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  %ptradd2 = getelementptr inbounds i8, ptr %varargslots, i64 16
+  store %any %3, ptr %ptradd2, align 16
 define internal void @"test.main$lambda5"() #0 {
-  store %"char[]" { ptr @.str.9, i64 6 }, ptr %taddr1, align 8
+  %0 = insertvalue %any undef, ptr %taddr, 0
+  %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %1, ptr %varargslots, align 16
+  store ptr @.str.9, ptr %taddr1, align 8
+  %ptradd = getelementptr inbounds i8, ptr %taddr1, i64 8
+  store i64 6, ptr %ptradd, align 8
+  %2 = insertvalue %any undef, ptr %taddr1, 0
+  %3 = insertvalue %any %2, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  %ptradd2 = getelementptr inbounds i8, ptr %varargslots, i64 16
+  store %any %3, ptr %ptradd2, align 16
 define internal void @"test.main$lambda6"() #0 {
-  store %"char[]" { ptr @.str.11, i64 3 }, ptr %taddr1, align 8
+  %0 = insertvalue %any undef, ptr %taddr, 0
+  %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %1, ptr %varargslots, align 16
+  store ptr @.str.11, ptr %taddr1, align 8
+  %ptradd = getelementptr inbounds i8, ptr %taddr1, i64 8
+  store i64 3, ptr %ptradd, align 8
+  %2 = insertvalue %any undef, ptr %taddr1, 0
+  %3 = insertvalue %any %2, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  %ptradd2 = getelementptr inbounds i8, ptr %varargslots, i64 16
+  store %any %3, ptr %ptradd2, align 16
 define internal void @"test.main$lambda7"() #0 {
-  store %"char[]" { ptr @.str.13, i64 3 }, ptr %taddr1, align 8
+  %0 = insertvalue %any undef, ptr %taddr, 0
+  %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %1, ptr %varargslots, align 16
+  store ptr @.str.13, ptr %taddr1, align 8
+  %ptradd = getelementptr inbounds i8, ptr %taddr1, i64 8
+  store i64 3, ptr %ptradd, align 8
+  %2 = insertvalue %any undef, ptr %taddr1, 0
+  %3 = insertvalue %any %2, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  %ptradd2 = getelementptr inbounds i8, ptr %varargslots, i64 16
+  store %any %3, ptr %ptradd2, align 16

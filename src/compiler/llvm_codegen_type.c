@@ -34,7 +34,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 			LLVMTypeRef *types = NULL;
 			LLVMTypeRef type = LLVMStructCreateNamed(c->context, decl->name ? decl->name : ".anon");
 			// Avoid recursive issues.
-			decl->type->backend_type = type;
+			llvm_set_backend_type(decl->type, type);
 			Decl **members = decl->strukt.members;
 			FOREACH(Decl *, member, members)
 			{
@@ -56,7 +56,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 		{
 			LLVMTypeRef type = LLVMStructCreateNamed(c->context, decl->name ? decl->name : ".anon");
 			// Avoid recursive issues.
-			decl->type->backend_type = type;
+			llvm_set_backend_type(decl->type, type);
 			Decl **members = decl->strukt.members;
 			if (vec_size(members))
 			{
@@ -90,10 +90,10 @@ static inline LLVMTypeRef llvm_type_from_array(GenContext *context, Type *type)
 {
 	if (type->canonical != type)
 	{
-		return type->backend_type = llvm_get_type(context, type->canonical);
+		return llvm_set_backend_type(type, llvm_get_type(context, type->canonical));
 	}
 
-	return type->backend_type = LLVMArrayType(llvm_get_type(context, type->array.base), (unsigned)type->array.len);
+	return llvm_set_backend_type(type, LLVMArrayType(llvm_get_type(context, type->array.base), (unsigned)type->array.len));
 }
 
 
@@ -292,15 +292,16 @@ bool llvm_types_are_similar(LLVMTypeRef original, LLVMTypeRef coerce)
 
 LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 {
-	if (any_type->backend_type)
+	LLVMTypeRef cached = llvm_get_cached_backend_type(any_type);
+	if (cached)
 	{
-		ASSERT(LLVMGetTypeContext(any_type->backend_type) == c->context && "Should have been purged");
-		return any_type->backend_type;
+		ASSERT(LLVMGetTypeContext(cached) == c->context && "Should have been purged");
+		return cached;
 	}
 	LoweredType *type = type_lowering(any_type);
 	if (type != any_type)
 	{
-		return any_type->backend_type = llvm_get_type(c, type);
+		return llvm_set_backend_type(any_type, llvm_get_type(c, type));
 	}
 	switch (any_type->type_kind)
 	{
@@ -310,49 +311,49 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 			UNREACHABLE_VOID
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-			return any_type->backend_type = llvm_type_from_decl(c, any_type->decl);
+			return llvm_set_backend_type(any_type, llvm_type_from_decl(c, any_type->decl));
 		case TYPE_FUNC_RAW:
-			return any_type->backend_type = llvm_func_type(c, type_get_resolved_prototype(any_type));
+			return llvm_set_backend_type(any_type, llvm_func_type(c, type_get_resolved_prototype(any_type)));
 		case TYPE_VOID:
-			return any_type->backend_type = LLVMVoidTypeInContext(c->context);
+			return llvm_set_backend_type(any_type, LLVMVoidTypeInContext(c->context));
 		case TYPE_F64:
-			return any_type->backend_type = LLVMDoubleTypeInContext(c->context);
+			return llvm_set_backend_type(any_type, LLVMDoubleTypeInContext(c->context));
 		case TYPE_F16:
-			return any_type->backend_type = LLVMHalfTypeInContext(c->context);
+			return llvm_set_backend_type(any_type, LLVMHalfTypeInContext(c->context));
 		case TYPE_BF16:
-			return any_type->backend_type = LLVMBFloatTypeInContext(c->context);
+			return llvm_set_backend_type(any_type, LLVMBFloatTypeInContext(c->context));
 		case TYPE_F32:
-			return any_type->backend_type = LLVMFloatTypeInContext(c->context);
+			return llvm_set_backend_type(any_type, LLVMFloatTypeInContext(c->context));
 		case TYPE_F128:
-			return any_type->backend_type = LLVMFP128TypeInContext(c->context);
+			return llvm_set_backend_type(any_type, LLVMFP128TypeInContext(c->context));
 		case ALL_SIGNED_INTS:
 		case ALL_UNSIGNED_INTS:
-			return any_type->backend_type = LLVMIntTypeInContext(c->context, any_type->builtin.bitsize);
+			return llvm_set_backend_type(any_type, LLVMIntTypeInContext(c->context, any_type->builtin.bitsize));
 		case TYPE_BOOL:
-			return any_type->backend_type = LLVMIntTypeInContext(c->context, 8U);
+			return llvm_set_backend_type(any_type, LLVMIntTypeInContext(c->context, 8U));
 		case TYPE_POINTER:
 		case TYPE_FUNC_PTR:
 			ASSERT(c->ptr_type);
-			return any_type->backend_type = c->ptr_type;
+			return llvm_set_backend_type(any_type, c->ptr_type);
 		case TYPE_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
-			return any_type->backend_type = llvm_type_from_array(c, any_type);
+			return llvm_set_backend_type(any_type, llvm_type_from_array(c, any_type));
 		case TYPE_SLICE:
 		{
 			LLVMTypeRef array_type = LLVMStructCreateNamed(c->context, any_type->name);
 			LLVMTypeRef types[2] = { c->ptr_type, c->size_type };
 			LLVMStructSetBody(array_type, types, 2, false);
-			return any_type->backend_type = array_type;
+			return llvm_set_backend_type(any_type, array_type);
 		}
 		case TYPE_ANY:
 		{
 			LLVMTypeRef virtual_type = LLVMStructCreateNamed(c->context, any_type->name);
 			LLVMTypeRef types[2] = { c->ptr_type, c->typeid_type };
 			LLVMStructSetBody(virtual_type, types, 2, false);
-			return any_type->backend_type = virtual_type;
+			return llvm_set_backend_type(any_type, virtual_type);
 		}
 		case VECTORS:
-			return any_type->backend_type = LLVMVectorType(llvm_get_type(c, any_type->array.base), any_type->array.len);
+			return llvm_set_backend_type(any_type, LLVMVectorType(llvm_get_type(c, any_type->array.base), any_type->array.len));
 	}
 	UNREACHABLE;
 }
@@ -425,9 +426,9 @@ LLVMTypeRef llvm_abi_type(GenContext *c, AbiType type)
 
 static inline LLVMValueRef llvm_generate_temp_introspection_global(GenContext *c, Type *type)
 {
-	ASSERT(!type->backend_typeid);
+	ASSERT(!llvm_get_cached_backend_typeid(type));
 	LLVMValueRef temp = LLVMAddGlobal(c->module, c->introspect_type, "tempid");
-	type->backend_typeid = LLVMBuildPtrToInt(c->builder, temp, c->typeid_type, "");
+	llvm_set_backend_typeid(type, LLVMBuildPtrToInt(c->builder, temp, c->typeid_type, ""));
 	return temp;
 }
 
@@ -440,7 +441,7 @@ static inline LLVMValueRef llvm_generate_introspection_global(GenContext *c, LLV
 
 	if (original_global)
 	{
-		ASSERT(type->backend_typeid);
+		ASSERT(llvm_get_cached_backend_typeid(type));
 	}
 	ASSERT(type == type->canonical);
 	Type *parent_type = type_find_parent_type(type);
@@ -451,7 +452,7 @@ static inline LLVMValueRef llvm_generate_introspection_global(GenContext *c, LLV
 		scratch_buffer_append("$ct.");
 		type_mangle_introspect_name_to_buffer(type);
 		global_name = LLVMAddGlobal(c->module, c->introspect_type, scratch_buffer_to_string());
-		type->backend_typeid = LLVMBuildPtrToInt(c->builder, global_name, c->typeid_type, "");
+		llvm_set_backend_typeid(type, LLVMBuildPtrToInt(c->builder, global_name, c->typeid_type, ""));
 	}
 	LLVMValueRef values[INTROSPECT_INDEX_TOTAL] = {
 			[INTROSPECT_INDEX_KIND] = LLVMConstInt(c->byte_type, introspect_type, false),
@@ -493,10 +494,10 @@ static inline LLVMValueRef llvm_generate_introspection_global(GenContext *c, LLV
 	}
 	else
 	{
-		type->backend_typeid = LLVMBuildPtrToInt(c->builder, global_name, c->typeid_type, "");
+		llvm_set_backend_typeid(type, LLVMBuildPtrToInt(c->builder, global_name, c->typeid_type, ""));
 	}
 	c->builder = builder;
-	return type->backend_typeid;
+	return llvm_get_cached_backend_typeid(type);
 }
 static LLVMValueRef llvm_get_introspection_for_builtin_type(GenContext *c, Type *type, IntrospectType introspect_type, int bits)
 {
@@ -585,7 +586,7 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 		llvm_set_linkonce(c, global_ref);
 		LLVMSetInitializer(global_ref, associated_value_arr);
 		LLVMSetGlobalConstant(global_ref, true);
-		associated_value->backend_ref = global_ref;
+		llvm_decl_set_ref(associated_value, global_ref);
 	}
 	c->builder = builder;
 	return val;
@@ -616,7 +617,8 @@ static LLVMValueRef llvm_get_introspection_for_struct_union(GenContext *c, Type 
 
 LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 {
-	if (type->backend_typeid) return type->backend_typeid;
+	LLVMValueRef cached = llvm_get_cached_backend_typeid(type);
+	if (cached) return cached;
 
 	switch (type->type_kind)
 	{

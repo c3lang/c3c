@@ -14,6 +14,8 @@ fn void main()
 define void @test.main() #0 {
 entry:
   %good = alloca %"char[]", align 8
-  store %"char[]" zeroinitializer, ptr %good, align 8
+  store ptr null, ptr %good, align 8
+  %ptradd = getelementptr inbounds i8, ptr %good, i64 8
+  store i64 0, ptr %ptradd, align 8
   ret void
 }

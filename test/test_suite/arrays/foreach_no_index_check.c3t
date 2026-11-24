@@ -1,0 +1,51 @@
+// #target: macos-aarch64
+// #safe: yes
+module test;
+
+fn int sum(int[4] a) @export
+{
+	int s;
+	foreach (x : a) s += x;
+	return s;
+}
+
+fn void inc(int[4] a) @export
+{
+	foreach_r (&x : a) *x += 1;
+}
+
+fn int vsum(int[<4>] v) @export
+{
+	int s;
+	foreach (x : v) s += x;
+	return s;
+}
+
+/* #expect: test.ll
+define i32 @test__sum([2 x i64] %0) #0 {
+loop.cond:                                        ; preds = %loop.body, %entry
+  %1 = load i64, ptr %.anon, align 8
+  %lt = icmp slt i64 %1, 4
+  br i1 %lt, label %loop.body, label %loop.exit
+
+loop.body:                                        ; preds = %loop.cond
+  %2 = load i64, ptr %.anon, align 8
+  %ptroffset = getelementptr inbounds [4 x i8], ptr %a, i64 %2
+  %3 = load i32, ptr %ptroffset, align 4
+  store i32 %3, ptr %x, align 4
+
+define void @test__inc([2 x i64] %0) #0 {
+loop.body:                                        ; preds = %loop.cond
+  %2 = load i64, ptr %.anon, align 8
+  %subnsw = sub nsw i64 %2, 1
+  store i64 %subnsw, ptr %.anon, align 8
+  %3 = load i64, ptr %.anon, align 8
+  %ptroffset = getelementptr inbounds [4 x i8], ptr %a, i64 %3
+  store ptr %ptroffset, ptr %x, align 8
+
+define i32 @test__vsum([2 x i64] %0) #0 {
+loop.body:                                        ; preds = %loop.cond
+  %3 = load <4 x i32>, ptr %v, align 16
+  %4 = load i64, ptr %.anon1, align 8
+  %5 = extractelement <4 x i32> %3, i64 %4
+  store i32 %5, ptr %x, align 4

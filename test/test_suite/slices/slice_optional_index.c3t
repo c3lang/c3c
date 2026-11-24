@@ -15,6 +15,8 @@ fn void test()
 
 /* #expect: test.ll
 
+  %0 = insertvalue %"int[]" undef, ptr %literal, 0
+  %1 = insertvalue %"int[]" %0, i64 3, 1
   store %"int[]" %1, ptr %a, align 8
   store i32 0, ptr %i, align 4
   br label %loop.cond

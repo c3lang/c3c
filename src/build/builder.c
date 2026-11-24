@@ -621,6 +621,7 @@ BUILD:
 	OVERRIDE_IF_SET(max_vector_size);
 	OVERRIDE_IF_SET(max_stack_object_size);
 	OVERRIDE_IF_SET(max_macro_iterations);
+	OVERRIDE_IF_SET(max_generic_instances);
 	OVERRIDE_IF_SET(win.def);
 	OVERRIDE_IF_SET(no_entry);
 	OVERRIDE_IF_SET(echo_prefix);
@@ -656,6 +657,7 @@ BUILD:
 	if (!target->max_vector_size) target->max_vector_size = DEFAULT_VECTOR_WIDTH;
 	if (!target->max_stack_object_size) target->max_stack_object_size = DEFAULT_STACK_OBJECT_SIZE;
 	if (!target->max_macro_iterations) target->max_macro_iterations = DEFAULT_MAX_MACRO_ITERATIONS;
+	if (!target->max_generic_instances) target->max_generic_instances = DEFAULT_MAX_GENERIC_INSTANCES;
 	if (target->quiet && !options->verbosity_level) options->verbosity_level = -1;
 
 	if (target->stack_probe == STACK_PROBE_NOT_SET) target->stack_probe = STACK_PROBE_CALL;

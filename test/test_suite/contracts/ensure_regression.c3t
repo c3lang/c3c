@@ -24,7 +24,7 @@ define { ptr, i64 } @test.test(ptr %0, i64 %1, i64 %2) #0 {
 entry:
   %buf = alloca %"char[]", align 8
   %taddr = alloca %"char[]", align 8
-  %taddr5 = alloca %"char[]", align 8
+  %taddr6 = alloca %"char[]", align 8
   store ptr %0, ptr %buf, align 8
   %ptradd = getelementptr inbounds i8, ptr %buf, i64 8
   store i64 %1, ptr %ptradd, align 8
@@ -40,23 +40,25 @@ assert_fail:                                      ; preds = %if.then
   unreachable
 
 assert_ok:                                        ; preds = %if.then
-  store %"char[]" zeroinitializer, ptr %taddr, align 8
+  store ptr null, ptr %taddr, align 8
+  %ptradd2 = getelementptr inbounds i8, ptr %taddr, i64 8
+  store i64 0, ptr %ptradd2, align 8
   %3 = load { ptr, i64 }, ptr %taddr, align 8
   ret { ptr, i64 } %3
 
 if.exit:                                          ; preds = %entry
   %4 = load %"char[]", ptr %buf, align 8
   %5 = extractvalue %"char[]" %4, 1
-  %eq2 = icmp eq i64 %5, %2
-  br i1 %eq2, label %assert_ok4, label %assert_fail3
+  %eq3 = icmp eq i64 %5, %2
+  br i1 %eq3, label %assert_ok5, label %assert_fail4
 
-assert_fail3:                                     ; preds = %if.exit
+assert_fail4:                                     ; preds = %if.exit
   call void @std.core.runtime.panics.ensure(ptr @.panic_str, ptr @.panic_str.1, i32 9, ptr @.panic_str.2) #3
   unreachable
 
-assert_ok4:                                       ; preds = %if.exit
-  store %"char[]" %4, ptr %taddr5, align 8
-  %6 = load { ptr, i64 }, ptr %taddr5, align 8
+assert_ok5:                                       ; preds = %if.exit
+  store %"char[]" %4, ptr %taddr6, align 8
+  %6 = load { ptr, i64 }, ptr %taddr6, align 8
   ret { ptr, i64 } %6
 }
 

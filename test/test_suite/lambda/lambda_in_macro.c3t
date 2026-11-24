@@ -36,8 +36,8 @@ fn void main()
   store ptr @"test.test$lambda2", ptr %z6, align 8
   %11 = call double %10(double 3.300000e+00)
   %15 = call i32 @"test.test2$lambda3"(i32 3)
- %19 = call i32 @"test.test2$lambda3"(i32 3)
-   %23 = call double @"test.test2$lambda4"(double 3.300000e+00)
+  %19 = call i32 @"test.test2$lambda3"(i32 3)
+  %23 = call double @"test.test2$lambda4"(double 3.300000e+00)
 
 define internal i32 @"test.test$lambda1"(i32 %0) #0 {
 define internal double @"test.test$lambda2"(double %0) #0 {

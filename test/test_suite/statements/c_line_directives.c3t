@@ -1,0 +1,43 @@
+// #target: linux-x64
+// #debuginfo: yes
+module ln;
+extern fn void note(int);
+
+fn int add(int a, int b) @export("ln_add")
+{
+	int c = a + b;
+	note(c);
+	return c * 2;
+}
+
+/* #expect: ln.c
+
+int32_t ln_add(int32_t a_, int32_t b_) {
+#line 5
+{
+#line 6
+	int32_t c_ = 0;
+#line 6
+int32_t ___var_4 = a_;
+#line 6
+int32_t ___var_5 = b_;
+#line 6
+int32_t ___var_6 = ((int32_t)((uint32_t)___var_4 + (uint32_t)___var_5));
+#line 6
+c_ = ___var_6;
+#line 7
+int32_t ___var_7 = c_;
+#line 7
+__C3_EXT(note)(___var_7);
+#line 8
+int32_t ___var_8 = c_;
+#line 8
+int32_t ___var_9 = 2LL;
+#line 8
+int32_t ___var_10 = ((int32_t)((uint32_t)___var_8 * (uint32_t)___var_9));
+#line 8
+return ___var_10;
+#line 8
+}
+#line 8
+}

@@ -324,6 +324,9 @@ struct Type_
 {
 	TypeKind type_kind;
 	bool is_live;
+	uint16_t backend_type_gen;
+	uint16_t backend_typeid_gen;
+	uint16_t backend_debug_gen;
 	Module *traced_module;
 	CanonicalType *canonical;
 	const char *name;
@@ -633,6 +636,8 @@ typedef struct
 	const char *name_suffix;
 	const char *cname_suffix;
 	Decl **generated_decls;
+	DeclId spawn_root;
+	int spawn_count;
 } GenericInstanceDecl;
 
 typedef struct
@@ -712,6 +717,7 @@ typedef struct
 
 typedef struct
 {
+	bool has_subscript_overloads;
 	DeclId overloads[OVERLOADS_COUNT + 1];
 	DeclTable method_table;
 	Decl **methods;
@@ -724,6 +730,7 @@ typedef struct Decl_
 	DeclKind decl_kind : 7;
 	ResolveStatus resolve_status : 3;
 	Visibility visibility : 3;
+	unsigned backend_gen : 16;
 	bool has_tag : 1;
 	bool is_extern : 1;
 	bool is_substruct : 1;
@@ -1390,6 +1397,8 @@ typedef struct
 {
 	AstId first_stmt;
 	AstId parent_defer;
+	SourceLocId end_loc;
+	bool is_loop_body;
 } AstCompoundStmt;
 
 typedef struct
@@ -1791,6 +1800,7 @@ struct CompilationUnit_
 	Decl **ct_echos;
 	Decl **ct_includes;
 	Decl **vars;
+	Decl **generated_globals;
 	Decl **macros;
 	Decl **methods_to_register;
 	Decl **methods;
@@ -2395,6 +2405,7 @@ static inline SourceLoc extend_loc_with_token(SourceLoc *loc, SourceLoc *after)
 AttributeType attribute_by_name(const char *name);
 
 void type_setup(PlatformTarget *target);
+Real float_round_to_type(Real d, TypeKind kind);
 Float float_add(Float op1, Float op2);
 Float float_sub(Float op1, Float op2);
 Float float_mul(Float op1, Float op2);
@@ -2629,7 +2640,7 @@ Expr *expr_new(ExprKind kind, SourceLocId start);
 Expr *expr_new_loc(ExprKind kind, SourceLoc *start);
 Expr *expr_new_const_int(SourceLocId loc, Type *type, uint64_t v);
 Expr *expr_new_const_float(SourceLocId loc, Type *type, Real v);
-Expr *expr_new_const_bool(int loc, Type *type, bool value);
+Expr *expr_new_const_bool(SourceLocId loc, Type *type, bool value);
 Expr *expr_new_const_typeid(SourceLocId loc, Type *type);
 Expr *expr_new_const_string(SourceLocId loc, const char *string);
 Expr *expr_new_const_null(SourceLocId loc, Type *type);
@@ -3448,6 +3459,10 @@ static inline void methods_add(Methods *methods, Decl *method)
 	OperatorOverload operator = method->func_decl.operator;
 	if (operator)
 	{
+		if (operator >= OVERLOAD_SUBSCRIPTS_FIRST && operator <= OVERLOAD_SUBSCRIPTS_LAST)
+		{
+			methods->has_subscript_overloads = true;
+		}
 		int len = vec_size(method->func_decl.signature.params);
 		if (operator == OVERLOAD_MINUS && len == 1)
 		{
@@ -4799,6 +4814,8 @@ INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d)
 	{
 		case TYPE_F16:
 		case TYPE_BF16:
+			real = float_round_to_type(d, kind);
+			break;
 		case TYPE_F32:
 			real = (float)d;
 			break;
@@ -5073,6 +5090,8 @@ INLINE ResolvedAttrData *decl_create_resolved_attributes(Decl *decl)
 }
 
 const char *find_c_compiler(void);
+bool cc_is_msvc(const char *cc);
+bool cc_is_tcc(const char *cc);
 
 void print_build_env(void);
 void print_asm(PlatformTarget *target);

@@ -42,27 +42,27 @@ fn void main()
 
 /* #expect: foo.ll
 
-@foo.y = internal unnamed_addr global i32 0, align 4
-@main.y = internal unnamed_addr global i32 0, align 4
-@main.y.7 = internal unnamed_addr global i32 0, align 4
-@main.y.12 = internal unnamed_addr global i32 0, align 4
+@foo.foo.y = internal unnamed_addr global i32 0, align 4
+@foo.main.y = internal unnamed_addr global i32 0, align 4
+@foo.main.y.7 = internal unnamed_addr global i32 0, align 4
+@foo.main.y.12 = internal unnamed_addr global i32 0, align 4
 
 define i32 @foo.foo(i32 %0) #0 {
 entry:
   %gt = icmp sgt i32 %0, 0
   br i1 %gt, label %if.then, label %if.exit
 if.then:                                          ; preds = %entry
-  %1 = load i32, ptr @foo.y, align 4
+  %1 = load i32, ptr @foo.foo.y, align 4
   %add = add i32 %1, 1
-  store i32 %add, ptr @foo.y, align 4
-  %2 = load i32, ptr @foo.y, align 4
+  store i32 %add, ptr @foo.foo.y, align 4
+  %2 = load i32, ptr @foo.foo.y, align 4
   call void (ptr, ...) @printf(ptr @.str, i32 %2)
   ret i32 2
 if.exit:                                          ; preds = %entry
-  %3 = load i32, ptr @foo.y, align 4
+  %3 = load i32, ptr @foo.foo.y, align 4
   %add1 = add i32 %3, 1
-  store i32 %add1, ptr @foo.y, align 4
-  %4 = load i32, ptr @foo.y, align 4
+  store i32 %add1, ptr @foo.foo.y, align 4
+  %4 = load i32, ptr @foo.foo.y, align 4
   call void (ptr, ...) @printf(ptr @.str.1, i32 %4)
   ret i32 %0
 }
@@ -87,20 +87,20 @@ loop.body:                                        ; preds = %loop.cond
   %eq = icmp eq i32 %4, 0
   br i1 %eq, label %if.then, label %if.exit
 if.then:                                          ; preds = %loop.body
-  %5 = load i32, ptr @main.y, align 4
+  %5 = load i32, ptr @foo.main.y, align 4
   %add = add i32 %5, 1
-  store i32 %add, ptr @main.y, align 4
+  store i32 %add, ptr @foo.main.y, align 4
   %6 = load i32, ptr %i, align 4
-  %7 = load i32, ptr @main.y, align 4
+  %7 = load i32, ptr @foo.main.y, align 4
   call void (ptr, ...) @printf(ptr @.str.3, i32 %6, i32 %7)
   br label %loop.exit
 if.exit:                                          ; preds = %loop.body
   call void (ptr, ...) @printf(ptr @.str.4)
-  %8 = load i32, ptr @main.y, align 4
+  %8 = load i32, ptr @foo.main.y, align 4
   %add1 = add i32 %8, 1
-  store i32 %add1, ptr @main.y, align 4
+  store i32 %add1, ptr @foo.main.y, align 4
   %9 = load i32, ptr %i, align 4
-  %10 = load i32, ptr @main.y, align 4
+  %10 = load i32, ptr @foo.main.y, align 4
   call void (ptr, ...) @printf(ptr @.str.5, i32 %9, i32 %10)
   %11 = load i32, ptr %i, align 4
   %add2 = add i32 %11, 1
@@ -119,20 +119,20 @@ loop.body6:                                       ; preds = %loop.cond4
   %eq7 = icmp eq i32 %13, 1
   br i1 %eq7, label %if.then8, label %if.exit10
 if.then8:                                         ; preds = %loop.body6
-  %14 = load i32, ptr @main.y.7, align 4
+  %14 = load i32, ptr @foo.main.y.7, align 4
   %add9 = add i32 %14, 1
-  store i32 %add9, ptr @main.y.7, align 4
+  store i32 %add9, ptr @foo.main.y.7, align 4
   %15 = load i32, ptr %i3, align 4
-  %16 = load i32, ptr @main.y.7, align 4
+  %16 = load i32, ptr @foo.main.y.7, align 4
   call void (ptr, ...) @printf(ptr @.str.8, i32 %15, i32 %16)
   br label %loop.exit13
 if.exit10:                                        ; preds = %loop.body6
   call void (ptr, ...) @printf(ptr @.str.9)
-  %17 = load i32, ptr @main.y.7, align 4
+  %17 = load i32, ptr @foo.main.y.7, align 4
   %add11 = add i32 %17, 1
-  store i32 %add11, ptr @main.y.7, align 4
+  store i32 %add11, ptr @foo.main.y.7, align 4
   %18 = load i32, ptr %i3, align 4
-  %19 = load i32, ptr @main.y.7, align 4
+  %19 = load i32, ptr @foo.main.y.7, align 4
   call void (ptr, ...) @printf(ptr @.str.10, i32 %18, i32 %19)
   %20 = load i32, ptr %i3, align 4
   %add12 = add i32 %20, 1
@@ -151,20 +151,20 @@ loop.body17:                                      ; preds = %loop.cond15
   %eq18 = icmp eq i32 %22, 2
   br i1 %eq18, label %if.then19, label %if.exit21
 if.then19:                                        ; preds = %loop.body17
-  %23 = load i32, ptr @main.y.12, align 4
+  %23 = load i32, ptr @foo.main.y.12, align 4
   %add20 = add i32 %23, 1
-  store i32 %add20, ptr @main.y.12, align 4
+  store i32 %add20, ptr @foo.main.y.12, align 4
   %24 = load i32, ptr %i14, align 4
-  %25 = load i32, ptr @main.y.12, align 4
+  %25 = load i32, ptr @foo.main.y.12, align 4
   call void (ptr, ...) @printf(ptr @.str.13, i32 %24, i32 %25)
   br label %loop.exit24
 if.exit21:                                        ; preds = %loop.body17
   call void (ptr, ...) @printf(ptr @.str.14)
-  %26 = load i32, ptr @main.y.12, align 4
+  %26 = load i32, ptr @foo.main.y.12, align 4
   %add22 = add i32 %26, 1
-  store i32 %add22, ptr @main.y.12, align 4
+  store i32 %add22, ptr @foo.main.y.12, align 4
   %27 = load i32, ptr %i14, align 4
-  %28 = load i32, ptr @main.y.12, align 4
+  %28 = load i32, ptr @foo.main.y.12, align 4
   call void (ptr, ...) @printf(ptr @.str.15, i32 %27, i32 %28)
   %29 = load i32, ptr %i14, align 4
   %add23 = add i32 %29, 1

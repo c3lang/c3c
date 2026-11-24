@@ -1,0 +1,37 @@
+// #target: linux-x64
+module i128;
+
+bitstruct Wide : uint128
+{
+	ulong lo : 0..63;
+	int mid : 64..95;
+}
+
+fn int128 ops(int128 a, uint128 b, int s) @export("i128_ops")
+{
+	int128 r = a / (int128)b + 0x1234_5678_9abc_def0_1122_3344;
+	r <<= s;
+	if (a < r) r = -r;
+	return r % 7 + (int128)(double)b;
+}
+
+fn long wide(Wide w) @export("i128_wide") => (long)w.lo + w.mid;
+
+fn bool[<2>] lanes(int128[<2>] a, int128[<2>] s) @export("i128_lanes") => (a << s).comp_lt(s);
+
+/* #expect: i128.c
+
+res = __c3_u128_and(__c3_u128_lshr(res, 64), __c3_u128_lshr(__c3_u128_not(__c3_u128_from_u64(0)), 96));
+return (int32_t)__c3_u128_lo(res);
+__c3_uint128 _val = __c3_i128_as_u128(__c3_i128_from_i64((int64_t)val));
+__c3_i128_sdiv(___var_
+__C3_I128_INIT(0x12345678ULL, 0x9abcdef011223344ULL)
+__c3_u128_add(___var_
+__c3_u128_shl(___var_
+__c3_i128_slt(___var_
+__c3_u128_neg(___var_
+__c3_i128_smod(___var_
+__c3_u128_to_f64(___var_
+__c3_f64_to_i128((double)___var_
+.ptr[1] = __c3_u128_shl(
+.ptr[1]) ? -1 : 0;

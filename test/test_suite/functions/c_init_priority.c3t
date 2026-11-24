@@ -1,0 +1,19 @@
+// #target: linux-x64
+module ip;
+extern fn void note(int);
+
+fn void late() @init(3000) { note(3000); }
+fn void fini() @finalizer(2000) { note(2000); }
+fn void plain() @init { note(1); }
+
+/* #expect: ip.c
+
+__C3_INIT(3096) extern void ip__late(void);
+__C3_FINI(2096) extern void ip__fini(void);
+__C3_INIT(65535) extern void ip__plain(void);
+__C3_INIT(3096) void ip__late(void) {
+__C3_INIT_ENTRY(ip__late, ".CRT$XCT03000")
+__C3_FINI(2096) void ip__fini(void) {
+__C3_FINI_ENTRY(ip__fini, ".CRT$XCT02000")
+__C3_INIT(65535) void ip__plain(void) {
+__C3_INIT_ENTRY(ip__plain, ".CRT$XCU")

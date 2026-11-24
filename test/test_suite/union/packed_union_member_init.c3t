@@ -1,0 +1,88 @@
+// #target: macos-x64
+module test;
+
+union Aa { bool b; int x; }
+union Ba @packed { Aa x; }
+struct Sp @packed { char c; Aa u; }
+union Cu @packed { Sp s; long l; }
+
+bool flag = true;
+int value = 7;
+
+fn void union_in_packed_union() @export
+{
+	(Ba){ { .b = flag } };
+	Ba v = { { .x = value } };
+}
+
+fn void union_in_packed_struct() @export
+{
+	Sp v = { 1, { .x = value } };
+	Sp w = { .c = 1, .u.x = value };
+	Sp[2] arr = { [1] = { 1, { .x = value } } };
+}
+
+fn void packed_struct_in_packed_union() @export
+{
+	Cu v = { .s = { 2, { .x = value } } };
+}
+
+/* #expect: test.ll
+
+define void @test__union_in_packed_union() #0 {
+entry:
+  %literal = alloca %Ba, align 1
+  %v = alloca %Ba, align 1
+  call void @llvm.memset.p0.i64(ptr align 1 %literal, i8 0, i64 4, i1 false)
+  %0 = load i8, ptr @test.flag, align 1
+  store i8 %0, ptr %literal, align 1
+  call void @llvm.memset.p0.i64(ptr align 1 %v, i8 0, i64 4, i1 false)
+  %1 = load i32, ptr @test.value, align 4
+  store i32 %1, ptr %v, align 1
+  ret void
+}
+
+define void @test__union_in_packed_struct() #0 {
+entry:
+  %v = alloca %Sp, align 1
+  %w = alloca %Sp, align 1
+  %arr = alloca [2 x %Sp], align 1
+  store i8 1, ptr %v, align 1
+  %ptradd = getelementptr inbounds i8, ptr %v, i64 1
+  call void @llvm.memset.p0.i64(ptr align 1 %ptradd, i8 0, i64 4, i1 false)
+  %0 = load i32, ptr @test.value, align 4
+  store i32 %0, ptr %ptradd, align 1
+  store i8 0, ptr %w, align 1
+  %ptradd1 = getelementptr inbounds i8, ptr %w, i64 1
+  call void @llvm.memset.p0.i64(ptr align 1 %ptradd1, i8 0, i64 4, i1 false)
+  store i8 1, ptr %w, align 1
+  %ptradd2 = getelementptr inbounds i8, ptr %w, i64 1
+  %1 = load i32, ptr @test.value, align 4
+  store i32 %1, ptr %ptradd2, align 1
+  store i8 0, ptr %arr, align 1
+  %ptradd3 = getelementptr inbounds i8, ptr %arr, i64 1
+  call void @llvm.memset.p0.i64(ptr align 1 %ptradd3, i8 0, i64 4, i1 false)
+  %ptradd4 = getelementptr inbounds i8, ptr %arr, i64 5
+  store i8 0, ptr %ptradd4, align 1
+  %ptradd5 = getelementptr inbounds i8, ptr %ptradd4, i64 1
+  call void @llvm.memset.p0.i64(ptr align 1 %ptradd5, i8 0, i64 4, i1 false)
+  %ptradd6 = getelementptr inbounds i8, ptr %arr, i64 5
+  store i8 1, ptr %ptradd6, align 1
+  %ptradd7 = getelementptr inbounds i8, ptr %ptradd6, i64 1
+  call void @llvm.memset.p0.i64(ptr align 1 %ptradd7, i8 0, i64 4, i1 false)
+  %2 = load i32, ptr @test.value, align 4
+  store i32 %2, ptr %ptradd7, align 1
+  ret void
+}
+
+define void @test__packed_struct_in_packed_union() #0 {
+entry:
+  %v = alloca %Cu, align 1
+  call void @llvm.memset.p0.i64(ptr align 1 %v, i8 0, i64 8, i1 false)
+  store i8 2, ptr %v, align 1
+  %ptradd = getelementptr inbounds i8, ptr %v, i64 1
+  call void @llvm.memset.p0.i64(ptr align 1 %ptradd, i8 0, i64 4, i1 false)
+  %0 = load i32, ptr @test.value, align 4
+  store i32 %0, ptr %ptradd, align 1
+  ret void
+

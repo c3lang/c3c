@@ -265,7 +265,7 @@ macro bool is_native_atomic_type($Type)
  @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
 
- @require !$alignment || math::is_power_of_2($alignment) : "Alignment must be a power of two."
+ @require !$alignment || mem::@is_valid_alignment($alignment) : "The alignment must be 0 or a power of two"
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require $defined(*ptr + y) : "+ must be defined between the values."
@@ -285,7 +285,7 @@ macro fetch_add(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
  @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
 
- @require !$alignment || math::is_power_of_2($alignment) : "Alignment must be a power of two."
+ @require !$alignment || mem::@is_valid_alignment($alignment) : "The alignment must be 0 or a power of two"
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require $defined(*ptr - y) : "- must be defined between the values."
@@ -385,7 +385,7 @@ macro fetch_div(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
  @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
 
- @require !$alignment || math::is_power_of_2($alignment) : "Alignment must be a power of two."
+ @require !$alignment || mem::@is_valid_alignment($alignment) : "The alignment must be 0 or a power of two"
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require $defined(*ptr | y) : "| must be defined between the values."
@@ -402,7 +402,7 @@ macro fetch_or(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile
  @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
 
- @require !$alignment || math::is_power_of_2($alignment) : "Alignment must be a power of two."
+ @require !$alignment || mem::@is_valid_alignment($alignment) : "The alignment must be 0 or a power of two"
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require $defined(*ptr ^ y) : "^ must be defined between the values."
@@ -419,7 +419,7 @@ macro fetch_xor(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
  @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
 
- @require !$alignment || math::is_power_of_2($alignment) : "Alignment must be a power of two."
+ @require !$alignment || mem::@is_valid_alignment($alignment) : "The alignment must be 0 or a power of two"
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require $defined(*ptr ^ y) : "& must be defined between the values."
@@ -578,6 +578,7 @@ macro flag_clear(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require $defined(*ptr > y) : "Only values that are comparable with > may be used"
+ @require !$alignment || mem::@is_valid_alignment($alignment) : "The alignment must be 0 or a power of two"
  @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_max(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, sz $alignment = 0)
@@ -597,6 +598,7 @@ macro fetch_max(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require $defined(*ptr > y) : "Only values that are comparable with > may be used"
+ @require !$alignment || mem::@is_valid_alignment($alignment) : "The alignment must be 0 or a power of two"
  @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_min(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, sz $alignment = 0)

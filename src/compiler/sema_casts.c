@@ -1734,10 +1734,13 @@ static bool rule_vec_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
 	if (cc->from->array.len != cc->to->array.len) return sema_cast_error(cc, false, is_silent);
 	Type *from_base = cc->from->array.base;
 	// A constant float vector must fit when it is cast to an integer vector.
-	if (is_explicit && type_is_float(from_base) && type_is_integer(cc->to->array.base)
-		&& sema_cast_const(cc->expr) && expr_is_const_initializer(cc->expr))
+	Type *to_base = type_flatten(cc->to->array.base);
+	if (is_explicit && type_is_float(type_flatten(from_base)) && type_is_integer(to_base) && sema_cast_const(cc->expr))
 	{
-		Expr *problem = const_float_vector_problem(cc->expr->const_expr.initializer, type_flatten(cc->to->array.base));
+		ConstInitializer *init = NULL;
+		if (expr_is_const_initializer(cc->expr)) init = cc->expr->const_expr.initializer;
+		if (expr_is_const_slice(cc->expr)) init = cc->expr->const_expr.slice_init;
+		Expr *problem = init ? const_float_vector_problem(init, to_base) : NULL;
 		if (problem)
 		{
 			if (is_silent) return false;

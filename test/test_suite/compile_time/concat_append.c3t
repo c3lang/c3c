@@ -46,7 +46,9 @@ entry:
   %f = alloca %"char[]", align 8
   %g = alloca %"char[]", align 8
   %h = alloca i32, align 4
-  store %"char[]" { ptr @.str, i64 11 }, ptr %c, align 8
+  store ptr @.str, ptr %c, align 8
+  %ptradd = getelementptr inbounds i8, ptr %c, i64 8
+  store i64 11, ptr %ptradd, align 8
   call void @llvm.memcpy.p0.p0.i64(ptr align 16 %a, ptr align 16 @.__const, i64 32, i1 false)
   store i32 3, ptr %z, align 4
   call void @llvm.memcpy.p0.p0.i64(ptr align 4 %b, ptr align 4 @.__const.3, i64 12, i1 false)
@@ -55,8 +57,12 @@ entry:
   %1 = insertvalue %"int[]" %0, i64 3, 1
   store %"int[]" %1, ptr %d, align 8
   call void @llvm.memcpy.p0.p0.i64(ptr align 16 %e, ptr align 16 @.__const.7, i64 32, i1 false)
-  store %"char[]" { ptr @.emptystr, i64 0 }, ptr %f, align 8
-  store %"char[]" { ptr @.str.8, i64 3 }, ptr %g, align 8
+  store ptr @.emptystr, ptr %f, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %f, i64 8
+  store i64 0, ptr %ptradd1, align 8
+  store ptr @.str.8, ptr %g, align 8
+  %ptradd2 = getelementptr inbounds i8, ptr %g, i64 8
+  store i64 3, ptr %ptradd2, align 8
   store i32 -1151103613, ptr %h, align 4
   ret i32 0
 }

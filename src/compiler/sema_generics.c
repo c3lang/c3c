@@ -166,6 +166,18 @@ FOUND:;
 		DEBUG_LOG("Generate generic instance %s", csuffix);
 		if (compiler.context.errors_found) return poisoned_decl;
 		instance = decl_new(DECL_GENERIC_INSTANCE, csuffix, invocation_loc);
+		Decl *root = context->generic_instance;
+		if (root && root->decl_kind != DECL_GENERIC_INSTANCE) root = NULL;
+		if (root)
+		{
+			if (root->instance_decl.spawn_root) root = declptr(root->instance_decl.spawn_root);
+			if (++root->instance_decl.spawn_count > (int)compiler.build.max_generic_instances)
+			{
+				sema_error_at(context, invocation_loc, "This generic instantiation would create more than %u instances, it is probably recursive. You can change this limit using '--max-generic-instances'.", compiler.build.max_generic_instances);
+				return poisoned_decl;
+			}
+			instance->instance_decl.spawn_root = declid(root);
+		}
 		FOREACH_IDX(i, const char *, param_name, generic->generic_decl.parameters)
 		{
 			Decl *decl;

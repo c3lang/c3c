@@ -1,0 +1,19 @@
+// #target: macos-x64
+// #debuginfo: yes
+module test;
+faultdef OOPS;
+macro int @bump(a) { static int ms = 100; ms += a; return ms; }
+fn int shadow(int x) { return @bump(x) + @bump(x * 2); }
+fn int with_static() { static int? opt_static = 7; static int plain = 3; return (opt_static ?? 0) + plain; }
+fn int main() { return shadow(1) + with_static(); }
+
+/* #expect: test.ll
+
+@test.shadow.ms = internal unnamed_addr global i32 100, align 4, !dbg !0
+@test.shadow.ms.1 = internal unnamed_addr global i32 100, align 4, !dbg !4
+@test.with_static.opt_static.f = internal unnamed_addr global i64 0, align 8
+@test.with_static.opt_static = internal unnamed_addr global i32 7, align 4, !dbg !6
+
+!1 = distinct !DIGlobalVariable(name: "ms", linkageName: "test.shadow.ms", scope: !2, file: !2, line: 3, type: !3, isLocal: true, isDefinition: true, align: 32)
+!5 = distinct !DIGlobalVariable(name: "ms", linkageName: "test.shadow.ms.1", scope: !2, file: !2, line: 3, type: !3, isLocal: true, isDefinition: true, align: 32)
+!7 = distinct !DIGlobalVariable(name: "opt_static", linkageName: "test.with_static.opt_static", scope: !2, file: !2, line: 5, type: !3, isLocal: true, isDefinition: true, align: 32)

@@ -18,7 +18,9 @@ fn int main()
 entry:
   %varargslots = alloca [1 x %any], align 16
   %retparam = alloca i64, align 8
-  store %any { ptr @foo.x, i64 ptrtoint (ptr @"$ct.float" to i64) }, ptr %varargslots, align 16
+  store ptr @foo.x, ptr %varargslots, align 16
+  %ptradd = getelementptr inbounds i8, ptr %varargslots, i64 8
+  store i64 ptrtoint (ptr @"$ct.float" to i64), ptr %ptradd, align 8
   %0 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 2, ptr %varargslots, i64 1)
   ret i32 0
 }

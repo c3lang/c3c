@@ -29,11 +29,13 @@ fn void main()
   %5 = insertvalue %any %4, i64 ptrtoint (ptr @"$ct.int" to i64), 1
   %ptradd3 = getelementptr inbounds i8, ptr %varargslots, i64 32
   store %any %5, ptr %ptradd3, align 16
-  store %"char[]" { ptr @.str.1, i64 3 }, ptr %taddr4, align 8
+  store ptr @.str.1, ptr %taddr4, align 8
+  %ptradd5 = getelementptr inbounds i8, ptr %taddr4, i64 8
+  store i64 3, ptr %ptradd5, align 8
   %6 = insertvalue %any undef, ptr %taddr4, 0
   %7 = insertvalue %any %6, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  %ptradd5 = getelementptr inbounds i8, ptr %varargslots, i64 48
-  store %any %7, ptr %ptradd5, align 16
+  %ptradd6 = getelementptr inbounds i8, ptr %varargslots, i64 48
+  store %any %7, ptr %ptradd6, align 16
   %8 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 17, ptr %varargslots, i64 4)
   ret void
 }

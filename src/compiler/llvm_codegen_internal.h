@@ -174,6 +174,7 @@ typedef struct GenContext_
 	LLVMTypeRef memcmp_function_type;
 	unsigned module_size;
 	StatsEntry *timing;
+	bool split_aggregates;
 } GenContext;
 
 // LLVM Intrinsics
@@ -339,6 +340,15 @@ extern LLVMAttributes attribute_id;
 // LLVM Attributes
 
 void gencontext_begin_module(GenContext *c);
+extern uint16_t llvm_generation;
+INLINE void *llvm_set_backend_type(Type *type, void *value) { type->backend_type_gen = llvm_generation; return type->backend_type = value; }
+INLINE void *llvm_set_backend_typeid(Type *type, void *value) { type->backend_typeid_gen = llvm_generation; return type->backend_typeid = value; }
+INLINE void *llvm_set_backend_debug_type(Type *type, void *value) { type->backend_debug_gen = llvm_generation; return type->backend_debug_type = value; }
+INLINE void *llvm_get_cached_backend_type(Type *type) { return type->backend_type_gen == llvm_generation ? type->backend_type : NULL; }
+INLINE void *llvm_get_cached_backend_typeid(Type *type) { return type->backend_typeid_gen == llvm_generation ? type->backend_typeid : NULL; }
+INLINE void *llvm_get_cached_backend_debug_type(Type *type) { return type->backend_debug_gen == llvm_generation ? type->backend_debug_type : NULL; }
+INLINE LLVMValueRef llvm_decl_set_ref(Decl *decl, LLVMValueRef ref) { decl->backend_gen = llvm_generation; return decl->backend_ref = ref; }
+INLINE LLVMValueRef llvm_decl_current_ref(Decl *decl) { return decl->backend_gen == llvm_generation ? decl->backend_ref : NULL; }
 void gencontext_init_file_emit(GenContext *c, CompilationUnit *unit);
 void gencontext_end_file_emit(GenContext *c, CompilationUnit *ast);
 void gencontext_end_module(GenContext *context);
@@ -499,6 +509,8 @@ LLVMValueRef llvm_load_value_store(GenContext *c, BEValue *value);
 
 // -- Store ---
 LLVMValueRef llvm_store(GenContext *c, BEValue *destination, BEValue *value);
+LLVMValueRef llvm_store_single(GenContext *c, BEValue *destination, BEValue *value);
+LLVMValueRef llvm_store_split_fields(GenContext *c, LLVMValueRef pointer, LLVMValueRef value, AlignSize alignment);
 LLVMValueRef llvm_store_zero(GenContext *c, BEValue *ref);
 void llvm_store_no_fault(GenContext *c, BEValue *ref);
 INLINE LLVMValueRef llvm_store_raw(GenContext *c, BEValue *destination, LLVMValueRef raw_value);
@@ -508,6 +520,8 @@ INLINE LLVMValueRef llvm_store_to_ptr(GenContext *c, LLVMValueRef destination, B
 INLINE LLVMValueRef llvm_store_to_ptr_raw(GenContext *c, LLVMValueRef pointer, LLVMValueRef value, Type *type);
 LLVMValueRef llvm_store_to_ptr_aligned(GenContext *c, LLVMValueRef destination, BEValue *value, AlignSize alignment);
 LLVMValueRef llvm_store_to_ptr_raw_aligned(GenContext *c, LLVMValueRef pointer, LLVMValueRef value, AlignSize alignment);
+LLVMValueRef llvm_store_to_ptr_raw_aligned_single(GenContext *c, LLVMValueRef pointer, LLVMValueRef value, AlignSize alignment);
+LLVMValueRef llvm_store_to_ptr_aligned_single(GenContext *c, LLVMValueRef destination, BEValue *value, AlignSize alignment);
 void llvm_store_to_ptr_zero(GenContext *context, LLVMValueRef pointer, Type *type);
 TypeSize llvm_store_size(GenContext *c, LLVMTypeRef type);
 TypeSize llvm_alloc_size(GenContext *c, LLVMTypeRef type);

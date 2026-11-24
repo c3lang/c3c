@@ -177,7 +177,9 @@ voiderr36:                                        ; preds = %noerr_block34, %gua
   %20 = load i32, ptr %b, align 4
   %add46 = add i32 %20, 3
   store i32 %add46, ptr %b, align 4
-  store %"char[]" { ptr @.str.5, i64 3 }, ptr %taddr, align 8
+  store ptr @.str.5, ptr %taddr, align 8
+  %ptradd = getelementptr inbounds i8, ptr %taddr, i64 8
+  store i64 3, ptr %ptradd, align 8
   %21 = insertvalue %any undef, ptr %taddr, 0
   %22 = insertvalue %any %21, i64 ptrtoint (ptr @"$ct.String" to i64), 1
   store %any %22, ptr %varargslots47, align 16

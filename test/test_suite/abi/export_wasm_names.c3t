@@ -24,8 +24,8 @@ define i32 @wtest__sq(i32 %0) #4 {
 
 extern int32_t call_host(int32_t);
 extern int32_t wtest__sq(int32_t);
-__attribute__((import_name("get"), import_module("hostmod"))) extern int32_t get(int32_t);
-__attribute__((import_name("host_plain"))) extern int32_t host_plain(int32_t);
-__attribute__((import_name("named"))) extern int32_t named(int32_t);
+__attribute__((import_name("get"), import_module("hostmod"))) extern int32_t (__C3_EXT(get))(int32_t) __C3_EXT_SYM("get");
+__attribute__((import_name("host_plain"))) extern int32_t (__C3_EXT(host_plain))(int32_t) __C3_EXT_SYM("host_plain");
+__attribute__((import_name("named"))) extern int32_t (__C3_EXT(named))(int32_t) __C3_EXT_SYM("named");
 __attribute__((export_name("call_host"))) int32_t call_host(int32_t
 __attribute__((export_name("wtest__sq"))) int32_t wtest__sq(int32_t

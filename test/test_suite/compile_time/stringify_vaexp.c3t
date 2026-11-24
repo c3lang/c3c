@@ -40,8 +40,14 @@ entry:
   store ptr %0, ptr %args, align 8
   %ptradd = getelementptr inbounds i8, ptr %args, i64 8
   store i64 %1, ptr %ptradd, align 8
-  store %"char[]" { ptr @.str, i64 4 }, ptr %a, align 8
-  store %"char[]" { ptr @.str.1, i64 4 }, ptr %b, align 8
-  store %"char[]" { ptr @.str.2, i64 4 }, ptr %c, align 8
+  store ptr @.str, ptr %a, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %a, i64 8
+  store i64 4, ptr %ptradd1, align 8
+  store ptr @.str.1, ptr %b, align 8
+  %ptradd2 = getelementptr inbounds i8, ptr %b, i64 8
+  store i64 4, ptr %ptradd2, align 8
+  store ptr @.str.2, ptr %c, align 8
+  %ptradd3 = getelementptr inbounds i8, ptr %c, i64 8
+  store i64 4, ptr %ptradd3, align 8
   ret i32 0
 }

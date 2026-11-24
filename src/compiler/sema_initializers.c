@@ -289,6 +289,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 	initializer->resolve_status = RESOLVE_DONE;
 	if (expr_is_runtime_const(initializer))
 	{
+		FOREACH(Expr *, element, elements) sema_cast_const(element);
 		bool is_union = type_flatten(initializer->type)->type_kind == TYPE_UNION;
 		ASSERT(!is_union || vec_size(elements) == 1);
 		ConstInitializer *init;

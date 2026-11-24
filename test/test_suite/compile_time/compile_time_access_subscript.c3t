@@ -82,7 +82,9 @@ fn void main()
   store i32 0, ptr %z14, align 4
   %ptradd15 = getelementptr inbounds i8, ptr %z14, i64 4
   store i32 0, ptr %ptradd15, align 4
-  store %"int[]" zeroinitializer, ptr %z16, align 8
+  store ptr null, ptr %z16, align 8
+  %ptradd17 = getelementptr inbounds i8, ptr %z16, i64 8
+  store i64 0, ptr %ptradd17, align 8
   store float 0.000000e+00, ptr %taddr, align 4
   %0 = insertvalue %any undef, ptr %taddr, 0
   %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.float" to i64), 1

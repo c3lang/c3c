@@ -578,6 +578,24 @@ RESOLVE_LAMBDA:;
 	assign_testfn();
 	assign_benchfn();
 
+	FOREACH(Module *, module, compiler.context.module_list)
+	{
+		int unclaimed = 0;
+		FOREACH(CompilationUnit *, unit, module->units)
+		{
+			FOREACH(Decl *, var, unit->generated_globals)
+			{
+				if (!var->name)
+				{
+					scratch_buffer_clear();
+					scratch_buffer_append_module(module, false);
+					scratch_buffer_printf(".$taddr%d", unclaimed++);
+					var->name = var->extname = scratch_buffer_copy();
+				}
+				vec_add(unit->vars, var);
+			}
+		}
+	}
 	sema_trace_liveness();
 }
 

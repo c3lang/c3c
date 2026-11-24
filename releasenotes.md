@@ -8,6 +8,13 @@
 - Unused compiler runtime functions are now removed by the linker, and executables linked with `cc` are dead stripped.
 - Compiler-rt may not contain thread locals, interfaces, `@dynamic` methods, `@init`/`@finalizer` functions or extern declarations. Its safety checks trap instead of calling the panic function.
 - Added `--compiler-rt-module` and the `compiler-rt-module` project option to override the compiler runtime module (default: `compiler_rt`).
+- The C backend supports MSVC (`cl.exe`) and tcc, supports `int128` on compilers without a 128-bit integer, gives `float16` and `bfloat` their 16-bit layout and rounding, cross compiles with any C compiler for the target, and maps debug info to C3 source lines and names.
+- Added `--max-generic-instances` to limit the number of instances a single generic can implicitly spawn (default: 4096).
+- `[out]` or `[inout]` now detects more cases where pointers to constants were incorrectly used.
+- A type that declares any of the `[]`, `&[]`, `[]=` or `len` overloads no longer falls back to its underlying type for the ones it lacks: `foreach`, indexing, `lengthof` and `.len` require the overload they need, e.g. `foreach` over a typedef slice with only `[]` is an error. Typedefs and constsets without these overloads still use their underlying type.
+- `foreach` errors now name the missing overload.
+- `foreach` over an array or vector no longer emits a bounds check for each element in safe mode.
+- Improved debug info with paths on types.
 
 ### Fixes
 - `nextcase x` in a `@jump` switch read `x` after the defers of the case had run.
@@ -78,16 +85,63 @@
 - Corrected the FreeBSD `addrinfo` layout and `AF_MAX`/`PF_MAX` socket constants.
 - `@volatile_load` and `mem::load` could lose union bytes stored in padding.
 - Constant integer-to-float conversions could round twice and produce a different result from runtime conversion.
+- Backtraces showed "source unavailable" when `addr2line` printed a discriminator.
+- `float16` and `bfloat` conversions failed to link without libgcc, such as on Windows.
+- Programs using the stdlib failed to compile for `elf-aarch64`.
+- Printing crashed with a libc other than those of Linux, Darwin, the BSDs and Windows, such as newlib.
+- Constant casts to `float16` and `bfloat` were only rounded to `float` precision, so `(float)(float16)70000.0` stayed 70000 instead of infinity.
+- A runtime splat into a `@bigendian` bitstruct initializer, like `{ ...base, .f = true }`, produced wrong field values.
+- Taking `&` of a vector component of a temporary, like `&rv().y` or `&(c ? a : b).y`, was accepted and pointed into a copy.
+- Writing through a slice of a temporary array, like `ra()[0:2][0] = 1` or `&ra()[..][1]`, was accepted and changed a copy.
+- Calling a local optional function pointer, like `Fn? f = &twice; f(3);`, was rejected.
+- Indexing an optional struct through its `inline` member, like `Outer? o; o[1]`, was rejected.
+- An out-of-range constant float vector cast to integer elements wasn't caught when the element type was a typedef or the source a constant slice, causing miscompilation or crash.
+- Calling a function with a parameter after its varargs, like `fn void b(int... x, int a)`, with no arguments crashed the compiler.
+- A builtin alignment above 0x1000_0000, like `$$unaligned_store(p, 0, 2147483648, false)`, crashed the compiler.
+- Assigning to a macro method, like `x.hash = 0` or `(int){}.hash -= 0`, crashed the compiler.
+- Assigning to a function method, like `f.m = &other`, gave a confusing type error, and `$defined` of it was true.
+- An enum's `.ordinal` could be assigned to or have its address taken, like `c.ordinal = 2` or `&c.ordinal`.
+- Enum associated values could be assigned to, like `c.val = 3` or `c.arr[0] = 9`, crashing at runtime.
+- `$defined(&f.missing)` was a hard error instead of false.
+- An optional vector or a bitstruct initialized with `unreachable()` before a runtime value, like `int[<2>]? x = { unreachable(), a() };`, crashed the compiler.
+- A macro whose body was only `return;` hit an assert in the compiler.
+- A named argument to a type property call, like `int::has_tag(x: 0)`, crashed the compiler.
+- A `defer` coming from a compile-time statement used as the body of an `if`, `while` or `for`, like `if (x) $if true: defer {} $endif`, crashed the compiler.
+- `foreach` and `foreach_r` now reject a raw `defer` as their body, like `while` and `for`.
+- A method on a recursive alias, like `alias Aa = Aa; fn int Aa.x() {}`, made the compiler hang.
+- An error inside a lambda body didn't fail the surrounding code, so a `$for` containing such a lambda kept iterating up to the max limit.
+- Generic modules whose instances kept requesting new, deeper instances, like `alias Cc = Aa{ Aa{ Bb{ Ba } } };` inside module `a <Ba>`, made the compiler hang.
+- Initializing a union member with a runtime value inside a `@packed` struct or union, like `(Ba){ { .b = a } }`, used the member's own alignment and hit an assert in the compiler.
+- Declaring a `@noinit` variable of a struct that contains a slice of itself, like `struct Aa { Aa[] x; }`, crashed the compiler. A `@noinit` slice of a `@mustinit` type is now allowed, since a slice doesn't hold its elements.
+- On 32-bit x86, returning a struct with a single `float` or `double` field crashed the compiler.
+- On linux-x86 and netbsd-x86 (32 bit), small structs were incorrectly returned in registers, breaking C ABI.
+- A struct literal built from compile-time values in a macro, like `(Aa){ $nodes[0].a }`, could keep a stale reference to a compile-time variable and crash the compiler when it was later reassigned.
+- `foreach` over a slice variable re-read the slice on every iteration, so reassigning the variable in the loop body, like `foos = foos[1..]`, changed the elements visited and could index out of bounds. The slice is now evaluated once.
+- Writing through a `foreach (&p : s)` loop variable to an `[in]` slice parameter, or reading through it from an `[out]` one, was not detected.
+- `foreach` over a constset of pointers crashed the compiler.
+- Assigning to an element of a dereferenced `[in]` pointer to an array, like `(*s)[0] = 1`, was not detected.
+- `foreach (&v : *p)` with an `[out]` pointer `p` to an array incorrectly reported that `p` was read.
+- `&&` on a typed constant, like `&&CA` for a `const int[3] CA`, returned the constant's own read-only storage instead of a temporary copy, also in global and `static` initializers.
+- Slicing a typed constant with a runtime range, like `CA[i..]` or `CS[i..]` no longer creates a copy.
+- Indexing a vector with a runtime index, like `v[i]`, `v[i] = x`, `v[i] += x` or `v[i]++`, had no bounds check in safe mode.
+- `&&` in an enum associated value or a constant, like `enum Ff : (int* p) { A { &&3 } }`, created a new copy on every use.
+- Regression: warning on MacOS for panic functions when linking. #3678
+- Global variables could not be found by name in gdb. #3664
+- Debug info for the second `static` of a macro expanded twice in one function referred to the first one's symbol.
+- Typeid now has updated debug info. The end of a statement now gets a location.
 
 ### Stdlib changes
+- `atomic::fetch_add` and the other `fetch_*` macros now require the alignment to be at most `mem::MAX_MEMORY_ALIGNMENT`; `fetch_max` and `fetch_min` check it at all.
 - `String.tokenize` and `String.tokenize_all` with an empty split now return each character.
 - `quickselect` deprecated in favour of `sort::select_nth` which does not return an optional result.
 - New easings module `std::math::ease`, with functions mapping `t` in [0, 1] to [0, 1]: Penner's easings (adding `quart` and `quint`), `smoothstep`, `smootherstep`, CSS-style `steps` and `cubic_bezier`, and `@clamped` for inputs outside [0, 1].
 - `std::math::easing` deprecated in favour of `std::math::ease`.
 - `math::lerp` is now public, and `math::inverse_lerp` added.
 - Add `std::crypto::hkdf`, HKDF (RFC 5869) with `extract`, `expand` and `derive`.
+- `std::encoding::csv` can remove quotes from quoted fields.
 
 ## 0.8.6 Change list
+- `File.write` declared its buffer `[out]` instead of `[in]`, and `UrlQueryValues.add` declared `self` `[in]` although it modifies it.
 
 ### Changes / improvements
 - `@asmname` allows defining external names like `@cname` but without normal name mangling.

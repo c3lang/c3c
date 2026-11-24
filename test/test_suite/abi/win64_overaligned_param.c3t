@@ -1,0 +1,23 @@
+// #target: windows-x64
+module oa;
+
+struct Big { float[<4>] v @align(128); int tag; }
+alias BigFn = fn int(Big);
+
+fn int consume(Big b) @export("oa_consume") => b.tag;
+fn int call(Big b) @export("oa_call")
+{
+	BigFn f = &consume;
+	return consume(b) + f(b);
+}
+
+/* #expect: oa.ll
+
+define dllexport i32 @oa_consume(ptr align 128 %0)
+  %1 = call i32 @oa_consume(ptr align 128 %indirectarg)
+
+/* #expect: oa.c
+
+int32_t oa_consume(oa__Big* ___ref_
+__c3_memcpy(&b_,
+oa_consume(&___var_

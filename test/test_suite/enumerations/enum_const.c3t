@@ -668,7 +668,9 @@ entry:
   %b = alloca i32, align 4
   %x = alloca i32, align 4
   %e = alloca i32, align 4
-  store %"char[]" { ptr @.str.11, i64 9 }, ptr %bar, align 8
+  store ptr @.str.11, ptr %bar, align 8
+  %ptradd = getelementptr inbounds i8, ptr %bar, i64 8
+  store i64 9, ptr %ptradd, align 8
   store i32 4, ptr %f, align 4
   store i32 16, ptr %b, align 4
   store i32 4, ptr %x, align 4

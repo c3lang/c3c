@@ -70,6 +70,12 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 		return;
 	}
 
+	if (expr->const_expr.const_kind == CONST_INITIALIZER && c_const_init_needs_stores(expr->const_expr.initializer))
+	{
+		PRINTF("%s ___var_%d;\n__c3_memset(&___var_%d, 0, sizeof(%s));\n", tname, temp, temp, tname);
+		c_emit_const_stores(c, str_printf("___var_%d", temp), expr->const_expr.initializer);
+		return;
+	}
 	PRINTF("%s ___var_%d = ", tname, temp);
 	c_emit_const_init_expr(c, expr, t);
 	PRINT(";\n");
@@ -439,6 +445,14 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 		{
 			c_emit_dynamic_dispatcher(c, dyn_fn);
 			const char *disp_name = c_intern(str_printf("__c3_dyn_%s", c_get_decl_name(dyn_fn)));
+			// Without a default method a missing one panics here, at the call, as with LLVM.
+			Decl *def_method = declptrzero(dyn_fn->func_decl.default_method);
+			if (!def_method || (strip_unused() && !def_method->is_live))
+			{
+				const char *resolve = c_intern(str_printf("__c3_dyn_resolve_%s", c_get_decl_name(dyn_fn)));
+				c_emit_panic_if(c, str_printf("!%s((c3typeid_t)___var_%d.typeid)", resolve, c_args[0].var), PANIC_FN_NO_METHOD,
+				                expr->loc, dyn_fn->name, NULL, NULL);
+			}
 			bool leading_arg = false;
 			int fault        = c_emit_call_invocation(c, value, ret, return_type, has_return, disp_name, &leading_arg);
 			for (int i = 0; i < arg_idx; i++)
@@ -447,7 +461,8 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 				{
 					PRINT(", ");
 				}
-				PRINTF("___var_%d", c_args[i].var);
+				Decl *param = i < vec_size(sig->params) ? sig->params[i] : NULL;
+				PRINTF("%s___var_%d", param && c_param_by_ref(c_decl_type(param)) ? "&" : "", c_args[i].var);
 			}
 			PRINT(");\n");
 			c_emit_call_fault_check(c, fault);
@@ -556,7 +571,7 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 		{
 			if (expected_type)
 			{
-				PRINTF("(%s)%s", c_type_name(c, expected_type), c_type_zero_literal(expected_type));
+				PRINTF("%s(%s)%s", c_param_by_ref(expected_type) ? "&" : "", c_type_name(c, expected_type), c_type_zero_literal(expected_type));
 			}
 			else
 			{
@@ -567,7 +582,7 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 
 		// Sema converts every argument to its parameter type. Without a signature the argument's type is used.
 		ASSERT(!expected_type || strcmp(c_type_name(c, expected_type), c_type_name(c, arg_type)) == 0);
-		PRINTF("___var_%d", c_args[i].var);
+		PRINTF("%s___var_%d", expected_type && c_param_by_ref(expected_type) ? "&" : "", c_args[i].var);
 	}
 	PRINT(");\n");
 	c_emit_call_fault_check(c, fault);
@@ -613,7 +628,7 @@ static void c_emit_eq_check(GenContext *c, int result, const char *l, const char
 	}
 	if (type_is_float(flat))
 	{
-		PRINTF("if (%s != %s) ___var_%d = false;\n", l, r, result);
+		PRINTF("if (%s) ___var_%d = false;\n", c_binary_str(BINARYOP_NE, flat, l, r), result);
 		return;
 	}
 	if (flat->type_kind == TYPE_SLICE && !c_eq_is_elementwise(flat->array.base))
@@ -657,6 +672,11 @@ static void c_emit_lvalue_load_for_update(GenContext *c, Expr *left, Type *targe
 	c_emit_lvalue_addr(c, target, addr, type_get_ptr(parent_t));
 	const char *target_tname = c_type_name(c, target_t);
 	int cur_temp             = c_emit_temp_var(c, current, target_t);
+	if (!is_swizzle && addr->align)
+	{
+		PRINTF("%s ___var_%d;\n__c3_memcpy(&___var_%d, %s, sizeof(%s));\n", target_tname, cur_temp, cur_temp, c_addr_bytes(addr), target_tname);
+		return;
+	}
 	if (!is_swizzle)
 	{
 		PRINTF("%s ___var_%d = *(%s*)___var_%d;\n", target_tname, cur_temp, target_tname, addr->var);
@@ -664,15 +684,22 @@ static void c_emit_lvalue_load_for_update(GenContext *c, Expr *left, Type *targe
 	}
 	const char *parent_tname = c_type_name(c, parent_t);
 	const char *sw           = left->swizzle_expr.swizzle;
+	const char *vec          = str_printf("((%s*)___var_%d)->ptr", parent_tname, addr->var);
+	if (addr->align)
+	{
+		int copy = c_create_variable(c);
+		PRINTF("%s ___var_%d;\n__c3_memcpy(&___var_%d, %s, sizeof(%s));\n", parent_tname, copy, copy, c_addr_bytes(addr), parent_tname);
+		vec = str_printf("___var_%d.ptr", copy);
+	}
 	PRINTF("%s ___var_%d;\n", target_tname, cur_temp);
 	if (!c_type_is_vec_or_arr(target_t))
 	{
-		PRINTF("___var_%d = ((%s*)___var_%d)->ptr[%d];\n", cur_temp, parent_tname, addr->var, SWIZZLE_INDEX(sw[0]));
+		PRINTF("___var_%d = %s[%d];\n", cur_temp, vec, SWIZZLE_INDEX(sw[0]));
 		return;
 	}
 	for (int i = 0; sw[i]; i++)
 	{
-		PRINTF("___var_%d.ptr[%d] = ((%s*)___var_%d)->ptr[%d];\n", cur_temp, i, parent_tname, addr->var, SWIZZLE_INDEX(sw[i]));
+		PRINTF("___var_%d.ptr[%d] = %s[%d];\n", cur_temp, i, vec, SWIZZLE_INDEX(sw[i]));
 	}
 }
 
@@ -681,13 +708,14 @@ static void c_emit_zero_check(GenContext *c, CValue *divisor, Type *divisor_t, P
 {
 	if (!c_type_is_vec_or_arr(divisor_t))
 	{
-		c_emit_panic_if(c, str_printf("___var_%d == 0", divisor->var), id, loc, NULL, NULL, NULL);
+		c_emit_panic_if(c, c_truth_str(divisor_t, str_printf("___var_%d", divisor->var), true), id, loc, NULL, NULL, NULL);
 		return;
 	}
 	scratch_buffer_clear();
 	for (ArrayIndex k = 0; k < divisor_t->array.len; k++)
 	{
-		scratch_buffer_printf("%s___var_%d.ptr[%u] == 0", k ? " || " : "", divisor->var, (unsigned)k);
+		const char *lane = str_printf("___var_%d.ptr[%u]", divisor->var, (unsigned)k);
+		scratch_buffer_printf("%s%s", k ? " || " : "", c_truth_str(divisor_t->array.base, lane, true));
 	}
 	c_emit_panic_if(c, scratch_buffer_copy(), id, loc, NULL, NULL, NULL);
 }
@@ -703,8 +731,8 @@ static void c_emit_shift_check(GenContext *c, Type *shifted_t, CValue *amount, T
 	bool amount_signed   = type_is_signed(amount_is_vec ? type_flatten(amount_t->array.base) : amount_t);
 	Type *report_t       = amount_signed ? type_int_signed_by_bitsize(bits) : type_int_unsigned_by_bitsize(bits);
 	Type *compare_t      = type_is_unsigned(base_t) ? type_int_unsigned_by_bitsize(bits) : type_int_signed_by_bitsize(bits);
+	Type *lane_t         = c_safe_type_lower(amount_is_vec ? amount_t->array.base : amount_t);
 	const char *cmp_name = c_type_name(c, compare_t);
-	const char *rep_name = c_type_name(c, report_t);
 	const char *min_expr;
 	const char *max_expr;
 	if (amount_is_vec)
@@ -712,28 +740,34 @@ static void c_emit_shift_check(GenContext *c, Type *shifted_t, CValue *amount, T
 		// Reduce the lanes to their min and max in the compared type.
 		int min_var = c_emit_temp_var(c, NULL, compare_t);
 		int max_var = c_emit_temp_var(c, NULL, compare_t);
-		PRINTF("%s ___var_%d = (%s)(%s)___var_%d.ptr[0];\n", cmp_name, min_var, cmp_name, rep_name, amount->var);
-		PRINTF("%s ___var_%d = ___var_%d;\n", cmp_name, max_var, min_var);
-		for (ArrayIndex k = 1; k < amount_t->array.len; k++)
+		min_expr    = str_printf("___var_%d", min_var);
+		max_expr    = str_printf("___var_%d", max_var);
+		for (ArrayIndex k = 0; k < amount_t->array.len; k++)
 		{
-			const char *lane = str_printf("(%s)(%s)___var_%d.ptr[%u]", cmp_name, rep_name, amount->var, (unsigned)k);
-			PRINTF("if (%s < ___var_%d) ___var_%d = %s;\n", lane, min_var, min_var, lane);
-			PRINTF("if (%s > ___var_%d) ___var_%d = %s;\n", lane, max_var, max_var, lane);
+			const char *lane = str_printf("___var_%d.ptr[%u]", amount->var, (unsigned)k);
+			lane = c_scalar_convert_str(c, compare_t, report_t, c_scalar_convert_str(c, report_t, lane_t, lane));
+			if (!k)
+			{
+				PRINTF("%s %s = %s;\n", cmp_name, min_expr, lane);
+				PRINTF("%s %s = %s;\n", cmp_name, max_expr, min_expr);
+				continue;
+			}
+			PRINTF("if (%s) %s = %s;\n", c_binary_str(BINARYOP_LT, compare_t, lane, min_expr), min_expr, lane);
+			PRINTF("if (%s) %s = %s;\n", c_binary_str(BINARYOP_GT, compare_t, lane, max_expr), max_expr, lane);
 		}
-		min_expr = str_printf("___var_%d", min_var);
-		max_expr = str_printf("___var_%d", max_var);
 	}
 	else
 	{
-		min_expr = max_expr = str_printf("(%s)(%s)___var_%d", cmp_name, rep_name, amount->var);
+		const char *lane = str_printf("___var_%d", amount->var);
+		min_expr = max_expr = c_scalar_convert_str(c, compare_t, report_t, c_scalar_convert_str(c, report_t, lane_t, lane));
 	}
 	if (!type_is_unsigned(base_t))
 	{
-		CPanicValue min_value = { str_printf("(%s)%s", rep_name, min_expr), report_t };
-		c_emit_panic_if(c, str_printf("%s < 0", min_expr), PANIC_FN_SHIFT, loc, NULL, &min_value, NULL);
+		CPanicValue min_value = { c_scalar_convert_str(c, report_t, compare_t, min_expr), report_t };
+		c_emit_panic_if(c, c_binary_str(BINARYOP_LT, compare_t, min_expr, c_int_value_str(c, compare_t, 0)), PANIC_FN_SHIFT, loc, NULL, &min_value, NULL);
 	}
-	CPanicValue max_value = { str_printf("(%s)%s", rep_name, max_expr), report_t };
-	c_emit_panic_if(c, str_printf("%s >= %u", max_expr, (unsigned)bits), PANIC_FN_SHIFT, loc, NULL, &max_value, NULL);
+	CPanicValue max_value = { c_scalar_convert_str(c, report_t, compare_t, max_expr), report_t };
+	c_emit_panic_if(c, c_binary_str(BINARYOP_GE, compare_t, max_expr, c_int_value_str(c, compare_t, bits)), PANIC_FN_SHIFT, loc, NULL, &max_value, NULL);
 }
 
 // Store `val` at `path[p..]` below the C lvalue `ref` of type `type`. A range stores every element, as LLVM.
@@ -751,8 +785,19 @@ static void c_emit_designated_store(GenContext *c, const char *ref, Type *type, 
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		{
-			Decl *member = flat->decl->strukt.members[de->index];
-			c_emit_designated_store(c, str_printf("%s.m%d", ref, (int)de->index), member->type, path, p + 1, val);
+			Decl *member      = flat->decl->strukt.members[de->index];
+			const char *field = str_printf("%s.%s", ref, c_member_name(flat->decl, (int)de->index));
+			if (!c_member_is_bytes(flat->decl, member))
+			{
+				c_emit_designated_store(c, field, member->type, path, p + 1, val);
+				return;
+			}
+			// A member kept as bytes is changed in a copy of its type.
+			const char *mtn = c_type_name(c, member->type);
+			int copy        = c_create_variable(c);
+			PRINTF("%s ___var_%d;\n__c3_memcpy(&___var_%d, &%s, sizeof(%s));\n", mtn, copy, copy, field, mtn);
+			c_emit_designated_store(c, str_printf("___var_%d", copy), member->type, path, p + 1, val);
+			PRINTF("__c3_memcpy(&%s, &___var_%d, sizeof(%s));\n", field, copy, mtn);
 			return;
 		}
 		case TYPE_BITSTRUCT:
@@ -809,38 +854,31 @@ void c_emit_binary_op(GenContext *c, CValue *value, BinaryOp op, Type *expr_type
 		}
 	}
 
+	const char *l = str_printf("___var_%d", left_value.var);
+	const char *r = str_printf("___var_%d", right_value.var);
 	if (!c_type_is_aggregate(expr_type) && (op == BINARYOP_SHR || op == BINARYOP_SHL))
 	{
-		bool is_shl = (op == BINARYOP_SHL);
+		const char *amount  = c_shift_amount_str(right_t, r);
+		const char *shifted = c_binary_str(op, left_t, l, amount);
 		if (left_t && type_is_unsigned(left_t))
 		{
-			PRINTF("%s ___var_%d = ((size_t)___var_%d >= sizeof(%s)*8) ? 0 : (___var_%d %s ___var_%d);\n",
-			       type_string, value->var, right_value.var, type_string, left_value.var, is_shl ? "<<" : ">>", right_value.var);
+			PRINTF("%s ___var_%d = (%s >= sizeof(%s)*8) ? (%s)%s : (%s);\n",
+			       type_string, value->var, amount, type_string, type_string, c_type_zero_literal(left_t), shifted);
 			return;
 		}
-		else
-		{
-			PRINTF("%s ___var_%d = ___var_%d %s ___var_%d;\n",
-			       type_string, value->var, left_value.var, is_shl ? "<<" : ">>", right_value.var);
-			return;
-		}
+		PRINTF("%s ___var_%d = %s;\n", type_string, value->var, shifted);
+		return;
 	}
 
 	if (compiler.build.feature.trap_on_wrap && left_t && right_t && type_is_integer(left_t) && type_is_integer(right_t) &&
 	    !c_type_is_aggregate(expr_type) && (op == BINARYOP_ADD || op == BINARYOP_SUB || op == BINARYOP_MULT))
 	{
-		const char *bname = (op == BINARYOP_ADD) ? "__builtin_add_overflow" : (op == BINARYOP_SUB ? "__builtin_sub_overflow" : "__builtin_mul_overflow");
+		const char *bname = c_overflow_builtin_name(op, left_t);
 		PRINTF("%s ___var_%d;\n", type_string, value->var);
 		PanicFunction panic_fn = (op == BINARYOP_ADD) ? PANIC_FN_ADD_OVERFLOW : (op == BINARYOP_SUB ? PANIC_FN_SUB_OVERFLOW : PANIC_FN_MUL_OVERFLOW);
 		c_emit_panic_if(c, str_printf("%s(___var_%d, ___var_%d, &___var_%d)", bname, left_value.var, right_value.var, value->var), panic_fn, loc, NULL, NULL, NULL);
 		return;
 	}
-	if (op == BINARYOP_MOD && type_is_float(expr_type))
-	{
-		PRINTF("%s ___var_%d = __c3_fmod(___var_%d, ___var_%d);\n", type_string, value->var, left_value.var, right_value.var);
-		return;
-	}
-
 	const char *operator_string = c_binary_op_str(op);
 	bool left_is_ptr            = c_type_is_c_pointer(left_t);
 	bool right_is_ptr           = c_type_is_c_pointer(right_t);
@@ -896,21 +934,24 @@ void c_emit_binary_op(GenContext *c, CValue *value, BinaryOp op, Type *expr_type
 		if (c_type_is_aggregate(left_t) || c_type_is_aggregate(right_t))
 		{
 			CValue operands[2] = { left_value, right_value };
-			c_emit_lanewise(c, value->var, expr_type, str_printf("($0 %s $1) ? -1 : 0", operator_string), operands, 2);
+			c_emit_lanewise(c, value->var, expr_type, c_binary_str(op, left_t->array.base, "$0", "$1"), operands, 2);
 			return;
 		}
 	}
 
 	if (c_type_is_vec_or_arr(expr_type))
 	{
-		// C has no `%` on floating point, lanes go through fmod.
-		bool is_fmod        = op == BINARYOP_MOD && type_is_float(type_flatten(expr_type->array.base));
-		CValue operands[2]  = { left_value, right_value };
-		c_emit_lanewise(c, value->var, expr_type, is_fmod ? "__c3_fmod($0, $1)" : str_printf("$0 %s $1", operator_string), operands, 2);
+		Type *lane_t       = expr_type->array.base;
+		CValue operands[2] = { left_value, right_value };
+		bool is_shift      = op == BINARYOP_SHL || op == BINARYOP_SHR;
+		const char *rhs    = is_shift ? c_shift_amount_str(right_t->array.base, "$1") : "$1";
+		// The operands' lane type: `ptr - ptr` lanes are pointer differences.
+		Type *operand_t    = c_type_is_vec_or_arr(left_t) ? left_t->array.base : lane_t;
+		c_emit_lanewise(c, value->var, expr_type, c_binary_str(op, operand_t, "$0", rhs), operands, 2);
 		return;
 	}
 
-	PRINTF("%s ___var_%d = ___var_%d %s ___var_%d;\n", type_string, value->var, left_value.var, operator_string, right_value.var);
+	PRINTF("%s ___var_%d = %s;\n", type_string, value->var, c_binary_str(op, left_t, l, r));
 }
 
 // The fault slot written by assigning to `left`: only an optional variable has one.
@@ -1107,10 +1148,7 @@ void c_emit_inc_dec(GenContext *c, CValue *value, Expr *expr, bool is_post)
 		Expr *parent_expr = inner->access_resolved_expr.parent;
 		Decl *member      = inner->access_resolved_expr.ref;
 		Type *member_type = c_safe_type_lower(inner->type);
-		if (member_type->type_kind == TYPE_VOID)
-		{
-			member_type = type_uint;
-		}
+		ASSERT(member_type->type_kind != TYPE_VOID);
 		const char *mname = c_type_name(c, member_type);
 
 		int container_ptr_var = 0;
@@ -1121,7 +1159,7 @@ void c_emit_inc_dec(GenContext *c, CValue *value, Expr *expr, bool is_post)
 		c_emit_bitstruct_read_container(c, &cur_val, parent_expr, bitstruct_decl, member, member_type, container_ptr_var, c_tname);
 
 		CValue one = {0};
-		PRINTF("%s ___var_%d = 1;\n", mname, c_emit_temp_var(c, &one, member_type));
+		PRINTF("%s ___var_%d = %s;\n", mname, c_emit_temp_var(c, &one, member_type), c_int_value_str(c, member_type, 1));
 		CValue new_val = {0};
 		c_emit_binary_op(c, &new_val, uop == UNARYOP_INC ? BINARYOP_ADD : BINARYOP_SUB, member_type, cur_val, one, expr->loc);
 		c_emit_bitstruct_write_container(c, parent_expr, bitstruct_decl, member, container_ptr_var, c_tname, &new_val);
@@ -1134,10 +1172,7 @@ void c_emit_inc_dec(GenContext *c, CValue *value, Expr *expr, bool is_post)
 	{
 		target_type = c_safe_type_lower(inner->type);
 	}
-	if (target_type->type_kind == TYPE_VOID)
-	{
-		target_type = type_int;
-	}
+	ASSERT(target_type->type_kind != TYPE_VOID);
 
 	// `x++` is `x = x + 1` with a single evaluation of the address.
 	CValue old_val  = {0};
@@ -1147,7 +1182,7 @@ void c_emit_inc_dec(GenContext *c, CValue *value, Expr *expr, bool is_post)
 	Type *lane_type = c_type_is_vec_or_arr(target_type) ? c_safe_type_lower(target_type->array.base) : target_type;
 	Type *one_type  = c_type_is_c_pointer(lane_type) ? type_sz : lane_type;
 	CValue one = {0};
-	PRINTF("%s ___var_%d = 1;\n", c_type_name(c, one_type), c_emit_temp_var(c, &one, one_type));
+	PRINTF("%s ___var_%d = %s;\n", c_type_name(c, one_type), c_emit_temp_var(c, &one, one_type), c_int_value_str(c, one_type, 1));
 	CValue new_val = {0};
 	c_emit_binary_op(c, &new_val, uop == UNARYOP_INC ? BINARYOP_ADD : BINARYOP_SUB, target_type, old_val, one, expr->loc);
 	c_emit_lvalue_assign(c, inner, addr_val.var ? &addr_val : NULL, &new_val, NULL);
@@ -1159,14 +1194,8 @@ void c_emit_inc_dec(GenContext *c, CValue *value, Expr *expr, bool is_post)
 // `sext_bool`: a signed extension from bool gives -1 for true, as LLVM's sext from i1.
 static void c_emit_scalar_convert(GenContext *c, int temp, Type *to, CValue *from, bool sext_bool)
 {
-	const char *tname = c_type_name(c, to);
-	if (sext_bool)
-	{
-		PRINTF("___var_%d = ___var_%d ? (%s)-1 : 0;\n", temp, from->var, tname);
-		return;
-	}
-	bool through_int = c_type_is_c_pointer(to) != c_type_is_c_pointer(from->type);
-	PRINTF("___var_%d = (%s)%s___var_%d;\n", temp, tname, through_int ? "(uintptr_t)" : "", from->var);
+	const char *converted = c_scalar_convert_str(c, to, from->type, str_printf("___var_%d", from->var));
+	PRINTF("___var_%d = %s;\n", temp, sext_bool ? c_int_neg_str(to, converted) : converted);
 }
 
 // `tmp` holds the bits of `from` (EXPR_RECAST: same size, other type).
@@ -1180,7 +1209,8 @@ static void c_emit_reinterpret(GenContext *c, int temp, Type *to, CValue *from)
 static void c_emit_vector_truth(GenContext *c, CValue *value, Type *result_type, CValue *inner, bool negate)
 {
 	c_ensure_cvalue_var(c, inner, result_type);
-	c_emit_lanewise(c, c_emit_temp_var(c, value, result_type), result_type, negate ? "!$0" : "!!$0", inner, 1);
+	const char *lane = c_truth_str(c_safe_type_lower(inner->type)->array.base, "$0", negate);
+	c_emit_lanewise(c, c_emit_temp_var(c, value, result_type), result_type, lane, inner, 1);
 }
 
 static void c_emit_vec_recast(GenContext *c, int temp, const char *tname, Type *target_type, CValue *inner_val, bool is_bitcast)
@@ -1196,24 +1226,9 @@ static void c_emit_vec_recast(GenContext *c, int temp, const char *tname, Type *
 		return;
 	}
 	ASSERT(t_len == i_len);
-	const char *base_tname = c_type_name(c, t_base);
-	const char *lane;
-	if (i_base->type_kind == TYPE_BOOL && type_is_integer(t_base))
-	{
-		lane = str_printf("$0 ? (%s)-1 : 0", base_tname);
-	}
-	else if (i_base->type_kind == TYPE_BOOL && type_is_float(t_base))
-	{
-		lane = "$0 ? 1.0 : 0.0";
-	}
-	else if (t_base->type_kind == TYPE_BOOL)
-	{
-		lane = "($0 != 0)";
-	}
-	else
-	{
-		lane = str_printf("(%s)$0", base_tname);
-	}
+	// A bool lane sign extends to an integer, as LLVM's sext from i1.
+	const char *lane = c_scalar_convert_str(c, t_base, i_base, "$0");
+	if (i_base->type_kind == TYPE_BOOL && type_is_integer(t_base)) lane = c_int_neg_str(t_base, lane);
 	c_emit_lanewise(c, temp, target_type, lane, inner_val, 1);
 }
 
@@ -1235,26 +1250,13 @@ static CSliceValues c_emit_slice_values(GenContext *c, Expr *expr)
 {
 	Expr *parent_expr = exprptr(expr->slice_expr.expr);
 	Type *parent_type = c_expr_type(parent_expr);
-	if (parent_type->type_kind == TYPE_VOID)
-	{
-		parent_type = type_chars;
-	}
+	ASSERT(parent_type->type_kind != TYPE_VOID);
 	Type *target_type = c_expr_type(expr);
 	Type *elem_type   = (target_type && target_type->type_kind == TYPE_SLICE) ? c_safe_type_lower(target_type->array.base) : type_void;
 	if (elem_type->type_kind == TYPE_VOID)
 	{
-		if ((parent_type->type_kind == TYPE_SLICE || parent_type->type_kind == TYPE_ARRAY))
-		{
-			elem_type = c_safe_type_lower(parent_type->array.base);
-		}
-		else if (parent_type->type_kind == TYPE_POINTER)
-		{
-			elem_type = c_safe_type_lower(parent_type->pointer);
-		}
-		else
-		{
-			elem_type = type_char;
-		}
+		ASSERT(parent_type->type_kind == TYPE_SLICE || parent_type->type_kind == TYPE_ARRAY || parent_type->type_kind == TYPE_POINTER);
+		elem_type = c_safe_type_lower(parent_type->type_kind == TYPE_POINTER ? parent_type->pointer : parent_type->array.base);
 	}
 	if (target_type->type_kind == TYPE_VOID)
 	{
@@ -1287,8 +1289,7 @@ static CSliceValues c_emit_slice_values(GenContext *c, Expr *expr)
 	{
 		CValue parent_addr = {0};
 		c_emit_lvalue_addr(c, parent_expr, &parent_addr, type_get_ptr(parent_type));
-		PRINTF("%s* ___var_%d = (%s*)(((%s*)___var_%d)->ptr);\n",
-		       elem_tname, base_ptr_var, elem_tname, c_type_name(c, parent_type), parent_addr.var);
+		PRINTF("%s* ___var_%d = (%s*)___var_%d;\n", elem_tname, base_ptr_var, elem_tname, parent_addr.var);
 		len_var = c_create_variable(c);
 		PRINTF("size_t ___var_%d = %llu;\n", len_var, (unsigned long long)parent_type->array.len);
 		has_len = parent_type->type_kind != TYPE_FLEXIBLE_ARRAY;
@@ -1506,10 +1507,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			{
 				target_type = c_safe_type_lower(inner->type);
 			}
-			if (target_type->type_kind == TYPE_VOID)
-			{
-				target_type = (uop == UNARYOP_NOT) ? type_bool : (uop == UNARYOP_ADDR || uop == UNARYOP_TADDR ? type_voidptr : type_int);
-			}
+			ASSERT(target_type->type_kind != TYPE_VOID);
 			const char *tname = c_type_name(c, target_type);
 
 			if (uop == UNARYOP_ADDR || uop == UNARYOP_TADDR)
@@ -1554,7 +1552,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 				}
 				else if (inner_val.var != 0)
 				{
-					PRINTF("bool ___var_%d = !___var_%d;\n", temp, inner_val.var);
+					PRINTF("bool ___var_%d = %s;\n", temp, c_truth_str(inner_val.type, str_printf("___var_%d", inner_val.var), true));
 				}
 				else
 				{
@@ -1573,19 +1571,24 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			if (uop == UNARYOP_NEG && compiler.build.feature.trap_on_wrap && type_is_signed(target_type) && !c_type_is_aggregate(target_type))
 			{
 				PRINTF("%s ___var_%d;\n", tname, temp);
-				c_emit_panic_if(c, str_printf("__builtin_sub_overflow(0, ___var_%d, &___var_%d)", inner_val.var, temp), PANIC_FN_NEG_OVERFLOW, expr->loc, NULL, NULL, NULL);
+				const char *zero = c_int_value_str(c, target_type, 0);
+				c_emit_panic_if(c, str_printf("%s(%s, ___var_%d, &___var_%d)", c_overflow_builtin_name(BINARYOP_SUB, target_type), zero, inner_val.var, temp),
+				                PANIC_FN_NEG_OVERFLOW, expr->loc, NULL, NULL, NULL);
 				return;
 			}
 
-			const char *op_str = (uop == UNARYOP_NOT) ? "!" : (uop == UNARYOP_BITNEG) ? "~"
-			                                              : (uop == UNARYOP_PLUS)     ? "+"
-			                                                                          : "-";
-			if (target_type->type_kind == TYPE_ARRAY || target_type->type_kind == TYPE_VECTOR || target_type->type_kind == TYPE_SIMD_VECTOR)
+			bool is_vec         = c_type_is_vec_or_arr(target_type);
+			Type *lane_t        = is_vec ? target_type->array.base : target_type;
+			const char *operand = is_vec ? "$0" : str_printf("___var_%d", inner_val.var);
+			const char *result  = operand;
+			if (uop == UNARYOP_NEG) result = c_int_neg_str(lane_t, operand);
+			if (uop == UNARYOP_BITNEG) result = str_printf(c_type_is_int128(lane_t) ? "__c3_u128_not(%s)" : "~%s", operand);
+			if (is_vec)
 			{
-				c_emit_lanewise(c, temp, target_type, str_printf("%s$0", op_str), &inner_val, 1);
+				c_emit_lanewise(c, temp, target_type, result, &inner_val, 1);
 				return;
 			}
-			PRINTF("%s ___var_%d = %s___var_%d;\n", tname, temp, op_str, inner_val.var);
+			PRINTF("%s ___var_%d = %s;\n", tname, temp, result);
 			return;
 		}
 		case EXPR_POST_UNARY:
@@ -1607,10 +1610,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			}
 			Decl *member      = expr->access_resolved_expr.ref;
 			Type *member_type = c_safe_type_lower(expr->type);
-			if (member_type->type_kind == TYPE_VOID)
-			{
-				member_type = type_uint;
-			}
+			ASSERT(member_type->type_kind != TYPE_VOID);
 
 			int container_ptr_var = 0;
 			Decl *bitstruct_decl  = NULL;
@@ -1626,10 +1626,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 
 			Decl *member      = left->access_resolved_expr.ref;
 			Type *member_type = c_safe_type_lower(left->type);
-			if (member_type->type_kind == TYPE_VOID)
-			{
-				member_type = type_uint;
-			}
+			ASSERT(member_type->type_kind != TYPE_VOID);
 			const char *mname = c_type_name(c, member_type);
 
 			CValue result_val = {0};
@@ -1674,10 +1671,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			c_ensure_cvalue_var(c, &inner_val, type_chars);
 
 			Type *target_type = c_safe_type_lower(expr->type);
-			if (target_type->type_kind == TYPE_VOID)
-			{
-				target_type = type_voidptr;
-			}
+			ASSERT(target_type->type_kind != TYPE_VOID);
 			int temp = c_emit_temp_var(c, value, target_type);
 			PRINTF("%s ___var_%d = (void*)___var_%d.ptr;\n", c_type_name(c, target_type), temp, inner_val.var);
 			return;
@@ -1712,10 +1706,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_MAKE_SLICE:
 		{
 			Type *target_type = c_safe_type_lower(expr->type);
-			if (target_type->type_kind == TYPE_VOID)
-			{
-				target_type = type_chars;
-			}
+			ASSERT(target_type->type_kind != TYPE_VOID);
 			int temp          = c_emit_temp_var(c, value, target_type);
 			const char *tname = c_type_name(c, target_type);
 			if (expr->make_slice_expr.ptr)
@@ -1760,10 +1751,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			c_emit_expr(c, &inner_val, expr->inner_expr);
 			c_value_rvalue(c, &inner_val);
 			Type *target_type = c_safe_type_lower(expr->type);
-			if (target_type->type_kind == TYPE_VOID)
-			{
-				target_type = type_int;
-			}
+			ASSERT(target_type->type_kind != TYPE_VOID);
 			int temp          = c_emit_temp_var(c, value, target_type);
 			const char *tname = c_type_name(c, target_type);
 			PRINTF("%s ___var_%d;\n", tname, temp);
@@ -1776,10 +1764,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			c_emit_expr(c, &inner_val, expr->inner_expr);
 			c_value_rvalue(c, &inner_val);
 			Type *target_type = c_safe_type_lower(expr->type);
-			if (target_type->type_kind == TYPE_VOID)
-			{
-				target_type = type_int;
-			}
+			ASSERT(target_type->type_kind != TYPE_VOID);
 			int temp          = c_emit_temp_var(c, value, target_type);
 			const char *tname = c_type_name(c, target_type);
 			c_emit_lanewise(c, temp, target_type, "$0", &inner_val, 1);
@@ -1822,12 +1807,14 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 				Type *ordinal_type    = c_safe_type_lower(inner_val.type);
 				const char *ordinal   = str_printf("___var_%d", inner_val.var);
 				CPanicValue ord_value = { ordinal, ordinal_type };
-				CPanicValue max_value = { str_printf("%u", count - 1), ordinal_type };
+				CPanicValue max_value = { c_int_value_str(c, ordinal_type, count - 1), ordinal_type };
 				if (type_is_signed(ordinal_type))
 				{
-					c_emit_panic_if(c, str_printf("%s < 0", ordinal), PANIC_FN_ENUM_NEGATIVE, expr->loc, decl->name, &ord_value, NULL);
+					c_emit_panic_if(c, c_binary_str(BINARYOP_LT, ordinal_type, ordinal, c_int_value_str(c, ordinal_type, 0)),
+					                PANIC_FN_ENUM_NEGATIVE, expr->loc, decl->name, &ord_value, NULL);
 				}
-				c_emit_panic_if(c, str_printf("%s >= %u", ordinal, count), PANIC_FN_ENUM_RANGE, expr->loc, decl->name, &ord_value, &max_value);
+				c_emit_panic_if(c, c_binary_str(BINARYOP_GE, ordinal_type, ordinal, c_int_value_str(c, ordinal_type, count)),
+				                PANIC_FN_ENUM_RANGE, expr->loc, decl->name, &ord_value, &max_value);
 			}
 
 			if (inner_val.var != 0 && !c_type_is_aggregate(target_type) && inner_val.type &&
@@ -1905,7 +1892,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			}
 			else
 			{
-				PRINTF("bool ___var_%d = (___var_%d %s 0);\n", temp, inner_val.var, expr->int_to_bool_expr.negate ? "==" : "!=");
+				PRINTF("bool ___var_%d = %s;\n", temp, c_truth_str(inner_val.type, str_printf("___var_%d", inner_val.var), expr->int_to_bool_expr.negate));
 			}
 			return;
 		}
@@ -2000,10 +1987,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 		{
 			Type *raw_type    = expr->type ? type_flatten(expr->type) : NULL;
 			Type *target_type = c_safe_type_lower(expr->type);
-			if (target_type->type_kind == TYPE_VOID)
-			{
-				target_type = type_int;
-			}
+			ASSERT(target_type->type_kind != TYPE_VOID);
 			int temp          = c_emit_temp_var(c, value, target_type);
 			const char *tname = c_type_name(c, target_type);
 			PRINTF("%s ___var_%d = {0};\n", tname, temp);
@@ -2062,7 +2046,12 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 					c_emit_expr(c, &el_val, elements[i]);
 					c_value_rvalue(c, &el_val);
 					Decl *m  = (d && d->strukt.members && i < vec_size(d->strukt.members)) ? d->strukt.members[i] : NULL;
-					c_emit_store(c, str_printf("___var_%d.m%d", temp, i), m ? c_decl_type(m) : el_val.type, &el_val);
+					if (m && el_val.var && c_member_is_bytes(d, m))
+					{
+						PRINTF("__c3_memcpy(&___var_%d.%s, &___var_%d, sizeof(___var_%d));\n", temp, c_member_name(d, i), el_val.var, el_val.var);
+						continue;
+					}
+					c_emit_store(c, str_printf("___var_%d.%s", temp, c_member_name(d, i)), m ? c_decl_type(m) : el_val.type, &el_val);
 				}
 			}
 			return;
@@ -2070,10 +2059,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		{
 			Type *target_type = c_safe_type_lower(expr->type);
-			if (target_type->type_kind == TYPE_VOID)
-			{
-				target_type = type_int;
-			}
+			ASSERT(target_type->type_kind != TYPE_VOID);
 			int temp          = c_emit_temp_var(c, value, target_type);
 			const char *tname = c_type_name(c, target_type);
 			if (expr->designated_init.splat)
@@ -2155,10 +2141,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_COMPILER_CONST:
 		{
 			Type *target_type = c_safe_type_lower(expr->type);
-			if (target_type->type_kind == TYPE_VOID)
-			{
-				target_type = type_int;
-			}
+			ASSERT(target_type->type_kind != TYPE_VOID);
 			int temp = c_emit_temp_var(c, value, target_type);
 			PRINTF("%s ___var_%d = {0};\n", c_type_name(c, target_type), temp);
 			return;
@@ -2170,10 +2153,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			c_emit_expr(c, &inner_val, inner);
 			c_value_rvalue(c, &inner_val);
 			Type *target_type = c_safe_type_lower(expr->type);
-			if (target_type->type_kind == TYPE_VOID)
-			{
-				target_type = type_chars;
-			}
+			ASSERT(target_type->type_kind != TYPE_VOID);
 			int temp          = c_emit_temp_var(c, value, target_type);
 			const char *tname = c_type_name(c, target_type);
 			switch (expr->builtin_access_expr.kind)
@@ -2234,10 +2214,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			BuiltinDefine hook = (expr->expr_kind == EXPR_TEST_HOOK) ? expr->test_hook_expr : expr->benchmark_hook_expr;
 			bool is_fns        = (hook == BUILTIN_DEF_TEST_FNS || hook == BUILTIN_DEF_BENCHMARK_FNS);
 			Type *target_type  = c_safe_type_lower(expr->type);
-			if (target_type->type_kind == TYPE_VOID)
-			{
-				target_type = type_chars;
-			}
+			ASSERT(target_type->type_kind != TYPE_VOID);
 			c_emit_type_forward_decl(c, target_type);
 			const char *tname = c_type_name(c, target_type);
 
@@ -2370,6 +2347,8 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 				*expr->macro_block.block_exit = (BlockExit *)&c_exit;
 			}
 
+			// A block of its own, so the macro's locals are only in scope (and in a debugger) inside it.
+			PRINT("{\n");
 			// A fault in an argument jumps to the outer catch target.
 			FOREACH(Decl *, param, expr->macro_block.arguments)
 			{
@@ -2391,6 +2370,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			}
 
 			c_emit_label(c, macro_exit);
+			PRINT("}\n");
 			c->catch = outer;
 			return;
 		}
@@ -2402,10 +2382,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			c_emit_expr(c, &offset_val, exprptr(expr->pointer_offset_expr.offset));
 			c_value_rvalue(c, &offset_val);
 			Type *target_type = c_safe_type_lower(expr->type);
-			if (target_type->type_kind == TYPE_VOID)
-			{
-				target_type = type_voidptr;
-			}
+			ASSERT(target_type->type_kind != TYPE_VOID);
 			int temp          = c_emit_temp_var(c, value, target_type);
 			const char *tname = c_type_name(c, target_type);
 			if (c_type_is_aggregate(target_type))
@@ -2432,10 +2409,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 			c_emit_expr(c, &parent_val, exprptr(expr->swizzle_expr.parent));
 			c_value_rvalue(c, &parent_val);
 			Type *target_type = c_safe_type_lower(expr->type);
-			if (target_type->type_kind == TYPE_VOID)
-			{
-				target_type = type_int;
-			}
+			ASSERT(target_type->type_kind != TYPE_VOID);
 			int temp = c_emit_temp_var(c, value, target_type);
 			PRINTF("%s ___var_%d = {0};\n", c_type_name(c, target_type), temp);
 			const char *sw = expr->swizzle_expr.swizzle;
@@ -2638,10 +2612,7 @@ static void c_emit_expr_internal(GenContext *c, CValue *value, Expr *expr)
 				return;
 			}
 			Type *target_type = c_safe_type_lower(expr->type);
-			if (target_type->type_kind == TYPE_VOID)
-			{
-				target_type = type_int;
-			}
+			ASSERT(target_type->type_kind != TYPE_VOID);
 			int temp = c_emit_temp_var(c, value, target_type);
 			c_emit_var_zero_init(c, temp, target_type);
 			return;

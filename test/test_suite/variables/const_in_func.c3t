@@ -23,13 +23,13 @@ macro abcd()
 
 /* #expect: scratch.ll
 
-@main.B = internal constant i32 256, align 4
+@scratch.main.B = internal constant i32 256, align 4
 
 define void @scratch.main() #0 {
 entry:
   %x = alloca i32, align 4
   %y = alloca ptr, align 8
   store i32 256, ptr %x, align 4
-  store ptr @main.B, ptr %y, align 8
+  store ptr @scratch.main.B, ptr %y, align 8
   ret void
 }

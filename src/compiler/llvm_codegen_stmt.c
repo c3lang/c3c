@@ -24,6 +24,7 @@ void llvm_emit_compound_stmt(GenContext *c, Ast *ast)
 
 	// Emit the statement chain
 	llvm_emit_statement_chain(c, ast->compound_stmt.first_stmt);
+	if (ast->compound_stmt.end_loc && c->current_block) EMIT_SPAN(c, ast->compound_stmt.end_loc);
 
 	// Pop lexical scope.
 	DEBUG_POP_LEXICAL_SCOPE(c);
@@ -34,7 +35,7 @@ void llvm_emit_compound_stmt(GenContext *c, Ast *ast)
 void llvm_emit_local_static(GenContext *c, Decl *decl, BEValue *value)
 {
 	// In defers we might already have generated this variable.
-	if (decl->backend_ref)
+	if (llvm_decl_current_ref(decl))
 	{
 		llvm_value_set_decl(c, value, decl);
 		return;
@@ -45,13 +46,11 @@ void llvm_emit_local_static(GenContext *c, Decl *decl, BEValue *value)
 	c->builder = c->global_builder;
 
 	// Emit the global.
-	decl->backend_ref = llvm_add_global(c, "temp", decl->type, decl->alignment);
+	llvm_decl_set_ref(decl, llvm_add_global(c, "temp", decl->type, decl->alignment));
 	if (IS_OPTIONAL(decl))
 	{
 		LLVMTypeRef fault = llvm_get_type(c, type_fault);
-		scratch_buffer_append(c->cur_func.name);
-		scratch_buffer_append_char('.');
-		scratch_buffer_append(decl->name);
+		scratch_buffer_set_extern_decl_name(decl, true);
 		scratch_buffer_append(".f");
 		decl->var.optional_ref = llvm_add_global_raw(c, scratch_buffer_to_string(), fault, 0);
 	}
@@ -1577,54 +1576,12 @@ static BEValue llvm_panic_slot(GenContext *c, int index, Type *type, AlignSize a
 	return *slot;
 }
 
-INLINE bool llvm_is_small_integer_struct(GenContext *c, LLVMTypeRef strukt, unsigned member_count)
-{
-	if (member_count > 4) return false;
-	for (unsigned i = 0; i < member_count; i++)
-	{
-		LLVMTypeRef field_type = LLVMStructGetTypeAtIndex(strukt, i);
-		LLVMTypeKind kind = LLVMGetTypeKind(field_type);
-		if (kind != LLVMPointerTypeKind
-			&& (kind != LLVMIntegerTypeKind || field_type == c->bool_type)) return false;
-	}
-	return true;
-}
 static void llvm_store_split(GenContext *c, BEValue *dest, BEValue *value)
 {
-	LLVMValueRef val = value->value;
-	LLVMTypeRef type = LLVMTypeOf(val);
-	if (llvm_value_is_addr(value) || LLVMGetTypeKind(type) != LLVMStructTypeKind) goto FALLBACK;
-
-	// Structs can be explicitly stored element by element to make the isel work better.
-	unsigned count = LLVMCountStructElementTypes(type);
-	if (!llvm_is_small_integer_struct(c, type, count)) goto FALLBACK;
-	LLVMValueRef fields[4] = { NULL };
-	if (LLVMIsConstant(val))
+	if (llvm_value_is_addr(value) || !llvm_store_split_fields(c, dest->value, value->value, dest->alignment))
 	{
-		for (unsigned i = 0; i < count; i++) fields[i] = LLVMGetAggregateElement(val, i);
+		llvm_store(c, dest, value);
 	}
-	else
-	{
-		LLVMValueRef base = val;
-		while (LLVMIsAInsertValueInst(base))
-		{
-			if (LLVMGetNumIndices(base) != 1) goto FALLBACK;
-			unsigned index = LLVMGetIndices(base)[0];
-			if (!fields[index]) fields[index] = LLVMGetOperand(base, 1);
-			base = LLVMGetOperand(base, 0);
-		}
-		if (!LLVMIsUndef(base) && !LLVMIsPoison(base)) goto FALLBACK;
-	}
-	for (unsigned i = 0; i < count; i++)
-	{
-		if (!fields[i] || LLVMIsUndef(fields[i])) continue;
-		AlignSize alignment;
-		LLVMValueRef ptr = llvm_emit_struct_gep_raw(c, dest->value, type, (int)i, dest->alignment, &alignment);
-		llvm_store_to_ptr_raw_aligned(c, ptr, fields[i], alignment);
-	}
-	return;
-FALLBACK:
-	llvm_store(c, dest, value);
 }
 
 static void llvm_emit_panic_parameter(GenContext *c, LLVMValueRef *args, int *count, ABIArgInfo *info, int index, BEValue *value)

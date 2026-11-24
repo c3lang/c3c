@@ -46,6 +46,8 @@ entry:
   %6 = call i32 @sum_us(ptr align 8 %indirectarg2)
   call void @llvm.memcpy.p0.p0.i64(ptr align 8 %indirectarg3, ptr align 8 %z, i64 16, i1 false)
   %7 = call i32 @sum_us(ptr align 8 %indirectarg3)
-  store %"int[]" zeroinitializer, ptr %indirectarg4, align 8
+  store ptr null, ptr %indirectarg4, align 8
+  %ptradd5 = getelementptr inbounds i8, ptr %indirectarg4, i64 8
+  store i64 0, ptr %ptradd5, align 8
   %8 = call i32 @sum_us(ptr align 8 %indirectarg4)
   ret void

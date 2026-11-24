@@ -219,8 +219,10 @@ static void write_const_value_json(FILE *file, Expr *expr)
 			case CONST_ENUM:
 			case CONST_FAULT:
 			case CONST_TYPEID:
-			case CONST_POINTER:
 			case CONST_REF:
+				if (expr->const_expr.global_ref->decl_kind == DECL_VAR && expr->const_expr.global_ref->var.is_temp) break;
+				FALLTHROUGH;
+			case CONST_POINTER:
 				scratch_buffer_clear();
 				expr_const_to_scratch_buffer(&expr->const_expr);
 				truncate_scratch_buffer_middle();
@@ -1249,6 +1251,7 @@ static bool emit_category_decls(JsonEmitter *e, Module *module, DocCategory cat)
 			FOREACH(Decl *, decl, list)
 			{
 				if (decl->is_templated || decl->decl_kind == DECL_GENERIC_INSTANCE) continue;
+				if (decl->decl_kind == DECL_VAR && decl->var.is_temp) continue;
 				if (get_category_for_decl(decl) != cat) continue;
 				found = true;
 				if (!e) return true;

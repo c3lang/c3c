@@ -1,0 +1,12 @@
+// #target: windows-x64
+module init_wmain;
+int counter;
+fn void setup() @init { counter = 42; }
+fn int main(String[] args) => counter == 42 ? 0 : 1;
+
+/* #expect: init_wmain.c
+
+static void __c3_init_runtime(void) {
+	init_wmain__setup();
+int32_t wmain(int32_t
+	__c3_init_runtime();

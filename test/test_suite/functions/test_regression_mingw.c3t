@@ -264,7 +264,7 @@ $"$ct.test.MyEnum" = comdat any
 @"$ct.int" = linkonce global %.introspect { i8 2, i64 0, ptr null, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, comdat, align 8
 @"$ct.test.MyEnum" = linkonce global { i8, i64, ptr, i64, i64, i64, [3 x %"char[]"] } { i8 8, i64 0, ptr null, i64 4, i64 ptrtoint (ptr @"$ct.int" to i64), i64 3, [3 x %"char[]"] [%"char[]" { ptr @.enum.HELO, i64 4 }, %"char[]" { ptr @.enum.WORLD, i64 5 }, %"char[]" { ptr @.enum.BYE, i64 3 }] }, comdat, align 8
 @.str = private unnamed_addr constant [13 x i8] c"helloWorld!\0A\00", align 1
-@test_static.x = internal unnamed_addr global i32 1, align 4
+@test.test_static.x = internal unnamed_addr global i32 1, align 4
 @.str.1 = private unnamed_addr constant [16 x i8] c"Test static %d\0A\00", align 1
 @.__const = private unnamed_addr constant [3 x i32] [i32 1, i32 2, i32 3], align 4
 @.str.2 = private unnamed_addr constant [17 x i8] c"Element[%d]: %d\0A\00", align 1
@@ -317,12 +317,12 @@ entry:
 
 define i32 @test.test_static() #0 {
 entry:
-  %0 = load i32, ptr @test_static.x, align 4
+  %0 = load i32, ptr @test.test_static.x, align 4
   %add = add i32 %0, 1
-  store i32 %add, ptr @test_static.x, align 4
-  %1 = load i32, ptr @test_static.x, align 4
+  store i32 %add, ptr @test.test_static.x, align 4
+  %1 = load i32, ptr @test.test_static.x, align 4
   %2 = call i32 (ptr, ...) @printf(ptr @.str.1, i32 %1)
-  %3 = load i32, ptr @test_static.x, align 4
+  %3 = load i32, ptr @test.test_static.x, align 4
   ret i32 %3
 }
 
@@ -572,7 +572,9 @@ loop.exit8:                                       ; preds = %loop.cond2
   store %"int[]" %"$$temp17", ptr %indirectarg18, align 8
   %48 = call i32 @test.sum_us(ptr align 8 %indirectarg18)
   %49 = call i32 (ptr, ...) @printf(ptr @.str.19, i32 %48)
-  store %"int[]" zeroinitializer, ptr %indirectarg19, align 8
+  store ptr null, ptr %indirectarg19, align 8
+  %ptradd20 = getelementptr inbounds i8, ptr %indirectarg19, i64 8
+  store i64 0, ptr %ptradd20, align 8
   %50 = call i32 @test.sum_us(ptr align 8 %indirectarg19)
   %51 = call i32 (ptr, ...) @printf(ptr @.str.20, i32 %50)
   store ptr null, ptr %a1, align 8

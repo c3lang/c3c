@@ -84,8 +84,8 @@ fn int main()
 
 /* #expect: test.ll
 
-@init.foo = internal unnamed_addr global ptr @"test.foo_fn$lambda1", align 8
-@init.foo.2 = internal unnamed_addr global ptr @"test.foo_fn$lambda2", align 8
+@test.FooTest.init.foo = internal unnamed_addr global ptr @"test.foo_fn$lambda1", align 8
+@test.FooTest2.init.foo = internal unnamed_addr global ptr @"test.foo_fn$lambda2", align 8
 
 define void @test.Foo.test(ptr %0, i32 %1) #0 {
 entry:
@@ -96,7 +96,7 @@ entry:
 
 define void @test.FooTest.init(ptr %0) #0 {
 entry:
-  %1 = load ptr, ptr @init.foo, align 8
+  %1 = load ptr, ptr @test.FooTest.init.foo, align 8
   store ptr %1, ptr %0, align 8
   ret void
 }

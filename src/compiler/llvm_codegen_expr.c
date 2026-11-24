@@ -230,7 +230,7 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *ref_expr, Expr 
 		}
 	}
 
-	if (optional)
+	if (optional && c->current_block)
 	{
 		llvm_store_to_ptr_raw(c, optional, llvm_get_zero(c, type_fault), type_fault);
 	}
@@ -718,6 +718,22 @@ static void llvm_emit_array_bounds_check(GenContext *c, BEValue *index, LLVMValu
 	llvm_emit_panic_if_true(c, &result, PANIC_FN_INDEX_BOUNDS, loc, NULL, &max, index);
 }
 
+static LLVMValueRef llvm_emit_vector_index(GenContext *c, Expr *subscript, BEValue *index, ArrayIndex len)
+{
+	llvm_value_rvalue(c, index);
+	bool is_safe = safe_mode_enabled() && !subscript->subscript_expr.no_check && !llvm_is_global_eval(c);
+	if (subscript->subscript_expr.index.start_from_end)
+	{
+		LLVMValueRef len_value = llvm_const_int(c, index->type, len);
+		index->value = is_safe ? LLVMBuildSub(c->builder, len_value, index->value, "") : LLVMBuildNUWSub(c->builder, len_value, index->value, "");
+	}
+	if (is_safe && !LLVMIsAConstantInt(index->value))
+	{
+		llvm_emit_array_bounds_check(c, index, llvm_const_int(c, index->type, len), exprptr(subscript->subscript_expr.index.expr)->loc);
+	}
+	return index->value;
+}
+
 static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *result, BEValue *parent, BEValue *index, SourceLocId loc)
 {
 	ASSERT(llvm_value_is_addr(parent));
@@ -757,11 +773,7 @@ static inline void llvm_emit_vector_subscript(GenContext *c, BEValue *value, Exp
 	Type *element = vec->array.base;
 	LLVMValueRef vector = value->value;
 	if (!llvm_emit_rvalue_in_block(c, value, exprptr(expr->subscript_expr.index.expr))) RETURN_EMPTY_BLOCK(value);
-	LLVMValueRef index = value->value;
-	if (expr->subscript_expr.index.start_from_end)
-	{
-		index = LLVMBuildNUWSub(c->builder, llvm_const_int(c, value->type, vec->array.len), index, "");
-	}
+	LLVMValueRef index = llvm_emit_vector_index(c, expr, value, vec->array.len);
 	llvm_value_set(value, LLVMBuildExtractElement(c->builder, vector, index, ""), element);
 }
 
@@ -824,7 +836,8 @@ static inline void llvm_emit_subscript_addr(GenContext *c, BEValue *value, Expr 
 	if (start_from_end)
 	{
 		ASSERT(needs_len);
-		index.value = LLVMBuildNUWSub(c->builder, llvm_zext_trunc(c, len.value, llvm_get_type(c, index.type)), index.value, "");
+		LLVMValueRef len_value = llvm_zext_trunc(c, len.value, llvm_get_type(c, index.type));
+		index.value = is_safe ? LLVMBuildSub(c->builder, len_value, index.value, "") : LLVMBuildNUWSub(c->builder, len_value, index.value, "");
 	}
 	if (needs_len && is_safe && !llvm_is_global_eval(c))
 	{
@@ -1256,8 +1269,8 @@ static inline void llvm_emit_access_addr(GenContext *c, BEValue *be_value, Expr 
 		Decl *member = expr->access_resolved_expr.ref;
 
 		llvm_value_rvalue(c, be_value);
-		if (!flat_type->decl->backend_ref) llvm_get_typeid(c, parent->type);
-		ASSERT(member->backend_ref);
+		llvm_get_typeid(c, flat_type);
+		ASSERT(llvm_decl_current_ref(member));
 		AlignSize align = LLVMGetAlignment(member->backend_ref);
 		AlignSize alignment;
 		ByteSize size = llvm_abi_size(c, llvm_get_type(c, member->type));
@@ -1620,6 +1633,7 @@ INLINE void llvm_emit_initialize_reference_bitstruct_array(GenContext *c, BEValu
 		Decl *member = bitstruct->strukt.members[i];
 		BEValue val;
 		llvm_emit_expr(c, &val, init);
+		RETURN_ON_EMPTY_BLOCK(ref);
 		llvm_emit_update_bitstruct_array(c, array_ptr, alignment, is_byteswap, member,
 		                                 llvm_load_value_store(c, &val));
 	}
@@ -1643,6 +1657,7 @@ static inline void llvm_emit_initialize_reference_bitstruct(GenContext *c, BEVal
 		Decl *member = bitstruct->strukt.members[i];
 		BEValue val;
 		llvm_emit_expr(c, &val, init);
+		RETURN_ON_EMPTY_BLOCK(ref);
 		data = llvm_emit_bitstruct_value_update(c, data, bits, type, member, llvm_load_value_store(c, &val));
 	}
 	if (bitstruct_requires_byteswap(bitstruct))
@@ -1808,7 +1823,7 @@ static void llvm_emit_initialize_designated_element(GenContext *c, BEValue *ref,
 				llvm_value_set_address(c,
 				                       &value,
 				                       ref->value,
-				                       member_type, type_min_alignment(offset, decl_alignment));
+				                       member_type, type_min_alignment(ref->alignment, decl_alignment));
 			}
 			else
 			{
@@ -1841,6 +1856,7 @@ static inline void llvm_emit_initialize_reference_designated_bitstruct_array(Gen
 	{
 		BEValue splat_val;
 		llvm_emit_expr(c, &splat_val, splat);
+		RETURN_ON_EMPTY_BLOCK(ref);
 		llvm_store(c, ref, &splat_val);
 	}
 	else
@@ -1858,6 +1874,7 @@ static inline void llvm_emit_initialize_reference_designated_bitstruct_array(Gen
 		Decl *member = bitstruct->strukt.members[element->index];
 		BEValue val;
 		llvm_emit_expr(c, &val, designator->designator_expr.value);
+		RETURN_ON_EMPTY_BLOCK(ref);
 		llvm_emit_update_bitstruct_array(c, array_ptr, alignment, is_byteswap, member, llvm_load_value_store(c, &val));
 	}
 }
@@ -1871,6 +1888,7 @@ static inline void llvm_emit_initialize_reference_designated_bitstruct(GenContex
 		return;
 	}
 	LLVMTypeRef type = llvm_get_type(c, underlying_type);
+	bool is_byteswap = bitstruct_requires_byteswap(bitstruct);
 	LLVMValueRef data;
 	if (!splat)
 	{
@@ -1880,8 +1898,10 @@ static inline void llvm_emit_initialize_reference_designated_bitstruct(GenContex
 	{
 		BEValue splat_val;
 		llvm_emit_expr(c, &splat_val, splat);
+		RETURN_ON_EMPTY_BLOCK(ref);
 		llvm_value_rvalue(c, &splat_val);
 		data = splat_val.value;
+		if (is_byteswap) data = llvm_emit_bswap(c, data);
 	}
 	TypeSize bits = type_bit_size(underlying_type);
 
@@ -1894,12 +1914,10 @@ static inline void llvm_emit_initialize_reference_designated_bitstruct(GenContex
 		Decl *member = bitstruct->strukt.members[element->index];
 		BEValue val;
 		llvm_emit_expr(c, &val, designator->designator_expr.value);
+		RETURN_ON_EMPTY_BLOCK(ref);
 		data = llvm_emit_bitstruct_value_update(c, data, bits, type, member, llvm_load_value_store(c, &val));
 	}
-	if (bitstruct_requires_byteswap(bitstruct))
-	{
-		data = llvm_emit_bswap(c, data);
-	}
+	if (is_byteswap) data = llvm_emit_bswap(c, data);
 	llvm_store_raw(c, ref, data);
 }
 
@@ -2330,14 +2348,8 @@ static inline void llvm_emit_pre_post_inc_dec_vector(GenContext *c, BEValue *val
 	Type *element = vec->array.base;
 
 	// Now let's get the subscript and store it in value
-	bool start_from_end = expr->subscript_expr.index.start_from_end;
 	llvm_emit_exprid(c, value, expr->subscript_expr.index.expr);
-	llvm_value_rvalue(c, value);
-	LLVMValueRef index = value->value;
-	if (start_from_end)
-	{
-		index = LLVMBuildNUWSub(c->builder, llvm_const_int(c, value->type, vec->array.len), index, "");
-	}
+	LLVMValueRef index = llvm_emit_vector_index(c, expr, value, vec->array.len);
 
 	// But we also want the value (of the full vector)
 	*value = addr;
@@ -4574,11 +4586,7 @@ static void llvm_emit_vector_assign_expr(GenContext *c, BEValue *be_value, Expr 
 	BEValue index;
 	llvm_emit_exprid(c, &index, left->subscript_expr.index.expr);
 	RETURN_ON_EMPTY_BLOCK(be_value);
-	LLVMValueRef index_val = llvm_load_value_store(c, &index);
-	if (left->subscript_expr.index.start_from_end)
-	{
-		index_val = LLVMBuildNUWSub(c->builder, llvm_const_int(c, index.type, addr.type->array.len), index_val, "");
-	}
+	LLVMValueRef index_val = llvm_emit_vector_index(c, left, &index, addr.type->array.len);
 	if (binary_op > BINARYOP_ASSIGN)
 	{
 		BinaryOp base_op = binaryop_assign_base_op(binary_op);
@@ -7211,12 +7219,17 @@ void llvm_emit_vec_to_array(GenContext *c, BEValue *value, Type *type)
 {
 	// Emit the load, in this case we know this is not an optional.
 	assert(value->kind != BE_ADDRESS_OPTIONAL);
+	Type *to_type = type_lowering(type);
+	if (value->kind == BE_ADDRESS && type_kind_is_real_vector(type_flatten(value->type)->type_kind) && to_type->array.base != type_bool)
+	{
+		value->type = to_type;
+		return;
+	}
 	LLVMValueRef val = llvm_load_value_store(c, value);
 
 	// Determine the type of conversion
 	LLVMTypeRef type_ptr = LLVMTypeOf(val);
 	LLVMTypeKind type_kind = LLVMGetTypeKind(type_ptr);
-	Type *to_type = type_lowering(type);
 	switch (type_kind)
 	{
 		case LLVMArrayTypeKind:
@@ -7253,6 +7266,7 @@ static inline void llvm_emit_vector_to_array(GenContext *c, BEValue *value, Expr
 	llvm_emit_expr(c, value, expr->inner_expr);
 	llvm_value_fold_optional(c, value);
 	RETURN_ON_EMPTY_BLOCK(value);
+	llvm_value_rvalue(c, value);
 	llvm_emit_vec_to_array(c, value, expr->type);
 }
 

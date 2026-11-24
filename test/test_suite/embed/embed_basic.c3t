@@ -27,7 +27,9 @@ entry:
   %data5.f = alloca i64, align 8
   call void @llvm.memcpy.p0.p0.i64(ptr align 16 %data, ptr align 1 @.bytes
   store ptr @.bytes.1, ptr %data2, align 8
-  store %"char[]" { ptr @.bytes.2
+  store ptr @.bytes.2, ptr %data3, align 8
+  %ptradd = getelementptr inbounds i8, ptr %data3, i64 8
+  store i64 233, ptr %ptradd, align 8
   store ptr null, ptr %data4, align 8
   store i64 ptrtoint (ptr @std.io.FILE_NOT_FOUND to i64), ptr %data5.f, align 8
   ret void

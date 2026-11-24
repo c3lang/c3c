@@ -178,22 +178,16 @@ ABIArgInfo *x86_classify_return(CallABI call, Regs *regs, ParamInfo param)
 		{
 			return create_indirect_return_x86(type, regs, param);
 		}
+		if (!compiler.platform.x86.return_small_struct_in_reg_abi) return create_indirect_return_x86(type, regs, param);
 
 		// Check if we can return it in a register.
 		if (x86_should_return_type_in_reg(type))
 		{
 			// Special case is floats and pointers in single field structs (except for MSVC)
 			Type *single_element = type_abi_find_single_struct_element(type, true);
-			if (single_element)
+			if (single_element && (type_is_float(single_element) || type_is_pointer_type(single_element)))
 			{
-				if (type_is_float(single_element))
-				{
-					return abi_arg_new_expand(param);
-				}
-				if (type_is_pointer_type(type))
-				{
-					return abi_arg_new_expand(param);
-				}
+				return abi_arg_new_direct_coerce_type(abi_type_get(single_element), param);
 			}
 			// This is not a single field struct, so we wrap it in an int.
 			return abi_arg_new_direct_coerce_int(param);

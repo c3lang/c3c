@@ -16,7 +16,9 @@ entry:
   %x = alloca %"char[]", align 8
   %z = alloca i32, align 4
   %y = alloca %"char[]", align 8
-  store %"char[]" { ptr @.str, i64 4 }, ptr %x, align 8
+  store ptr @.str, ptr %x, align 8
+  %ptradd = getelementptr inbounds i8, ptr %x, i64 8
+  store i64 4, ptr %ptradd, align 8
   store i32 5, ptr %z, align 4
   %0 = load %"char[]", ptr %x, align 8
   %1 = extractvalue %"char[]" %0, 0
@@ -34,30 +36,30 @@ checkok:                                          ; preds = %entry
 
 checkok2:                                         ; preds = %checkok
   %size = sub i64 %add, 1
-  %ptradd = getelementptr inbounds i8, ptr %1, i64 1
-  %7 = insertvalue %"char[]" undef, ptr %ptradd, 0
+  %ptradd3 = getelementptr inbounds i8, ptr %1, i64 1
+  %7 = insertvalue %"char[]" undef, ptr %ptradd3, 0
   %8 = insertvalue %"char[]" %7, i64 %size, 1
   store %"char[]" %8, ptr %y, align 8
   %9 = load %"char[]", ptr %x, align 8
   %10 = extractvalue %"char[]" %9, 0
   %11 = extractvalue %"char[]" %9, 1
   %12 = icmp ugt i64 0, %11
-  br i1 %12, label %panic3, label %checkok4
+  br i1 %12, label %panic4, label %checkok5
 
-checkok4:                                         ; preds = %checkok2
+checkok5:                                         ; preds = %checkok2
   %13 = load i32, ptr %z, align 4
   %sext = sext i32 %13 to i64
-  %sub5 = sub i64 %11, %sext
-  %add6 = add i64 0, %sub5
-  %14 = icmp sgt i64 0, %add6
-  %15 = icmp sgt i64 %add6, %11
+  %sub6 = sub i64 %11, %sext
+  %add7 = add i64 0, %sub6
+  %14 = icmp sgt i64 0, %add7
+  %15 = icmp sgt i64 %add7, %11
   %16 = or i1 %14, %15
-  br i1 %16, label %panic7, label %checkok8
+  br i1 %16, label %panic8, label %checkok9
 
-checkok8:                                         ; preds = %checkok4
-  %size9 = sub i64 %add6, 0
+checkok9:                                         ; preds = %checkok5
+  %size10 = sub i64 %add7, 0
   %17 = insertvalue %"char[]" undef, ptr %10, 0
-  %18 = insertvalue %"char[]" %17, i64 %size9, 1
+  %18 = insertvalue %"char[]" %17, i64 %size10, 1
   ret i32 0
 
 panic:                                            ; preds = %entry
@@ -68,11 +70,11 @@ panic1:                                           ; preds = %checkok
   call void @std.core.runtime.panics.slice.long.long.long.long(ptr @.panic_str, ptr @.panic_str.1, i32 6, i64 12, i64 1, i64 %add, i64 %2) #2
   unreachable
 
-panic3:                                           ; preds = %checkok2
+panic4:                                           ; preds = %checkok2
   call void @std.core.runtime.panics.slice.long.long.long.long(ptr @.panic_str, ptr @.panic_str.1, i32 7, i64 3, i64 0, i64 undef, i64 %11) #2
   unreachable
 
-panic7:                                           ; preds = %checkok4
-  call void @std.core.runtime.panics.slice.long.long.long.long(ptr @.panic_str, ptr @.panic_str.1, i32 7, i64 12, i64 0, i64 %add6, i64 %11) #2
+panic8:                                           ; preds = %checkok5
+  call void @std.core.runtime.panics.slice.long.long.long.long(ptr @.panic_str, ptr @.panic_str.1, i32 7, i64 12, i64 0, i64 %add7, i64 %11) #2
   unreachable
 }

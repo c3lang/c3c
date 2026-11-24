@@ -45,11 +45,15 @@ entry:
   call void (ptr, ...) @printf(ptr @.str.5, i32 2, i32 34)
   store i32 123, ptr %z, align 4
   call void (ptr, ...) @printf(ptr @.str.6, i32 123)
-  store %"char[]" { ptr @.str.7, i64 3 }, ptr %z1, align 8
+  store ptr @.str.7, ptr %z1, align 8
+  %ptradd = getelementptr inbounds i8, ptr %z1, i64 8
+  store i64 3, ptr %ptradd, align 8
   call void (ptr, ...) @printf(ptr @.str.8, ptr @.str.9)
   store i32 1177, ptr %z2, align 4
   call void (ptr, ...) @printf(ptr @.str.10, i32 1177)
-  store %"char[]" { ptr @.str.11, i64 5 }, ptr %z3, align 8
+  store ptr @.str.11, ptr %z3, align 8
+  %ptradd4 = getelementptr inbounds i8, ptr %z3, i64 8
+  store i64 5, ptr %ptradd4, align 8
   call void (ptr, ...) @printf(ptr @.str.12, ptr @.str.13)
   ret void
 }
