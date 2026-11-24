@@ -59,27 +59,27 @@ entry:
   %7 = insertvalue %any %6, i64 ptrtoint (ptr @"$ct.int" to i64), 1, !dbg !45
   store %any %7, ptr %varargslots, align 16, !dbg !45
   %8 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 2, ptr %varargslots, i64 1), !dbg !46
-  ret void, !dbg !46
+  ret void, !dbg !47
 }
 
-define i32 @main(i32 %0, ptr %1) #0 !dbg !47 {
+define i32 @main(i32 %0, ptr %1) #0 !dbg !48 {
 entry:
   %.anon = alloca i32, align 4
   %.anon1 = alloca ptr, align 8
   %.anon2 = alloca i32, align 4
   %.anon3 = alloca ptr, align 8
   store i32 %0, ptr %.anon, align 4
-    #dbg_declare(ptr %.anon, !53, !DIExpression(), !54)
+    #dbg_declare(ptr %.anon, !54, !DIExpression(), !55)
   store ptr %1, ptr %.anon1, align 8
-    #dbg_declare(ptr %.anon1, !55, !DIExpression(), !54)
-    #dbg_declare(ptr %.anon2, !56, !DIExpression(), !59)
+    #dbg_declare(ptr %.anon1, !56, !DIExpression(), !55)
+    #dbg_declare(ptr %.anon2, !57, !DIExpression(), !60)
   %2 = load i32, ptr %.anon, align 4
   store i32 %2, ptr %.anon2, align 4
-    #dbg_declare(ptr %.anon3, !60, !DIExpression(), !61)
+    #dbg_declare(ptr %.anon3, !61, !DIExpression(), !62)
   %3 = load ptr, ptr %.anon1, align 8
   store ptr %3, ptr %.anon3, align 8
-  call void @test.main(), !dbg !62
-  ret i32 0, !dbg !63
+  call void @test.main(), !dbg !63
+  ret i32 0, !dbg !64
 }
 
 declare extern_weak i64 @std.io.printfn(ptr, ptr, i64, ptr, i64) #0
@@ -133,14 +133,15 @@ attributes #0 = { nounwind ssp uwtable "no-trapping-math"="true" "stack-protecto
 !44 = !DILocation(
 !45 = !DILocation(line: 17, column: 20, scope: !8)
 !46 = !DILocation(line: 17, column: 2, scope: !8)
-!47 = distinct !DISubprogram(name: "_$main", linkageName: "main", scope: !7, file: !7, line: 10, type: !48, scopeLine: 10, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !6, retainedNodes: !11)
-!48 = !DISubroutineType(types: !49)
-!49 = !{!13, !13, !50}
-!50 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: !51, size: 64, align: 64, dwarfAddressSpace: 0)
+!47 = !DILocation(line: 18, column: 1, scope: !8)
+!48 = distinct !DISubprogram(name: "_$main", linkageName: "main", scope: !7, file: !7, line: 10, type: !49, scopeLine: 10, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !6, retainedNodes: !11)
+!49 = !DISubroutineType(types: !50)
+!50 = !{!13, !13, !51}
 !51 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: !52, size: 64, align: 64, dwarfAddressSpace: 0)
-!52 = !DIBasicType(name: "char", size: 8, encoding: DW_ATE_unsigned_char)
-!53 = !DILocalVariable(name: ".anon", arg: 1, scope: !47, file: !7, line: 10, type: !13)
-!54 = !DILocation(line: 10, column: 9, scope: !47)
-!55 = !DILocalVariable(name: ".anon", arg: 2, scope: !47, file: !7, line: 10, type: !50)
-!56 = !DILocalVariable(name: ".anon", arg: 1,
-!57 = distinct !DISubprogram(name: "@main_no_args", linkageName: "@main_no_args"
+!52 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: !53, size: 64, align: 64, dwarfAddressSpace: 0)
+!53 = !DIBasicType(name: "char", size: 8, encoding: DW_ATE_unsigned_char)
+!54 = !DILocalVariable(name: ".anon", arg: 1, scope: !48, file: !7, line: 10, type: !13)
+!55 = !DILocation(line: 10, column: 9, scope: !48)
+!56 = !DILocalVariable(name: ".anon", arg: 2, scope: !48, file: !7, line: 10, type: !51)
+!57 = !DILocalVariable(name: ".anon", arg: 1, scope: !58, file: !7, line: 10, type: !13)
+!58 = distinct !DISubprogram(name: "@main_no_args", linkageName: "@main_no_args", scope: !59, file: !59, line: 10, type: !49, scopeLine: 10, flags: DIFlagPrototyped, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition, unit: !6, retainedNodes: !11)

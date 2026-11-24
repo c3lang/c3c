@@ -3,9 +3,10 @@
 module test;
 typedef Foo = int;
 fn void Foo.test(&self) {}
+Foo* x;
 fn int main()
 {
-	Foo* a = null;
+	Foo* a = x;
 	a.test();
     return 0;
 }

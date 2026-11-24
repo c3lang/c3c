@@ -16,8 +16,8 @@ fn int main () {
 
 /* #expect: main.ll
 
-define i32 @main() #1 !dbg !12 {
+define i32 @main() #1 !dbg !14 {
 entry:
-  call void @main.test() #2, !dbg !16
-  unreachable, !dbg !17
+  call void @main.test() #2, !dbg !18
+  unreachable, !dbg !19
 }

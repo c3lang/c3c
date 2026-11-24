@@ -46,7 +46,7 @@ loop.body:                                        ; preds = %loop.cond
   br label %loop.cond, !dbg !28
 
 loop.exit:                                        ; preds = %loop.cond
-  ret void, !dbg !28
+  ret void, !dbg !40
 }
 
 !24 = !DIDerivedType(tag: DW_TAG_member, name: "len", scope: !11, baseType: !22, size: 64, align: 64, offset: 64)

@@ -2104,6 +2104,7 @@ typedef struct
 	double codegen_time;
 	double link_time;
 	double generic_time;
+	double static_analysis_time;
 	int generic_depth;
 	double nested_analysis_time;
 	double codegen_thread_time;

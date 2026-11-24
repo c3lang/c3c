@@ -304,6 +304,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 		// Are we in an expression block?
 		if (!has_return_value)
 		{
+			EMIT_LOC(c, ast);
 			llvm_emit_return_implicit(c);
 		}
 		else

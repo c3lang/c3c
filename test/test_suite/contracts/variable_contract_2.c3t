@@ -7,9 +7,10 @@ fn int test(int x, int a)
 	return a + a;
 }
 
+int g_doekf = 1;
 fn int main()
 {
-	int doekf = 1;
+	int doekf = g_doekf;
 	test(3, doekf);
 	return 0;
 }
@@ -32,16 +33,17 @@ assert_ok:                                        ; preds = %entry
 define i32 @main() #0 {
 entry:
   %doekf = alloca i32, align 4
-  store i32 1, ptr %doekf, align 4
-  %0 = load i32, ptr %doekf, align 4
-  %lt = icmp slt i32 %0, 0
+  %0 = load i32, ptr @test.g_doekf, align 4
+  store i32 %0, ptr %doekf, align 4
+  %1 = load i32, ptr %doekf, align 4
+  %lt = icmp slt i32 %1, 0
   br i1 %lt, label %assert_ok, label %assert_fail
 
 assert_fail:                                      ; preds = %entry
-  call void @std.core.runtime.panics.require_message(ptr @.panic_str, ptr @.panic_str.3, i32 11, ptr @.panic_str.2, ptr @.panic_str.1) #2
+  call void @std.core.runtime.panics.require_message(ptr @.panic_str, ptr @.panic_str.3, i32 12, ptr @.panic_str.2, ptr @.panic_str.1) #2
   unreachable
 
 assert_ok:                                        ; preds = %entry
-  %1 = call i32 @test.test(i32 3, i32 %0)
+  %2 = call i32 @test.test(i32 3, i32 %1)
   ret i32 0
 }

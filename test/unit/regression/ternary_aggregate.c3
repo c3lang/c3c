@@ -40,7 +40,7 @@ fn Tagged pick_tagged(bool c, Tagged a, Tagged b) @noinline => c ? a : b;
 fn UnionPair pick_pair(bool c, UnionPair a, UnionPair b) @noinline => c ? a : b;
 fn NestedArrayUnion pick_nested_array(bool c, NestedArrayUnion a, NestedArrayUnion b) @noinline => c ? a : b;
 fn Big? some_or_fault(Big* p) @noinline => p ? *p : BAD~;
-fn Big? fault_or_some(Big* p) @noinline => p ? BAD~ : *p;
+fn Big? fault_or_some(Big* p, Big* q) @noinline => p ? BAD~ : *q;
 
 fn Big with_defer(bool c) @noinline
 {
@@ -114,7 +114,7 @@ fn void fault_in_one_branch() @test
 	Big x = { 1, 2, 3 };
 	assert(some_or_fault(&x)!!.c == 3);
 	assert(@catch(some_or_fault(null)) == BAD);
-	assert(@catch(fault_or_some(&x)) == BAD);
+	assert(@catch(fault_or_some(&x, &x)) == BAD);
 }
 
 fn void result_is_a_copy() @test

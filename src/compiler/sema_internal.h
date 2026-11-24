@@ -94,6 +94,7 @@ void sema_analysis_pass_interface_and_weak_sym(Module *module);
 void sema_analysis_pass_lambda(Module *module);
 void sema_analyze_stage(Module *module, AnalysisStage stage);
 void sema_trace_liveness(void);
+void sema_static_analysis(void);
 
 Expr *sema_expr_resolve_access_child(SemaContext *context, Expr *child, bool *missing, bool *was_reflect);
 

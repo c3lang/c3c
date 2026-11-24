@@ -577,6 +577,7 @@ add_executable(c3c
         src/utils/time.c
         src/utils/http.c
         src/compiler/sema_liveness.c
+        src/compiler/sema_static_analysis.c
         src/build/common_build.c
         src/compiler/sema_const.c
         ${CMAKE_BINARY_DIR}/git_hash.h

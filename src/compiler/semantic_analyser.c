@@ -2,8 +2,8 @@
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
-#include <compiler_tests/benchmark.h>
 #include "sema_internal.h"
+#include "compiler_tests/benchmark.h"
 
 char swizzle[256] = { ['x'] = 0x01, ['y'] = 0x02, ['z'] = 0x03, ['w'] = 0x04,
 					  ['r'] = 0x11, ['g'] = 0x12, ['b'] = 0x13, ['a'] = 0x14 };
@@ -597,6 +597,10 @@ RESOLVE_LAMBDA:;
 		}
 	}
 	sema_trace_liveness();
+	BenchTime analysis_start = benchstart();
+	sema_static_analysis();
+	compiler.stats.static_analysis_time = benchmark(analysis_start);
+	halt_on_error();
 }
 
 void sema_context_init(SemaContext *context, CompilationUnit *unit)

@@ -13,7 +13,7 @@ extern const char *llvm_version;
 #endif
 
 #define STATS_SCHEMA_VERSION 1
-#define STATS_MAX_PHASES 10
+#define STATS_MAX_PHASES 12
 #define STATS_NODES 5
 #define MB (1024.0 * 1024.0)
 
@@ -286,6 +286,7 @@ static void stats_report_phases(StatsReport *report)
 		phases[count++] = (StatsPhase) { "Semantic analysis", stats->sema_time - start, NULL };
 		if (stats->generic_time > 0) phases[count++] = (StatsPhase) { "Generic instantiation", stats->generic_time, "Semantic analysis" };
 		if (compiler.exec_time > 0) phases[count++] = (StatsPhase) { "$exec scripts", compiler.exec_time, "Semantic analysis" };
+		if (stats->static_analysis_time > 0) phases[count++] = (StatsPhase) { "Static analysis", stats->static_analysis_time, "Semantic analysis" };
 		start = stats->sema_time;
 	}
 	report->frontend_time = start;

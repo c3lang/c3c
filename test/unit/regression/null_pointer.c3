@@ -15,6 +15,7 @@ fn void test_null_member_offset() @test
 }
 
 JmpBuf test_buf;
+int* null_ptr;
 bool panicked = false;
 String panic_msg;
 
@@ -37,7 +38,7 @@ fn void test_null_deref_panic() @test @feat(!(WIN32 & AARCH64)) @feat(!WASM)
 	panic_msg = "";
 	if (libc::setjmp(&test_buf) == 0)
 	{
-		int* p = null;
+		int* p = null_ptr;
 		int x = *p;
 		(void)x;
 	}
@@ -53,7 +54,7 @@ fn void test_null_compound_assign_panic() @test @feat(!(WIN32 & AARCH64)) @feat(
 	panic_msg = "";
 	if (libc::setjmp(&test_buf) == 0)
 	{
-		int* p = null;
+		int* p = null_ptr;
 		*p += 1;
 	}
 	builtin::panic = saved;
@@ -68,7 +69,7 @@ fn void test_null_inc_dec_panic() @test @feat(!(WIN32 & AARCH64)) @feat(!WASM)
 	panic_msg = "";
 	if (libc::setjmp(&test_buf) == 0)
 	{
-		int* p = null;
+		int* p = null_ptr;
 		(*p)++;
 	}
 	builtin::panic = saved;

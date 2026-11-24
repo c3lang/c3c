@@ -565,6 +565,7 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 	LLVMSetCurrentDebugLocation2(c->builder, NULL);
 
 	AstId current = body->compound_stmt.first_stmt;
+
 	while (current)
 	{
 		llvm_emit_stmt(c, ast_next(&current));
@@ -575,8 +576,27 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 	// Insert a return (and defer) if needed.
 	if (c->current_block && !LLVMGetBasicBlockTerminator(c->current_block))
 	{
+		SourceLoc *loc = sourcelocptr(body->loc);
+		SourceLoc loc_copy = *loc;
+		if (c->debug.builder)
+		{
+			File *file = source_file_by_id(loc_copy.file_id);
+			for (uint32_t i = 0; i < loc_copy.length - 1; i++)
+			{
+				loc_copy.offset++;
+				loc_copy.col++;
+				if (file->contents[loc_copy.offset] == '\n')
+				{
+					loc_copy.col = 0;
+					loc_copy.row++;
+				}
+			}
+			loc_copy.length = 1;
+			llvm_emit_debug_location(c, make_loc(loc_copy));
+		}
 		if (!is_naked)
 		{
+
 			llvm_emit_return_implicit(c);
 		}
 		else
