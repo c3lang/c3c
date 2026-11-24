@@ -14,6 +14,7 @@ typedef struct
 {
 	FlagSlot is_null;
 	FlagSlot not_null;
+	bool dead;
 } SAState;
 
 typedef struct
@@ -54,6 +55,13 @@ static SANullability sa_analyse_ident_expr(SAContext *c, Expr *expr);
 static SANullability sa_analyse_expr_list(SAContext *c, Expr **expr);
 static SANullability sa_analyse_unary_expr(SAContext *c, Expr *expr);
 
+static bool sa_expr_is_null_const(Expr *expr);
+
+static void sa_narrow(SAContext *c, Expr *expr, bool truth);
+static void sa_narrow_nullable(SAContext *c, Expr *expr, SANullability nullability);
+
+INLINE bool sa_expr_is_simple(Expr *expr);
+
 static SAState sa_state_join(SAState a, SAState b);
 static SASlotId sa_allocate_slot(SAContext *c, Decl *decl);
 static void sa_set_slot_nullability(SAContext *c, SASlotId slot, SANullability nullability);
@@ -88,8 +96,15 @@ static void sa_analyse_function(SAContext *c, Decl *func)
 	c->bail = false;
 	c->state.is_null = 0;    // Empty null flags
 	c->state.not_null = 0;   // Empty not null flags
+	c->state.dead = false;
 	c->slot_count = 0; // No slots in use
 
+	FOREACH(Decl *, param, func->func_decl.signature.params)
+	{
+		if (!param) continue;
+		SASlotId slot = sa_allocate_slot(c, param);
+		if (slot >= 0) sa_set_slot_nullability(c, slot, param->var.not_null ? NULLABILITY_NOT_NULL : NULLABILITY_UNKNOWN);
+	}
 	Ast *body = astptr(func->func_decl.body);
 	ASSERT(body->ast_kind == AST_COMPOUND_STMT);
 	AstId next = body->compound_stmt.first_stmt;
@@ -105,6 +120,7 @@ static void sa_analyse_function(SAContext *c, Decl *func)
 static void sa_analyse_stmt(SAContext *c, Ast *stmt)
 {
 	if (!stmt || c->bail) return;
+
 	switch (stmt->ast_kind)
 	{
 		case AST_DEFER_STMT:
@@ -238,11 +254,15 @@ static void sa_analyse_if(SAContext *c, Ast *stmt)
 		c->bail = true;
 		return;
 	}
-	sa_analyse_expr(c, exprptr(stmt->if_stmt.cond));
+	Expr *cond = exprptr(stmt->if_stmt.cond);
+	sa_analyse_expr(c, cond);
+	bool is_simple = sa_expr_is_simple(cond);
 	SAState stored = c->state;
+	if (is_simple) sa_narrow(c, cond, true);
 	sa_analyse_stmt(c, astptrzero(stmt->if_stmt.then_body));
 	SAState then_state = c->state;
 	c->state = stored;
+	if (is_simple) sa_narrow(c, cond, false);
 	sa_analyse_stmt(c, astptrzero(stmt->if_stmt.else_body));
 	c->state = sa_state_join(then_state, c->state);
 }
@@ -307,7 +327,7 @@ static SASlotId sa_allocate_slot(SAContext *c, Decl *decl)
 {
 	ASSERT(decl);
 	if (!decl || decl->decl_kind != DECL_VAR) return -1;
-	if (decl->var.kind != VARDECL_LOCAL || decl->var.is_static || decl->var.is_threadlocal) return -1;
+	if ((decl->var.kind != VARDECL_LOCAL && decl->var.kind != VARDECL_PARAM) || decl->var.is_static || decl->var.is_threadlocal) return -1;
 	DeclId id = declid(decl);
 	for (int i = 0; i < c->slot_count; i++)
 	{
@@ -320,7 +340,7 @@ static SASlotId sa_allocate_slot(SAContext *c, Decl *decl)
 
 static SAState sa_state_join(SAState a, SAState b)
 {
-	return (SAState){ .is_null = a.is_null && b.is_null, .not_null = a.not_null && b.not_null };
+	return (SAState){ .is_null = a.is_null & b.is_null, .not_null = a.not_null & b.not_null };
 }
 
 static SANullability sa_analyse_expr(SAContext *c, Expr *expr)
@@ -358,6 +378,9 @@ RETRY:;
 			sa_analyse_expr(c, expr->two_expr.first);
 			expr = expr->two_expr.last;
 			goto RETRY;
+		case EXPR_INT_TO_BOOL:
+			sa_analyse_expr(c, expr->int_to_bool_expr.inner);
+			return NULLABILITY_UNKNOWN;
 		case EXPR_ACCESS_RESOLVED:
 		case EXPR_ADDR_CONVERSION:
 		case EXPR_ASM:
@@ -377,7 +400,6 @@ RETRY:;
 		case EXPR_FLOAT_TO_INT:
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_INITIALIZER_LIST:
-		case EXPR_INT_TO_BOOL:
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_INT_TO_PTR:
 		case EXPR_LAMBDA:
@@ -489,9 +511,10 @@ static SANullability sa_analyse_call_expr(SAContext *c, Expr *expr)
 	{
 		if (j >= param_count || j >= MAX_PARAMS || !params[j] || !params[j]->var.not_null) continue;
 		if (values[j] != NULLABILITY_NULL) continue;
+		if (c->state.dead) continue;
 		print_error_at(arg->loc, params[j]->var.self_addr
 			? "This method may not be called on a value known to be null."
-			: "This value is null, but this parameter must be non-null.");
+			: "This value is null, but the parameter must be non-null.");
 		sema_note_prev_at(params[j]->loc, "The definition is here.");
 	}
 	return NULLABILITY_UNKNOWN;
@@ -538,11 +561,156 @@ static SANullability sa_analyse_unary_expr(SAContext *c, Expr *expr)
 			c->bail = true;
 			return NULLABILITY_UNKNOWN;
 		case UNARYOP_DEREF:
-			if (sa_analyse_expr(c, inner) == NULLABILITY_NULL && !c->bail)
+			if (sa_analyse_expr(c, inner) == NULLABILITY_NULL && !c->bail && !c->state.dead)
 			{
 				print_error_at(expr->loc, "This would dereference a null pointer.");
 			}
 			return NULLABILITY_UNKNOWN;
 	}
 	UNREACHABLE
+}
+
+INLINE Expr *sa_flatten_expr(Expr *expr)
+{
+	while (expr->expr_kind == EXPR_RVALUE || expr->expr_kind == EXPR_RECAST) expr = expr->inner_expr;
+	return expr;
+}
+
+static bool sa_expr_is_null_const(Expr *expr)
+{
+	expr = sa_flatten_expr(expr);
+	return expr_is_const_pointer(expr) && !expr->const_expr.ptr;
+}
+
+static bool sa_expr_is_simple_recursive(Expr *expr, int *budget)
+{
+	if (--*budget < 0) return false;
+RETRY:;
+	switch (expr->expr_kind)
+	{
+		case EXPR_IDENTIFIER:
+		case EXPR_CONST:
+			return true;
+		case EXPR_RVALUE:
+		case EXPR_RECAST:
+			expr = expr->inner_expr;
+			goto RETRY;
+		case EXPR_TWO:
+			expr = expr->two_expr.last;
+			goto RETRY;
+		case EXPR_COND:
+			expr = VECLAST(expr->cond_expr);
+			goto RETRY;
+		case EXPR_INT_TO_BOOL:
+			expr = expr->int_to_bool_expr.inner;
+			goto RETRY;
+		case EXPR_UNARY:
+			if (expr->unary_expr.operator != UNARYOP_NOT) return false;
+			expr = expr->unary_expr.expr;
+			goto RETRY;
+		case EXPR_BINARY:
+			switch (expr->binary_expr.operator)
+			{
+				case BINARYOP_AND:
+				case BINARYOP_OR:
+				case BINARYOP_EQ:
+				case BINARYOP_NE:
+					return sa_expr_is_simple_recursive(exprptr(expr->binary_expr.left), budget)
+						&& sa_expr_is_simple_recursive(exprptr(expr->binary_expr.right), budget);
+				default:
+					return false;
+			}
+		default:
+			return false;
+	}
+}
+
+INLINE bool sa_expr_is_simple(Expr *expr)
+{
+	int budget = 16;
+	return sa_expr_is_simple_recursive(expr, &budget);
+}
+
+static void sa_narrow(SAContext *c, Expr *expr, bool truth)
+{
+	if (c->state.dead) return;
+RETRY:;
+	switch (expr->expr_kind)
+	{
+		case EXPR_RVALUE:
+		case EXPR_RECAST:
+			expr = expr->inner_expr;
+			goto RETRY;
+		case EXPR_COND:
+			expr = VECLAST(expr->cond_expr);
+			goto RETRY;
+		case EXPR_TWO:
+			expr = expr->two_expr.last;
+			goto RETRY;
+		case EXPR_INT_TO_BOOL:
+		{
+			Expr *inner = expr->int_to_bool_expr.inner;
+			if (type_flatten(inner->type)->type_kind != TYPE_POINTER) return;
+			bool non_null = truth != expr->int_to_bool_expr.negate;
+			sa_narrow_nullable(c, inner, non_null ? NULLABILITY_NOT_NULL : NULLABILITY_NULL);
+			return;
+		}
+		case EXPR_UNARY:
+			if (expr->unary_expr.operator == UNARYOP_NOT)
+			{
+				expr = expr->unary_expr.expr;
+				truth = !truth;
+				goto RETRY;
+			}
+			return;
+		case EXPR_BINARY:
+		{
+			Expr *left = exprptr(expr->binary_expr.left);
+			Expr *right = exprptr(expr->binary_expr.right);
+			switch (expr->binary_expr.operator)
+			{
+				case BINARYOP_AND:
+					if (!truth) return;
+					sa_narrow(c, left, true);
+					sa_narrow(c, right, true);
+					return;
+				case BINARYOP_OR:
+					if (truth) return;
+					sa_narrow(c, left, false);
+					sa_narrow(c, right, false);
+					return;
+				case BINARYOP_EQ:
+				case BINARYOP_NE:
+				{
+					bool is_eq = (expr->binary_expr.operator == BINARYOP_EQ) == truth;
+					SANullability value = is_eq ? NULLABILITY_NULL : NULLABILITY_NOT_NULL;
+					if (sa_expr_is_null_const(right)) sa_narrow_nullable(c, left, value);
+					else if (sa_expr_is_null_const(left)) sa_narrow_nullable(c, right, value);
+					return;
+				}
+				default:
+					return;
+			}
+		}
+		default:
+			return;
+	}
+	UNREACHABLE_VOID
+}
+
+static void sa_narrow_nullable(SAContext *c, Expr *expr, SANullability nullability)
+{
+	expr = sa_flatten_expr(expr);
+	if (expr->expr_kind != EXPR_IDENTIFIER) return;
+	SASlotId slot = sa_find_slot(c, expr->ident_expr);
+	if (slot < 0) return;
+	SANullability current = sa_analyse_ident_expr(c, expr);
+	// Just continue if same
+	if (current == nullability) return;
+	// Path is dead if nullability is known to differ
+	if (current != NULLABILITY_UNKNOWN)
+	{
+		c->state.dead = true;
+	}
+	sa_set_slot_nullability(c, slot, nullability);
 }
