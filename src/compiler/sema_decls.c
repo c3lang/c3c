@@ -4046,7 +4046,8 @@ bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **attrs, Att
 	if (!sema_analyse_attributes_inner(context, &data, decl, attrs, domain, NULL, erase_decl)) return false;
 	if (*erase_decl) return true;
 	decl->resolved_attributes = true;
-	if (data.tags || data.deprecated || data.links || data.section || data.overload || data.wasm_module )
+	if (compiler.build.docgen) data.source = attrs;
+	if (data.tags || data.deprecated || data.links || data.section || data.overload || data.wasm_module || data.source)
 	{
 		ResolvedAttrData *copy = MALLOCS(ResolvedAttrData);
 		*copy = data;

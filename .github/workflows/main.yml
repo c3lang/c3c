@@ -347,7 +347,7 @@ jobs:
       - run: |
           mkdir -p apt-cache/partial
           for i in 1 2 3; do sudo apt-get update && break || sleep 2; done
-          for i in 1 2 3; do sudo apt-get install -y -o dir::cache::archives="$(pwd)/apt-cache" --fix-missing zlib1g zlib1g-dev python3 ninja-build curl libcurl4-openssl-dev libx11-dev libxrandr-dev libxinerama-dev libxi-dev libxxf86vm-dev libxcursor-dev && break || sleep 2; done
+          for i in 1 2 3; do sudo apt-get install -y -o dir::cache::archives="$(pwd)/apt-cache" --fix-missing zlib1g zlib1g-dev python3 ninja-build curl libcurl4-openssl-dev libx11-dev libxrandr-dev libxinerama-dev libxi-dev libxxf86vm-dev libxcursor-dev jq && break || sleep 2; done
           sudo chown -R $USER:$USER apt-cache
 
       - name: CMake Build (Release)
@@ -359,6 +359,11 @@ jobs:
         run: |
           cmake -B build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DC3_FETCH_LLVM=ON
           cmake --build build-debug
+
+      - name: Docgen
+        run: |
+          ./build-debug/c3c docgen --json lib/ > docgen.json
+          jq -e '.modules | length > 0' docgen.json > /dev/null
 
   test-emscripten-32bit:
     name: Emscripten & QEMU

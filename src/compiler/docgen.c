@@ -1,4 +1,4 @@
-#include "compiler_internal.h"
+#include "sema_internal.h"
 #include "../utils/json.h"
 #include "../build/build.h"
 #include <stdio.h>
@@ -28,6 +28,7 @@ typedef struct
 	FILE *file;
 	bool first_stack[JSON_MAX_DEPTH];
 	int depth;
+	CompilationUnit *unit;
 } JsonEmitter;
 
 static inline void json_init(JsonEmitter *e, FILE *file)
@@ -35,6 +36,7 @@ static inline void json_init(JsonEmitter *e, FILE *file)
 	e->file = file;
 	e->depth = 0;
 	e->first_stack[0] = true;
+	e->unit = NULL;
 }
 
 static inline void json_comma(JsonEmitter *e)
@@ -143,6 +145,7 @@ static void print_doc_type(JsonEmitter *e, Module *module, TypeInfo *type, bool 
 static void emit_params_json(JsonEmitter *e, Module *module, Decl **params);
 static bool emit_doc_comments(JsonEmitter *e, Decl *decl);
 static void emit_param_json(JsonEmitter *e, Module *module, Decl *p);
+static void emit_attrs(JsonEmitter *e, Decl *decl);
 
 static void truncate_scratch_buffer_middle(void)
 {
@@ -324,14 +327,7 @@ static void emit_param_json(JsonEmitter *e, Module *module, Decl *p)
 			json_write_prop_key(e, "default_value");
 			write_expr_source_json(e->file, p->var.init_expr);
 		}
-		if (p->is_maybe_unused || p->is_must_use || p->var.no_alias)
-		{
-			json_start_array_prop(e, "attributes");
-			if (p->is_maybe_unused) { json_comma(e); fputs("\"@unused\"", e->file); }
-			if (p->is_must_use)     { json_comma(e); fputs("\"@used\"", e->file); }
-			if (p->var.no_alias)     { json_comma(e); fputs("\"@noalias\"", e->file); }
-			json_end_array(e);
-		}
+		emit_attrs(e, p);
 		if (p->var.self_addr) json_write_prop_bool(e, "is_ref", true);
 		if (p->var.vararg)    json_write_prop_bool(e, "is_vararg", true);
 	}
@@ -672,6 +668,7 @@ static void emit_doc_struct_members(JsonEmitter *e, Decl *decl)
 				json_write_prop_key(e, "bit_range");
 				fprintf(e->file, "[%u,%u]", p->var.start_bit, p->var.end_bit);
 			}
+			emit_attrs(e, p);
 			json_end_object(e);
 			continue;
 		}
@@ -681,6 +678,7 @@ static void emit_doc_struct_members(JsonEmitter *e, Decl *decl)
 		{
 			json_write_prop_string(e, "name", p->name);
 		}
+		emit_attrs(e, p);
 		json_start_array_prop(e, "members");
 		emit_doc_struct_members(e, p);
 		json_end_array(e);
@@ -758,6 +756,7 @@ static bool emit_doc_members_json(JsonEmitter *e, Module *module, Decl *decl)
 				write_const_value_json(e->file, p->enum_constant.value);
 			}
 			emit_doc_comments(e, p);
+			emit_attrs(e, p);
 			json_end_object(e);
 		}
 		json_end_array(e);
@@ -797,10 +796,7 @@ static bool emit_doc_members_json(JsonEmitter *e, Module *module, Decl *decl)
 			}
 			json_end_array(e);
 
-			if (p->func_decl.attr_optional)
-			{
-				json_write_prop_bool(e, "is_optional", true);
-			}
+			emit_attrs(e, p);
 			json_end_object(e);
 		}
 		json_end_array(e);
@@ -809,93 +805,49 @@ static bool emit_doc_members_json(JsonEmitter *e, Module *module, Decl *decl)
 	return false;
 }
 
-static void emit_custom_attrs(JsonEmitter *e, Decl *decl)
+static Attr **decl_source_attrs(Decl *decl)
 {
-	if (!decl->resolved_attributes || !decl->attrs_resolved) return;
-	if (vec_size(decl->attrs_resolved->tags) == 0) return;
+	if (!decl->resolved_attributes) return decl->attributes;
+	return decl->attrs_resolved ? decl->attrs_resolved->source : NULL;
+}
 
-	json_start_array_prop(e, "custom_attrs");
-	FOREACH_IDX(i, Attr *, attr, decl->attrs_resolved->tags)
+static void emit_attrs(JsonEmitter *e, Decl *decl)
+{
+	Attr **attrs = decl_source_attrs(decl);
+	if (!vec_size(attrs)) return;
+	json_start_array_prop(e, "attributes");
+	FOREACH(Attr *, attr, attrs)
 	{
 		json_start_object(e);
-		json_write_prop_string(e, "name", attr->name);
-		if (vec_size(attr->exprs) > 0)
+		scratch_buffer_clear();
+		if (attr->path)
+		{
+			scratch_buffer_append(attr->path->module);
+			scratch_buffer_append("::");
+		}
+		scratch_buffer_append(attr->name);
+		json_write_prop_string(e, "name", scratch_buffer_to_string());
+		if (attr->is_custom && e->unit)
+		{
+			SemaContext context;
+			sema_context_init(&context, e->unit);
+			Decl *attr_decl = sema_find_path_symbol(&context, attr->name, attr->path);
+			sema_context_destroy(&context);
+			if (attr_decl && decl_ok(attr_decl) && attr_decl->decl_kind == DECL_ATTRIBUTE) emit_decl_uid_json(e, attr_decl);
+		}
+		if (attr->exprs)
 		{
 			json_start_array_prop(e, "args");
 			FOREACH(Expr *, ex, attr->exprs)
 			{
 				json_comma(e);
-				if (expr_is_const_string(ex))
-				{
-					json_write_string(e->file, ex->const_expr.bytes.ptr);
-				}
-				else
-				{
-					fputs("null", e->file);
-				}
+				write_expr_source_json(e->file, ex);
 			}
 			json_end_array(e);
 		}
 		json_end_object(e);
 	}
 	json_end_array(e);
-}
-
-static void emit_normal_attrs(JsonEmitter *e, Decl *decl)
-{
-	bool has_attrs = false;
-
-#define EMIT_ATTR(flag, name)                               \
-	if (flag)                                               \
-	{                                                       \
-		if (!has_attrs)                                     \
-		{                                                   \
-			json_start_array_prop(e, "attributes");         \
-			has_attrs = true;                               \
-		}                                                   \
-		json_comma(e);                                      \
-		json_write_string(e->file, "@" name);               \
-	}
-
-	EMIT_ATTR(decl->is_export, "export")
-	EMIT_ATTR(decl->is_weak, "weak")
-	EMIT_ATTR(decl->is_weak_link, "weaklink")
-	EMIT_ATTR(decl->is_maybe_unused, "unused")
-	EMIT_ATTR(decl->is_must_use, "nodiscard")
-	EMIT_ATTR(decl->will_reflect, "reflect")
-	EMIT_ATTR(decl->obfuscate, "obfuscate")
-	EMIT_ATTR(decl->is_dynamic, "dynamic")
-	EMIT_ATTR(decl->no_strip, "nostrip")
-	EMIT_ATTR(decl->attr_nopadding, "nopadding")
-	EMIT_ATTR(decl->attr_constinit, "constinit")
-	EMIT_ATTR(decl->attr_mustinit, "mustinit")
-
-	if (decl->decl_kind == DECL_STRUCT || decl->decl_kind == DECL_UNION)
-	{
-		EMIT_ATTR(decl->strukt.is_compact, "compact")
-		EMIT_ATTR(decl->strukt.is_packed, "packed")
-	}
-	if (decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO)
-	{
-		if (decl->decl_kind == DECL_FUNC)
-		{
-			EMIT_ATTR(decl->func_decl.attr_inline, "inline")
-			EMIT_ATTR(decl->func_decl.attr_noinline, "noinline")
-			EMIT_ATTR(decl->func_decl.attr_naked, "naked")
-			EMIT_ATTR(decl->func_decl.attr_benchmark, "benchmark")
-			EMIT_ATTR(decl->func_decl.attr_test, "test")
-			EMIT_ATTR(decl->func_decl.attr_winmain, "winmain")
-			EMIT_ATTR(decl->func_decl.attr_optional, "optional")
-			EMIT_ATTR(decl->func_decl.attr_init, "init")
-			EMIT_ATTR(decl->func_decl.attr_finalizer, "finalizer")
-		}
-		EMIT_ATTR(decl->func_decl.signature.attrs.noreturn, "noreturn")
-		EMIT_ATTR(decl->func_decl.signature.attrs.nodiscard, "nodiscard")
-		EMIT_ATTR(decl->func_decl.signature.attrs.always_const, "const")
-	}
-
-	if (has_attrs) json_end_array(e);
-#undef EMIT_ATTR
 }
 
 static Decl *get_contract_decl(DeclId id)
@@ -1024,6 +976,7 @@ static const char *get_decl_kind_name(Decl *decl)
 
 static void emit_decl_json(JsonEmitter *e, Module *module, Decl *decl, const char **generic_params)
 {
+	e->unit = decl->unit;
 	json_start_object(e);
 
 	json_write_prop_string(e, "name", decl->name);
@@ -1200,8 +1153,7 @@ static void emit_decl_json(JsonEmitter *e, Module *module, Decl *decl, const cha
 	}
 	emit_doc_members_json(e, module, decl);
 	emit_doc_comments(e, decl);
-	emit_custom_attrs(e, decl);
-	emit_normal_attrs(e, decl);
+	emit_attrs(e, decl);
 	json_end_object(e);
 }
 
