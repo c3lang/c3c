@@ -17,6 +17,7 @@
 - Improved debug info with paths on types.
 - Improved static analysis.
 - Docgen shows attributes as written, including `@if` and `attrmacro`s, on declarations, members, enum values, interface methods and parameters, and links `attrmacro`s to their definition.
+- Added `--lsp2`: like `--lsp`, with the length of each error's span after its column.
 
 ### Fixes
 - `nextcase x` in a `@jump` switch read `x` after the defers of the case had run.
