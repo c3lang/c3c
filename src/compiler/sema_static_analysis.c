@@ -379,6 +379,11 @@ static SANullability sa_analyse_expr(SAContext *c, Expr *expr)
 {
 	if (!expr) return NULLABILITY_UNKNOWN;
 RETRY:;
+	if (IS_OPTIONAL(expr))
+	{
+		c->bail = true;
+		return NULLABILITY_UNKNOWN;
+	}
 	switch (expr->expr_kind)
 	{
 		case EXPR_NOP:
@@ -418,6 +423,10 @@ RETRY:;
 			return sa_analyse_access_expr(c, expr);
 		case EXPR_DECL:
 			return sa_analyse_declare(c, expr->decl_expr);
+		case EXPR_MAKE_ANY:
+			sa_analyse_expr(c, expr->make_any_expr.inner);
+			sa_analyse_expr(c, expr->make_any_expr.typeid);
+			return NULLABILITY_UNKNOWN;
 		case EXPR_ADDR_CONVERSION:
 		case EXPR_ASM:
 		case EXPR_BENCHMARK_HOOK:
@@ -440,7 +449,6 @@ RETRY:;
 		case EXPR_LAST_FAULT:
 		case EXPR_MACRO_BLOCK:
 		case EXPR_MACRO_BODY_EXPANSION:
-		case EXPR_MAKE_ANY:
 		case EXPR_MAKE_SLICE:
 		case EXPR_MEMBER_GET:
 		case EXPR_MEMBER_SET:
@@ -528,10 +536,19 @@ static SANullability sa_analyse_binary_expr(SAContext *c, Expr *expr)
 	}
 }
 
+static void sa_analyse_varargs(SAContext *c, Expr *expr)
+{
+	if (expr->call_expr.va_is_splat)
+	{
+		sa_analyse_expr(c, expr->call_expr.vasplat);
+		return;
+	}
+	sa_analyse_expr_list(c, expr->call_expr.varargs);
+}
+
 static SANullability sa_analyse_call_expr(SAContext *c, Expr *expr)
 {
-	if (expr->call_expr.is_builtin || expr->call_expr.varargs || expr->call_expr.va_is_splat
-		|| expr->call_expr.function_contracts || expr->call_expr.no_return)
+	if (expr->call_expr.is_builtin || expr->call_expr.function_contracts)
 	{
 		c->bail = true;
 		return NULLABILITY_UNKNOWN;
@@ -541,11 +558,18 @@ static SANullability sa_analyse_call_expr(SAContext *c, Expr *expr)
 	Decl **params = callee && callee->decl_kind == DECL_FUNC ? callee->func_decl.signature.params : NULL;
 	int param_count = vec_size(params);
 	SANullability values[MAX_PARAMS];
+	bool varargs_done = !expr->call_expr.varargs;
 	FOREACH_IDX(i, Expr *, arg, expr->call_expr.arguments)
 	{
+		if (!arg && !varargs_done)
+		{
+			sa_analyse_varargs(c, expr);
+			varargs_done = true;
+		}
 		SANullability v = sa_analyse_expr(c, arg);
 		if (i < MAX_PARAMS) values[i] = v;
 	}
+	if (!varargs_done) sa_analyse_varargs(c, expr);
 	if (c->bail) return NULLABILITY_UNKNOWN;
 	FOREACH_IDX(j, Expr *, arg, expr->call_expr.arguments)
 	{
@@ -557,6 +581,7 @@ static SANullability sa_analyse_call_expr(SAContext *c, Expr *expr)
 			: "This value is null, but the parameter must be non-null.");
 		sema_note_prev_at(params[j]->loc, "The definition is here.");
 	}
+	if (expr->call_expr.no_return) c->state.dead = true;
 	return NULLABILITY_UNKNOWN;
 }
 

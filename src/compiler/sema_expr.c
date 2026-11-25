@@ -594,6 +594,41 @@ bool sema_expr_analyse_sprintf(SemaContext *context, Expr *expr, Expr *format_st
 }
 
 
+static bool expr_is_storage(Expr *expr)
+{
+	while (true)
+	{
+		switch (expr->expr_kind)
+		{
+			case EXPR_IDENTIFIER:
+				return expr->ident_expr->decl_kind == DECL_VAR;
+			case EXPR_UNARY:
+				return expr->unary_expr.operator == UNARYOP_DEREF;
+			case EXPR_BITACCESS:
+			case EXPR_ACCESS_RESOLVED:
+				expr = expr->access_resolved_expr.parent;
+				continue;
+			case EXPR_SUBSCRIPT:
+				expr = exprptr(expr->subscript_expr.expr);
+				switch (type_flatten(expr->type)->type_kind)
+				{
+					case TYPE_ARRAY:
+					case VECTORS:
+						continue;
+					default:
+						return true;
+				}
+			case EXPR_RECAST:
+			case EXPR_ADDR_CONVERSION:
+			case EXPR_RVALUE:
+				expr = expr->inner_expr;
+				continue;
+			default:
+				return false;
+		}
+	}
+}
+
 static bool expr_is_const_storage(Expr *expr, bool literal_is_const)
 {
 	while (true)
@@ -10724,7 +10759,7 @@ static inline bool sema_expr_analyse_taddr(SemaContext *context, Expr *expr, boo
 			return true;
 		}
 	}
-	else if (expr_is_const_storage(inner, false))
+	else if (expr_is_storage(inner))
 	{
 		Decl *temp = decl_new_generated_var(type, VARDECL_LOCAL, inner->loc);
 		expr_rewrite_two(inner, expr_generate_decl(temp, expr_copy(inner)), expr_variable(temp));

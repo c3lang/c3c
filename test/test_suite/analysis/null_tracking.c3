@@ -606,3 +606,197 @@ fn void assert_not_or(int* q, bool k) @export
 	assert(!(q || k));
 	foo(q); // #error: parameter must be non-null
 }
+
+// Varargs and splats
+
+int g_va;
+
+<* @param [&in] p *>
+fn int* id(int* p) => p;
+
+<* @param [&in] p *>
+fn int*[] ptrs(int* p) => {};
+
+fn void typed_va(int x, int*... rest) {}
+extern fn void raw_va(int x, ...);
+
+<* @param [&in] last *>
+fn void va_then_named(int x, int*... rest, int* last = &g_va) {}
+
+fn void any_vararg_checked() @export
+{
+	int* p = null;
+	v(1, id(p)); // #error: parameter must be non-null
+}
+
+fn void typed_vararg_checked() @export
+{
+	int* p = null;
+	typed_va(1, id(p)); // #error: parameter must be non-null
+}
+
+fn void raw_vararg_checked() @export
+{
+	int* p = null;
+	raw_va(1, id(p)); // #error: parameter must be non-null
+}
+
+fn void splat_checked() @export
+{
+	int* p = null;
+	typed_va(1, ...ptrs(p)); // #error: parameter must be non-null
+}
+
+fn void typed_vararg_keeps_null() @export
+{
+	int* p = null;
+	typed_va(1, p);
+	foo(p); // #error: parameter must be non-null
+}
+
+fn void vararg_assignment() @export
+{
+	int* p = &g_va;
+	typed_va(1, p = null);
+	foo(p); // #error: parameter must be non-null
+}
+
+fn void vararg_before_later_args() @export
+{
+	int* p = &g_va;
+	va_then_named(1, p = null, last: p); // #error: parameter must be non-null
+}
+
+fn void ok_vararg_before_later_args() @export
+{
+	int* p = null;
+	va_then_named(1, p = &g_va, last: p);
+}
+
+fn void ok_any_vararg_by_reference() @export
+{
+	int* p = null;
+	v(1, p);
+	foo(p);
+}
+
+fn void ok_empty_varargs() @export
+{
+	int* p = &g_va;
+	typed_va(1);
+	v(1);
+	foo(p);
+}
+
+// Optional arguments skip the rest of the call when they fail (review 2026-11-25)
+
+faultdef BAD;
+fn int*? opt_ptr() => BAD~;
+fn int? opt_int() => BAD~;
+fn void two(int a, int* b) {}
+
+fn void ok_optional_vararg_skips_rest() @export
+{
+	int* p = &g_va;
+	(void)typed_va(1, opt_ptr(), p = null);
+	foo(p);
+}
+
+fn void ok_optional_any_vararg_skips_rest() @export
+{
+	int* p = &g_va;
+	(void)v(1, opt_int(), p = null);
+	foo(p);
+}
+
+fn void ok_optional_arg_skips_rest() @export
+{
+	int* p = &g_va;
+	(void)two(opt_int(), p = null);
+	foo(p);
+}
+
+// @noreturn calls end the path
+
+extern fn void stop() @noreturn;
+
+<* @param [&in] p *>
+extern fn void stop_with(int* p) @noreturn;
+
+fn void ok_noreturn_narrows(int* q) @export
+{
+	if (!q) stop();
+	foo(q);
+}
+
+fn void noreturn_keeps_null(bool b) @export
+{
+	int* p = null;
+	if (b) stop();
+	foo(p); // #error: parameter must be non-null
+}
+
+fn void noreturn_arg_checked() @export
+{
+	int* p = null;
+	stop_with(p); // #error: parameter must be non-null
+}
+
+fn void ok_after_noreturn() @export
+{
+	int* p = null;
+	stop();
+	*p = 1;
+}
+
+fn void noreturn_one_arm(int* q, bool b) @export
+{
+	int* p = null;
+	if (b) { stop(); } else { p = q; }
+	if (!p) foo(p); // #error: parameter must be non-null
+}
+
+// any
+
+fn void any_copy_keeps_tracking() @export
+{
+	int* p = null;
+	any a = p;
+	foo(p); // #error: parameter must be non-null
+}
+
+fn void ok_any_of_address_untracks() @export
+{
+	int* p = null;
+	any a = &p;
+	*(int**)a.ptr = &g_va;
+	foo(p);
+}
+
+// Splat forms
+
+fn void ok_splat_array() @export
+{
+	int*[2] arr = { &g_va, &g_va };
+	int* p = &g_va;
+	typed_va(1, ...arr);
+	typed_va(1, ...&arr);
+	typed_va(1, ...arr[:1], p);
+	foo(p);
+}
+
+// && copies its operand, so writes through it never reach the variable (review 2026-11-25)
+
+fn void taddr_copy_keeps_null() @export
+{
+	int* p = null;
+	int** pp = &&p;
+	*pp = &g_va;
+	foo(p); // #error: parameter must be non-null
+}
+
+fn void taddr_member_reads() @export
+{
+	Bar* b = null;
+	int* x = &&b.b; // #error: access would dereference a null pointer
+}
