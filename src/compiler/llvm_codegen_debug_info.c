@@ -224,14 +224,10 @@ void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, int index, LLVMMe
 	}
 	if (LLVMIsAArgument(parameter->backend_ref) && compiler.build.optlevel == OPTIMIZATION_NONE)
 	{
-		LLVMValueRef addr = llvm_emit_alloca(c, c->ptr_type, type_alloca_alignment(type_voidptr), "");
-		LLVMBuildStore(c->builder, parameter->backend_ref, addr);
-		uint64_t deref = DW_OP_deref;
-		LLVMDIBuilderInsertDeclareRecordAtEnd(c->debug.builder, addr, parameter->var.backend_debug_ref,
-		                                      LLVMDIBuilderCreateExpression(c->debug.builder, &deref, 1),
-		                                      llvm_create_debug_location_with_inline(c, row, col, scope),
-		                                      LLVMGetInsertBlock(c->builder));
-		return;
+		Type *type = type_lowering(parameter->type);
+		LLVMValueRef copy = llvm_emit_alloca(c, llvm_get_type(c, type), parameter->alignment, name);
+		llvm_emit_memcpy(c, copy, parameter->alignment, parameter->backend_ref, parameter->alignment, type_size(type));
+		parameter->backend_ref = copy;
 	}
 	llvm_emit_debug_declare(c, parameter->backend_ref, parameter->var.backend_debug_ref, row, col, scope);
 
@@ -652,8 +648,9 @@ static LLVMMetadataRef llvm_debug_func_type(GenContext *c, Type *type)
 
 static LLVMMetadataRef llvm_debug_decl_scope(GenContext *c, Decl *decl, LLVMMetadataRef scope)
 {
-	if (!decl->name || decl->is_extern || decl->extname || !decl->unit || !decl->unit->module) return scope;
+	if (!decl->name || decl->is_extern || decl->has_extname || !decl->unit || !decl->unit->module) return scope;
 	if (decl->unit == compiler.context.core_unit) return scope;
+	if ((decl->decl_kind == DECL_STRUCT || decl->decl_kind == DECL_UNION) && decl->strukt.parent) return scope;
 	const char *path = decl->unit->module->name->module;
 	LLVMMetadataRef ns = NULL;
 	while (true)

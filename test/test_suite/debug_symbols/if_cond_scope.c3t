@@ -1,0 +1,23 @@
+// #target: macos-x64
+// #debuginfo: yes
+module test;
+faultdef NOT_FOUND;
+
+fn int? find(int s) => s > 0 ? s : NOT_FOUND~;
+
+fn int test(int a)
+{
+	int before = a;
+	if (try to = find(a))
+	{
+		return to + before;
+	}
+	return 0;
+}
+
+/* #expect: test.ll
+
+!18 = distinct !DISubprogram(name: "test", linkageName: "test.test", scope: !7, file: !7, line: 6, type: !9, scopeLine: 6, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !6, retainedNodes: !12)
+!21 = !DILocalVariable(name: "before", scope: !18, file: !7, line: 8, type: !11, align: 32)
+!24 = !DILocalVariable(name: "to", scope: !25, file: !7, line: 9, type: !11, align: 32)
+!25 = distinct !DILexicalBlock(scope: !18, file: !7, line: 9, column: 2)

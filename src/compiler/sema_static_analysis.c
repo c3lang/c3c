@@ -53,7 +53,7 @@ static SANullability sa_analyse_const_expr(SAContext *c, Expr *expr);
 static SANullability sa_analyse_binary_expr(SAContext *c, Expr *expr);
 static SANullability sa_analyse_call_expr(SAContext *c, Expr *expr);
 static SANullability sa_analyse_ident_expr(SAContext *c, Expr *expr);
-static SANullability sa_analyse_expr_list(SAContext *c, Expr **expr);
+static SANullability sa_analyse_expr_list(SAContext *c, Expr **exprs);
 static SANullability sa_analyse_unary_expr(SAContext *c, Expr *expr);
 static SANullability sa_analyse_access_expr(SAContext *c, Expr *expr);
 static SANullability sa_analyse_address_base(SAContext *c, Expr *expr);
@@ -467,7 +467,7 @@ RETRY:;
 	UNREACHABLE
 }
 
-static SANullability sa_analyse_const_expr(SAContext *c, Expr *expr)
+static SANullability sa_analyse_const_expr(SAContext *c UNUSED, Expr *expr)
 {
 	switch (expr->const_expr.const_kind)
 	{

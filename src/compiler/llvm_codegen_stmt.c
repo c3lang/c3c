@@ -254,6 +254,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 			PUSH_DEFER_ERROR(error_out_ref.value);
 			llvm_emit_statement_chain(c, ast->return_stmt.cleanup_fail);
 			POP_DEFER_ERROR();
+			EMIT_LOC(c, ast);
 		}
 		llvm_emit_return_abi(c, NULL, &be_value);
 		return;
@@ -297,6 +298,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 			c->retval = return_value;
 		}
 		llvm_emit_statement_chain(c, ast->return_stmt.cleanup);
+		EMIT_LOC(c, ast);
 	}
 
 	if (llvm_get_current_block_if_in_use(c))
@@ -318,6 +320,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 		PUSH_DEFER_ERROR(error_out_ref.value);
 		llvm_emit_statement_chain(c, ast->return_stmt.cleanup_fail);
 		POP_DEFER_ERROR();
+		EMIT_LOC(c, ast);
 		llvm_emit_return_abi(c, NULL, &error_out_ref);
 	}
 }
@@ -365,6 +368,7 @@ static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 	}
 
 	llvm_emit_statement_chain(c, cleanup);
+	EMIT_LOC(c, ast);
 
 CLEANUP_BLOCK:
 	if (err_cleanup_block)
@@ -374,6 +378,7 @@ CLEANUP_BLOCK:
 		PUSH_DEFER_ERROR(exit->block_error_var);
 		llvm_emit_statement_chain(c, err_cleanup);
 		POP_DEFER_ERROR();
+		EMIT_LOC(c, ast);
 		llvm_emit_jmp(c, exit->block_optional_exit);
 	}
 	else
@@ -398,6 +403,7 @@ CLEANUP_BLOCK:
  */
 static void llvm_emit_if_stmt(GenContext *c, Ast *ast)
 {
+	DEBUG_PUSH_LEXICAL_SCOPE(c, ast->loc);
 	// We need at least the exit block and the "then" block.
 	LLVMBasicBlockRef exit_block = llvm_basic_block_new(c, "if.exit");
 	LLVMBasicBlockRef then_block = exit_block;
@@ -438,6 +444,7 @@ static void llvm_emit_if_stmt(GenContext *c, Ast *ast)
 	// We might have encountered an ! if so, exit
 	if (!llvm_get_current_block_if_in_use(c))
 	{
+		DEBUG_POP_LEXICAL_SCOPE(c);
 		return;
 	}
 
@@ -492,6 +499,7 @@ static void llvm_emit_if_stmt(GenContext *c, Ast *ast)
 	{
 		llvm_emit_block(c, exit_block);
 	}
+	DEBUG_POP_LEXICAL_SCOPE(c);
 }
 
 typedef enum
@@ -1119,6 +1127,7 @@ void llvm_emit_switch(GenContext *c, Ast *ast)
 void llvm_emit_break(GenContext *c, Ast *ast)
 {
 	llvm_emit_statement_chain(c, ast->contbreak_stmt.defers);
+	EMIT_LOC(c, ast);
 	Ast *jump_target = astptr(ast->contbreak_stmt.ast);
 	LLVMBasicBlockRef jump;
 	switch (jump_target->ast_kind)
@@ -1143,6 +1152,7 @@ void llvm_emit_continue(GenContext *c, Ast *ast)
 {
 	ASSERT(ast->contbreak_stmt.is_resolved);
 	llvm_emit_statement_chain(c, ast->contbreak_stmt.defers);
+	EMIT_LOC(c, ast);
 	Ast *jump_target = astptr(ast->contbreak_stmt.ast);
 	LLVMBasicBlockRef jump;
 	switch (jump_target->ast_kind)
@@ -1167,6 +1177,7 @@ void gencontext_emit_next_stmt(GenContext *context, Ast *ast)
 	if (!ast->nextcase_stmt.is_expr)
 	{
 		llvm_emit_statement_chain(context, ast->nextcase_stmt.defer_id);
+		EMIT_LOC(context, ast);
 		llvm_emit_jmp(context, parent->switch_stmt.cases[ast->nextcase_stmt.case_number]->case_stmt.backend_block);
 		return;
 	}
@@ -1176,6 +1187,7 @@ void gencontext_emit_next_stmt(GenContext *context, Ast *ast)
 	if (parent->switch_stmt.flow.jump)
 	{
 		llvm_emit_statement_chain(context, ast->nextcase_stmt.defer_id);
+		EMIT_LOC(context, ast);
 		Ast **cases = parent->switch_stmt.cases;
 		int default_index = parent->switch_stmt.codegen.jump.default_index;
 		LLVMBasicBlockRef exit_block = parent->switch_stmt.codegen.exit_block;
@@ -1198,6 +1210,7 @@ void gencontext_emit_next_stmt(GenContext *context, Ast *ast)
 	}
 	llvm_store(context, parent->switch_stmt.codegen.retry.var, &be_value);
 	llvm_emit_statement_chain(context, ast->nextcase_stmt.defer_id);
+	EMIT_LOC(context, ast);
 	llvm_emit_jmp(context, parent->switch_stmt.codegen.retry.block);
 }
 
