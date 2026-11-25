@@ -240,7 +240,15 @@ static SANullability sa_analyse_declare(SAContext *c, Decl *decl)
 
 static void sa_analyse_return(SAContext *c, Ast *stmt)
 {
-	c->bail = true;
+	Expr *expr = stmt->return_stmt.expr;
+	if (expr && type_is_optional(expr->type))
+	{
+		c->bail = true;
+		return;
+	}
+	if (expr) sa_analyse_expr(c, expr);
+	sa_analyse_stmt_chain(c, stmt->return_stmt.cleanup);
+	c->state.dead = true;
 }
 
 static void sa_analyse_block_exit(SAContext *c, Ast *stmt)

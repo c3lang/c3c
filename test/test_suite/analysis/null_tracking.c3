@@ -1,3 +1,4 @@
+// #opt: --warn-deadcode=no
 module test;
 typedef Foo = int;
 fn void Foo.test(&self) {}
@@ -442,3 +443,43 @@ fn void arg_then_later_assignment() @export
 
 <* @param [&in] a *>
 fn void foo2b(int* a, int* b) {}
+
+
+fn void early_return_narrows(int* q) @export
+{
+	if (!q) return;
+	foo(q);
+}
+
+fn void early_return_else(int* q) @export
+{
+	if (q) { } else { return; }
+	foo(q);
+}
+
+fn void return_keeps_null(bool b) @export
+{
+	int* p = null;
+	if (b) return;
+	foo(p); // #error: parameter must be non-null
+}
+
+fn void return_value_checked() @export
+{
+	int* p = null;
+	return foo(p); // #error: parameter must be non-null
+}
+
+fn void defer_on_return() @export
+{
+	int* p = null;
+	defer *p = 1; // #error: would dereference a null pointer
+	return;
+}
+
+fn void ok_after_return() @export
+{
+	int* p = null;
+	return;
+	*p = 1;
+}
