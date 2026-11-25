@@ -483,3 +483,126 @@ fn void ok_after_return() @export
 	return;
 	*p = 1;
 }
+// Asserts (D22)
+
+fn void assert_narrows_null(int* q) @export
+{
+	assert(q == null);
+	foo(q); // #error: parameter must be non-null
+}
+
+fn void assert_not_narrows_null(int* q) @export
+{
+	assert(!q);
+	foo(q); // #error: parameter must be non-null
+}
+
+fn void assert_and_narrows(int* q, bool k) @export
+{
+	assert(k && q == null);
+	foo(q); // #error: parameter must be non-null
+}
+
+fn void assert_never_passes() @export
+{
+	int* p = null;
+	assert(p != null); // #error: always false
+}
+
+fn void assert_never_passes_negated() @export
+{
+	int x;
+	int* p = &x;
+	assert(!p, "p is set"); // #error: always false
+}
+
+fn void assert_call_checked() @export
+{
+	int* p = null;
+	assert(check(p)); // #error: parameter must be non-null
+}
+
+fn void assert_in_branch(bool b) @export
+{
+	int* p = null;
+	if (b)
+	{
+		assert(p); // #error: always false
+	}
+}
+
+fn void ok_assert_not_null(int* q) @export
+{
+	assert(q);
+	foo(q);
+}
+
+fn void ok_assert_ne_null(int* q) @export
+{
+	assert(q != null);
+	foo(q);
+}
+
+fn void ok_assert_unknown_call(int* q) @export
+{
+	assert(check(q));
+}
+
+fn void ok_assert_or(int* q, bool k) @export
+{
+	assert(q == null || k);
+	foo(q);
+}
+
+fn void assert_after_failing_assert() @export
+{
+	int* p = null;
+	assert(p != null); // #error: always false
+	*p = 1;
+}
+
+fn void ok_assert_in_dead_branch() @export
+{
+	int* p = null;
+	if (p)
+	{
+		assert(p == null);
+	}
+}
+
+fn void ok_assert_narrowing_joined(int* q, bool b) @export
+{
+	if (b)
+	{
+		assert(q == null);
+	}
+	foo(q);
+}
+
+// Side effects in an assert condition (review 2026-11-25)
+
+int g_assert;
+macro bool @set_global(#x) { #x = &g_assert; return true; }
+
+fn void ok_assert_assigns_after_test(int* p) @export
+{
+	assert(p != null && (p = null) == null);
+}
+
+fn void assert_assign_no_fact(int* p, int* q) @export
+{
+	assert(p != null && (p = q) == q);
+	if (!p) foo(p); // #error: parameter must be non-null
+}
+
+fn void ok_assert_after_bail() @export
+{
+	int* p = null;
+	assert(@set_global(p) && p != null);
+}
+
+fn void assert_not_or(int* q, bool k) @export
+{
+	assert(!(q || k));
+	foo(q); // #error: parameter must be non-null
+}

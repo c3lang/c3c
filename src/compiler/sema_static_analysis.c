@@ -194,13 +194,13 @@ static void sa_analyse_stmt(SAContext *c, Ast *stmt)
 	UNREACHABLE_VOID;
 }
 
-static void sa_analyse_stmt_chain(SAContext *c, AstId id)
+static void sa_analyse_stmt_chain(SAContext *c, AstId ast_id)
 {
-	while (id)
+	while (ast_id)
 	{
-		Ast *ast = astptr(id);
+		Ast *ast = astptr(ast_id);
 		sa_analyse_stmt(c, ast);
-		id = ast->next;
+		ast_id = ast->next;
 	}
 }
 
@@ -258,7 +258,14 @@ static void sa_analyse_block_exit(SAContext *c, Ast *stmt)
 
 static void sa_analyse_assert(SAContext *c, Ast *stmt)
 {
-	c->bail = true;
+	Expr *expr = exprptr(stmt->assert_stmt.expr);
+	if (c->bail) return;
+	sa_analyse_expr(c, expr);
+	if (c->bail || !sa_expr_is_simple(expr)) return;
+	bool was_dead = c->state.dead;
+	sa_narrow(c, expr, true);
+	if (was_dead || !c->state.dead || expr_is_const(expr)) return;
+	print_error_at(expr->loc, "This assertion is always false.");
 }
 
 static void sa_analyse_if(SAContext *c, Ast *stmt)
