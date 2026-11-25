@@ -57,6 +57,7 @@ entry:
   %b = alloca %Abc, align 4
   %y = alloca [2 x %Abc], align 4
   %result = alloca %Abc, align 4
+  %.temp = alloca %Abc, align 4
   %result1 = alloca %Abc, align 4
   %l = alloca %"List{Abc}", align 8
   %literal = alloca %Abc, align 4
@@ -85,8 +86,9 @@ entry:
   %eq = icmp eq i32 %3, 5
   call void @llvm.assume(i1 %eq)
   %4 = call ptr @test.get_ref(ptr %a)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %.temp, ptr align 4 %4, i64 4, i1 false)
   %5 = call ptr @test.get_ref(ptr %b)
-  %6 = load i32, ptr %4, align 4
+  %6 = load i32, ptr %.temp, align 4
   %7 = load i32, ptr %5, align 4
   %8 = call i32 @test.Abc.add(i32 %6, i32 %7)
   store i32 %8, ptr %result1, align 4

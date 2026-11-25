@@ -163,14 +163,14 @@ entry:
   call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x, ptr align 4 @.__const.2, i64 12, i1 false)
   %ne = icmp ne ptr %x, null
   call void @llvm.assume(i1 %ne)
+  %0 = load i32, ptr %x, align 4
   %ne1 = icmp ne ptr %x, null
   call void @llvm.assume(i1 %ne1)
   %ptradd = getelementptr inbounds i8, ptr %x, i64 4
+  %1 = load i32, ptr %ptradd, align 4
   %ne2 = icmp ne ptr %x, null
   call void @llvm.assume(i1 %ne2)
   %ptradd3 = getelementptr inbounds i8, ptr %x, i64 8
-  %0 = load i32, ptr %x, align 4
-  %1 = load i32, ptr %ptradd, align 4
   %2 = load i32, ptr %ptradd3, align 4
   call void (ptr, ...) @printf(ptr @.str.3, i32 %0, i32 %1, i32 %2)
   %3 = call ptr @foo.call(ptr %x)
@@ -416,10 +416,10 @@ loop.body83:                                      ; preds = %loop.cond81
 loop.exit88:                                      ; preds = %loop.cond81
   %ne89 = icmp ne ptr %x, null
   call void @llvm.assume(i1 %ne89)
+  %69 = load i32, ptr %x, align 4
   %ne90 = icmp ne ptr %x, null
   call void @llvm.assume(i1 %ne90)
   %ptradd91 = getelementptr inbounds i8, ptr %x, i64 4
-  %69 = load i32, ptr %x, align 4
   %70 = load i32, ptr %ptradd91, align 4
   call void (ptr, ...) @printf(ptr @.str.13, i32 %69, i32 %70)
   %ne93 = icmp ne ptr %x, null
@@ -432,10 +432,10 @@ loop.exit88:                                      ; preds = %loop.cond81
   store i32 %add95, ptr %71, align 4
   %ne96 = icmp ne ptr %x, null
   call void @llvm.assume(i1 %ne96)
+  %73 = load i32, ptr %x, align 4
   %ne97 = icmp ne ptr %x, null
   call void @llvm.assume(i1 %ne97)
   %ptradd98 = getelementptr inbounds i8, ptr %x, i64 4
-  %73 = load i32, ptr %x, align 4
   %74 = load i32, ptr %ptradd98, align 4
   call void (ptr, ...) @printf(ptr @.str.14, i32 %73, i32 %74)
   ret void

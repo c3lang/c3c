@@ -132,6 +132,7 @@
 - Typeid now has updated debug info. The end of a statement now gets a location.
 - Contract debug info would be inlined to the wrong file.
 - Implicit return would not get a debug location.
+- In some cases, arguments were not strictly evaluated left to right.
 
 ### Stdlib changes
 - `atomic::fetch_add` and the other `fetch_*` macros now require the alignment to be at most `mem::MAX_MEMORY_ALIGNMENT`; `fetch_max` and `fetch_min` check it at all.

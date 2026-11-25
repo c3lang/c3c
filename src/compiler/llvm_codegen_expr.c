@@ -5987,6 +5987,20 @@ INLINE void llvm_emit_vasplat_expr(GenContext *c, BEValue *value_ref, Expr *vasp
 	}
 
 }
+
+static void llvm_emit_argument_snapshot(GenContext *c, BEValue *value, Expr *arg)
+{
+	if (value->kind != BE_ADDRESS) return;
+	if (!type_is_abi_aggregate(arg->type))
+	{
+		llvm_value_rvalue(c, value);
+		return;
+	}
+	BEValue loc = llvm_emit_alloca_b(c, arg->type, ".temp");
+	llvm_store(c, &loc, value);
+	*value = loc;
+}
+
 static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr, BEValue *target)
 {
 	if (expr->call_expr.is_builtin)
@@ -6069,6 +6083,18 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 	}
 
 	Signature *sig = prototype->raw_type->function.signature;
+	bool varargs_pure = expr_is_pure(vararg_splat);
+	FOREACH(Expr *, vararg, varargs)
+	{
+		if (!expr_is_pure(vararg)) varargs_pure = false;
+	}
+	bool is_pure_after[256];
+	bool is_pure = varargs_pure || !prototype->raw_variadic;
+	for (int i = arg_count - 1; i >= 0; i--)
+	{
+		is_pure_after[i] = is_pure;
+		if (is_pure && !(args[i] ? expr_is_pure(args[i]) : varargs_pure)) is_pure = false;
+	}
 	for (int i = 0; i < arg_count; i++)
 	{
 		BEValue *value_ref = &values[i];
@@ -6076,6 +6102,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		if (arg)
 		{
 			if (!llvm_emit_folded_in_block(c, value_ref, arg)) RETURN_EMPTY_BLOCK(result_value);
+			if (!is_pure_after[i]) llvm_emit_argument_snapshot(c, value_ref, arg);
 			continue;
 		}
 		Decl *decl = sig->params[i];
@@ -6098,10 +6125,16 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 	// Emit raw varargs
 	if (prototype->raw_variadic && varargs)
 	{
+		int last_impure = -1;
+		FOREACH_IDX(j, Expr *, vararg, varargs)
+		{
+			if (!expr_is_pure(vararg)) last_impure = j;
+		}
 		FOREACH_IDX(i, Expr *, vararg, varargs)
 		{
 			BEValue *value_ref = &values[arg_count + i];
 			if (!llvm_emit_folded_in_block(c, value_ref, vararg)) RETURN_EMPTY_BLOCK(result_value);
+			if (i < last_impure) llvm_emit_argument_snapshot(c, value_ref, vararg);
 		}
 	}
 
