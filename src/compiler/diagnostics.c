@@ -122,6 +122,7 @@ static void print_error_type_at(SourceLoc *location, const char *message, PrintT
 		eprintf("|");
 		eprint_escaped_string(file->full_path);
 		eprintf("|%d|%d|", location->row, location->col);
+		if (compiler.build.lsp_output >= 2) eprintf("%d|", location->length);
 		eprint_escaped_string(message);
 		eprintf("\n");
 		return;
