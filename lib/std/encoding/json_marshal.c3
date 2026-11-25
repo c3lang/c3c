@@ -13,7 +13,7 @@
  Struct members can set their JSON key with `@Json("key")`, and be left out of the output when empty with `@JsonOmitEmpty`.
 *>
 module std::encoding::json;
-import std::io, std::collections::object, std::collections::ref, std::collections::map, std::math;
+import std::io, std::collections::object, std::collections::ref, std::collections::map, std::collections::set, std::math;
 
 <*
  Formatting indentation preference for JSON output.
@@ -183,32 +183,61 @@ fn void? deserialize_value(JsonDeserializer* d, OutValue* out) <OutValue> @priva
 	$switch OutValue::kind:
 		$case STRUCT:
 			defer catch object::recursively_free{OutValue}(d.allocator, out);
-			$if is_string_map(OutValue):
-				out.init(d.allocator);
-				@read_entries(d; String key)
-				{
-					var $Value = map_value_type(OutValue);
-					String map_key = key.tcopy();
-					$Value value;
-					defer catch object::recursively_free{$Value}(d.allocator, &value);
-					deserialize_value{$Value}(d, &value)!;
-					if (try old = out.get(map_key)) object::recursively_free{$Value}(d.allocator, &old);
-					out.set(map_key, value);
-				}!;
-			$else
-				@read_entries(d; String key)
-				{
-					bool matched = false;
-					$foreach $member : OutValue::members:
-						if (!matched && key == json_key($member))
+			$switch:
+				$case is_string_map(OutValue):
+					out.init(d.allocator);
+					@read_entries(d; String key)
+					{
+						var $Value = map_value_type(OutValue);
+						String map_key = key.tcopy();
+						$Value value;
+						defer catch object::recursively_free{$Value}(d.allocator, &value);
+						deserialize_value{$Value}(d, &value)!;
+						if (try old = out.get(map_key)) object::recursively_free{$Value}(d.allocator, &old);
+						out.set(map_key, value);
+					}!;
+				$case is_string_set(OutValue):
+					out.init(d.allocator);
+					expect_char(d, '[')!;
+
+					bool first = true;
+					sz i = 0;
+					defer catch object::recursively_free{OutValue}(d.allocator, out);
+					while (peek_char(d) != ']')
+					{
+						if (!first)
 						{
-							deserialize_value{$member.type}(d, &out.$member)!;
-							matched = true;
+							expect_char(d, ',')!;
+							if (peek_char(d) == ']')
+							{
+								if (d.flavor == JSON) return UNEXPECTED_CHARACTER~;
+								break;
+							}
 						}
-					$endforeach
-					if (!matched) @skip_json_value(d)!;
-				}!;
-			$endif
+						first = false;
+						var $Value = value_type_of_set(OutValue);
+						$Value value;
+						defer catch object::recursively_free{$Value}(d.allocator, &value);
+						deserialize_value{$Value}(d, &value)!;
+						out.add(value);
+						i++;
+					}
+					expect_char(d, ']')!;
+
+				$default:
+					@read_entries(d; String key)
+					{
+						bool matched = false;
+						$foreach $member : OutValue::members:
+							if (!matched && key == json_key($member))
+							{
+								deserialize_value{$member.type}(d, &out.$member)!;
+								matched = true;
+							}
+						$endforeach
+						if (!matched) @skip_json_value(d)!;
+					}!;
+			$endswitch
 		$case ARRAY:
 		$case VECTOR:
 		$case SLICE:
@@ -434,6 +463,33 @@ fn void? serialize_map(OutStream stream, StringMap value, JsonIndent indent, int
 	write_map_suffix(stream, indent, indent_depth, !first)!;
 }
 
+fn void? serialize_set(OutStream stream, Set value, JsonIndent indent, int indent_depth) <Set> @private
+{
+	bool pretty_print = indent != NONE;
+	stream.write_byte('[')!;
+	if (value.len() > 0 && pretty_print) stream.write_byte('\n')!;
+
+	int i;
+	var $Value = value_type_of_set(Set);
+	value.@each(; $Value item)
+	{
+		if (i++ > 0)
+		{
+			stream.write_byte(',')!;
+			if (pretty_print) stream.write_byte('\n')!;
+		}
+		if (pretty_print) write_indent(stream, indent, indent_depth + 1)!;
+		serialize_value{$Value}(stream, item, indent, indent_depth + 1)!;
+	};
+	if (value.len() > 0 && pretty_print)
+	{
+		stream.write_byte('\n')!;
+		write_indent(stream, indent, indent_depth)!;
+	}
+
+	stream.write_byte(']')!;
+}
+
 fn void? serialize_value(OutStream stream, TypeElement value, JsonIndent indent, int indent_depth = 0)<TypeElement> @private
 {
 	$switch TypeElement::kind:
@@ -449,11 +505,14 @@ fn void? serialize_value(OutStream stream, TypeElement value, JsonIndent indent,
 				return serialize_value{TypeElement::inner}(stream, *value, indent, indent_depth);
 			$endif
 		$case STRUCT:
-			$if is_string_map(TypeElement):
-				return serialize_map{TypeElement}(stream, value, indent, indent_depth);
-			$else
-				return serialize{TypeElement}(stream, value, indent, indent_depth);
-			$endif
+			$switch:
+				$case is_string_map(TypeElement):
+					return serialize_map{TypeElement}(stream, value, indent, indent_depth);
+				$case is_string_set(TypeElement):
+					return serialize_set{TypeElement}(stream, value, indent, indent_depth);
+				$default:
+					return serialize{TypeElement}(stream, value, indent, indent_depth);
+			$endswitch
 		$case ARRAY:
 		$case VECTOR:
 			return serialize_slice{TypeElement::inner}(stream, &value, indent, indent_depth);
@@ -671,6 +730,8 @@ macro bool @serializable($Type, $visited) @const @private
 			return true;
 		$case is_string_map($Type):
 			return @serializable(map_value_type($Type), $visited +++ $Type::typeid);
+		$case is_string_set($Type):
+			return @serializable(value_type_of_set($Type), $visited +++ $Type::typeid);
 		$case $Type == Object*:
 			return true;
 		$default:
@@ -743,6 +804,28 @@ macro bool is_string_map($Type) @const @private
 }
 
 macro map_value_type($Type) @const @private => $Typeof((($Type){}).get("")!!);
+
+<*
+ Whether `$Type` is a set, which is written as a JSON object.
+*>
+macro bool is_string_set($Type) @const @private
+{
+	$if $Type::is_generic(HashSet) ||| $Type::is_generic(OrderedSet) ||| $Type::is_generic(TreeSet):
+		return true;
+	$else
+		return false;
+	$endif
+}
+
+macro value_type_of_set($Type) @const @private {
+	$switch:
+		$case $Type::is_generic(HashSet):
+		$case $Type::is_generic(TreeSet):
+			return $Typeof((($Type){}).tvalues())::inner;
+		$case $Type::is_generic(OrderedSet):
+		  return $Typeof(*((($Type){}).iter().get()))::inner;
+	$endswitch
+}
 
 macro String json_key($member) @const @private
 {

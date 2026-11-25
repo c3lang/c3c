@@ -2,7 +2,7 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::collections::object;
-import std::collections::map, std::collections::list, std::io, std::encoding;
+import std::collections::map, std::collections::list, std::collections::set, std::io, std::encoding;
 
 const Object TRUE_OBJECT = { .b = true, .type = bool };
 const Object FALSE_OBJECT = { .b = false, .type = bool };
@@ -623,7 +623,7 @@ fn Type? unmarshal(Allocator allocator, Object* obj) <Type>
 
 alias ObjectInternalMap      @private = HashMap {String, Object*};
 alias ObjectInternalList     @private = List {Object*};
-alias ObjectInternalMapEntry @private = Entry {String, Object*};
+alias ObjectInternalMapEntry @private = std::collections::map::Entry {String, Object*};
 
 macro Object* @alloc_obj(Allocator a, #init) @private
 {
@@ -728,17 +728,23 @@ fn void recursively_free(Allocator allocator, FreeType* val) <FreeType>
 	defer *val = {};
 	$switch FreeType::kind:
 		$case STRUCT:
-			$if FreeType::is_generic(HashMap) ||| FreeType::is_generic(OrderedMap):
-				val.@each(; key, value)
-				{
-					recursively_free{$Typeof(value)}(allocator, &value);
-				};
-				val.free();
-			$else
-				$foreach $member : FreeType::members:
-					recursively_free{$member.type}(allocator, &val.$member);
-				$endforeach
-			$endif
+			$switch:
+				$case FreeType::is_generic(HashMap) ||| FreeType::is_generic(OrderedMap):
+					val.@each(; key, value)
+					{
+						recursively_free{$Typeof(value)}(allocator, &value);
+					};
+					val.free();
+				$case FreeType::is_generic(HashSet) ||| FreeType::is_generic(OrderedSet) ||| FreeType::is_generic(TreeSet):
+					val.@each(; value) {
+						recursively_free{$Typeof(value)}(allocator, &value);
+					};
+					val.free();
+				$default:
+					$foreach $member : FreeType::members:
+						recursively_free{$member.type}(allocator, &val.$member);
+					$endforeach
+			$endswitch
 		$case ARRAY:
 			var $InnerType = FreeType::inner;
 			foreach (&ref : *val)

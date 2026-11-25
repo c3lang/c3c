@@ -3,6 +3,7 @@ import std::encoding::json;
 import std::collections::object;
 import std::collections::ref;
 import std::collections::map;
+import std::collections::set;
 import std::io;
 
 enum Status
@@ -1077,4 +1078,272 @@ fn void test_unmarshal_null_into_string_constdef() @test
 	JsonText text = json::unmarshal(tmem, `{"kind": null, "inline_kind": null, "value": "x"}`, JsonText)!!;
 	test::eq((String)text.kind, "");
 	test::eq((String)text.inline_kind, "");
+}
+
+fn void test_unmarshal_json_array_into_hash_set() @test
+{
+    HashSet{ int } actual = json::unmarshal(tmem, `[5, 1, 4, 9, 3, 2, 4, 1, 5]`, HashSet{ int })!!;
+    int[] expected_values = { 5, 1, 4, 9, 3, 2 };
+    test::eq(actual.len(), expected_values.len);
+    foreach (value: expected_values) {
+        test::eq(actual.contains(value), true);
+    }
+}
+
+fn void test_unmarshal_json_array_into_tree_set() @test
+{
+    TreeSet{ int } actual = json::unmarshal(tmem, `[5, 1, 4, 9, 3, 2, 4, 1, 5]`, TreeSet{ int })!!;
+    int[] expected_values = { 1, 2, 3, 4, 5, 9 };
+    test::eq(actual.len(), expected_values.len);
+    int index;
+    actual.@each(; int value) {
+        test::eq(expected_values[index++], value);
+    };
+}
+
+fn void test_unmarshal_json_array_into_ordered_set() @test
+{
+    OrderedSet{ int } actual = json::unmarshal(tmem, `[5, 1, 4, 9, 3, 2, 4, 1, 5]`, OrderedSet{ int })!!;
+    int[] expected_order = { 5, 1, 4, 9, 3, 2 };
+    test::eq(actual.len(), expected_order.len);
+    int index;
+    actual.@each(; int value) {
+        test::eq(expected_order[index++], value);
+    };
+}
+
+fn void test_unmarshal_json_array_into_ordered_string_set() @test
+{
+    OrderedSet{ String } actual = json::unmarshal(tmem, `["hello", "world", "foo", "bar", "world"]`, OrderedSet{ String })!!;
+    String[] expected_order = { "hello", "world", "foo", "bar" };
+    test::eq(actual.len(), expected_order.len);
+    int index;
+    actual.@each(; String value) {
+        test::eq(expected_order[index++], value);
+    };
+}
+
+fn void test_unmarshal_empty_json_array_into_sets() @test
+{
+    HashSet{ int } hash_set       = json::unmarshal(tmem, `[]`, HashSet{ int })!!;
+    TreeSet{ int } tree_set       = json::unmarshal(tmem, `[]`, TreeSet{ int })!!;
+    OrderedSet{ int } ordered_set = json::unmarshal(tmem, `[]`, OrderedSet{ int })!!;
+
+    test::eq(hash_set.len(), 0);
+    test::eq(tree_set.len(), 0);
+    test::eq(ordered_set.len(), 0);
+}
+
+fn void test_unmarshal_json_array_into_bool_set() @test
+{
+    HashSet{ bool } actual = json::unmarshal(tmem, `[true, false, true, true, false]`, HashSet{ bool })!!;
+    test::eq(actual.len(), 2);
+    test::eq(actual.contains(true), true);
+    test::eq(actual.contains(false), true);
+}
+
+struct SetUnmarshalRecord
+{
+    String name;
+    OrderedSet{ String } permissions;
+}
+
+fn void test_unmarshal_json_dict_into_set_field() @test
+{
+    SetUnmarshalRecord actual = json::unmarshal(tmem,`{ "name": "Alice", "permissions": ["read", "write", "read"] }`, SetUnmarshalRecord)!!;
+    test::eq(actual.name, "Alice");
+    test::eq(actual.permissions.len(), 2);
+    test::eq(actual.permissions.contains("read"), true);
+    test::eq(actual.permissions.contains("write"), true);
+}
+
+alias IntSet = HashSet{ int };
+
+fn void test_unmarshal_json_array_into_int_set() @test
+{
+    IntSet actual = json::unmarshal(tmem, `[5, 1, 4, 9, 3, 2, 4, 1, 5]`, IntSet)!!;
+    int[] expected_values = { 5, 1, 4, 9, 3, 2 };
+    test::eq(actual.len(), expected_values.len);
+    foreach (value: expected_values) {
+        test::eq(actual.contains(value), true);
+    }
+}
+
+struct SetUnmarshalAnotherRecord
+{
+    String name;
+    IntSet permissions;
+}
+
+fn void test_unmarshal_json_dict_into_int_set_field() @test
+{
+    SetUnmarshalAnotherRecord actual = json::unmarshal(tmem,`{ "name": "Alice", "permissions": [644, 755, 644] }`, SetUnmarshalAnotherRecord)!!;
+    test::eq(actual.name, "Alice");
+    test::eq(actual.permissions.len(), 2);
+    test::eq(actual.permissions.contains(644), true);
+    test::eq(actual.permissions.contains(755), true);
+}
+
+// ####################################################################################################
+
+fn void test_marshal_hash_set_as_json_array() @test
+{
+    HashSet{ int } values;
+    values.add(5);
+    values.add(1);
+    values.add(4);
+    values.add(9);
+    values.add(3);
+    values.add(2);
+    values.add(4);
+    values.add(1);
+    values.add(5);
+
+    String serialized = json::marshal_try(tmem, values)!!;
+    int[] actual_values = json::unmarshal(tmem, serialized, int[])!!;
+
+    int[] expected_values = { 5, 1, 4, 9, 3, 2 };
+
+    test::eq(actual_values.len, expected_values.len);
+
+    foreach (expected: expected_values) {
+        bool found;
+        foreach (actual: actual_values) {
+            if (actual == expected) {
+                found = true;
+                break;
+            }
+        }
+        test::eq(found, true);
+    }
+}
+
+fn void test_marshal_tree_set_as_json_array() @test
+{
+    TreeSet{ int } values;
+    values.add(5);
+    values.add(1);
+    values.add(4);
+    values.add(9);
+    values.add(3);
+    values.add(2);
+    values.add(4);
+    values.add(1);
+    values.add(5);
+    String serialized = json::marshal(tmem, values);
+    test::eq(serialized, `[1,2,3,4,5,9]`);
+}
+
+fn void test_marshal_ordered_set_as_json_array() @test
+{
+    OrderedSet{ int } values;
+    values.add(5);
+    values.add(1);
+    values.add(4);
+    values.add(9);
+    values.add(3);
+    values.add(2);
+    values.add(4);
+    values.add(1);
+    values.add(5);
+    String serialized = json::marshal(tmem, values);
+    test::eq(serialized, `[5,1,4,9,3,2]`);
+}
+
+fn void test_marshal_ordered_string_set_as_json_array() @test
+{
+    OrderedSet{ String } values;
+    values.add("hello");
+    values.add("world");
+    values.add("foo");
+    values.add("bar");
+    values.add("world");
+    String serialized = json::marshal(tmem, values);
+    test::eq(serialized, `["hello","world","foo","bar"]`);
+}
+
+fn void test_marshal_ordered_string_set_with_special_characters() @test
+{
+    OrderedSet{ String } values;
+    values.add("hello\nworld");
+    values.add("quote: \"test\"");
+    values.add("path: C:\\test");
+    String serialized = json::marshal(tmem, values);
+    test::eq(serialized, `["hello\nworld","quote: \"test\"","path: C:\\test"]`);
+}
+
+fn void test_marshal_empty_sets_as_json_arrays() @test
+{
+    HashSet{ int } hash_set;
+    TreeSet{ int } tree_set;
+    OrderedSet{ int } ordered_set;
+    test::eq(json::marshal(tmem, hash_set), `[]`);
+    test::eq(json::marshal(tmem, tree_set), `[]`);
+    test::eq(json::marshal(tmem, ordered_set), `[]`);
+}
+
+fn void test_marshal_bool_hash_set_as_json_array() @test
+{
+    HashSet{ bool } values;
+    values.add(true);
+    values.add(false);
+    values.add(true);
+    String serialized = json::marshal(tmem, values);
+    bool[] actual_values = json::unmarshal(tmem, serialized, bool[])!!;
+    test::eq(actual_values.len, 2);
+    bool has_true;
+    bool has_false;
+    foreach (value: actual_values) {
+      if (value) { has_true  = true; }
+      else       { has_false = true; }
+    }
+    test::eq(has_true, true);
+    test::eq(has_false, true);
+}
+
+struct SetMarshalRecord
+{
+    String name;
+    OrderedSet{ String } permissions;
+}
+
+
+fn void test_marshal_struct_with_ordered_set_field() @test
+{
+    OrderedSet{ String } permissions;
+    permissions.add("read");
+    permissions.add("write");
+    permissions.add("read");
+    SetMarshalRecord value = {
+        .name = "Alice",
+        .permissions = permissions
+    };
+    String serialized = json::marshal(tmem, value);
+    test::eq(serialized,`{"name":"Alice","permissions":["read","write"]}`);
+}
+
+
+struct SetMarshalAnotherRecord
+{
+    String name;
+    IntSet permissions;
+}
+
+fn void test_marshal_int_set_as_json_array() @test
+{
+    IntSet values;
+    values.add(644);
+    values.add(755);
+    values.add(644);
+    String serialized = json::marshal(tmem, values);
+    int[] actual_values = json::unmarshal(tmem, serialized, int[])!!;
+    int[] expected_values = { 644, 755 };
+    test::eq(actual_values.len, expected_values.len);
+    foreach (expected: expected_values) {
+        bool found;
+        foreach (actual: actual_values) {
+            if (actual == expected) found = true;
+        }
+        test::eq(found, true);
+    }
 }
