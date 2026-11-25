@@ -300,7 +300,7 @@ typedef struct BuildOptions_
 	bool emit_llvm;
 	bool emit_asm;
 	bool test_mode;
-	bool lsp_mode;
+	int lsp_mode;
 	bool no_entry;
 	bool no_obj;
 	bool keep_object_files;
@@ -465,7 +465,7 @@ typedef struct
 	bool generate_benchmark_runner;
 	bool generate_test_runner;
 	bool test_output;
-	bool lsp_output;
+	int lsp_output;
 	bool docgen;
 	bool docgen_json_out;
 	bool docgen_append;

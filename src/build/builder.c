@@ -897,7 +897,7 @@ BUILD:
 	}
 	if (options->lsp_mode)
 	{
-		target->lsp_output = true;
+		target->lsp_output = options->lsp_mode;
 		target->emit_llvm = false;
 		target->emit_asm = false;
 		target->emit_object_files = false;

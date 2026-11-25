@@ -152,6 +152,7 @@ static void usage(bool full)
 		print_opt("--single-module=<yes|no>", "Compile all modules together, enables more inlining.");
 		print_opt("--show-backtrace=<yes|no>", "Show detailed backtrace on segfaults.");
 		print_opt("--lsp", "Emit data about errors suitable for a LSP.");
+		print_opt("--lsp2", "Like --lsp, with the length of each error's span after its column.");
 		print_opt("--warn-deadcode=<yes|no|error>", "Print warning on dead-code: yes, no, error.");
 		print_opt("--warn-recursivecontracts=<yes|no|error>", "Print warning on recursive contracts: yes, no, error.");
 		print_opt("--warn-methodvisibility=<yes|no|error>", "Print warning when methods have ignored visibility attributes.");
@@ -1896,9 +1897,9 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->run_dir = unchecked_dir(options, next_arg());
 				return;
 			}
-			if (match_longopt("lsp"))
+			if (match_longopt("lsp") || match_longopt("lsp2"))
 			{
-				options->lsp_mode = true;
+				options->lsp_mode = match_longopt("lsp2") ? 2 : 1;
 				options->strip_unused = STRIP_UNUSED_OFF;
 				options->test_mode = false;
 				options->build_benchmark = true;
