@@ -16,13 +16,13 @@ const int FIOASYNC = -2147195267;
 
 typedef NativeSocket = inline Win32_SOCKET;
 
-extern fn CInt ioctlsocket(NativeSocket, CLong cmd, CULong *argp);
-extern fn WSAError closesocket(NativeSocket);
+extern fn CInt ioctlsocket(NativeSocket socket, CLong cmd, CULong *argp);
+extern fn WSAError closesocket(NativeSocket socket);
 extern fn NativeSocket socket(AIFamily af, AISockType type, AIProtocol ip_protocol);
-extern fn int connect(NativeSocket, SockAddrPtr address, Socklen_t address_len);
-extern fn int bind(NativeSocket, SockAddrPtr address, Socklen_t address_len);
-extern fn int listen(NativeSocket, int backlog);
-extern fn NativeSocket accept(NativeSocket, SockAddrPtr address, Socklen_t* address_len);
+extern fn int connect(NativeSocket socket, SockAddrPtr address, Socklen_t address_len);
+extern fn int bind(NativeSocket socket, SockAddrPtr address, Socklen_t address_len);
+extern fn int listen(NativeSocket socket, int backlog);
+extern fn NativeSocket accept(NativeSocket socket, SockAddrPtr address, Socklen_t* address_len);
 extern fn CInt getsockname(NativeSocket socket, SockAddrPtr address, Socklen_t* address_len);
 extern fn CInt getpeername(NativeSocket socket, SockAddrPtr address, Socklen_t* address_len);
 
