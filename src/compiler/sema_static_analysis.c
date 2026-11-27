@@ -403,6 +403,8 @@ RETRY:;
 			return sa_analyse_ident_expr(c, expr);
 		case EXPR_COND:
 			return sa_analyse_expr_list(c, expr->cond_expr);
+		case EXPR_EXPRESSION_LIST:
+			return sa_analyse_expr_list(c, expr->expression_list);
 		case EXPR_UNARY:
 		case EXPR_POST_UNARY:
 			return sa_analyse_unary_expr(c, expr);
@@ -438,7 +440,6 @@ RETRY:;
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		case EXPR_DESIGNATOR:
 		case EXPR_ENUM_FROM_ORD:
-		case EXPR_EXPRESSION_LIST:
 		case EXPR_EXT_TRUNC:
 		case EXPR_FLOAT_TO_INT:
 		case EXPR_FORCE_UNWRAP:
