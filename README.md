@@ -473,7 +473,8 @@ Building `c3c` using Visual Studio Code is also supported when using the `CMake 
    - **Ubuntu / Debian:** `sudo apt-get install cmake git clang libcurl4-openssl-dev liblld-21`
    - **Fedora:** `sudo dnf install cmake clang git libcurl-devel`
    - **Arch Linux:** `sudo pacman -S curl clang cmake git`
-   - **Void Linux:** `sudo xbps-install git cmake clang libcurl-devel`
+   - **Void Linux (glibc):** `sudo xbps-install git cmake make clang libcurl-devel`
+   - **Void Linux (musl):** `sudo xbps-install git cmake make clang libcurl-devel llvm23-devel lld23-devel libxml2-devel`
    - **Alpine Linux:** `sudo apk add build-base cmake git curl-dev samurai zstd-static zstd-dev`
    - **Chimera Linux:** `sudo apk add cmake git curl-devel ninja llvm-devel lld-devel`
    - *Other distributions: Install CMake, Git, a C compiler (like Clang), and libcurl development headers.*
@@ -489,7 +490,7 @@ Building `c3c` using Visual Studio Code is also supported when using the `CMake 
    ```bash
    cmake -B build -S . -DC3_FETCH_LLVM=ON -DCMAKE_BUILD_TYPE=Release
    ```
-   *(Note: On Chimera Linux, omit `-DC3_FETCH_LLVM=ON` or pass `-DC3_FETCH_LLVM=OFF` to build using the system LLVM packages installed above).*
+   *(Note: On Chimera Linux or Void Linux (musl), omit `-DC3_FETCH_LLVM=ON` or pass `-DC3_FETCH_LLVM=OFF` to build using the system LLVM packages installed above).*
 
 4. Build the compiler:
    ```bash
