@@ -901,6 +901,80 @@ macro void double.set_low_word(double* d, uint u)
 
 macro void float.set_word(float* f, uint u) => *f = bitcast(u, float);
 
+<*
+ Returns x * 2^exp, rounding underflow to nearest with ties to even.
+ @require values::@is_promotable_to_float(x) : `The input must be integer or floating type`
+*>
+macro ldexp(x, int exp) => ldexp_impl{$Typeof(values::promote_int(x))}(values::promote_int(x), exp);
+
+// Scale the IEEE representation directly, following std.math.ldexp in Zig.
+fn Type ldexp_impl(Type x, int exp) <Type> @private
+{
+	var $Bits;
+	var $fraction_bits;
+	var $exponent_bits;
+	$switch Type:
+		$case float16:
+			$Bits = ushort;
+			$fraction_bits = 10;
+			$exponent_bits = 5;
+		$case float:
+			$Bits = uint;
+			$fraction_bits = 23;
+			$exponent_bits = 8;
+		$case double:
+			$Bits = ulong;
+			$fraction_bits = 52;
+			$exponent_bits = 11;
+		$case float128:
+			$Bits = uint128;
+			$fraction_bits = 112;
+			$exponent_bits = 15;
+		$default:
+			$error "Unsupported floating point type";
+	$endswitch
+	const int FRACTION_BITS = $fraction_bits;
+	const int EXPONENT_BITS = $exponent_bits;
+	const $Bits EXPONENT_MAX = (1 << EXPONENT_BITS) - 1;
+	const $Bits FRACTION_MASK = (($Bits)1 << FRACTION_BITS) - 1;
+	const $Bits SIGN_MASK = ($Bits)1 << (FRACTION_BITS + EXPONENT_BITS);
+
+	$Bits repr = bitcast(x, $Bits);
+	$Bits sign = repr & SIGN_MASK;
+	long exponent = (long)((repr >> FRACTION_BITS) & EXPONENT_MAX);
+	if (exponent == (long)EXPONENT_MAX || (repr & ~SIGN_MASK) == 0) return x;
+
+	// Give subnormals the exponent they would have after normalization.
+	if (exponent == 0) exponent = (long)EXPONENT_BITS - (($Bits)(repr << 1)).clz();
+	long n = exp;
+	if (n >= 0)
+	{
+		if (n > (long)EXPONENT_MAX - 1 - exponent) return bitcast(($Bits)((EXPONENT_MAX << FRACTION_BITS) | sign), Type);
+		if (exponent + n <= 0) return bitcast(($Bits)((repr << n) | sign), Type);
+		if (exponent <= 0)
+		{
+			$Bits result = ($Bits)(n + exponent) << FRACTION_BITS;
+			result |= (repr << (1 - exponent)) & FRACTION_MASK;
+			return bitcast(($Bits)(result | sign), Type);
+		}
+		return bitcast(($Bits)(repr + (($Bits)n << FRACTION_BITS)), Type);
+	}
+
+	if (n <= -exponent)
+	{
+		if (n < -(FRACTION_BITS + exponent)) return bitcast(($Bits)(sign), Type);
+		long shift = (-n < -(exponent + n) + 1 ? -n : -(exponent + n) + 1);
+		bool exact_tie = repr.ctz() == shift - 1;
+		$Bits result = repr & FRACTION_MASK;
+		if (exponent > 0) result |= ($Bits)1 << FRACTION_BITS;
+		result >>= shift - 1;
+		result = (result + 1) >> 1;
+		if (exact_tie) result &= ($Bits)~($Bits)1;
+		return bitcast(($Bits)(result | sign), Type);
+	}
+	return bitcast(($Bits)(repr - (($Bits)(-n) << FRACTION_BITS)), Type);
+}
+
 macro double scalbn(double x, int n) => _scalbn(x, n);
 
 extern fn double _atan(double x) @MathLibc("atan");
