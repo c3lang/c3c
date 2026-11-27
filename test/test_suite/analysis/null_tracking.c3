@@ -800,3 +800,815 @@ fn void taddr_member_reads() @export
 	Bar* b = null;
 	int* x = &&b.b; // #error: access would dereference a null pointer
 }
+
+// Bools
+
+fn void ok_bool_false_dead() @export
+{
+	int* p = null;
+	bool ok = false;
+	if (ok) foo(p);
+}
+
+fn void bool_true_taken() @export
+{
+	int* p = null;
+	bool ok = true;
+	if (ok) foo(p); // #error: parameter must be non-null
+}
+
+fn void bool_param_narrows(bool b) @export
+{
+	int* p = null;
+	if (b) return;
+	if (!b) foo(p); // #error: parameter must be non-null
+}
+
+fn void bool_compare_const(bool b) @export
+{
+	int* p = null;
+	if (b == false) return;
+	if (b) foo(p); // #error: parameter must be non-null
+}
+
+fn void ok_bool_compare_const_dead(bool b) @export
+{
+	int* p = null;
+	if (b != true) return;
+	if (!b) foo(p);
+}
+
+fn void bool_assert_false() @export
+{
+	bool b;
+	assert(b); // #error: always false
+}
+
+fn void bool_address_taken() @export
+{
+	int* p = null;
+	bool b = false;
+	bool* bp = &b;
+	*bp = true;
+	if (b) foo(p); // #error: parameter must be non-null
+}
+
+fn void ok_bool_unknown_assign(int x) @export
+{
+	int* p = null;
+	bool b = false;
+	b = x > 3;
+	if (!b) return;
+	if (b) return;
+	foo(p);
+}
+
+fn void bool_compound_assign_forgets(bool c) @export
+{
+	int* p = null;
+	bool b = false;
+	b |= c;
+	if (b) foo(p); // #error: parameter must be non-null
+}
+
+fn void bool_and_condition(bool a, int* q) @export
+{
+	int* p = null;
+	if (a && q) return;
+	if (a) foo(q);
+	if (!a) foo(p); // #error: parameter must be non-null
+}
+
+// Bool copies, operators and comparisons
+
+fn void ok_bool_copy_known_value() @export
+{
+	int* p = null;
+	bool a = true;
+	bool b = a;
+	if (!b) foo(p);
+}
+
+fn void bool_copy_known_value_taken() @export
+{
+	int* p = null;
+	bool a = true;
+	bool b = a;
+	if (b) foo(p); // #error: parameter must be non-null
+}
+
+fn void ok_bool_eq_known(bool c) @export
+{
+	int* p = null;
+	bool a = true;
+	if (a == c)
+	{
+		if (!c) foo(p);
+	}
+}
+
+fn void bool_eq_known_taken(bool c) @export
+{
+	int* p = null;
+	bool a = true;
+	if (a == c)
+	{
+		if (c) foo(p); // #error: parameter must be non-null
+	}
+}
+
+fn void ok_bool_ne_known_left(bool c) @export
+{
+	int* p = null;
+	bool a = false;
+	if (a != c)
+	{
+		if (!c) foo(p);
+	}
+}
+
+fn void ok_bool_eq_contradiction(bool c) @export
+{
+	int* p = null;
+	bool a = true;
+	c = false;
+	if (a == c) foo(p);
+}
+
+fn void ok_bool_not_value() @export
+{
+	int* p = null;
+	bool b = false;
+	bool c = !b;
+	if (!c) foo(p);
+}
+
+fn void bool_not_value_taken() @export
+{
+	int* p = null;
+	bool b = false;
+	bool c = !b;
+	if (c) foo(p); // #error: parameter must be non-null
+}
+
+fn void ok_bool_xor_flips() @export
+{
+	int* p = null;
+	bool b = false;
+	b ^= true;
+	if (!b) foo(p);
+}
+
+fn void bool_xor_unknown(bool c) @export
+{
+	int* p = null;
+	bool b = false;
+	b ^= c;
+	if (b) foo(p); // #error: parameter must be non-null
+}
+
+fn void ok_bool_and_or_assign(bool c) @export
+{
+	int* p = null;
+	bool b = c;
+	b &= false;
+	if (b) foo(p);
+	b |= true;
+	if (!b) foo(p);
+}
+
+fn void ok_bool_nested_compare(bool b) @export
+{
+	int* p = null;
+	if ((b == true) == false)
+	{
+		if (b) foo(p);
+	}
+}
+
+fn void ok_bool_compare_value() @export
+{
+	int* p = null;
+	bool a = true;
+	bool c = a == false;
+	if (c) foo(p);
+}
+
+fn void ok_int_compare_is_simple(int x) @export
+{
+	int* p = null;
+	if (p && x < 3) foo(p);
+}
+
+// Values of pointer-to-bool, pointer comparisons, && and ||
+
+fn void ok_bool_from_pointer() @export
+{
+	int* p = null;
+	int* q = null;
+	bool a = (bool)p;
+	if (a) foo(q);
+}
+
+fn void bool_from_pointer_taken() @export
+{
+	int x;
+	int* p = &x;
+	int* q = null;
+	bool a = (bool)p;
+	if (a) foo(q); // #error: parameter must be non-null
+}
+
+fn void ok_bool_from_not_pointer() @export
+{
+	int* p = null;
+	int* q = null;
+	bool a = !p;
+	if (!a) foo(q);
+}
+
+fn void ok_pointer_eq_value() @export
+{
+	int* p = null;
+	int* q = null;
+	bool n = p == null;
+	if (!n) foo(q);
+}
+
+fn void pointer_eq_value_taken() @export
+{
+	int* p = null;
+	int* q = null;
+	bool n = p == null;
+	if (n) foo(q); // #error: parameter must be non-null
+}
+
+fn void ok_pointer_ne_address() @export
+{
+	int x;
+	int* q = null;
+	bool n = &x != null;
+	if (!n) foo(q);
+}
+
+fn void pointer_eq_unknown(int* p) @export
+{
+	int* q = null;
+	bool n = p == null;
+	if (n) foo(q); // #error: parameter must be non-null
+}
+
+fn void ok_and_value(bool t) @export
+{
+	int* q = null;
+	bool k = true;
+	bool x = k && k;
+	if (!x) foo(q);
+	bool y = t && false;
+	if (y) foo(q);
+}
+
+fn void and_value_unknown(bool t) @export
+{
+	int* q = null;
+	bool k = true;
+	bool x = k && t;
+	if (x) foo(q); // #error: parameter must be non-null
+}
+
+fn void ok_or_value(bool t) @export
+{
+	int* q = null;
+	bool k = false;
+	bool x = k || k;
+	if (x) foo(q);
+	bool y = t || true;
+	if (!y) foo(q);
+}
+
+fn void or_value_unknown(bool t) @export
+{
+	int* q = null;
+	bool k = false;
+	bool x = k || t;
+	if (!x) foo(q); // #error: parameter must be non-null
+}
+
+// Helpers for the tests below
+
+int c_g;
+Bar c_bar;
+extern fn void c_stop() @noreturn;
+typedef CIntPtr = inline int*;
+fn void CIntPtr.point(&self) { *self = (CIntPtr)&c_g; }
+fn bool CIntPtr.is_nil(self) => self == null;
+typedef CFlag = inline bool;
+fn void CFlag.raise(&self) { *self = (CFlag)true; }
+fn bool CFlag.get(self) => self;
+fn void Bar.by_value(self) {}
+fn bool Bar.is_nil(Bar* self) => self == null;
+fn void c_set_bool(int x, args...) { *(bool*)args[0].ptr = true; }
+fn void c_bools(int x, bool... rest) {}
+struct CArr { int[4] a; }
+fn int CArr.get(&self, usz i) @operator([]) => self.a[i];
+fn void CArr.set(&self, usz i, int val) @operator([]=) { self.a[i] = val; }
+bitstruct CBits : char
+{
+	bool lo : 0;
+	bool hi : 1;
+}
+CBits c_bits;
+
+// Defers at the end of a scope (not only at return)
+
+fn void ok_scope_defer_sets() @export
+{
+	int* p = null;
+	{
+		defer p = &c_g;
+	}
+	*p = 1;
+}
+
+fn void scope_defer_clears() @export
+{
+	int* p = &c_g;
+	{
+		defer p = null;
+	}
+	*p = 1; // #error: would dereference a null pointer
+}
+
+fn void ok_scope_defer_runs_last() @export
+{
+	int* p = null;
+	{
+		defer *p = 1;
+		p = &c_g;
+	}
+}
+
+fn void scope_defer_deref() @export
+{
+	int* p = null;
+	{
+		defer *p = 1; // #error: would dereference a null pointer
+		tick();
+	}
+}
+
+fn void ok_scope_defer_before_early_return(bool b) @export
+{
+	int* p = null;
+	{
+		defer p = &c_g;
+		if (b) return;
+	}
+	*p = 1;
+}
+
+// defer catch only runs on failure, defer try runs on success
+
+fn void? ok_defer_catch_skipped_on_return() @export
+{
+	int* p = null;
+	defer catch *p = 1;
+	return;
+}
+
+fn void? defer_try_runs_on_return() @export
+{
+	int* p = null;
+	defer try *p = 1; // #error: would dereference a null pointer
+	return;
+}
+
+// Methods taking &self on typedef'd pointers and bools take the variable's address
+
+fn void ok_pointer_typedef_addr_method() @export
+{
+	CIntPtr p = (CIntPtr)null;
+	p.point();
+	*(int*)p = 1;
+}
+
+fn void pointer_typedef_value_method() @export
+{
+	CIntPtr p = (CIntPtr)null;
+	p.is_nil();
+	*(int*)p = 1; // #error: would dereference a null pointer
+}
+
+fn void bool_typedef_addr_method() @export
+{
+	int* q = null;
+	CFlag f = (CFlag)false;
+	f.raise();
+	if (f) foo(q); // #error: parameter must be non-null
+}
+
+fn void ok_bool_typedef_value_method() @export
+{
+	int* q = null;
+	CFlag f = (CFlag)false;
+	f.get();
+	if (f) foo(q);
+}
+
+// any-varargs take the address of a bool, typed varargs copy it
+
+fn void any_vararg_bool_untracks() @export
+{
+	int* q = null;
+	bool b = false;
+	c_set_bool(1, b);
+	if (b) foo(q); // #error: parameter must be non-null
+}
+
+fn void ok_typed_vararg_bool_copies() @export
+{
+	int* q = null;
+	bool b = false;
+	c_bools(1, b);
+	if (b) foo(q);
+}
+
+fn void ok_bool_taddr_copy() @export
+{
+	int* q = null;
+	bool b = false;
+	bool* bp = &&b;
+	*bp = true;
+	if (b) foo(q);
+}
+
+// Method receivers
+
+fn void value_method_on_null() @export
+{
+	Bar* b = null;
+	b.by_value(); // #error: would dereference a null pointer
+}
+
+fn void ok_explicit_pointer_self_on_null() @export
+{
+	Bar* b = null;
+	b.is_nil();
+	Bar* c = b;
+}
+
+fn void ok_value_method_on_pointer() @export
+{
+	Bar* b = &c_bar;
+	b.by_value();
+}
+
+fn void overload_set_on_null() @export
+{
+	CArr* a = null;
+	(*a)[0] = 1; // #error: value known to be null
+}
+
+fn void ok_overload_ops_on_local() @export
+{
+	CArr x;
+	x[0] = 1;
+	x[1] += 2;
+	int y = x[1];
+}
+
+// Bitstructs
+
+fn void bitstruct_through_null() @export
+{
+	CBits* bp = null;
+	bool x = bp.lo; // #error: access would dereference a null pointer
+}
+
+fn void ok_bitstruct_through_pointer() @export
+{
+	CBits* bp = &c_bits;
+	bool x = bp.hi;
+}
+
+// Lambdas are analysed as functions of their own
+
+fn void lambda_body_checked() @export
+{
+	var f = fn void() {
+		int* p = null;
+		*p = 1; // #error: would dereference a null pointer
+	};
+	f();
+}
+
+fn void ok_lambda_body() @export
+{
+	var f = fn void() {
+		int* p = &c_g;
+		*p = 1;
+	};
+	f();
+}
+
+// Compile time statements in the body
+
+fn void ok_ct_for_assigns() @export
+{
+	int* p = null;
+	$for var $i = 0; $i < 2; $i++:
+		p = &c_g;
+	$endfor
+	*p = 1;
+}
+
+fn void ct_switch_default() @export
+{
+	int* p = &c_g;
+	$switch 2:
+		$case 1: tick();
+		$default: p = null;
+	$endswitch
+	*p = 1; // #error: would dereference a null pointer
+}
+
+// Contracts on the analysed function itself
+
+<* @require p != null *>
+fn void ok_require_narrows(int* p) @export
+{
+	foo(p);
+}
+
+<* @require p == null *>
+fn void require_null(int* p) @export
+{
+	if (p) return;
+	foo(p); // #error: parameter must be non-null
+}
+
+<* @ensure p != null *>
+fn void ok_ensure_holds(int* p) @export
+{
+	p = &c_g;
+	return;
+}
+
+<* @ensure p != null *>
+fn void ensure_fails(int* p) @export
+{
+	p = null;
+	return; // #error: always false
+}
+
+// Nested comparisons
+
+fn void ok_compare_eq_false(int* q) @export
+{
+	if ((q == null) == false) foo(q);
+}
+
+fn void compare_eq_true(int* q) @export
+{
+	if ((q == null) == true) foo(q); // #error: parameter must be non-null
+}
+
+fn void ok_bool_eq_pointer_test(int* q) @export
+{
+	bool b = false;
+	if (b == (q == null)) foo(q);
+}
+
+fn void bool_eq_pointer_test(int* q) @export
+{
+	bool b = true;
+	if (b == (q == null)) foo(q); // #error: parameter must be non-null
+}
+
+fn void ok_not_eq_null(int* q) @export
+{
+	if (!(q == null)) foo(q);
+}
+
+fn void not_ne_null(int* q) @export
+{
+	if (!(q != null)) foo(q); // #error: parameter must be non-null
+}
+
+fn void ok_cast_ne_null(int* q) @export
+{
+	if ((void*)q != null) foo(q);
+}
+
+fn void cast_eq_null(int* q) @export
+{
+	if ((void*)q == null) foo(q); // #error: parameter must be non-null
+}
+
+fn void typedef_pointer_narrowing(CIntPtr q) @export
+{
+	if (!q) foo(q); // #error: parameter must be non-null
+}
+
+// Bool and pointer values
+
+fn void ok_same_null_pointers() @export
+{
+	int* p = null;
+	int* q = null;
+	int* r = null;
+	bool same = p == q;
+	if (!same) foo(r);
+}
+
+fn void same_null_pointers_taken() @export
+{
+	int* p = null;
+	int* q = null;
+	int* r = null;
+	bool same = p == q;
+	if (same) foo(r); // #error: parameter must be non-null
+}
+
+fn void bool_ne_assert() @export
+{
+	bool a = true;
+	assert(a != true); // #error: always false
+}
+
+fn void ok_bool_eq_assert() @export
+{
+	int* q = null;
+	bool a = true;
+	assert(a == true);
+	if (!a) foo(q);
+}
+
+// Branch chains and @noreturn
+
+fn void ok_noreturn_both_arms(int* q, bool b) @export
+{
+	if (!q)
+	{
+		if (b) { c_stop(); } else { c_stop(); }
+	}
+	foo(q);
+}
+
+fn void noreturn_one_nested_arm(int* q, bool b) @export
+{
+	if (!q)
+	{
+		if (b) c_stop();
+		foo(q); // #error: parameter must be non-null
+	}
+}
+
+fn void ok_else_if_return(int* q, bool k) @export
+{
+	if (!q) { return; } else if (k) { tick(); }
+	foo(q);
+}
+
+fn void else_if_null_arm(int* q, bool k) @export
+{
+	if (q) { tick(); } else if (k) { foo(q); } // #error: parameter must be non-null
+}
+
+// Assert messages are only evaluated when the assert fails
+
+fn void ok_assert_message_not_evaluated() @export
+{
+	int* p = null;
+	int* q = &c_g;
+	assert(q != null, "%d", *p);
+}
+
+// Known condition values decide branches, even when the condition is not simple
+
+fn void ok_known_null_and_call() @export
+{
+	int* p = null;
+	if (p && check(p)) *p = 1;
+}
+
+fn void known_null_or_call(int* q) @export
+{
+	int* p = null;
+	if (p || check(q)) return;
+	*p = 1; // #error: would dereference a null pointer
+}
+
+fn void ok_false_flag_and_call(int* q) @export
+{
+	int* log = null;
+	bool use_log = false;
+	if (use_log && check(q)) *log = 1;
+}
+
+fn void true_flag_and_call(int* q) @export
+{
+	int* log = null;
+	bool use_log = true;
+	if (use_log && check(q)) *log = 1; // #error: would dereference a null pointer
+}
+
+fn void ok_true_flag_or_call_returns(int* q) @export
+{
+	int* p = null;
+	bool b = true;
+	if (b || check(q)) return;
+	*p = 1;
+}
+
+fn void ok_nested_and_chain(int* q) @export
+{
+	int* p = null;
+	bool b = false;
+	b && check(q) && check(p);
+}
+
+fn void nested_and_chain_runs(int* q) @export
+{
+	int* p = null;
+	bool b = true;
+	b && check(q) && check(p); // #error: parameter must be non-null
+}
+
+fn void ok_assign_in_condition() @export
+{
+	int* q = null;
+	int* p;
+	if ((p = q) != null) foo(p);
+}
+
+fn void ok_assigned_false_condition() @export
+{
+	int* p = null;
+	bool b;
+	if ((b = false)) *p = 1;
+}
+
+fn void assigned_true_condition() @export
+{
+	int* p = null;
+	bool b;
+	if ((b = true)) *p = 1; // #error: would dereference a null pointer
+}
+
+fn void assert_assigned_false() @export
+{
+	bool b;
+	assert((b = false)); // #error: always false
+}
+
+fn void ok_bool_bitand_condition(int x) @export
+{
+	int* p = null;
+	bool a = false;
+	bool c = x > 0;
+	if (a & c) *p = 1;
+}
+
+fn void ok_both_null_ne() @export
+{
+	int* p = null;
+	int* q = null;
+	if (p != q) *p = 1;
+}
+
+fn void both_null_eq() @export
+{
+	int* p = null;
+	int* q = null;
+	if (p == q) *p = 1; // #error: would dereference a null pointer
+}
+
+fn void assert_null_pointers_differ() @export
+{
+	int* p = null;
+	int* q = null;
+	assert(p != q); // #error: always false
+}
+
+fn void ok_null_eq_nonnull() @export
+{
+	int* p = null;
+	int* q = &c_g;
+	if (p == q) *p = 1;
+}
+
+fn void ok_null_ne_nonnull_returns() @export
+{
+	int* p = null;
+	int* q = &c_g;
+	if (p != q) return;
+	*p = 1;
+}
+
+fn void ok_bool_cast_compare() @export
+{
+	int* p = null;
+	int* q = &c_g;
+	if ((bool)p == (bool)q) *p = 1;
+}

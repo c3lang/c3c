@@ -258,6 +258,13 @@ typedef enum
 
 typedef enum
 {
+	STATIC_ANALYSIS_NOT_SET = -1,
+	STATIC_ANALYSIS_OFF = 0,
+	STATIC_ANALYSIS_ON = 1
+} StaticAnalysis;
+
+typedef enum
+{
 	CUSTOM_LIBC_NOT_SET = -1,
 	CUSTOM_LIBC_OFF = 0,
 	CUSTOM_LIBC_ON = 1

@@ -352,6 +352,7 @@ typedef struct BuildOptions_
 	FpOpt fp_math;
 	EmitStdlib emit_stdlib;
 	UseStdlib use_stdlib;
+	StaticAnalysis static_analysis;
 	CustomLibc custom_libc;
 	LinkLibc link_libc;
 	StripUnused strip_unused;
@@ -503,6 +504,7 @@ typedef struct
 	SingleModule single_module;
 	ValidationLevel validation_level;
 	UseStdlib use_stdlib;
+	StaticAnalysis static_analysis;
 	EmitStdlib emit_stdlib;
 	LinkLibc link_libc;
 	CustomLibc custom_libc;
@@ -634,6 +636,7 @@ static BuildTarget default_build_target = {
 		.debug_info = DEBUG_INFO_NOT_SET,
 		.show_backtrace = SHOW_BACKTRACE_NOT_SET,
 		.use_stdlib = USE_STDLIB_NOT_SET,
+		.static_analysis = STATIC_ANALYSIS_NOT_SET,
 		.link_libc = LINK_LIBC_NOT_SET,
 		.emit_stdlib = EMIT_STDLIB_NOT_SET,
 		.custom_libc = CUSTOM_LIBC_NOT_SET,

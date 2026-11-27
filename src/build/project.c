@@ -76,6 +76,7 @@ const char *project_default_keys[][2] = {
 		{"stack-probe", "Set the stack argument probing mode: none, call (default), inline."},
 		{"stack-protector", "Set the stack protection level: none, basic (default), strong, all."},
 		{"sources", "Paths to project sources for all targets."},
+		{"static-analysis", "Run static analysis, such as null pointer tracking (default: true)."},
 		{"strip-unused", "Strip unused code and globals from the output. (default: true)"},
 		{"symtab", "Sets the preferred symtab size."},
 		{"target", "Compile for a particular architecture + OS target."},
@@ -184,6 +185,7 @@ const char* project_target_keys[][2] = {
 		{"stack-protector", "Set the stack protection level for this target: none, basic (default), strong, all."},
 		{"sources", "Additional paths to project sources for the target."},
 		{"sources-override", "Paths to project sources for this target, overriding global settings."},
+		{"static-analysis", "Run static analysis, such as null pointer tracking (default: true)."},
 		{"strip-unused", "Strip unused code and globals from the output. (default: true)"},
 		{"symtab", "Sets the preferred symtab size."},
 		{"target", "Compile for a particular architecture + OS target."},
@@ -647,6 +649,9 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 
 	// use-stdlib
 	target->use_stdlib = (UseStdlib) get_valid_bool(context, json, "use-stdlib", target->use_stdlib);
+
+	// static-analysis
+	target->static_analysis = (StaticAnalysis) get_valid_bool(context, json, "static-analysis", target->static_analysis);
 
 	// emit-stdlib
 	target->emit_stdlib = (EmitStdlib) get_valid_bool(context, json, "emit-stdlib", target->emit_stdlib);

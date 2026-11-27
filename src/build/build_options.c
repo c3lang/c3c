@@ -141,6 +141,7 @@ static void usage(bool full)
 		print_opt("--safe=<yes|no>", "Turn safety (contracts, runtime bounds checking, null pointer checks etc) on or off.");
 		print_opt("--panic-msg=<yes|no>", "Turn panic message output on or off.");
 		print_opt("--infinite-loop-detect=<yes|no>", "Panic on empty infinite loops such as `for (;;) {}` in safe mode (default: no).");
+		print_opt("--static-analysis=<yes|no>", "Run static analysis, such as null pointer tracking (default: yes).");
 		print_opt("--optlevel=<option>", "Code optimization level: none, less, more, max.");
 		print_opt("--optsize=<option>", "Code size optimization: none, small, tiny.");
 		print_opt("--unroll-loops=<yes|no>", "Enable loop unrolling.");
@@ -1358,6 +1359,11 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->panic_level = parse_opt_select(PanicLevel, argopt, on_off);
 				return;
 			}
+			if ((argopt = match_argopt("static-analysis"))) // NOLINT
+			{
+				options->static_analysis = parse_opt_select(StaticAnalysis, argopt, on_off);
+				return;
+			}
 			if ((argopt = match_argopt("single-module"))) // NOLINT
 			{
 				options->single_module = parse_opt_select(SingleModule, argopt, on_off);
@@ -2046,6 +2052,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.link_libc = LINK_LIBC_NOT_SET,
 		.custom_libc = CUSTOM_LIBC_NOT_SET,
 		.use_stdlib = USE_STDLIB_NOT_SET,
+		.static_analysis = STATIC_ANALYSIS_NOT_SET,
 		.arch_os_target_override = ARCH_OS_TARGET_DEFAULT,
 		.linker_type = LINKER_TYPE_NOT_SET,
 		.validation_level = VALIDATION_NOT_SET,

@@ -598,7 +598,7 @@ RESOLVE_LAMBDA:;
 	}
 	sema_trace_liveness();
 	BenchTime analysis_start = benchstart();
-	sema_static_analysis();
+	if (compiler.build.static_analysis != STATIC_ANALYSIS_OFF) sema_static_analysis();
 	compiler.stats.static_analysis_time = benchmark(analysis_start);
 	halt_on_error();
 }

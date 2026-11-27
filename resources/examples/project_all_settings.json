@@ -65,6 +65,8 @@
   "soft-float": false,
   // Strip unused code and globals from the output.
   "strip-unused": true,
+  // Run static analysis, such as null pointer tracking.
+  "static-analysis": true,
   // The size of the symtab, which limits the amount
   // of symbols that can be used. Should usually not be changed.
   "symtab": 1048576,

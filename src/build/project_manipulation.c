@@ -243,6 +243,7 @@ static void view_target(BuildParseContext context, JSONObject *target, bool verb
 	TARGET_VIEW_BOOL("Compile into single module", "single-module");
 	TARGET_VIEW_BOOL("Output soft-float functions", "soft-float");
 	TARGET_VIEW_BOOL("Strip unused code/globals", "strip-unused");
+	TARGET_VIEW_BOOL("Static analysis", "static-analysis");
 	TARGET_VIEW_INTEGER("Preferred symtab size", "symtab");
 	TARGET_VIEW_STRING("Target", "target");
 	TARGET_VIEW_SETTING("RISC-V CPU level", "riscv-cpu", riscv_cpu_set);
@@ -745,6 +746,7 @@ void view_project(BuildOptions *build_options)
 	VIEW_BOOL("Compile into single module", "single-module");
 	VIEW_BOOL("Output soft-float functions", "soft-float");
 	VIEW_BOOL("Strip unused code/globals", "strip-unused");
+	VIEW_BOOL("Static analysis", "static-analysis");
 	VIEW_INTEGER("Preferred symtab size", "symtab");
 	VIEW_STRING("Target", "target");
 	VIEW_SETTING("RISC-V CPU level", "riscv-cpu", riscv_cpu_set);

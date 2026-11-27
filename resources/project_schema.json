@@ -191,6 +191,10 @@
             "type": "boolean",
             "description": "Include the standard library."
           },
+          "static-analysis": {
+            "type": "boolean",
+            "description": "Run static analysis, such as null pointer tracking."
+          },
           "link-libc": {
             "type": "boolean",
             "description": "Link libc other default libraries."
@@ -305,6 +309,11 @@
     "strip-unused": {
       "type": "boolean",
       "description": "Strip unused code and globals from the output.",
+      "default": true
+    },
+    "static-analysis": {
+      "type": "boolean",
+      "description": "Run static analysis, such as null pointer tracking.",
       "default": true
     },
     "symtab": {
