@@ -281,3 +281,34 @@ fn void test_pipe_bind_stdout_to_stdin() @test @feat(WIN32)
 	a.destroy();
 	b.destroy();
 }
+
+fn void test_spawn_invalid_utf8_argument() @test @feat(WIN32)
+{
+	String bad = (String)(char[]){ 'a', 0xFF, 'b' };
+	test::@error(process::spawn({ "cmd.exe", "/c", "rem", bad }), string::INVALID_UTF8);
+}
+
+fn void test_spawn_command_line_too_long() @test @feat(WIN32)
+{
+	// "cmd.exe /c rem " is 15 characters, the limit is 32766 characters.
+	DString arg = dstring::temp();
+	arg.append_char_repeat('x', 32766 - 15 + 1);
+	test::@error(process::spawn({ "cmd.exe", "/c", "rem", arg.str_view() }), process::COMMAND_LINE_TOO_LONG);
+}
+
+fn void test_spawn_command_line_at_limit() @test @feat(WIN32)
+{
+	DString arg = dstring::temp();
+	arg.append_char_repeat('x', 32766 - 15);
+	Process process = process::spawn({ "cmd.exe", "/c", "rem", arg.str_view() })!!;
+	defer process.destroy();
+	process.join()!!;
+}
+
+fn void test_spawn_command_line_too_long_after_quoting() @test @feat(WIN32)
+{
+	// 16383 quotes need a backslash each, plus surrounding quotes: 15 + 2 * 16383 + 2 > 32766.
+	DString arg = dstring::temp();
+	arg.append_char_repeat('"', 16383);
+	test::@error(process::spawn({ "cmd.exe", "/c", "rem", arg.str_view() }), process::COMMAND_LINE_TOO_LONG);
+}

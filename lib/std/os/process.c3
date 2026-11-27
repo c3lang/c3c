@@ -13,6 +13,7 @@ excuse
 	FAILED_TO_BIND_STDOUT,
 	FAILED_TO_BIND_STDERR,
 	FAILED_TO_START_PROCESS,
+	COMMAND_LINE_TOO_LONG,
 	FAILED_TO_INITIALIZE_ACTIONS,
 	PROCESS_JOIN_FAILED,
 	PROCESS_TERMINATION_FAILED,
@@ -219,7 +220,7 @@ $if env::WIN32:
 	
 		if (!win32::createProcessW(
 			null,
-			convert_command_line_win32(command_line),
+			convert_command_line_win32(command_line)!,
 			null,                   // process security attributes
 			null,                   // primary thread security attributes
 			1,                      // handles are inherited
@@ -561,44 +562,35 @@ fn void? create_named_pipe_helper(void** rd, void **wr) @local @feat(WIN32)
 	if (win32::INVALID_HANDLE_VALUE == *wr) return FAILED_TO_CREATE_PIPE~;
 }
 
-fn WString convert_command_line_win32(String[] command_line) @inline @feat(WIN32) @local
+fn WString? convert_command_line_win32(String[] command_line) @inline @feat(WIN32) @local
 {
 	DString str = dstring::temp_with_capacity(512);
-	foreach LINE: (i, s : command_line)
+	foreach (i, s : command_line)
 	{
 		if (i != 0) str.append(' ');
-
-		do CHECK_WS:
+		if (s.len && !@ok(s.index_of_chars(" \t\n\v\"")))
 		{
-			foreach (c : s)
-			{
-				switch (c)
-				{
-					case '\t':
-					case ' ':
-					case '\v':
-						break CHECK_WS;
-				}
-			}
 			str.append(s);
-			continue LINE;
-		};
+			continue;
+		}
 		str.append('"');
-		foreach (j, c : s)
+		sz backslashes = 0;
+		foreach (c : s)
 		{
 			switch (c)
 			{
-				case '\\':
-					if (j != s.len - 1 && s[j + 1] == '"') str.append('\\');
-				case '"':
-					str.append('\\');
+				case '\\': backslashes++;
+				case '"': str.append_char_repeat('\\', backslashes + 1); nextcase default;
+				default: backslashes = 0;
 			}
 			str.append(c);
 		}
+		str.append_char_repeat('\\', backslashes);
 		str.append('"');
 	}
-	str.append('\0');
-	return str.str_view().to_temp_wstring()!!;
+	Char16[] wstr = str.str_view().to_temp_utf16()!;
+	if (wstr.len >= 32767) return COMMAND_LINE_TOO_LONG~;
+	return (WString)wstr.ptr;
 }
 
 <*
