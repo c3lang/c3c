@@ -309,7 +309,147 @@ sudo dnf install c3
 
 **NixOS / Nix**
 
-You can access `c3c` via [flake.nix](./flake.nix), which will contain the latest commit of the compiler. To add `c3c` to your `flake.nix`, do the following:
+You can access `c3c` via [nix/overlay](./nix/overlay/default.nix), which will contain the current commit of the compiler. To add `c3c` to your `system.nix` do the following, after you can run `nixos-rebuild --file system.nix`:
+
+<details><summary>system.nix example</summary>
+
+```nix
+# system.nix
+let
+  # For demonstration purposes; prefer a ‘Nix input pinner’ in real world uses
+  # since these URLs are not stable over time
+  inputs = {
+    nixpkgs = fetchTarball "https://channels.nixos.org/nixpkgs-unstable/nixexprs.tar.zst";
+    c3c = fetchTarball "https://github.com/c3lang/c3c/archive/refs/heads/master.tar.gz";
+  };
+in
+import "${inputs.nixpkgs}/nixos" {
+  imports = [
+    ./configuration.nix
+  ];
+
+  nixpkgs.overlays = [
+    # c3c’s overlay
+    (import "${inputs.c3c}/nix/overlay")
+  ];
+}
+```
+
+```nix
+# configuration.nix
+{ pkgs, ... }:
+
+{
+  networking.hostName = "demo";
+
+  # system-wide
+  environment.systemPackages = [
+    pkgs.c3c.default
+  ];
+
+  # for user “alice”
+  users.users.alice.packages = [
+    pkgs.c3c.default
+  ];
+}
+```
+
+</details>
+
+
+To add `c3` to your stable Nix project with `release.nix` + `overlay.nix` + `shell.nix` + `default.nix` do the following:
+
+<details><summary>release.nix with overlay example</summary>
+
+```nix
+# release.nix
+# Entry point for your input pins & derivations to output
+let
+  # For demonstration purposes; prefer a ‘Nix input pinner’ in real world uses
+  # since these URLs are not stable over time
+  inputs = {
+    nixpkgs = fetchTarball "https://channels.nixos.org/nixpkgs-unstable/nixexprs.tar.zst";
+    c3c = fetchTarball "https://github.com/c3lang/c3c/archive/refs/heads/master.tar.gz";
+  };
+
+  pkgs = import inputs.nixpkgs {
+    overlays = [
+      # c3c’s overlay
+      (import "${inputs.c3c}/nix/overlay")
+      # your project overlay(s) go here ↓
+      (import ./overlay.nix)
+    ];
+  };
+in
+{
+   default = pkgs.our-demo.hello-c3;
+   shell = pkgs.our-demo.dev-shell;
+}
+```
+
+```nix
+# overlay.nix
+# Where you import/callPackage your packages
+final: _prev: {
+  our-demo = final.lib.makeScope final.newScope (self: {
+    # c3c scope will be picked up from the overlay stack & its default package
+    # from will be the c3c in your scope
+    c3c = final.c3c.default;
+
+    # As a the hello & dev shell are just packages, they should be in normal
+    # form & final.callPackage’d from your overlay as a better design
+    hello-c3 = final.stdenv.mkDerivation {
+      pname = "demo";
+      version = "0-dev";
+
+      # use lib.fileset.unions for your real source directory
+      src = final.writeText "hello.c3" /* c3c */ ''
+        import std::io;
+        fn void main()
+        {
+            io::printn("Hello, World!");
+        }
+      '';
+
+      strictDeps = true;
+
+      nativeBuildInputs = [ c3c ];
+
+      buildPhase = ''
+        runHook preBuild
+        c3c compile -o hello "$src"
+        runHook postBuild
+      '';
+
+      installPhase = ''
+        runHook preInstall
+        install -Dm755 hello "$out/bin/hello"
+        runHook postInstall
+      '';
+    };
+
+    dev-shell = final.mkShell {
+      name = "demo";
+      inputsFrom = [ hello-c3 ];
+    };
+  };
+}
+```
+
+```nix
+# default.nix
+# Grab our default packages from the release.nix
+(import ./release.nix).default
+```
+```nix
+# shell.nix
+# Grab our shell from the release.nix
+(import ./release.nix).shell
+```
+
+</details>
+
+If you Nix setup has `experimental-features = flakes` enabled, you can access `c3c` via [flake.nix](./flake.nix), which will contain the latest commit of the compiler. To add `c3c` to your `flake.nix`, do the following:
 
 <details><summary>flake.nix example</summary>
 
