@@ -139,6 +139,7 @@
 - In some cases, arguments were not strictly evaluated left to right.
 - `&&a` would behave like `&a`, and incorrectly not take a temp address.
 - Windows `process::spawn` mangled empty arguments, arguments with quotes and trailing backslashes. #3687
+- Fix nolibc::ldexp results for subnormals and large exponents.
 
 ### Stdlib changes
 - `atomic::fetch_add` and the other `fetch_*` macros now require the alignment to be at most `mem::MAX_MEMORY_ALIGNMENT`; `fetch_max` and `fetch_min` check it at all.
@@ -148,6 +149,8 @@
 - `std::math::easing` deprecated in favour of `std::math::ease`.
 - `math::lerp` is now public, and `math::inverse_lerp` added.
 - `std::encoding::csv` can remove quotes from quoted fields.
+- Make `scalbn` generic.
+- Add `nolibc::scalbnf` implementation.
 
 ## 0.8.6 Change list
 - `File.write` declared its buffer `[out]` instead of `[in]`, and `UrlQueryValues.add` declared `self` `[in]` although it modifies it.

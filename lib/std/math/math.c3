@@ -354,6 +354,18 @@ macro exp(x) => $$exp(values::promote_int(x));
 macro exp2(x) => $$exp2(values::promote_int(x));
 
 <*
+ @require [x] values::@is_promotable_to_float(x) : `The input must be a number`
+*>
+macro scalbn(x, int n)
+{
+	$if $Typeof(x) == float:
+		return _scalbnf(x, n);
+	$else
+		return _scalbn(x, n);
+	$endif
+}
+
+<*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
 *>
 macro exp10(x)
@@ -901,7 +913,7 @@ macro void double.set_low_word(double* d, uint u)
 
 macro void float.set_word(float* f, uint u) => *f = bitcast(u, float);
 
-macro double scalbn(double x, int n) => _scalbn(x, n);
+
 
 extern fn double _atan(double x) @MathLibc("atan");
 extern fn float _atanf(float x) @MathLibc("atanf");
@@ -920,6 +932,7 @@ fn void _sincosf(float a, float* s, float* c) @cname("sincosf") @feat(WIN32)  { 
 extern fn double _tan(double x) @MathLibc("tan");
 extern fn float _tanf(float x) @MathLibc("tanf");
 extern fn double _scalbn(double x, int n) @MathLibc("scalbn");
+extern fn float _scalbnf(float x, int n) @MathLibc("scalbnf");
 extern fn double _acos(double x) @MathLibc("acos");
 extern fn double _asin(double x) @MathLibc("asin");
 extern fn double _acosh(double x) @MathLibc("acosh");
