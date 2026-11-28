@@ -1038,7 +1038,9 @@ char *realpath(const char *path, char *const resolved_path)
 {
 	char *result = NULL == resolved_path ? ccalloc(PATH_MAX + 1, 1) : resolved_path;
 	if (NULL == result) return NULL;
-	if (!GetFullPathNameA(path, PATH_MAX, result, NULL))
+	wchar_t wide[PATH_MAX];
+	DWORD len = GetFullPathNameW(win_utf8to16(path), PATH_MAX, wide, NULL);
+	if (!len || len >= PATH_MAX || !WideCharToMultiByte(CP_UTF8, 0, wide, -1, result, PATH_MAX, NULL, NULL))
 	{
 		if (NULL == resolved_path) free(result);
 		return NULL;
@@ -1048,6 +1050,14 @@ char *realpath(const char *path, char *const resolved_path)
 		if ('\\' == *c) *c = '/';
 	}
 	return result;
+}
+
+char *win_getcwd(char *buffer, int size)
+{
+	wchar_t wide[PATH_MAX];
+	if (!_wgetcwd(wide, PATH_MAX)) return NULL;
+	if (!WideCharToMultiByte(CP_UTF8, 0, wide, -1, buffer, size, NULL, NULL)) return NULL;
+	return buffer;
 }
 
 #endif
