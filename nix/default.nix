@@ -6,7 +6,7 @@
   libxml2,
   libffi,
   xar,
-  rev,
+  rev ? "unknown",
   debug ? false,
   checks ? false,
 }: let
