@@ -151,6 +151,7 @@ static void usage(bool full)
 		print_opt("--function-sections=<yes|no>", "Place each function in its own section, so the linker can discard unused ones (no effect on Mach-O).");
 		print_opt("--data-sections=<yes|no>", "Place each global variable in its own section, so the linker can discard unused ones (no effect on Mach-O).");
 		print_opt("--single-module=<yes|no>", "Compile all modules together, enables more inlining.");
+		print_opt("--split-modules=<yes|no>", "Split large modules into several object files to compile them in parallel (default for -O0).");
 		print_opt("--show-backtrace=<yes|no>", "Show detailed backtrace on segfaults.");
 		print_opt("--lsp", "Emit data about errors suitable for a LSP.");
 		print_opt("--lsp2", "Like --lsp, with the length of each error's span after its column.");
@@ -1369,6 +1370,11 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->single_module = parse_opt_select(SingleModule, argopt, on_off);
 				return;
 			}
+			if ((argopt = match_argopt("split-modules"))) // NOLINT
+			{
+				options->split_modules = parse_opt_select(SplitModules, argopt, on_off);
+				return;
+			}
 			if ((argopt = match_argopt("linker"))) // NOLINT
 			{
 				options->custom_linker_path = NULL;
@@ -2061,6 +2067,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.stats_mode = STATS_NOT_SET,
 		.strip_unused = STRIP_UNUSED_NOT_SET,
 		.single_module = SINGLE_MODULE_NOT_SET,
+		.split_modules = SPLIT_MODULES_NOT_SET,
 		.sanitize_mode = SANITIZE_NOT_SET,
 		.unroll_loops = UNROLL_LOOPS_NOT_SET,
 		.merge_functions = MERGE_FUNCTIONS_NOT_SET,

@@ -427,6 +427,11 @@ static void stats_print_summary(StatsReport *report)
 		stats_print_info("Effective parallelism", str_printf("%.2f× of %d threads, %d tasks", stats->codegen_thread_time / report->codegen_wall_time,
 		                                                     stats->codegen_threads, stats->codegen_tasks));
 	}
+	if (compiler.build.split_modules == SPLIT_MODULES_ON)
+	{
+		stats_print_info("Split modules", str_printf("%d, into %d parts, %d objects in total", stats->split_modules,
+		                                             stats->split_parts, stats->codegen_tasks));
+	}
 	stats_print_info("Arena memory", str_printf("%.1f MB, upper bound for the peak, LLVM excluded", (double)stats_arena_total(report) / MB));
 	StatsPhase *largest = NULL;
 	for (int i = 0; i < report->phase_count; i++)
@@ -782,6 +787,7 @@ static void stats_write_json(StatsReport *report, FILE *file)
 	fprintf(file, ",\n  \"wall_time_ms\": %.3f", report->wall_time * 1000);
 	fprintf(file, ",\n  \"codegen_wall_ms\": %.3f,\n  \"codegen_thread_ms\": %.3f", report->codegen_wall_time * 1000, stats->codegen_thread_time * 1000);
 	fprintf(file, ",\n  \"codegen_tasks\": %d,\n  \"codegen_threads\": %d", stats->codegen_tasks, stats->codegen_threads);
+	fprintf(file, ",\n  \"split_modules\": %d,\n  \"split_parts\": %d", stats->split_modules, stats->split_parts);
 	fprintf(file, ",\n  \"source_files\": %d,\n  \"source_physical_lines\": %lld", stats->source_files, (long long)stats->source_lines);
 	fputs(",\n  \"phases\": [", file);
 	for (int i = 0; i < report->phase_count; i++)

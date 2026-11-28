@@ -1051,7 +1051,7 @@ static GenContext *c_gen_module(Module *module, int num)
 	const char *object_filename = NULL;
 	if (module)
 	{
-		codegen_setup_object_names(module, &base_name, &ir_filename, &asm_filename, &object_filename);
+		codegen_setup_object_names(module, &base_name, &ir_filename, &asm_filename, &object_filename, 0);
 	}
 	else
 	{

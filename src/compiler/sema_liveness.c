@@ -140,6 +140,7 @@ static void sema_trace_asm_arg_list(Module *m, ExprAsmArg **list)
 static void sema_trace_stmt_liveness(Module *m, Ast *ast)
 {
 	if (!ast) return;
+	(*compiler.context.currently_traced_cost)++;
 	switch (ast->ast_kind)
 	{
 		case AST_POISONED:
@@ -297,6 +298,7 @@ static void sema_trace_expr_liveness(Module *m, Expr *expr)
 {
 RETRY:
 	if (!expr) return;
+	(*compiler.context.currently_traced_cost)++;
 	sema_trace_type_liveness(m, expr->type);
 	switch (expr->expr_kind)
 	{
@@ -548,6 +550,8 @@ RETRY:
 
 void sema_trace_liveness(void)
 {
+	compiler.context.no_codegen_cost = 0;
+	compiler.context.currently_traced_cost = &compiler.context.no_codegen_cost;
 	if (compiler.context.main)
 	{
 		sema_trace_decl_liveness(NULL, compiler.context.main);
@@ -693,9 +697,15 @@ static void sema_trace_decl_internal(Module *m, Decl *decl)
 			sema_trace_func_liveness(m, &decl->fntype_decl.signature);
 			return;
 		case DECL_FUNC:
+		{
 			sema_trace_func_liveness(m, &decl->func_decl.signature);
+			uint32_t *old_counter = compiler.context.currently_traced_cost;
+			// Enable module splitting.
+			if (compiler.build.split_modules == SPLIT_MODULES_ON) compiler.context.currently_traced_cost = &decl->func_decl.backend_cost;
 			sema_trace_stmt_liveness(m, astptrzero(decl->func_decl.body));
+			compiler.context.currently_traced_cost = old_counter;
 			return;
+		}
 		case DECL_VAR:
 			switch (decl->var.kind)
 			{

@@ -586,8 +586,13 @@ typedef struct
 			bool attr_nosanitize_thread : 1;
 			bool is_lambda : 1;
 			bool in_macro : 1;
-			unsigned short stack_probe : 3;
-			unsigned short stack_protector : 3;
+			uint8_t stack_probe : 3;
+			uint8_t stack_protector : 3;
+			union
+			{
+				uint32_t backend_cost;
+				uint32_t backend_part;
+			};
 			union
 			{
 				uint32_t priority;
@@ -2111,6 +2116,8 @@ typedef struct
 	double codegen_thread_time;
 	int codegen_tasks;
 	int codegen_threads;
+	int split_modules;
+	int split_parts;
 	const char *linker;
 	int source_files;
 	int64_t source_lines;
@@ -2180,6 +2187,8 @@ typedef struct
 	Decl *decl_stack[MAX_GLOBAL_DECL_STACK];
 	Decl **decl_stack_bottom;
 	Decl **decl_stack_top;
+	uint32_t no_codegen_cost;
+	uint32_t *currently_traced_cost;
 } GlobalContext;
 
 typedef struct
@@ -2875,7 +2884,7 @@ const char *symtab_preset(const char *data, TokenType type);
 const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type);
 const char *symtab_find(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type);
 void *llvm_target_machine_create(void);
-void codegen_setup_object_names(Module *module, const char **base_name, const char **ir_filename, const char **asm_filename, const char **object_filename);
+void codegen_setup_object_names(Module *module, const char **base_name, const char **ir_filename, const char **asm_filename, const char **object_filename, int part);
 void target_setup(BuildTarget *build_target);
 int target_alloca_addr_space(void);
 bool os_is_apple(OsType os_type);

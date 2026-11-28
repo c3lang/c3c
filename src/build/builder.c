@@ -194,10 +194,12 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 	MergeFunctions merge_functions = MERGE_FUNCTIONS_OFF;
 	ShowBacktrace show_backtrace = SHOW_BACKTRACE_ON;
 	SingleModule single_module = SINGLE_MODULE_OFF;
+	SplitModules split_modules = SPLIT_MODULES_OFF;
 	FpOpt fp_opt = FP_STRICT;
 	switch (level)
 	{
 		case OPT_SETTING_O0:
+			split_modules = SPLIT_MODULES_ON;
 			break;
 		case OPT_SETTING_O1:
 			optlevel = OPTIMIZATION_MORE;
@@ -283,6 +285,7 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 	COPY_IF_DEFAULT(target->slp_vectorization, slp_vectorization);
 	COPY_IF_DEFAULT(target->loop_vectorization, vectorization);
 	COPY_IF_DEFAULT(target->single_module, single_module);
+	COPY_IF_DEFAULT(target->split_modules, split_modules);
 }
 
 static inline void update_warning(WarningLevel *level, WarningLevel new_level)
@@ -577,6 +580,7 @@ BUILD:
 	set_if_updated(target->optsize, options->optsize);
 	set_if_updated(target->optsetting, options->optsetting);
 	set_if_updated(target->single_module, options->single_module);
+	set_if_updated(target->split_modules, options->split_modules);
 	set_if_updated(target->unroll_loops, options->unroll_loops);
 	set_if_updated(target->merge_functions, options->merge_functions);
 	set_if_updated(target->infinite_loop_detect, options->infinite_loop_detect);
@@ -940,6 +944,10 @@ BUILD:
 	}
 	if (target->optsetting == OPT_SETTING_NOT_SET) target->optsetting = OPT_SETTING_O0;
 	update_build_target_with_opt_level(target, target->optsetting);
+	if (target->backend == BACKEND_C || target->single_module == SINGLE_MODULE_ON || target->type == TARGET_TYPE_STATIC_LIB)
+	{
+		target->split_modules = SPLIT_MODULES_OFF;
+	}
 	if (target->link_libc == LINK_LIBC_NOT_SET)
 	{
 		target->link_libc = libc_from_arch_os(target->arch_os_target);

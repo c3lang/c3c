@@ -71,6 +71,7 @@ const char *project_default_keys[][2] = {
 		{"exec-dir", "The directory where 'exec' is run."},
 		{"show-backtrace", "Print backtrace on signals."},
 		{"single-module", "Compile all modules together, enables more inlining."},
+		{"split-modules", "Split large modules into several object files to compile them in parallel."},
 		{"slp-vectorize", "Force enable/disable SLP auto-vectorization."},
 		{"soft-float", "Output soft-float functions."},
 		{"stack-probe", "Set the stack argument probing mode: none, call (default), inline."},
@@ -179,6 +180,7 @@ const char* project_target_keys[][2] = {
 		{"exec-dir", "The directory where 'exec' is run."},
 		{"show-backtrace", "Print backtrace on signals."},
 		{"single-module", "Compile all modules together, enables more inlining."},
+		{"split-modules", "Split large modules into several object files to compile them in parallel."},
 		{"slp-vectorize", "Force enable/disable SLP auto-vectorization."},
 		{"soft-float", "Output soft-float functions."},
 		{"stack-probe", "Set the stack argument probing mode for this target: none, call (default), inline."},
@@ -428,6 +430,7 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 
 	// Single module
 	target->single_module = (SingleModule) get_valid_bool(context, json, "single-module", target->single_module);
+	target->split_modules = (SplitModules) get_valid_bool(context, json, "split-modules", target->split_modules);
 
 	// Memory environment for memory constrained environments.
 	MemoryEnvironment env = GET_SETTING(MemoryEnvironment, "memory-env", memory_environment, "one of 'normal', 'small', 'tiny' or 'none'.");
@@ -661,6 +664,7 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 
 	// single-module
 	target->single_module = (SingleModule) get_valid_bool(context, json, "single-module", target->single_module);
+	target->split_modules = (SplitModules) get_valid_bool(context, json, "split-modules", target->split_modules);
 
 	// Trap on wrap
 	target->feature.trap_on_wrap = get_valid_bool(context, json, "trap-on-wrap", target->feature.trap_on_wrap);

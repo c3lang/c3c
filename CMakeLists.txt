@@ -647,6 +647,7 @@ if(C3_WITH_LLVM)
             src/compiler/llvm_codegen_function.c
             src/compiler/llvm_codegen_instr.c
             src/compiler/llvm_codegen_module.c
+			src/compiler/llvm_codegen_split.c
             src/compiler/llvm_codegen_stmt.c
             src/compiler/llvm_codegen_type.c
             src/compiler/llvm_codegen_value.c

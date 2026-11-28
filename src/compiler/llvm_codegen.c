@@ -14,7 +14,7 @@ const char *temp_name = "$$temp";
 
 static void llvm_emit_constructors_and_destructors(GenContext *c);
 static void llvm_codegen_setup(void);
-static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context);
+static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context, int code_split_part, int code_split_total_count);
 
 const char* llvm_version = LLVM_VERSION_STRING;
 const char* llvm_target = LLVM_DEFAULT_TARGET_TRIPLE;
@@ -52,7 +52,7 @@ static void diagnostics_handler(LLVMDiagnosticInfoRef ref, void *context)
 	LLVMDisposeMessage(message);
 }
 
-static void gencontext_init(GenContext *context, Module *module, LLVMContextRef shared_context)
+static void gencontext_init(GenContext *context, Module *module, LLVMContextRef shared_context, int code_split_part, int code_split_total_count)
 {
 #ifndef __EMSCRIPTEN__
 	ASSERT(LLVMIsMultithreaded());
@@ -72,6 +72,8 @@ static void gencontext_init(GenContext *context, Module *module, LLVMContextRef 
 	if (debug_log) LLVMContextSetDiagnosticHandler(context->context, &diagnostics_handler, context);
 	if (!compiler.build.emit_llvm && !compiler.build.test_output) LLVMContextSetDiscardValueNames(context->context, true);
 
+	context->code_split_part = code_split_part;
+	context->code_split_total_count = code_split_total_count;
 	context->code_module = module;
 }
 
@@ -83,6 +85,19 @@ static void gencontext_destroy(GenContext *context)
 	LLVMDisposeTargetData(context->target_data);
 	if (!context->shared_context) LLVMContextDispose(context->context);
 	free(context);
+}
+
+
+static inline bool llvm_decl_part_matches(GenContext *c, Decl *decl)
+{
+	if (c->code_split_total_count < 2) return true;
+	if (decl->decl_kind == DECL_FUNC) return decl->func_decl.backend_part == (uint32_t)c->code_split_part;
+	return c->code_split_part == 0;
+}
+
+static bool llvm_decl_is_same_emitted_module_part(GenContext *c, Decl *decl)
+{
+	return decl->unit->module == c->code_module && llvm_decl_part_matches(c, decl);
 }
 
 LLVMBuilderRef llvm_create_builder(GenContext *c)
@@ -195,7 +210,14 @@ void llvm_emit_constructors_and_destructors(GenContext *c)
 			goto EMIT_CTORS;
 		}
 		LLVMValueRef runtime_end = LLVMGetNamedFunction(c->module, "__c3_runtime_finalize");
-		if (!runtime_end || !LLVMGetFirstBasicBlock(runtime_end)) error_exit("Failed to find __c3_runtime_finalize in the same module as __c3_runtime_startup.");
+		if (!runtime_end && c->code_split_total_count > 1)
+		{
+			runtime_end = LLVMAddFunction(c->module, "__c3_runtime_finalize", c->xtor_func_type);
+		}
+		if (!runtime_end || (!LLVMGetFirstBasicBlock(runtime_end) && c->code_split_total_count < 2))
+		{
+			error_exit("Failed to find __c3_runtime_finalize in the same module as __c3_runtime_startup.");
+		}
 		LLVMValueRef vals[3] = { llvm_const_int(c, type_int, 65535), runtime_end, llvm_get_zero(c, type_voidptr) };
 		LLVMValueRef entry = LLVMConstNamedStruct(c->xtor_entry_type, vals, 3);
 		LLVMValueRef array = LLVMConstArray(c->xtor_entry_type, &entry, 1);
@@ -519,7 +541,7 @@ void llvm_set_decl_linkage(GenContext *c, Decl *decl, bool store_nostrip)
 	LLVMValueRef opt_ref = is_var ? decl->var.optional_ref : NULL;
 	bool is_static = is_var && decl->var.is_static;
 	// Static variables in a different modules should be copied to the current module.
-	bool same_module = is_static || decl->unit->module == c->code_module;
+	bool same_module = is_static || llvm_decl_is_same_emitted_module_part(c, decl);
 
 	bool is_runtime = same_module && c->code_module->is_compiler_rt && decl->decl_kind == DECL_FUNC && decl_is_externally_visible(decl);
 	if (same_module && store_nostrip && (decl->no_strip || is_runtime))
@@ -529,12 +551,21 @@ void llvm_set_decl_linkage(GenContext *c, Decl *decl, bool store_nostrip)
 		if (opt_ref) vec_add(*list, opt_ref);
 	}
 
+	bool in_module = decl->unit->module == c->code_module;
+	bool split_hidden = in_module && c->code_split_total_count > 1 && !is_static && !decl->is_extern && !decl_is_externally_visible(decl);
+
 	if (decl->is_extern || !same_module)
 	{
-		llvm_set_external_reference(ref, should_weaken);
-		if (opt_ref) llvm_set_external_reference(opt_ref, should_weaken);
+		llvm_set_external_reference(ref, should_weaken && !split_hidden);
+		if (opt_ref) llvm_set_external_reference(opt_ref, should_weaken && !split_hidden);
+		if (split_hidden)
+		{
+			LLVMSetVisibility(ref, LLVMHiddenVisibility);
+			if (opt_ref) LLVMSetVisibility(opt_ref, LLVMHiddenVisibility);
+		}
 		return;
 	}
+
 	if (!should_weaken && compiler.platform.use_dso_local)
 	{
 		LLVMSetDSOLocal(ref, true);
@@ -559,6 +590,17 @@ void llvm_set_decl_linkage(GenContext *c, Decl *decl, bool store_nostrip)
 		return;
 	}
 
+	if (split_hidden)
+	{
+		if (should_weaken)
+		{
+			llvm_set_weak(c, ref);
+			if (opt_ref) llvm_set_weak(c, opt_ref);
+		}
+		LLVMSetVisibility(ref, LLVMHiddenVisibility);
+		if (opt_ref) LLVMSetVisibility(opt_ref, LLVMHiddenVisibility);
+		return;
+	}
 	LLVMSetLinkage(ref, is_weak ? LLVMLinkerPrivateWeakLinkage : LLVMInternalLinkage);
 	if (opt_ref) LLVMSetLinkage(opt_ref, LLVMInternalLinkage);
 }
@@ -1240,9 +1282,9 @@ void llvm_add_global_decl(GenContext *c, Decl *decl)
 {
 	ASSERT_SPAN(decl, decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
 
-	bool same_module = decl->unit->module == c->code_module;
+	bool same_module_part = llvm_decl_is_same_emitted_module_part(c, decl);
 	LLVMTypeRef type = llvm_get_type(c, decl->type);
-	if (same_module)
+	if (same_module_part)
 	{
 		// If we initialize it later, we must use a temp name.
 		llvm_decl_set_ref(decl, llvm_add_global_raw(c, ".tempglobal", type, decl->alignment));
@@ -1263,7 +1305,7 @@ void llvm_add_global_decl(GenContext *c, Decl *decl)
 		scratch_buffer_append(".f");
 		decl->var.optional_ref = llvm_add_global_raw(c, scratch_buffer_to_string(), fault, 0);
 	}
-	llvm_set_decl_linkage(c, decl, !same_module);
+	llvm_set_decl_linkage(c, decl, !same_module_part);
 	llvm_set_global_tls(decl);
 }
 
@@ -1449,7 +1491,7 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	}
 	if (decl->is_export && arch_is_wasm(compiler.platform.arch))
 	{
-		if (c->code_module == decl->unit->module)
+		if (llvm_decl_is_same_emitted_module_part(c, decl))
 		{
 			scratch_buffer_set_extern_decl_name(decl, true);
 			llvm_attribute_add_string(c, function, "wasm-export-name", scratch_buffer_to_string(), -1);
@@ -1637,7 +1679,7 @@ INLINE GenContext *llvm_gen_tests(Module** modules, int module_count, LLVMContex
 	compiler.build.debug_info = DEBUG_INFO_NONE;
 
 	GenContext *c = cmalloc(sizeof(GenContext));
-	gencontext_init(c, test_module, shared_context);
+	gencontext_init(c, test_module, shared_context, 0, 1);
 	gencontext_begin_module(c);
 
 	LLVMValueRef *names = NULL;
@@ -1707,7 +1749,7 @@ INLINE GenContext *llvm_gen_benchmarks(Module** modules, int module_count, LLVMC
 	DebugInfo actual_debug_info = compiler.build.debug_info;
 	compiler.build.debug_info = DEBUG_INFO_NONE;
 	GenContext *c = cmalloc(sizeof(GenContext));
-	gencontext_init(c, benchmark_module, shared_context);
+	gencontext_init(c, benchmark_module, shared_context, 0, 1);
 	gencontext_begin_module(c);
 
 	LLVMValueRef *names = NULL;
@@ -1843,13 +1885,14 @@ static GenContext *llvm_stats_add_context(GenContext *context, StatsOrigin origi
 	return context;
 }
 
-static GenContext *llvm_gen_module_with_stats(Module *module, LLVMContextRef shared_context)
+static GenContext *llvm_gen_module_with_stats(Module *module, LLVMContextRef shared_context, int code_split_part, int code_split_total_count)
 {
-	if (!compiler.build.collect_stats) return llvm_gen_module(module, shared_context);
+	if (!compiler.build.collect_stats) return llvm_gen_module(module, shared_context, code_split_part, code_split_total_count);
 	BenchTime start = benchstart();
-	GenContext *context = llvm_gen_module(module, shared_context);
+	GenContext *context = llvm_gen_module(module, shared_context, code_split_part, code_split_total_count);
 	if (!context) return NULL;
 	llvm_stats_add_context(context, stats_module_origin(module), benchmark(start));
+	if (code_split_part) return context;
 	// A file with several modules counts for each of them.
 	FOREACH(CompilationUnit *, unit, module->units) context->timing->lines += stats_physical_lines(unit->file);
 	if (!compiler.build.collect_stats_lists) return context;
@@ -1896,7 +1939,7 @@ INLINE GenContext *llvm_gen_panic_functions(LLVMContextRef shared_context)
 	CompilationUnit *unit = compiler.context.core_unit;
 
 	GenContext *c = cmalloc(sizeof(GenContext));
-	gencontext_init(c, module, shared_context);
+	gencontext_init(c, module, shared_context, 0, 1);
 	gencontext_begin_module(c);
 	gencontext_init_file_emit(c, unit);
 	c->debug.compile_unit = unit->llvm.debug_compile_unit;
@@ -2144,7 +2187,7 @@ void **llvm_gen(Module** modules, int module_count)
 		LLVMContextRef context = LLVMContextCreate();
 		for (int i = 0; i < module_count; i++)
 		{
-			GenContext *result = llvm_gen_module_with_stats(modules[i], context);
+			GenContext *result = llvm_gen_module_with_stats(modules[i], context, 0, 1);
 			if (!result) continue;
 			vec_add(gen_contexts, result);
 		}
@@ -2197,11 +2240,23 @@ void **llvm_gen(Module** modules, int module_count)
 		}
 		return (void**)gen_contexts;
 	}
+	int64_t *split_costs = NULL;
+	int64_t split_share = llvm_split_calculate_module_shares(modules, module_count, &split_costs);
+	Decl **temp_dir = NULL;
 	for (int i = 0; i < module_count; i++)
 	{
-		GenContext *result = llvm_gen_module_with_stats(modules[i], NULL);
-		if (!result) continue;
-		vec_add(gen_contexts, result);
+		int part_count = split_share ? llvm_split_module(modules[i], split_costs[i], split_share, &temp_dir) : 1;
+		if (part_count > 1)
+		{
+			compiler.stats.split_modules++;
+			compiler.stats.split_parts += part_count;
+		}
+		for (int part = 0; part < part_count; part++)
+		{
+			GenContext *result = llvm_gen_module_with_stats(modules[i], NULL, part, part_count);
+			if (!result) continue;
+			vec_add(gen_contexts, result);
+		}
 	}
 	if (compiler.build.build_benchmark)
 	{
@@ -2256,7 +2311,7 @@ LLVMMetadataRef llvm_get_debug_file(GenContext *c, FileId file_id)
 
 
 
-static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context)
+static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context, int code_split_part, int code_split_total_count)
 {
 	if (!vec_size(module->units)) return NULL;
 	if (compiler.build.emit_stdlib == EMIT_STDLIB_OFF && module_is_stdlib(module)) return NULL;
@@ -2265,7 +2320,7 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 
 	bool has_elements = false;
 	GenContext *gen_context = cmalloc(sizeof(GenContext));
-	gencontext_init(gen_context, module, shared_context);
+	gencontext_init(gen_context, module, shared_context, code_split_part, code_split_total_count);
 	gencontext_begin_module(gen_context);
 
 	FOREACH(CompilationUnit *, unit, module->units)
@@ -2276,25 +2331,25 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 
 		FOREACH(Decl *, method, unit->methods)
 		{
-			if (!method->is_live) continue;
+			if (!method->is_live || !llvm_decl_part_matches(gen_context, method)) continue;
 			llvm_emit_function_decl(gen_context, method);
 		}
 
 		FOREACH(Decl *, type_decl, unit->types)
 		{
-			if (!type_decl->is_live) continue;
+			if (!type_decl->is_live || code_split_part) continue;
 			llvm_emit_type_decls(gen_context, type_decl);
 		}
 
 		FOREACH(Decl *, enum_decl, unit->enums)
 		{
-			if (!enum_decl->is_live) continue;
+			if (!enum_decl->is_live || code_split_part) continue;
 			llvm_emit_type_decls(gen_context, enum_decl);
 		}
 
 		FOREACH(Decl *, func, unit->functions)
 		{
-			if (!func->is_live) continue;
+			if (!func->is_live || !llvm_decl_part_matches(gen_context, func)) continue;
 			if (decl_skip_benchtest_function(func)) continue;
 			if (func->func_decl.attr_test && compiler.build.build_test)
 			{
@@ -2310,12 +2365,12 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 
 		FOREACH(Decl *, func, unit->lambdas)
 		{
-			if (!func->is_live) continue;
+			if (!func->is_live || !llvm_decl_part_matches(gen_context, func)) continue;
 			has_elements = true;
 			llvm_emit_function_decl(gen_context, func);
 		}
 
-		if (unit->main_function && unit->main_function->is_synthetic)
+		if (unit->main_function && unit->main_function->is_synthetic && llvm_decl_part_matches(gen_context, unit->main_function))
 		{
 			has_elements = true;
 			llvm_emit_function_decl(gen_context, unit->main_function);
@@ -2330,39 +2385,42 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 				.debug_file = unit->llvm.debug_file,
 				.file_id = unit->file->file_id };
 
-		FOREACH(Decl *, var, unit->vars)
+		if (!code_split_part)
 		{
-			if (!var->is_live) continue;
-			has_elements = true;
-			llvm_get_ref(gen_context, var);
+			FOREACH(Decl *, var, unit->vars)
+			{
+				if (!var->is_live) continue;
+				has_elements = true;
+				llvm_get_ref(gen_context, var);
+			}
+
+			FOREACH(Decl *, var, unit->vars)
+			{
+				if (!var->is_live) continue;
+				has_elements = true;
+				llvm_emit_global_variable_init(gen_context, var);
+			}
 		}
 
-		FOREACH(Decl *, var, unit->vars)
+		FOREACH(Decl *, func, unit->functions)
 		{
-			if (!var->is_live) continue;
-			has_elements = true;
-			llvm_emit_global_variable_init(gen_context, var);
-		}
-
-		FOREACH(Decl *, decl, unit->functions)
-		{
-			if (decl_skip_benchtest_function(decl)) continue;
-			if (!decl->is_live) continue;
-			if (decl->func_decl.body)
+			if (decl_skip_benchtest_function(func)) continue;
+			if (!func->is_live || !llvm_decl_part_matches(gen_context, func)) continue;
+			if (func->func_decl.body)
 			{
 				has_elements = true;
-				llvm_emit_function_body(gen_context, decl);
+				llvm_emit_function_body(gen_context, func);
 			}
 		}
 
 		FOREACH(Decl *, func, unit->lambdas)
 		{
-			if (!func->is_live) continue;
+			if (!func->is_live || !llvm_decl_part_matches(gen_context, func)) continue;
 			has_elements = true;
 			llvm_emit_function_body(gen_context, func);
 		}
 
-		if (unit->main_function && unit->main_function->is_synthetic)
+		if (unit->main_function && unit->main_function->is_synthetic && llvm_decl_part_matches(gen_context, unit->main_function))
 		{
 			has_elements = true;
 			llvm_emit_function_body(gen_context, unit->main_function);
@@ -2370,7 +2428,7 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 
 		FOREACH(Decl *, decl, unit->methods)
 		{
-			if (!decl->is_live) continue;
+			if (!decl->is_live || !llvm_decl_part_matches(gen_context, decl)) continue;
 			if (!decl->func_decl.body) continue;
 			has_elements = true;
 			llvm_emit_function_body(gen_context, decl);

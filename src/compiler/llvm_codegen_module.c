@@ -67,7 +67,7 @@ void gencontext_begin_module(GenContext *c)
 {
 	ASSERT(!c->module && "Expected no module");
 
-	codegen_setup_object_names(c->code_module, &c->base_name, &c->ir_filename, &c->asm_filename, &c->object_filename);
+	codegen_setup_object_names(c->code_module, &c->base_name, &c->ir_filename, &c->asm_filename, &c->object_filename, c->code_split_part);
 	DEBUG_LOG("Emit module %s.", c->code_module->name->module);
 	c->panic_var = c->code_module->is_compiler_rt ? NULL : compiler.context.panic_var;
 	c->module = LLVMModuleCreateWithNameInContext(c->code_module->name->module, c->context);

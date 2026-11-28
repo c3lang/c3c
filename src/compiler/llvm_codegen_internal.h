@@ -176,6 +176,8 @@ typedef struct GenContext_
 	unsigned module_size;
 	StatsEntry *timing;
 	bool split_aggregates;
+	int code_split_part;
+	int code_split_total_count;
 } GenContext;
 
 // LLVM Intrinsics
@@ -341,6 +343,9 @@ extern LLVMAttributes attribute_id;
 // LLVM Attributes
 
 void gencontext_begin_module(GenContext *c);
+int llvm_split_module(Module *module, int64_t cost, int64_t share, Decl ***bodies_ref);
+int64_t llvm_split_calculate_module_shares(Module **modules, int module_count, int64_t **costs_ref);
+
 extern uint16_t llvm_generation;
 INLINE void *llvm_set_backend_type(Type *type, void *value) { type->backend_type_gen = llvm_generation; return type->backend_type = value; }
 INLINE void *llvm_set_backend_typeid(Type *type, void *value) { type->backend_typeid_gen = llvm_generation; return type->backend_typeid = value; }

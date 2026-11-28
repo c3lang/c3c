@@ -188,6 +188,13 @@ typedef enum
 
 typedef enum
 {
+	SPLIT_MODULES_NOT_SET = -1,
+	SPLIT_MODULES_OFF = 0, // NOLINT
+	SPLIT_MODULES_ON = 1
+} SplitModules;
+
+typedef enum
+{
 	UNROLL_LOOPS_NOT_SET = -1,
 	UNROLL_LOOPS_OFF = 0,
 	UNROLL_LOOPS_ON = 1

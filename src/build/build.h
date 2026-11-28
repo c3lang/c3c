@@ -290,6 +290,7 @@ typedef struct BuildOptions_
 	SafetyLevel safety_level;
 	PanicLevel panic_level;
 	SingleModule single_module;
+	SplitModules split_modules;
 	UnrollLoops unroll_loops;
 	MergeFunctions merge_functions;
 	InfiniteLoopDetect infinite_loop_detect;
@@ -502,6 +503,7 @@ typedef struct
 	MemoryEnvironment memory_environment;
 	SizeOptimizationLevel optsize;
 	SingleModule single_module;
+	SplitModules split_modules;
 	ValidationLevel validation_level;
 	UseStdlib use_stdlib;
 	StaticAnalysis static_analysis;
@@ -643,6 +645,7 @@ static BuildTarget default_build_target = {
 		.linker_type = LINKER_TYPE_NOT_SET,
 		.validation_level = VALIDATION_NOT_SET,
 		.single_module = SINGLE_MODULE_NOT_SET,
+		.split_modules = SPLIT_MODULES_NOT_SET,
 		.unroll_loops = UNROLL_LOOPS_NOT_SET,
 		.merge_functions = MERGE_FUNCTIONS_NOT_SET,
 		.infinite_loop_detect = INFINITE_LOOP_DETECT_NOT_SET,
