@@ -30,6 +30,8 @@ extern fn int mkdir(ZString, ushort mode_t);
 extern fn CInt chmod(ZString path, Mode_t mode);
 extern fn CInt fchmod(CInt fd, Mode_t mode);
 extern fn int chdir(ZString);
+extern fn CInt symlink(ZString target, ZString linkpath);
+extern fn sz readlink(ZString path, char* buf, usz bufsize);
 extern fn ZString getcwd(char* pwd, usz len);
 extern fn CInt pipe(CInt[2]* pipes);
 extern fn CFile fdopen(CInt fd, ZString mode);
