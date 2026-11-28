@@ -31,11 +31,10 @@ fn float _ceilf(float x) @weak @cname("ceilf") @nostrip
 			force_eval_add(x, 0x1p120f);
 			if (u >> 31 == 0) u += m;
 			u &= ~m;
-		case u >> 31 != 0:
+		default:
 			force_eval_add(x, 0x1p120f);
-			return -0.0f;
-		case u << 1 != 0:
-			return 1;
+			if (u >> 31 != 0) return -0.0f;
+			if (u << 1 != 0) return 1;
 	}
 	return bitcast(u, float);
 }

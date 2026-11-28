@@ -41,13 +41,13 @@ fn double _acos(double x) @weak @cname("acos") @nostrip
 		/* |x| >= 1 or nan */
 		case ix >= 0x3ff00000:
 		     	uint lx = x.low_word();
-		     	if ((ix - 0x3ff00000 | lx) == 0)
+		     	if (((ix - 0x3ff00000) | lx) == 0)
 		     	{
 				/* acos(1)=0, acos(-1)=pi */
 				if (hx >> 31) return 2. * PIO2_HI + 0x1p-120f;
 				return 0.;
 			}	
-			return double::nan;
+			return 0 / (x - x);
 		/* |x| < 0.5 */
 		case ix < 0x3fe00000:
 		     	/* |x| < 2**-57 */
@@ -113,7 +113,7 @@ fn float _acosf(float x) @weak @cname("acosf") @nostrip
 				if (hx >> 31) return 2.f * PIO2_HI_F + 0x1p-120f;
 				return 0;
 			}
-			return float::nan;
+			return 0 / (x - x);
 		/* |x| < 0.5 */
 		case ix < 0x3f000000:
 		     	/* |x| < 2**-26 */

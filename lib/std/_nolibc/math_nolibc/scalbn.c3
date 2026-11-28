@@ -1,7 +1,7 @@
 module std::math::nolibc @feat(NO_LIBC, C3_MATH);
 
-fn double ldexp(double x, int exp) @cname("ldexp") => _scalbn(x, exp);
-fn float ldexpf(float x, int exp) @cname("ldexpf") => _scalbnf(x, exp);
+fn double ldexp(double x, int exp) @cname("ldexp") @weak @nostrip => _scalbn(x, exp);
+fn float ldexpf(float x, int exp) @cname("ldexpf") @weak @nostrip => _scalbnf(x, exp);
 
 fn double _scalbn(double x, int n) @weak @cname("scalbn") @nostrip
 {

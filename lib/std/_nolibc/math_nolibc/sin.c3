@@ -29,14 +29,7 @@ fn float _sinf(float x) @weak @cname("sinf") @nostrip
 			{
 				/* |x| < 2**-12 */
 				// raise inexact if x!=0 and underflow if subnormal
-				if (ix < 0x00800000)
-				{
-					@volatile_load(x) / 0x1p120f;
-				}
-				else
-				{
-					@volatile_load(x) + 0x1p120f;
-				}
+				force_eval(ix < 0x00800000 ? x / 0x1p120f : x + 0x1p120f);
 				return x;
 			}
 			return __sindf(x);
@@ -96,7 +89,7 @@ fn double sin(double x) @cname("sin") @weak @nostrip
 			if (ix < 0x3e500000)
 			{
 				// raise inexact if x != 0 and underflow if subnormal
-				force_eval_add(x, ix < 0x00100000 ? -0x1p120f : 0x1p120f);
+				force_eval(ix < 0x00100000 ? x / 0x1p120f : x + 0x1p120f);
 				return x;
 			}
 			return __sin(x, 0.0, 0);

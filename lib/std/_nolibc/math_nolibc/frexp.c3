@@ -1,6 +1,6 @@
 module std::math::nolibc @feat(NO_LIBC, C3_MATH);
 
-fn double frexp(double x, int* exp) @cname("frexp")
+fn double frexp(double x, int* exp) @cname("frexp") @weak @nostrip
 {
     uint hx = x.high_word();
     uint ix = hx & 0x7fffffff;
@@ -19,6 +19,7 @@ fn double frexp(double x, int* exp) @cname("frexp")
         // subnormal number
         x *= 0x1p64;
         hx = x.high_word();
+        lx = x.low_word();
         e = (int)((hx >> 20) & 0x7ff) - 64;
     }
     *exp = e - 1022;
@@ -31,7 +32,7 @@ fn double frexp(double x, int* exp) @cname("frexp")
     }
 }
 
-fn float frexpf(float x, int* exp) @cname("frexpf")
+fn float frexpf(float x, int* exp) @cname("frexpf") @weak @nostrip
 {
     uint ix = x.word();
     uint hx = ix & 0x7fffffff;

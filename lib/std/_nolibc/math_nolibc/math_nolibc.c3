@@ -238,16 +238,31 @@ const Exp2Data __EXP2_DATA = {
 };
 
 const bool WANT_ROUNDING = true;
-macro float __math_uflowf(uint sign) => __math_xflow(sign, 0x1p97f);
-macro double __math_uflow(ulong sign) => __math_xflow(sign, 0x1p769);
-macro float __math_oflowf(uint sign) => __math_xflow(sign, 0x1p-95f);
-macro double __math_oflow(ulong sign) => __math_xflow(sign, 0x1p-767);
+macro float __math_oflowf(uint sign) => __math_xflow(sign, 0x1p97f);
+macro double __math_oflow(ulong sign) => __math_xflow(sign, 0x1p769);
+macro float __math_uflowf(uint sign) => __math_xflow(sign, 0x1p-95f);
+macro double __math_uflow(ulong sign) => __math_xflow(sign, 0x1p-767);
+
+macro __math_invalid(x) => (x - x) / (x - x);
+
+macro __math_divzero(sign, $Type)
+{
+	$Type temp @noinit;
+	@volatile_store(temp, sign ? ($Type)-1.0 : ($Type)1.0);
+	return @volatile_load(temp) / ($Type)0.0;
+}
 
 macro __math_xflow(sign, v)
 {
 	$Typeof(v) temp @noinit;
-	@volatile_store(temp, (sign ? -v : v) * v);
-	return temp;
+	@volatile_store(temp, sign ? -v : v);
+	return @volatile_load(temp) * v;
+}
+
+macro force_eval(x)
+{
+	$Typeof(x) temp @noinit;
+	@volatile_store(temp, x);
 }
 
 macro force_eval_add(x, v)

@@ -41,12 +41,12 @@ fn double _asin(double x) @weak @cname("asin") @nostrip
 		/* |x| >= 1 or nan */
 		case ix >= 0x3ff00000:
 			uint lx = x.low_word();
-			if ((ix - 0x3ff00000 | lx) == 0)
+			if (((ix - 0x3ff00000) | lx) == 0)
 			{
 				/* asin(1) = +-pi/2 with inexact */
 				return x * PIO2_HI + 0x1p-120f;
 			}
-			return double::nan;
+			return 0 / (x - x);
 		/* |x| < 0.5 */
 		case ix < 0x3fe00000:
 		     	/* if 0x1p-1022 <= |x| < 0x1p-26, avoid raising underflow */
@@ -115,7 +115,7 @@ fn float _asinf(float x) @weak @cname("asinf") @nostrip
 				/* asin(+-1) = +-pi/2 with inexact */
 				return x * (float)PIO2 + 0x1p-120f;
 			}
-			return float::nan;
+			return 0 / (x - x);
 		/* |x| < 0.5 */
 		case ix < 0x3f000000:
 		     	/* if 0x1p-126 <= |x| < 0x1p-12, avoid raising underflow */
@@ -124,8 +124,8 @@ fn float _asinf(float x) @weak @cname("asinf") @nostrip
 		/* 1 > |x| >= 0.5 */
 		default:
 			float z = (1.f - math::abs(x)) * 0.5f;
-			float s = math::sqrt(z);
-			x = (float)PIO2 - 2.f * (s + s * _r_f(z));
+			double s = math::sqrt((double)z);
+			x = (float)(PIO2 - 2.0 * (s + s * _r_f(z)));
 			if (hx >> 31) return -x;
 			return x;
 	}

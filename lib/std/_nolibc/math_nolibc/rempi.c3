@@ -42,7 +42,7 @@ fn int __rem_pio2f(float x, double *y)
 	{
 		// |x| ~< 2^28*(pi/2), medium size
 		// Use a specialized rint() to get f.
-		uint f = (uint)(((double)x * INVPIO2 + TOINT15) - TOINT15);
+		double f = ((double)x * INVPIO2 + TOINT15) - TOINT15;
 		int n  = (int)f;
 		*y = x - f * PIO2_1 - f * PIO2_1T;
 		/* Matters with directed rounding. */
@@ -75,10 +75,10 @@ fn int __rem_pio2f(float x, double *y)
 	int n = __rem_pio2_large(&tx,&ty, e0, 1, 0);
 	if (sign)
 	{
-		*y = (float)-ty;
+		*y = -ty;
 		return -n;
 	}
-	*y = (float)ty;
+	*y = ty;
 	return n;
 }
 
@@ -172,6 +172,7 @@ fn int __rem_pio2_large(double* x, double* y, int e0, int nx, int prec)
 		z -= 8.0 * nolibc::_floor(z * 0.125); /* trim off integer >= 8 */
 		n = (int)z;
 		z -= (double)n;
+		ih = 0;
 		switch
 		{
 			case q0 > 0:

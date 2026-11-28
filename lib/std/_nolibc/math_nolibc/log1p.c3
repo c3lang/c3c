@@ -62,14 +62,14 @@ fn double _log1p(double x) @weak @cname("log1p") @nostrip
 		     	{
 				/* x <= -1.0 */
 				case hx >= 0xbff00000:
-				     	if (x == -1) return -double::inf;
-					return double::nan;
+					if (x == -1) return x / 0.0;
+					return (x - x) / 0.0;
 				/* |x| < 2**-53 */
 				case hx << 1 < 0x3ca00000 << 1:
-				     	/* underflow if subnormal */
+					/* underflow if subnormal */
 					if ((hx & 0x7ff00000) == 0)
 					{
-						(float)@volatile_load(x);
+						force_eval((float)x);
 					}
 					return x;
 				/* sqrt(2)/2- <= 1+x < sqrt(2)+ */
@@ -176,15 +176,14 @@ fn float _log1pf(float x) @weak @cname("log1pf") @nostrip
 		     	{
 				/* x <= -1.0 */
 				case ix >= 0xbf800000:
-				     	if (x == -1) return -float::inf;
-					return float::nan;
+					if (x == -1) return x / 0.0f;
+					return (x - x) / 0.0f;
 				/* |x| < 2**-24 */
 				case ix << 1 < 0x33800000 << 1:
 				     	/* underflow if subnormal */
 					if ((ix & 0x7f800000) == 0)
 					{
-						float v = @volatile_load(x);
-						v = v * v;
+						force_eval(x * x);
 					}
 					return x;
 				/* sqrt(2)/2- <= 1+x < sqrt(2)+ */

@@ -10,7 +10,7 @@ fn double _round(double x) @cname("round") @weak @nostrip
 	{
 		/* raise inexact if x!=0 */
 		force_eval_add(x, TOINT);
-		return 0 * x;
+		return 0 * bitcast(u, double);
 	}
 	double y = (x + TOINT) - TOINT - x;
 	switch
@@ -36,7 +36,7 @@ fn float _roundf(float x) @cname("roundf") @weak @nostrip
 	if (e < 0x7f - 1)
 	{
 		force_eval_add(x, TOINTF);
-		return 0 * x;
+		return 0 * bitcast(u, float);
 	}
 	float y = (x + TOINTF) - TOINTF - x;
 	switch

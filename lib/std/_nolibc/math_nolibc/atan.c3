@@ -61,7 +61,7 @@ fn double _atan(double x) @weak @cname("atan") @nostrip
 				if (ix < 0x00100000)
 				{
 					/* raise underflow for subnormal x */
-					(float)@volatile_load(x);
+					force_eval((float)x);
 				}
 				return x;
 			}
@@ -161,8 +161,7 @@ fn float _atanf(float x) @weak @cname("atanf") @nostrip
 				if (ix < 0x00800000)
 				{
 					/* raise underflow for subnormal x */
-					float f = @volatile_load(x);
-					f = f * f;
+					force_eval(x * x);
 				}
 				return x;
 			}

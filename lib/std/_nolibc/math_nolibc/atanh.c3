@@ -1,95 +1,53 @@
 module std::math::nolibc @feat(NO_LIBC, C3_MATH);
 
-/* origin: FreeBSD usr/src/lib/msun/src/e_atanh.c */
-/*
- * ====================================================
- * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
- *
- * Developed at SunSoft, a Sun Microsystems, Inc. business.
- * Permission to use, copy, modify, and distribute this
- * software is freely granted, provided that this notice 
- * is preserved.
- * ====================================================
- */
+/* origin: musl src/math/atanh.c */
+/* atanh(x) = log((1+x)/(1-x))/2 = log1p(2x/(1-x))/2 ~= x + x^3/3 + o(x^5) */
 
 fn double _atanh(double x) @weak @cname("atanh") @nostrip
 {
-	double t @noinit;
-	uint hx = x.high_word();
-	uint ix = hx & 0x7fffffff;
-	uint sign = hx >> 31;
-	switch
+	ulong u = bitcast(x, ulong);
+	uint e = (uint)(u >> 52 & 0x7ff);
+	bool s = (u >> 63) != 0;
+	double y = bitcast(u & (ulong::max >> 1), double);
+	if (e < 0x3ff - 1)
 	{
-		/* |x| >= 1 or nan */
-		case ix >= 0x3ff00000:
-		     	uint lx = x.low_word();
-		     	if ((ix - 0x3ff00000 | lx) == 0)
-			{
-			   	return sign ? -double::inf : double::inf;
-			}
-			return double::nan;
-		/* x<2**-28 */
-		case ix < 0x3e300000 && (1e300 + x) > 0.0:
-		     	return x;
-	}
-	x.set_high_word(ix);
-	/* |x| < 0.5 */
-	if (ix < 0x3fe00000)
-	{
-		t = x + x;
-		t = 0.5 * _log1p(t + t * x / (1.0 - x));
+		if (e < 0x3ff - 32)
+		{
+			if (e == 0) force_eval((float)y);
+		}
+		else
+		{
+			y = 0.5 * _log1p(2 * y + 2 * y * y / (1 - y));
+		}
 	}
 	else
 	{
-		t = 0.5 * _log1p((x + x) / (1.0 - x));
+		y = 0.5 * _log1p(2 * (y / (1 - y)));
 	}
-	return sign ? -t : t;
+	return s ? -y : y;
 }
 
-/* origin: FreeBSD usr/src/lib/msun/src/e_atanhf.c */
-/*
- * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
- */
-/*
- * ====================================================
- * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
- *
- * Developed at SunPro, a Sun Microsystems, Inc. business.
- * Permission to use, copy, modify, and distribute this
- * software is freely granted, provided that this notice
- * is preserved.
- * ====================================================
- */
-
+/* origin: musl src/math/atanhf.c */
 fn float _atanhf(float x) @weak @cname("atanhf") @nostrip
 {
-	float t @noinit;
-	uint hx = bitcast(x, uint);
-	uint ix = hx & 0x7fffffff;
-	uint sign = hx >> 31;
-	switch
+	uint u = bitcast(x, uint);
+	bool s = (u >> 31) != 0;
+	u &= 0x7fffffff;
+	float y = bitcast(u, float);
+	if (u < 0x3f800000 - (1 << 23))
 	{
-		/* |x| >= 1 or nan */
-		case ix >= 0x3f800000:
-		     	if (ix == 0x3f800000)
-			{
-			   	return sign ? -float::inf : float::inf;
-			}
-			return float::nan;
-		/* x<2**-28 */
-		case ix < 0x31800000 && (1e30 + x) > 0.f:
-		     	return x;
-	}
-	x.set_word(ix);
-	/* |x| < 0.5 */
-	if (ix < 0x3f000000)
-	{
-		t = x + x;
-		t = 0.5f * _log1pf(t + t * x / (1.f - x));
+		if (u < 0x3f800000 - (32 << 23))
+		{
+			if (u < (1 << 23)) force_eval(y * y);
+		}
+		else
+		{
+			y = 0.5f * _log1pf(2 * y + 2 * y * y / (1 - y));
+		}
 	}
 	else
 	{
-		t = 0.5f * _log1pf((x + x) / (1.f - x));
+		y = 0.5f * _log1pf(2 * (y / (1 - y)));
 	}
-	return sign ? -t : t;
+	return s ? -y : y;
 }

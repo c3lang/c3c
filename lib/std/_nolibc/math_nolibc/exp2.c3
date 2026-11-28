@@ -71,7 +71,8 @@ fn double _exp2_specialcase(double tmp, ulong sbits, ulong ki) @private
 	/* Avoid -0.0 with downward rounding.  */
 	if (WANT_ROUNDING && y == 0.0) y = 0.0;
 	/* The underflow exception needs to be signaled explicitly.  */
-	return __math_xflow(0, 0x1p-1022);
+	__math_xflow(0, 0x1p-1022);
+	return 0x1p-1022 * y;
 }
 
 
@@ -119,7 +120,7 @@ fn double _exp2(double x) @cname("exp2") @weak @nostrip
 	/* 2^(k/N) ~= scale * (1 + tail).  */
 	ulong idx = 2 * (ki % EXP_DATA_WIDTH);
 	ulong top = ki << (52 - EXP_TABLE_BITS);
-	double tail = __EXP2_DATA.tab[idx];
+	double tail = bitcast(__EXP2_DATA.tab[idx], double);
 	/* This is only a valid scale when -1023*N < k < 1024*N.  */
 	ulong sbits = __EXP2_DATA.tab[idx + 1] + top;
 	/* exp2(x) = 2^(k/N) * 2^r ~= scale + scale * (tail + 2^r - 1).  */
