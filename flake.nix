@@ -15,6 +15,7 @@
             # rev from Git is a flake-only feature
             c3c = prev.c3c.overrideScope (_: _: { rev = self.rev or "unknown"; });
           });
+        development = import ./nix/overlay/development.nix;
       };
     } 
     // inputs.flake-utils.lib.eachDefaultSystem 
@@ -24,6 +25,7 @@
             inherit system; 
             overlays = [
               self.overlays.default
+              self.overlays.development
             ];
           };
         in {
@@ -37,9 +39,7 @@
           };
 
           devShells = {
-            default = pkgs.callPackage ./nix/shell.nix {
-              c3c = self.packages.${system}.c3c-debug;
-            };
+            default = pkgs.c3c.shell;
           };
         }
       );
