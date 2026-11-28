@@ -537,8 +537,10 @@ for (type__ name__ ; idx__ < CONCAT(foreach_vecsize_, __LINE__) ? (name__ = CONC
 
 
 char *realpath(const char *path, char *resolved_path);
+char *win_getcwd(char *buffer, int size);
 
 #define mkdir(name, unused) _mkdir(name)
+#define getcwd(buffer, size) win_getcwd(buffer, size)
 
 #endif
 
