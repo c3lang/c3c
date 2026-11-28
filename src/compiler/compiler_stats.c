@@ -429,8 +429,9 @@ static void stats_print_summary(StatsReport *report)
 	}
 	if (compiler.build.split_modules == SPLIT_MODULES_ON)
 	{
-		stats_print_info("Split modules", str_printf("%d, into %d parts, %d objects in total", stats->split_modules,
-		                                             stats->split_parts, stats->codegen_tasks));
+		stats_print_info("Split modules", stats->split_modules
+		                                  ? str_printf("%d, into %d parts, %d objects in total", stats->split_modules, stats->split_parts, stats->codegen_tasks)
+		                                  : str_printf("none, %d objects in total", stats->codegen_tasks));
 	}
 	stats_print_info("Arena memory", str_printf("%.1f MB, upper bound for the peak, LLVM excluded", (double)stats_arena_total(report) / MB));
 	StatsPhase *largest = NULL;
